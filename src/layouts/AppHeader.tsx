@@ -1,0 +1,102 @@
+import { AppBar, Box, IconButton, Toolbar, Tooltip, Typography } from '@mui/material';
+import { Menu, Moon, Sun } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useAppStore } from '@/store/appStore';
+import { LAYOUT } from './layoutConstants';
+
+type AppHeaderProps = {
+  /** Primary left cluster (e.g. space selector). Anchors space context. */
+  leading?: ReactNode;
+  title?: string;
+  subtitle?: string;
+  actions?: ReactNode;
+  onMenuClick?: () => void;
+};
+
+export function AppHeader({
+  leading,
+  title,
+  subtitle,
+  actions,
+  onMenuClick,
+}: AppHeaderProps) {
+  const { t } = useTranslation();
+  const themeMode = useAppStore((state) => state.themeMode);
+  const toggleThemeMode = useAppStore((state) => state.toggleThemeMode);
+  const themeLabel =
+    themeMode === 'light'
+      ? t('settings.profile.themeDark', { defaultValue: 'Switch to dark mode' })
+      : t('settings.profile.themeLight', { defaultValue: 'Switch to light mode' });
+
+  return (
+    <AppBar
+      position="sticky"
+      color="inherit"
+      elevation={0}
+      sx={{
+        borderBottom: 1,
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+        color: 'text.primary',
+        zIndex: (theme) => theme.zIndex.appBar,
+      }}
+    >
+      <Toolbar
+        sx={{
+          minHeight: `${LAYOUT.headerHeight}px !important`,
+          height: LAYOUT.headerHeight,
+          gap: 2,
+          px: { xs: 1.5, md: 2 },
+        }}
+      >
+        <IconButton
+          edge="start"
+          onClick={onMenuClick}
+          sx={{ display: { xs: 'inline-flex', md: 'none' } }}
+          aria-label={t('navigation.openMenu', { defaultValue: 'Open navigation' })}
+        >
+          <Menu size={20} />
+        </IconButton>
+
+        {leading ? (
+          <Box
+            sx={{
+              flexShrink: 0,
+              minWidth: 0,
+              maxWidth: { xs: '55%', sm: 360, md: 420 },
+            }}
+          >
+            {leading}
+          </Box>
+        ) : null}
+
+        {!leading && (title || subtitle) ? (
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            {title ? (
+              <Typography variant="h6" noWrap sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                {title}
+              </Typography>
+            ) : null}
+            {subtitle ? (
+              <Typography variant="body2" color="text.secondary" noWrap>
+                {subtitle}
+              </Typography>
+            ) : null}
+          </Box>
+        ) : (
+          <Box sx={{ flex: 1, minWidth: 0 }} />
+        )}
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+          {actions}
+          <Tooltip title={themeLabel}>
+            <IconButton onClick={toggleThemeMode} aria-label={themeLabel}>
+              {themeMode === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </Toolbar>
+    </AppBar>
+  );
+}

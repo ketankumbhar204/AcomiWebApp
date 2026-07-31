@@ -1,0 +1,302 @@
+{
+  "progressiveWorkflow": {
+    "nextStep": "Next step",
+    "stepOf": "Step {{current}} of {{total}}",
+    "continueDown": "Continue ↓",
+    "occupancy": {
+      "reviewAddonsTitle": "Review deposit & amenities",
+      "reviewAddonsHint": "Optional charges, deposit, and amenities are below rent.",
+      "continueToAddons": "Continue to deposit & amenities ↓",
+      "progressRentNext": "✓ Rent set  ·  Next: Deposit & amenities",
+      "progressReady": "✓ Contract reviewed  ·  Continue"
+    },
+    "member": {
+      "reviewMealsTitle": "Review meal settings",
+      "reviewMealsHint": "Billing, subscription, and meal access are optional but easy to miss.",
+      "continueToMeals": "Continue to meal settings ↓",
+      "progressIdentityNext": "✓ Customer details  ·  Next: Meal settings",
+      "progressReady": "✓ Details reviewed  ·  Ready to save"
+    },
+    "sharePreview": {
+      "reviewMessageTitle": "Review message & recipients",
+      "reviewMessageHint": "Confirm other spaces and the share message before sending.",
+      "continueToMessage": "Continue to message ↓",
+      "progressSlotsNext": "✓ Meals selected  ·  Next: Message",
+      "progressReady": "✓ Ready to share"
+    },
+    "editSpace": {
+      "tabGeneral": "General",
+      "tabMeals": "Meals & billing",
+      "tabPolls": "Poll defaults"
+    },
+    "quickSetup": {
+      "reviewPreviewHint": "Review the structure below, then generate."
+    },
+    "createSpace": {
+      "essentialsTitle": "Essentials",
+      "amenitiesTitle": "Amenities (optional)",
+      "reviewAmenitiesTitle": "Review amenities",
+      "reviewAmenitiesHint": "Optional — skip if you will set these later.",
+      "continueToAmenities": "Continue to amenities ↓",
+      "progressEssentialsNext": "✓ Essentials  ·  Next: Amenities",
+      "progressReady": "✓ Ready to create"
+    },
+    "raiseComplaint": {
+      "detailsTitle": "Details",
+      "contextTitle": "Context",
+      "photosTitle": "Photos (optional)",
+      "reviewPhotosTitle": "Add photos (optional)",
+      "reviewPhotosHint": "Photos help operators resolve issues faster.",
+      "continueToPhotos": "Continue to photos ↓",
+      "progressDetailsNext": "✓ Details  ·  Next: Photos",
+      "progressReady": "✓ Ready to submit"
+    },
+    "subscription": {
+      "choosePlanTitle": "Choose a plan",
+      "paymentDetailsTitle": "Payment details",
+      "reviewPaymentTitle": "Review payment details",
+      "reviewPaymentHint": "Add a payment reference or proof, then submit your request.",
+      "continueToPayment": "Continue to payment details ↓",
+      "progressPlanNext": "✓ Plan selected  ·  Next: Payment details",
+      "progressReady": "✓ Ready to submit request"
+    }
+  },
+  "coachmarks": {
+    "actions": {
+      "next": "Next",
+      "gotIt": "Got it",
+      "skip": "Skip"
+    },
+    "a11y": {
+      "stepOf": "Step {{current}} of {{total}}",
+      "dismissOverlay": "Dismiss tips"
+    },
+    "accommodation": {
+      "step1": "This card always tells you the next business task to complete.",
+      "step2": "Continue your property setup here.",
+      "step3": "Start creating your property layout here."
+    },
+    "mess": {
+      "step1": "This tells you exactly what your mess needs next.",
+      "step2": "Follow this recommendation to complete your setup.",
+      "step3": "Your setup progress updates automatically."
+    }
+  },
+  "common": {
+    "appName": "CountIn",
+    "ok": "సరే",
+    "cancel": "రద్దు చేయి",
+    "user": "వినియోగదారు",
+    "errors": {
+      "generic": "ఏదో తప్పు జరిగింది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+      "network": "కనెక్ట్ చేయలేకపోయాం. మీ ఇంటర్నెట్ కనెక్షన్ తనిఖీ చేయండి.",
+      "authRequired": "సెషన్ కనుగొనబడలేదు. దయచేసి మళ్లీ లాగిన్ చేయండి.",
+      "loadSpaces": "స్పేస్‌లను లోడ్ చేయడంలో విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+      "createSpace": "స్పేస్ సృష్టించడంలో విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+      "sendOtp": "OTP పంపలేకపోయాం. కనెక్షన్ తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.",
+      "incorrectOtp": "తప్పు OTP. దయచేసి మళ్లీ ప్రయత్నించండి.",
+      "accountDisabled": "మీ ఖాతా నిష్క్రియం చేయబడింది. దయచేసి సపోర్ట్‌ను సంప్రదించండి."
+    }
+  },
+  "navigation": {
+    "mySpaces": "నా స్పేస్‌లు",
+    "profile": "ప్రొఫైల్",
+    "createSpace": "స్పేస్ సృష్టించు",
+    "inviteMember": "సభ్యుడిని ఆహ్వానించు",
+    "verifyOtp": "OTP ధృవీకరించు",
+    "dashboard": "డాష్‌బోర్డ్",
+    "members": "సభ్యులు",
+    "rooms": "గదులు",
+    "meals": "భోజనాలు",
+    "payments": "చెల్లింపులు",
+    "complaints": "ఫిర్యాదులు"
+  },
+  "auth": {
+    "login": {
+      "heading": "మళ్లీ స్వాగతం",
+      "subheading": "ఒకసారి పాస్‌వర్డ్ పొందడానికి మీ మొబైల్ నంబర్ నమోదు చేయండి.",
+      "mobilePlaceholder": "9876543210",
+      "sendOtp": "OTP పంపు",
+      "disclaimer": "CountIn కు కొత్తవారా? మీ ఖాతా స్వయంచాలకంగా సృష్టించబడుతుంది.",
+      "mobileRequired": "మొబైల్ నంబర్ అవసరం.",
+      "mobileInvalid": "చెల్లుబాటు అయ్యే 10-అంకెల భారతీయ మొబైల్ నంబర్ నమోదు చేయండి."
+    },
+    "otp": {
+      "eyebrow": "ధృవీకరణ",
+      "heading": "OTP నమోదు చేయండి",
+      "subheading": "మేము కోడ్ పంపాము",
+      "verifyContinue": "ధృవీకరించి కొనసాగించు",
+      "devHint": "డెవ్: OTP 123456 ఉపయోగించండి",
+      "wrongNumber": "తప్పు నంబరా?",
+      "changeIt": "మార్చు"
+    }
+  },
+  "spaces": {
+    "mySpaces": {
+      "eyebrow": "మీ ఆస్తులు",
+      "heading": "స్పేస్ ఎంచుకోండి",
+      "subheading": "డాష్‌బోర్డ్, సభ్యులు, భోజనాలు మరియు మరిన్ని చూడటానికి స్పేస్ తెరవండి.",
+      "emptyTitle": "ఇంకా స్పేస్‌లు లేవు",
+      "emptyDescription": "ప్రారంభించడానికి మీ మొదటి PG, Rental, Mess లేదా Hostel స్పేస్ సృష్టించండి.",
+      "createFab": "కొత్త స్పేస్ సృష్టించు",
+      "openProfile": "ప్రొఫైల్ మరియు సెట్టింగ్‌లు తెరవండి"
+    },
+    "createSpace": {
+      "eyebrow": "కొత్త ఆస్తి",
+      "heading": "స్పేస్ సృష్టించు",
+      "subheading": "క్రింద వివరాలు నమోదు చేయండి. మీరు తర్వాత నవీకరించవచ్చు.",
+      "nameLabel": "స్పేస్ పేరు",
+      "namePlaceholder": "ఉదా. Sunrise PG",
+      "addressLabel": "చిరునామా",
+      "addressPlaceholder": "ఉదా. బానేర్, పూణే (ఐచ్ఛికం)",
+      "contactLabel": "సంప్రదింపు నంబర్",
+      "contactPlaceholder": "ఉదా. 9876543210 (ఐచ్ఛికం)",
+      "save": "స్పేస్ సేవ్ చేయి",
+      "cancel": "రద్దు చేయి",
+      "nameRequired": "స్పేస్ పేరు అవసరం.",
+      "typeRequired": "దయచేసి స్పేస్ రకం ఎంచుకోండి.",
+      "successTitle": "స్పేస్ సృష్టించబడింది",
+      "successMessage": "\"{{name}}\" విజయవంతంగా సృష్టించబడింది."
+    },
+    "types": {
+      "label": "స్పేస్ రకం",
+      "pg": {
+        "label": "PG",
+        "description": "పేయింగ్ గెస్ట్"
+      },
+      "mess": {
+        "label": "Mess",
+        "description": "మెస్ / క్యాంటీన్"
+      },
+      "hostel": {
+        "label": "Hostel",
+        "description": "హాస్టల్"
+      },
+      "coLiving": {
+        "label": "Co-living",
+        "description": "సహ-నివాస స్పేస్"
+      },
+      "rental": {
+        "label": "Rental",
+        "description": "ఫ్లాట్‌లు / గదులు"
+      }
+    }
+  },
+  "dashboard": {
+    "health": {
+      "title": "Space Health",
+      "emptyTitle": "Space Health",
+      "emptyBody": "Health Score will appear after you complete your initial setup.",
+      "viewDetails": "View breakdown",
+      "categoryScore": "{{score}}%",
+      "suggestionsTitle": "Improve by",
+      "nextFromEngine": "Recommended next step",
+      "openPending": "Open Pending Actions",
+      "bands": {
+        "excellent": "Excellent",
+        "healthy": "Healthy",
+        "needsImprovement": "Needs Improvement",
+        "atRisk": "At Risk",
+        "critical": "Critical"
+      },
+      "summary": {
+        "setup": "Finish required setup to raise your score.",
+        "healthy": "Your space is in good operational shape.",
+        "improve": "A few gaps are holding the score back.",
+        "risk": "Attention items need action soon.",
+        "needsAttention": "Pending Actions need your attention."
+      },
+      "categories": {
+        "setup": "Setup Readiness",
+        "operations": "Operational Health",
+        "attention": "Attention Health"
+      },
+      "categoriesShort": {
+        "setup": "Setup",
+        "operations": "Operations",
+        "attention": "Attention"
+      },
+      "weightsInfo": {
+        "title": "How is my Space Health calculated?",
+        "intro": "Your Space Health is calculated on a 100% scale.",
+        "combines": "It combines three health categories:",
+        "setupExplain": "Measures how complete your initial setup is.",
+        "operationsExplain": "Measures occupancy, residents, and day-to-day operations.",
+        "attentionExplain": "Measures unresolved issues like pending actions and payments under review.",
+        "exampleTitle": "Example using your current scores:",
+        "overallLabel": "Overall Space Health",
+        "gotIt": "Got it",
+        "a11y": "How Space Health is calculated",
+        "footerTitle": "How is this score calculated?",
+        "footerSubtitle": "Setup (50%) + Operations (30%) + Attention (20%)"
+      },
+      "recommendedAction": "Recommended Action",
+      "actions": {
+        "improveOccupancy": "Improve occupancy by allocating vacant beds"
+      },
+      "factors": {
+        "setupComplete": "Required setup complete",
+        "setupProgress": "Setup {{completed}} of {{total}} ({{percent}}%)",
+        "menuLibrary": "Menu library ready",
+        "todaysMenu": "Today's menu planned",
+        "menuShared": "Menu shared with customers",
+        "customersActive": "{{count}} customers on board",
+        "propertyReady": "Property layout started",
+        "residentsActive": "{{count}} residents active",
+        "occupancy": "{{occupied}} of {{total}} beds occupied",
+        "attentionClear": "No pending actions",
+        "pendingActions": "{{count}} pending actions",
+        "pendingPayments": "{{count}} payments under review"
+      },
+      "suggestions": {
+        "completeSetup": "Complete {{count}} remaining setup steps",
+        "completeMenuSetup": "Complete menu setup",
+        "addResidents": "Add your first residents",
+        "completeProperty": "Start creating your property layout",
+        "resolvePending": "Resolve {{count}} pending actions",
+        "resolvePayments": "Review payments under review"
+      },
+      "banner": {
+        "issuesAttention": "{{count}} issues need attention",
+        "issuesShort": "{{count}} issues"
+      },
+      "a11y": {
+        "summary": "Space Health {{score}} percent, {{band}}.",
+        "banner": "Space Health {{score}} percent, {{band}}",
+        "openDetails": "Opens the health breakdown"
+      }
+    },
+    "overview": "అవలోకనం",
+    "occupancy": "ఆక్రమణ",
+    "todaysMeals": "నేటి భోజనాలు",
+    "mealsHint": "↓ గత వారంతో పోలిస్తే 18% తక్కువ వ్యర్థం",
+    "rentCollected": "అద్దె సేకరణ (మే)",
+    "rentHint": "ఆశించిన సేకరణలో 78%",
+    "sectionComingSoon": "{{section}} విభాగం సిద్ధం చేయబడుతోంది. త్వరలో తిరిగి చూడండి."
+  },
+  "settings": {
+    "profile": {
+      "eyebrow": "ఖాతా",
+      "heading": "ప్రొఫైల్ & సెట్టింగ్‌లు",
+      "subheading": "మీ ఖాతాను నిర్వహించండి మరియు సురక్షితంగా సైన్ అవుట్ చేయండి.",
+      "sessionTitle": "సెషన్",
+      "sessionBody": "లాగ్ అవుట్ చేయడం వల్ల ఈ పరికరంలో మీ సెషన్ క్లియర్ అవుతుంది. మీరు మళ్లీ మొబైల్ నంబర్‌తో సైన్ ఇన్ చేయవచ్చు.",
+      "logout": "లాగ్ అవుట్",
+      "logoutTitle": "లాగ్ అవుట్",
+      "logoutMessage": "CountIn నుండి లాగ్ అవుట్ చేయాలని మీరు ఖచ్చితంగా అనుకుంటున్నారా?",
+      "logoutConfirm": "లాగ్ అవుట్"
+    },
+    "language": {
+      "title": "భాష",
+      "description": "మీ ఇష్టమైన యాప్ భాషను ఎంచుకోండి.",
+      "names": {
+        "en": "English",
+        "hi": "हिन्दी",
+        "mr": "मराठी",
+        "kn": "ಕನ್ನಡ",
+        "te": "తెలుగు",
+        "ta": "தமிழ்"
+      }
+    }
+  }
+}

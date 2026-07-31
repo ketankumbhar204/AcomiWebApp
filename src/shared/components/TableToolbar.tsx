@@ -1,0 +1,91 @@
+import { Box, Typography, useTheme } from '@mui/material';
+import type { ReactNode } from 'react';
+import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { colors } from '@/shared/theme/colors';
+import { SearchToolbar } from './SearchToolbar';
+
+type TableToolbarProps = {
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
+  searchPlaceholder?: string;
+  searchInputId?: string;
+  selectedCount?: number;
+  bulkActions?: ReactNode;
+  actions?: ReactNode;
+  filters?: ReactNode;
+};
+
+export function TableToolbar({
+  searchValue,
+  onSearchChange,
+  searchPlaceholder,
+  searchInputId,
+  selectedCount = 0,
+  bulkActions,
+  actions,
+  filters,
+}: TableToolbarProps) {
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: `${DASHBOARD_UX.cardGap}px` }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          flexWrap: 'wrap',
+        }}
+      >
+        {onSearchChange ? (
+          <Box sx={{ flex: '1 1 220px', maxWidth: 360, minWidth: 180 }}>
+            <SearchToolbar
+              value={searchValue ?? ''}
+              onChange={onSearchChange}
+              placeholder={searchPlaceholder}
+              inputId={searchInputId}
+            />
+          </Box>
+        ) : null}
+        {filters ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            {filters}
+          </Box>
+        ) : null}
+        {!onSearchChange && !filters ? <Box sx={{ flex: 1 }} /> : null}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            flexWrap: 'wrap',
+            ml: { sm: 'auto' },
+          }}
+        >
+          {actions}
+        </Box>
+      </Box>
+      {selectedCount > 0 ? (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
+            px: `${DASHBOARD_UX.metricPadding}px`,
+            py: 1,
+            borderRadius: `${DASHBOARD_UX.tileRadius}px`,
+            border: `1px solid ${colors.primaryDark}33`,
+            bgcolor: theme.palette.mode === 'dark' ? s.elevated : colors.lightGreen,
+          }}
+        >
+          <Typography sx={{ ...DASHBOARD_UX.link, color: colors.primaryDark }}>
+            {selectedCount} selected
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>{bulkActions}</Box>
+        </Box>
+      ) : null}
+    </Box>
+  );
+}

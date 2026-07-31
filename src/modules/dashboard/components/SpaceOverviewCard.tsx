@@ -1,0 +1,225 @@
+import { Box, Button, Typography, useTheme } from '@mui/material';
+import { RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import type { HealthBandId, SpaceHealthResult } from '@/spaceLifecycle';
+import type { MembershipRole, SpaceType } from '@/shared/types/space';
+import { spaceSpaceHealthPath } from '@/routes/paths';
+import { colors } from '@/shared/theme/colors';
+import { HealthScoreRing } from './HealthScoreRing';
+import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
+
+function bandColor(band: HealthBandId): string {
+  switch (band) {
+    case 'excellent':
+    case 'healthy':
+      return colors.success;
+    case 'needsImprovement':
+      return '#D97706';
+    case 'atRisk':
+      return '#EA580C';
+    case 'critical':
+      return '#DC2626';
+    default:
+      return colors.primaryDark;
+  }
+}
+
+function greetingKey(): 'greetingMorning' | 'greetingAfternoon' | 'greetingEvening' {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'greetingMorning';
+  if (hour < 17) return 'greetingAfternoon';
+  return 'greetingEvening';
+}
+
+type SpaceOverviewCardProps = {
+  spaceId: string;
+  spaceName: string;
+  spaceType?: SpaceType;
+  membershipRole?: MembershipRole;
+  health: SpaceHealthResult | null;
+  pendingCount: number;
+  onRefresh: () => void;
+};
+
+/**
+ * Row-1 left card — Space Overview (greeting + context + health + refresh).
+ * Replaces the standalone greeting row.
+ */
+export function SpaceOverviewCard({
+  spaceId,
+  spaceName,
+  spaceType,
+  membershipRole,
+  health,
+  pendingCount,
+  onRefresh,
+}: SpaceOverviewCardProps) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
+  const available = health?.available === true;
+  const score = available ? health.score : 0;
+  const band = available ? health.band : 'healthy';
+  const color = bandColor(band);
+
+  const contextLine = [spaceType, membershipRole].filter(Boolean).join(' · ');
+
+  const goHealth = () => navigate(spaceSpaceHealthPath(spaceId));
+
+  return (
+    <Box
+      component="section"
+      aria-label={t('dashboard.spaceOverview.title', { defaultValue: 'Space overview' })}
+      sx={{
+        p: 1.5,
+        borderRadius: `${DASHBOARD_UX.radius}px`,
+        bgcolor: s.surface,
+        boxShadow: s.shadow,
+        border: `1px solid ${s.border}`,
+        height: DASHBOARD_UX.summaryCardHeight,
+        minHeight: DASHBOARD_UX.summaryCardMinHeight,
+        maxHeight: DASHBOARD_UX.summaryCardMaxHeight,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 0.75,
+        minWidth: 0,
+        boxSizing: 'border-box',
+      }}
+    >
+      <Box sx={{ minWidth: 0 }}>
+        <Typography
+          sx={{
+            ...DASHBOARD_UX.spaceName,
+            color: s.textPrimary,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {spaceName}
+        </Typography>
+        {contextLine ? (
+          <Typography
+            sx={{
+              ...DASHBOARD_UX.spaceRole,
+              color: s.textSecondary,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              mt: 0.15,
+            }}
+            noWrap
+          >
+            {contextLine}
+          </Typography>
+        ) : null}
+      </Box>
+
+      <Typography
+        sx={{
+          fontSize: '1.125rem',
+          fontWeight: 700,
+          lineHeight: '1.5rem',
+          color: s.textPrimary,
+        }}
+        noWrap
+      >
+        {t(`dashboard.owner.${greetingKey()}`)}
+        {t('dashboard.owner.greetingOwnerSuffix')}
+      </Typography>
+
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          minWidth: 0,
+          flex: 1,
+          mt: 0.75,
+        }}
+      >
+        <Box
+          role="button"
+          tabIndex={0}
+          onClick={goHealth}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              goHealth();
+            }
+          }}
+          aria-label={
+            available
+              ? t('dashboard.health.a11y.summary', {
+                  score,
+                  band: t(`dashboard.health.bands.${band}`),
+                })
+              : t('dashboard.health.emptyTitle')
+          }
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            minWidth: 0,
+            flex: 1,
+            cursor: 'pointer',
+            borderRadius: `${DASHBOARD_UX.tileRadius}px`,
+            outline: 'none',
+            '&:focus-visible': {
+              outline: `2px solid ${colors.primary}`,
+              outlineOffset: 2,
+            },
+          }}
+        >
+          <HealthScoreRing
+            score={available ? score : 0}
+            color={available ? color : s.border}
+            size={DASHBOARD_UX.healthRingSize}
+            strokeWidth={DASHBOARD_UX.healthRingStroke}
+          />
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+              {t('dashboard.health.title')}
+            </Typography>
+            <Typography sx={{ ...DASHBOARD_UX.body, color, fontWeight: 500, mt: 0.1 }}>
+              {available ? t(`dashboard.health.bands.${band}`) : t('dashboard.health.emptyTitle')}
+            </Typography>
+            <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, mt: 0.15 }} noWrap>
+              {pendingCount > 0
+                ? t('dashboard.health.banner.issuesAttention', { count: pendingCount })
+                : available
+                  ? t('dashboard.health.summary.healthy')
+                  : t('dashboard.health.emptyBody')}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<RefreshCw size={14} />}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRefresh();
+          }}
+          aria-label={t('common.refresh')}
+          sx={{
+            flexShrink: 0,
+            height: 30,
+            minHeight: 30,
+            px: 1.25,
+            borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
+            fontSize: DASHBOARD_UX.button.fontSize,
+            fontWeight: DASHBOARD_UX.button.fontWeight,
+            borderColor: 'primary.main',
+            color: 'primary.dark',
+            bgcolor: s.surface,
+          }}
+        >
+          {t('common.refresh')}
+        </Button>
+      </Box>
+    </Box>
+  );
+}

@@ -1,0 +1,21 @@
+/** Accommodation Figma accent palette — overview, tree, inspector. */
+export const ACC_ACCENTS = {
+  building: '#10B981',
+  floors: '#8B5CF6',
+  units: '#3B82F6',
+  rooms: '#F59E0B',
+  beds: '#6366F1',
+  available: '#10B981',
+  treeFloor: '#3B82F6',
+  treeUnit: '#10B981',
+  treeUnitFull: '#3B82F6',
+  treeRoom: '#10B981',
+  treeRoomFull: '#EF4444',
+  allocate: '#48BB78',
+  allocateBg: '#F0FFF4',
+  reserve: '#4299E1',
+  reserveBg: '#EBF8FF',
+  history: '#9F7AEA',
+  historyBg: '#FAF5FF',
+  detailIcon: '#10B981',
+} as const;

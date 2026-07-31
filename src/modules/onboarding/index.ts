@@ -1,0 +1,10 @@
+export { AuthenticatedRootRedirect } from './components/AuthenticatedRootRedirect';
+export { ProfileCompletionGate } from './components/ProfileCompletionGate';
+export { AcceptInvitationsPage } from './pages/AcceptInvitationsPage';
+export { CompleteProfilePage } from './pages/CompleteProfilePage';
+export { CreateSpacePage } from './pages/CreateSpacePage';
+export { EditSpacePage } from './pages/EditSpacePage';
+export { JoinSpacePage } from './pages/JoinSpacePage';
+export { MySpacesPage } from './pages/MySpacesPage';
+export { OnboardingChoicePage } from './pages/OnboardingChoicePage';
+export { SpaceDetailsPage } from './pages/SpaceDetailsPage';
