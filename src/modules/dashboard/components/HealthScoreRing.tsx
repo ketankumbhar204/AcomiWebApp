@@ -1,6 +1,7 @@
 import { Box, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { colors } from '@/shared/theme/colors';
+import { DASHBOARD_UX } from '../theme/dashboardUx';
 
 type HealthScoreRingProps = {
   score: number;
@@ -64,10 +65,8 @@ export function HealthScoreRing({
       >
         <Typography
           sx={{
-            fontWeight: 800,
-            fontSize: size >= 72 ? 18 : size >= 56 ? 15 : size >= 52 ? 13 : 12,
+            ...(size >= 72 ? DASHBOARD_UX.largeNumber : DASHBOARD_UX.counterValue),
             color,
-            lineHeight: 1,
           }}
         >
           {`${clamped}%`}

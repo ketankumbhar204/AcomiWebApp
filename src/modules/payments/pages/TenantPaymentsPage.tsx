@@ -7,11 +7,10 @@ import {
   MenuItem,
   Select,
   Stack,
-  TextField,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -21,7 +20,8 @@ import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { LoadingState } from '@/shared/components/LoadingState';
-import { DASHBOARD_UX } from '@/modules/dashboard/theme/dashboardUx';
+import { PeriodMonthNav } from '@/shared/components/PeriodMonthNav';
+import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import {
@@ -47,6 +47,7 @@ import { useMySubscriptionStatus } from '@/modules/meals/hooks/useSubscriptionPl
 export function TenantPaymentsPage() {
   const { t } = useTranslation();
   const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
   const isLgDown = useMediaQuery(theme.breakpoints.down('lg'));
   const { spaceId = '' } = useParams<{ spaceId: string }>();
   const navigate = useNavigate();
@@ -161,20 +162,26 @@ export function TenantPaymentsPage() {
             { label: t('navigation.payments') },
           ]}
           actions={
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <IconButton onClick={() => setMonth(shiftMonth(month, -1))} aria-label={t('common.back')}>
-                <ChevronLeft size={18} />
-              </IconButton>
-              <TextField
-                size="small"
-                value={month}
-                onChange={(e) => setMonth(e.target.value)}
-                sx={{ width: 120 }}
+            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+              <PeriodMonthNav
+                month={month}
+                onPrevious={() => setMonth(shiftMonth(month, -1))}
+                onNext={() => setMonth(shiftMonth(month, 1))}
+                onMonthSelect={setMonth}
+                size="compact"
               />
-              <IconButton onClick={() => setMonth(shiftMonth(month, 1))} aria-label={t('common.continue')}>
-                <ChevronRight size={18} />
-              </IconButton>
-              <IconButton onClick={() => void list.reload()} aria-label={t('common.refresh')}>
+              <IconButton
+                onClick={() => void list.reload()}
+                aria-label={t('common.refresh')}
+                size="small"
+                sx={{
+                  width: DASHBOARD_UX.buttonHeight,
+                  height: DASHBOARD_UX.buttonHeight,
+                  border: `1px solid ${s.border}`,
+                  borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
+                  bgcolor: s.surface,
+                }}
+              >
                 <RefreshCw size={16} />
               </IconButton>
             </Stack>

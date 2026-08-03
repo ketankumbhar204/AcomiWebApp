@@ -51,7 +51,7 @@ export function QuickActionTile({
         bgcolor: highlighted
           ? theme.palette.mode === 'dark'
             ? 'rgba(217, 119, 6, 0.12)'
-            : '#FFFBEB'
+            : colors.warningTint
           : s.elevated,
         border: `1px solid ${highlighted ? 'rgba(245, 158, 11, 0.35)' : s.border}`,
         cursor: 'pointer',

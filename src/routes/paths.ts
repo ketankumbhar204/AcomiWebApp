@@ -126,6 +126,18 @@ export function spaceMealsPath(spaceId: string, date?: string): string {
   return date ? `${base}?date=${encodeURIComponent(date)}` : base;
 }
 
+/** Full-page menu planner editor (no sidebar chrome). */
+export function spaceMealsEditPath(
+  spaceId: string,
+  params: { date: string; mealType: string },
+): string {
+  const search = new URLSearchParams({
+    date: params.date,
+    mealType: params.mealType,
+  });
+  return `/spaces/${spaceId}/meals/edit?${search.toString()}`;
+}
+
 export function spaceMealsLibraryPath(spaceId: string): string {
   return `/spaces/${spaceId}/meals/library`;
 }

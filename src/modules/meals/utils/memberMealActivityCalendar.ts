@@ -36,6 +36,7 @@ export const MEAL_ACTIVITY_SLOT_COLORS: Record<MemberMealActivitySlotStatus, str
   SKIPPED: '#EF4444',
   NO_MENU: '#9CA3AF',
   CLOSED: '#E5E7EB',
+  INACTIVE: '#9CA3AF',
 };
 
 export function buildCalendarWeeks(monthKey: string): (string | null)[][] {

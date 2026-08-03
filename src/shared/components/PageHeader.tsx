@@ -30,12 +30,12 @@ export function PageHeader({ title, description, breadcrumbs, actions }: PageHea
         <Box sx={{ minWidth: 0 }}>
           <Typography
             component="h1"
-            sx={{ ...DASHBOARD_UX.pageTitle, fontSize: '1.5rem', lineHeight: '2rem', color: s.textPrimary }}
+            sx={{ ...DASHBOARD_UX.pageTitle, color: s.textPrimary }}
           >
             {title}
           </Typography>
           {description ? (
-            <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mt: 0.5 }}>
+            <Typography sx={{ ...DASHBOARD_UX.greetingSub, color: s.textSecondary, mt: 0.5 }}>
               {description}
             </Typography>
           ) : null}

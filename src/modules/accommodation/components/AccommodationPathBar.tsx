@@ -192,8 +192,7 @@ export function AccommodationPathBar({
               <Box sx={{ display: 'flex', color: 'inherit', flexShrink: 0 }}>{crumb.icon}</Box>
               <Typography
                 sx={{
-                  ...DASHBOARD_UX.body,
-                  fontWeight: isLast ? 700 : 500,
+                  ...(isLast ? DASHBOARD_UX.link : DASHBOARD_UX.breadcrumb),
                   color: 'inherit',
                   whiteSpace: 'nowrap',
                 }}

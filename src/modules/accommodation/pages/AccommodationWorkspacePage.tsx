@@ -199,7 +199,7 @@ export function AccommodationWorkspacePage() {
           sx={{
             '& .MuiOutlinedInput-root': {
               borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-              bgcolor: theme.palette.mode === 'dark' ? s.elevated : '#F8FAFC',
+              bgcolor: s.elevated,
               ...DASHBOARD_UX.body,
             },
           }}

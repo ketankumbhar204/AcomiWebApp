@@ -77,6 +77,7 @@ export function useMemberMealActivity(
     error: query.error,
     activity: query.data ?? null,
     reload: () => query.refetch(),
+    dataUpdatedAt: query.dataUpdatedAt,
     goToPreviousMonth,
     goToNextMonth,
   };

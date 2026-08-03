@@ -33,8 +33,7 @@ export function PropertyLayoutModePicker({
     <Box sx={{ width: '100%' }}>
       <Typography
         sx={{
-          ...DASHBOARD_UX.body,
-          fontWeight: 600,
+          ...DASHBOARD_UX.link,
           color: s.textPrimary,
           mb: 1,
         }}
@@ -87,8 +86,8 @@ export function PropertyLayoutModePicker({
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
                   <Typography
                     sx={{
+                      ...DASHBOARD_UX.cardTitle,
                       flex: 1,
-                      fontWeight: 700,
                       color: selected ? colors.primaryDark : s.textPrimary,
                     }}
                   >
@@ -111,10 +110,9 @@ export function PropertyLayoutModePicker({
                   ) : null}
                 </Stack>
                 <Typography
-                  variant="body2"
                   sx={{
+                    ...DASHBOARD_UX.body,
                     color: selected ? colors.primaryDark : s.textMuted,
-                    lineHeight: 1.4,
                   }}
                 >
                   {t(`accommodation.layoutMode.${mode}_desc`, {
@@ -127,7 +125,7 @@ export function PropertyLayoutModePicker({
         })}
       </Stack>
       {error ? (
-        <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+        <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: 'error.main', mt: 0.5, display: 'block' }}>
           {error}
         </Typography>
       ) : null}

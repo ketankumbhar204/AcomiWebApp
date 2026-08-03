@@ -114,10 +114,7 @@ function PlanNameCell({
         <Icon />
       </IconBadge>
       <Box sx={{ minWidth: 0 }}>
-        <Typography
-          sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}
-          noWrap
-        >
+        <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }} noWrap>
           {name}
         </Typography>
         {subtitle ? (
@@ -526,7 +523,7 @@ export function SubscriptionPlansWorkspacePage() {
       id: 'member',
       header: t('meals.subscriptionPlans.customerColumn', { defaultValue: 'Customer' }),
       accessor: (row) => (
-        <Typography sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }} noWrap>
+        <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }} noWrap>
           {row.memberName}
         </Typography>
       ),

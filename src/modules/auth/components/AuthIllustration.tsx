@@ -52,7 +52,7 @@ export function AuthIllustration() {
           zIndex: 1,
         }}
       >
-        <Typography sx={{ fontSize: 22, fontWeight: 700 }}>C</Typography>
+        <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: 'inherit' }}>C</Typography>
       </Box>
       <Typography
         sx={{
@@ -68,9 +68,7 @@ export function AuthIllustration() {
       </Typography>
       <Typography
         sx={{
-          ...DASHBOARD_UX.body,
-          fontSize: '0.9375rem',
-          lineHeight: 1.5,
+          ...DASHBOARD_UX.inputText,
           color: s.textSecondary,
           maxWidth: 420,
           position: 'relative',

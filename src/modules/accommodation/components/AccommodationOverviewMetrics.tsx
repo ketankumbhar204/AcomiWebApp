@@ -65,10 +65,7 @@ export function AccommodationOverviewMetrics({ items }: AccommodationOverviewMet
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography
               sx={{
-                fontSize: '0.8125rem',
-                fontWeight: 700,
-                lineHeight: 1.1,
-                fontVariantNumeric: 'tabular-nums',
+                ...DASHBOARD_UX.counterValue,
                 color: s.textPrimary,
               }}
             >
@@ -76,9 +73,7 @@ export function AccommodationOverviewMetrics({ items }: AccommodationOverviewMet
             </Typography>
             <Typography
               sx={{
-                fontSize: '0.5625rem',
-                fontWeight: 500,
-                lineHeight: 1.15,
+                ...DASHBOARD_UX.smallCaption,
                 color: s.textSecondary,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -135,13 +130,13 @@ export function WorkspaceSummaryStrip({ title, items }: WorkspaceSummaryStripPro
             sx={{
               borderRadius: `${DASHBOARD_UX.tileRadius}px`,
               border: `1px solid ${s.border}`,
-              bgcolor: theme.palette.mode === 'dark' ? s.elevated : '#F8FAFC',
+              bgcolor: s.elevated,
               px: 1.25,
               py: 1,
               textAlign: 'center',
             }}
           >
-            <Typography sx={{ ...DASHBOARD_UX.counterValue, color: s.textPrimary, fontSize: '1rem' }}>
+            <Typography sx={{ ...DASHBOARD_UX.counterValue, color: s.textPrimary }}>
               {item.value}
             </Typography>
             <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textSecondary, mt: 0.25 }}>

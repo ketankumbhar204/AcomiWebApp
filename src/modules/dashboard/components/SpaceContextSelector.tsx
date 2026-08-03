@@ -87,8 +87,6 @@ export function SpaceContextSelector({
           sx={{
             flex: 1,
             minWidth: 0,
-            fontWeight: 700,
-            fontSize: '0.875rem',
             color: s.textPrimary,
             '& .MuiSelect-select': {
               py: 0,
@@ -103,14 +101,14 @@ export function SpaceContextSelector({
             <Box sx={{ minWidth: 0, maxWidth: '100%' }}>
               <Typography
                 noWrap
-                sx={{ ...DASHBOARD_UX.spaceName, fontSize: '0.875rem', lineHeight: 1.2, color: s.textPrimary }}
+                sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}
               >
                 {spaceName ?? t('navigation.space')}
               </Typography>
               {subtitle ? (
                 <Typography
                   noWrap
-                  sx={{ ...DASHBOARD_UX.spaceRole, color: s.textMuted, lineHeight: 1.2 }}
+                  sx={{ ...DASHBOARD_UX.spaceRole, color: s.textMuted }}
                 >
                   {subtitle}
                 </Typography>
@@ -121,10 +119,10 @@ export function SpaceContextSelector({
           {mySpaces.map((entry) => (
             <MenuItem key={entry.spaceId} value={entry.spaceId}>
               <Stack spacing={0} sx={{ minWidth: 0 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
                   {entry.spaceName}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography sx={{ ...DASHBOARD_UX.spaceRole, color: s.textMuted }}>
                   {t('dashboard.shell.spaceSubtitle', {
                     type: entry.spaceType,
                     role: entry.membershipRole,
@@ -138,14 +136,14 @@ export function SpaceContextSelector({
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography
             noWrap
-            sx={{ ...DASHBOARD_UX.spaceName, fontSize: '0.875rem', lineHeight: 1.2, color: s.textPrimary }}
+            sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}
           >
             {spaceName ?? t('navigation.space')}
           </Typography>
           {subtitle ? (
             <Typography
               noWrap
-              sx={{ ...DASHBOARD_UX.spaceRole, color: s.textMuted, lineHeight: 1.2 }}
+              sx={{ ...DASHBOARD_UX.spaceRole, color: s.textMuted }}
             >
               {subtitle}
             </Typography>

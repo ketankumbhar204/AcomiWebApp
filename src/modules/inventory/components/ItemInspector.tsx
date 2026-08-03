@@ -74,7 +74,7 @@ function DetailGrid({
             {item.label}
           </Typography>
           <Typography
-            sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary, mt: 0.15 }}
+            sx={{ ...DASHBOARD_UX.link, color: s.textPrimary, mt: 0.15 }}
             noWrap
           >
             {item.value}
@@ -300,7 +300,7 @@ export function ItemInspector({
                   />
                   <Box sx={{ minWidth: 0 }}>
                     <Typography
-                      sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}
+                      sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}
                     >
                       {t(txnLabelKey(tx.type))} · {formatStockQty(tx.quantity, tx.unit)}
                     </Typography>

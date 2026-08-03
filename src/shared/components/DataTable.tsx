@@ -298,8 +298,7 @@ export function DataTable<T extends { id: string }>({
                       <Box
                         component="span"
                         sx={{
-                          ...DASHBOARD_UX.body,
-                          fontWeight: 500,
+                          ...DASHBOARD_UX.metricLabel,
                           color: s.textPrimary,
                           textAlign: 'right',
                         }}
@@ -352,9 +351,8 @@ export function DataTable<T extends { id: string }>({
                       sx={{
                         width: column.width,
                         height: TABLE_HEADER_HEIGHT,
-                        ...DASHBOARD_UX.metricLabel,
+                        ...DASHBOARD_UX.link,
                         color: s.textMuted,
-                        fontWeight: 600,
                       }}
                     >
                       {column.sortable && onSortChange ? (

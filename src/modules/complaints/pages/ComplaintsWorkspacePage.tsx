@@ -75,6 +75,7 @@ const PRIORITIES: ComplaintPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 
 const filterControlSx = {
   minWidth: 128,
+  flexShrink: 0,
   '& .MuiInputBase-root': {
     minHeight: DASHBOARD_UX.buttonHeight,
     height: DASHBOARD_UX.buttonHeight,
@@ -224,8 +225,7 @@ export function ComplaintsWorkspacePage() {
                 sx={{
                   width: 28,
                   height: 28,
-                  fontSize: '0.7rem',
-                  fontWeight: 700,
+                  ...DASHBOARD_UX.badge,
                   bgcolor: `${accent}1A`,
                   color: accent,
                   flexShrink: 0,
@@ -235,7 +235,7 @@ export function ComplaintsWorkspacePage() {
               </Avatar>
               <Box sx={{ minWidth: 0 }}>
                 <Typography
-                  sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}
+                  sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}
                   noWrap
                 >
                   {row.title}
@@ -299,8 +299,7 @@ export function ComplaintsWorkspacePage() {
                 sx={{
                   width: 22,
                   height: 22,
-                  fontSize: '0.6rem',
-                  fontWeight: 700,
+                  ...DASHBOARD_UX.badge,
                   bgcolor: `${accent}1A`,
                   color: accent,
                   flexShrink: 0,

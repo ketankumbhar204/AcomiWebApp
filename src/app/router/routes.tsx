@@ -3,6 +3,7 @@ import { AuthLayoutOutlet } from './AuthLayoutOutlet';
 import { GuestRoute, ProtectedRoute } from './ProtectedRoute';
 import { SpaceBootstrapOutlet } from '@/modules/dashboard/layouts/SpaceBootstrapOutlet';
 import { SpaceShellLayout } from '@/modules/dashboard/layouts/SpaceShellLayout';
+import { BlankLayout } from '@/layouts/BlankLayout';
 import { AccommodationPermissionGate } from '@/modules/accommodation/components/AccommodationPermissionGate';
 import { MealsPermissionGate } from '@/modules/meals/components/MealsPermissionGate';
 import { PaymentsPermissionGate } from '@/modules/payments/components/PaymentsPermissionGate';
@@ -181,8 +182,13 @@ const OccupancyWizardPage = lazyPage(() =>
   })),
 );
 
-const MealsPlannerPage = lazyPage(() =>
-  import('@/modules/meals/pages/MealsPlannerPage').then((m) => ({ default: m.MealsPlannerPage })),
+const MealMenuEditorPage = lazyPage(() =>
+  import('@/modules/meals/pages/MealMenuEditorPage').then((m) => ({
+    default: m.MealMenuEditorPage,
+  })),
+);
+const MealsHomePage = lazyPage(() =>
+  import('@/modules/meals/pages/MealsHomePage').then((m) => ({ default: m.MealsHomePage })),
 );
 const MenuLibraryPage = lazyPage(() =>
   import('@/modules/meals/pages/MenuLibraryPage').then((m) => ({ default: m.MenuLibraryPage })),
@@ -525,7 +531,7 @@ export const appRoutes = [
                             index: true,
                             element: (
                               <L>
-                                <MealsPlannerPage />
+                                <MealsHomePage />
                               </L>
                             ),
                           },
@@ -660,6 +666,22 @@ export const appRoutes = [
                             ),
                           },
                         ],
+                      },
+                    ],
+                  },
+                  {
+                    path: 'meals/edit',
+                    element: <MealsPermissionGate />,
+                    children: [
+                      {
+                        index: true,
+                        element: (
+                          <BlankLayout>
+                            <L>
+                              <MealMenuEditorPage />
+                            </L>
+                          </BlankLayout>
+                        ),
                       },
                     ],
                   },

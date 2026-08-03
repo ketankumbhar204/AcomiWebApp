@@ -125,7 +125,7 @@ function DetailGrid({
             {item.label}
           </Typography>
           <Typography
-            sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary, mt: 0.15 }}
+            sx={{ ...DASHBOARD_UX.link, color: s.textPrimary, mt: 0.15 }}
             noWrap
           >
             {item.value}
@@ -469,7 +469,7 @@ export function PaymentInspector({
                       }}
                     >
                       <Typography
-                        sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}
+                        sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}
                       >
                         {t(`paymentCollection.timeline.event.${event.eventType}`)}
                       </Typography>

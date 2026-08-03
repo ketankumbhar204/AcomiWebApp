@@ -190,7 +190,10 @@ export function QuickSetupWizardPage() {
               '& .MuiStepLabel-label': {
                 ...DASHBOARD_UX.body,
                 color: s.textMuted,
-                '&.Mui-active, &.Mui-completed': { color: s.textPrimary, fontWeight: 600 },
+                '&.Mui-active, &.Mui-completed': {
+                  ...DASHBOARD_UX.link,
+                  color: s.textPrimary,
+                },
               },
             }}
           >

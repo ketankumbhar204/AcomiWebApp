@@ -7,6 +7,7 @@ import { useSpaceNotifications } from '@/modules/notifications/hooks/useSpaceNot
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { spaceNotificationsPath } from '@/routes/paths';
 import { canManageNotifications } from '@/shared/utils/spaceOperator';
+import { DASHBOARD_UX } from '@/modules/dashboard/theme/dashboardUx';
 
 type NotificationBellButtonProps = {
   spaceId: string;
@@ -47,8 +48,7 @@ export function NotificationBellButton({ spaceId }: NotificationBellButtonProps)
             '& .MuiBadge-badge': {
               minWidth: 14,
               height: 14,
-              fontSize: 10,
-              fontWeight: 600,
+              ...DASHBOARD_UX.badge,
             },
           }}
         >

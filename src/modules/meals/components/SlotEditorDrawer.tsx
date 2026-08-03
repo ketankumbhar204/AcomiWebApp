@@ -10,10 +10,12 @@ import {
   Tabs,
   TextField,
   Typography,
+  useTheme,
 } from '@mui/material';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
+import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { StickyFooter } from '@/shared/components/StickyFooter';
 import { LoadingState } from '@/shared/components/LoadingState';
@@ -66,6 +68,8 @@ function SlotEditorBody({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const mutations = useMealMutations(spaceId);
   const combos = useMealCombos(spaceId);
@@ -156,12 +160,10 @@ function SlotEditorBody({
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+        <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
           {t('meals.planning.editSlot', { meal: t(`meals.mealType.${mealType}`) })}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {menuDate}
-        </Typography>
+        <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }}>{menuDate}</Typography>
       </Box>
 
       <Box sx={{ px: 2, pt: 1 }}>
@@ -207,7 +209,7 @@ function SlotEditorBody({
       </Box>
 
       <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+        <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textPrimary, mb: 1 }}>
           {t('meals.planning.selectedCount', { count: options.length })}
         </Typography>
         <TextField

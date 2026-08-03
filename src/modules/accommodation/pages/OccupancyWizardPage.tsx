@@ -449,7 +449,10 @@ export function OccupancyWizardPage() {
                           sx={{ alignItems: 'center' }}
                         >
                           <StatusChip label={t(`accommodation.status.${target.status}`)} />
-                          <Typography variant="caption" component="span">
+                          <Typography
+                            component="span"
+                            sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}
+                          >
                             {t(`occupancy.targetType.${target.targetType}`)}
                           </Typography>
                         </Stack>
@@ -536,7 +539,7 @@ export function OccupancyWizardPage() {
       case 'reserve_dates':
         return (
           <Stack spacing={2} sx={{ maxWidth: 480 }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
               {t('occupancyWizard.steps.reserveDatesHint')}
             </Typography>
             <TextField
@@ -572,7 +575,9 @@ export function OccupancyWizardPage() {
           <LoadingState />
         ) : occupancyQuery.data ? (
           <Stack spacing={1}>
-            <Typography sx={{ fontWeight: 700 }}>{occupancyQuery.data.memberName}</Typography>
+            <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+              {occupancyQuery.data.memberName}
+            </Typography>
             <Typography>
               {[
                 occupancyQuery.data.buildingName,
@@ -611,13 +616,17 @@ export function OccupancyWizardPage() {
       case 'review':
         return (
           <Stack spacing={1.5}>
-            <Typography variant="subtitle2">{t('occupancyWizard.review.member')}</Typography>
+            <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textSecondary }}>
+              {t('occupancyWizard.review.member')}
+            </Typography>
             <Typography>
               {selectedMember?.fullName ??
                 occupancyQuery.data?.memberName ??
                 effectiveMemberId}
             </Typography>
-            <Typography variant="subtitle2">{t('occupancyWizard.review.accommodation')}</Typography>
+            <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textSecondary }}>
+              {t('occupancyWizard.review.accommodation')}
+            </Typography>
             <Typography>
               {effectiveTarget?.displayPath ??
                 [
@@ -694,7 +703,7 @@ export function OccupancyWizardPage() {
                 '& .MuiStepLabel-label': {
                   ...DASHBOARD_UX.body,
                   color: s.textMuted,
-                  '&.Mui-active, &.Mui-completed': { color: s.textPrimary, fontWeight: 600 },
+                  '&.Mui-active, &.Mui-completed': { ...DASHBOARD_UX.link, color: s.textPrimary },
                 },
               }}
             >

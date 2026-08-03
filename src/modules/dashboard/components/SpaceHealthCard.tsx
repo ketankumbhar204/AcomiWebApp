@@ -97,7 +97,7 @@ export function SpaceHealthCard({ spaceId, health, pendingCount }: SpaceHealthCa
             <ChevronRight size={14} color={s.textMuted} aria-hidden />
           </Stack>
         </Stack>
-        <Typography sx={{ ...DASHBOARD_UX.metricLabel, color, fontWeight: 600 }}>
+        <Typography sx={{ ...DASHBOARD_UX.link, color }}>
           {available ? t(`dashboard.health.bands.${band}`) : t('dashboard.health.emptyTitle')}
         </Typography>
         <Typography sx={{ ...DASHBOARD_UX.cardSubtitle, color: s.textSecondary, mt: 0.25 }}>

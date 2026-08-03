@@ -27,6 +27,7 @@ export function useDailyMenus(spaceId: string | undefined, menuDate: string, ena
     loading: query.isLoading || query.isFetching,
     error: query.error,
     reload: () => query.refetch(),
+    dataUpdatedAt: query.dataUpdatedAt,
   };
 }
 
@@ -42,6 +43,7 @@ export function useMealPolls(spaceId: string | undefined, menuDate: string, enab
     loading: query.isLoading || query.isFetching,
     error: query.error,
     reload: () => query.refetch(),
+    dataUpdatedAt: query.dataUpdatedAt,
   };
 }
 

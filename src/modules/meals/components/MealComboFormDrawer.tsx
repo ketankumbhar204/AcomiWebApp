@@ -303,7 +303,7 @@ export function MealComboFormDrawer({
                 input: {
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Typography sx={{ ...DASHBOARD_UX.body, fontWeight: 600 }}>₹</Typography>
+                      <Typography sx={{ ...DASHBOARD_UX.link }}>₹</Typography>
                     </InputAdornment>
                   ),
                 },
@@ -477,8 +477,7 @@ export function MealComboFormDrawer({
                         </IconBadge>
                         <Typography
                           sx={{
-                            ...DASHBOARD_UX.body,
-                            fontWeight: 600,
+                            ...DASHBOARD_UX.link,
                             color: s.textPrimary,
                             flex: 1,
                             minWidth: 0,
@@ -519,8 +518,7 @@ export function MealComboFormDrawer({
                             </IconButton>
                             <Typography
                               sx={{
-                                ...DASHBOARD_UX.body,
-                                fontWeight: 600,
+                                ...DASHBOARD_UX.link,
                                 minWidth: 20,
                                 textAlign: 'center',
                                 color: s.textPrimary,

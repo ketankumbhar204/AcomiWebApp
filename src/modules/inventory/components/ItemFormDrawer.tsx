@@ -8,11 +8,13 @@ import {
   Stack,
   TextField,
   Typography,
+  useTheme,
 } from '@mui/material';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { AppDrawer } from '@/shared/components/AppDrawer';
+import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StickyFooter } from '@/shared/components/StickyFooter';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type {
@@ -57,6 +59,8 @@ function ItemFormBody({
   onSaved,
 }: FormBodyProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const mutations = useInventoryMutations(spaceId);
   const categories = useInventoryCategories(spaceId, true);
@@ -152,11 +156,11 @@ function ItemFormBody({
 
   return (
     <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+      <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary, mb: 2 }}>
         {mode === 'create' ? t('inventory.form.createTitle') : t('inventory.form.editTitle')}
       </Typography>
       <Stack spacing={1.5} sx={{ flex: 1, overflow: 'auto', pb: 10 }}>
-        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+        <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textSecondary }}>
           {t('inventory.form.sectionBasics')}
         </Typography>
         <TextField
@@ -198,7 +202,7 @@ function ItemFormBody({
           </Select>
         </FormControl>
 
-        <Typography variant="subtitle2" sx={{ fontWeight: 700, pt: 1 }}>
+        <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textSecondary, pt: 1 }}>
           {t('inventory.form.sectionStock')}
         </Typography>
         {mode === 'create' ? (
@@ -231,7 +235,7 @@ function ItemFormBody({
           fullWidth
         />
 
-        <Typography variant="subtitle2" sx={{ fontWeight: 700, pt: 1 }}>
+        <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textSecondary, pt: 1 }}>
           {t('inventory.form.sectionPurchase')}
         </Typography>
         <FormControl size="small" fullWidth>

@@ -1,5 +1,6 @@
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, useTheme } from '@mui/material';
 import type { ReactNode } from 'react';
+import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 
 type PageSectionProps = {
   title?: string;
@@ -9,8 +10,14 @@ type PageSectionProps = {
 };
 
 export function PageSection({ title, description, actions, children }: PageSectionProps) {
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
+
   return (
-    <Box component="section" sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+    <Box
+      component="section"
+      sx={{ display: 'flex', flexDirection: 'column', gap: `${DASHBOARD_UX.cardGap}px` }}
+    >
       {title || actions ? (
         <Box
           sx={{
@@ -22,12 +29,12 @@ export function PageSection({ title, description, actions, children }: PageSecti
         >
           <Box>
             {title ? (
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
                 {title}
               </Typography>
             ) : null}
             {description ? (
-              <Typography variant="body2" color="text.secondary">
+              <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textSecondary, mt: 0.25 }}>
                 {description}
               </Typography>
             ) : null}

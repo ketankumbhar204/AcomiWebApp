@@ -156,7 +156,7 @@ export function MemberSubscriptionPanel({
         }}
       >
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-          <Typography sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}>
+          <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
             {t('members.mealBilling.title', { defaultValue: 'Meal billing' })}
           </Typography>
           <StatusChip label={billingLabel} tone="info" />

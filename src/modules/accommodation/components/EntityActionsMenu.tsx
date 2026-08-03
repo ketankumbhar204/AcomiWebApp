@@ -422,7 +422,10 @@ export function EntityActionsMenu({
               <MenuItem disabled sx={{ opacity: 1, whiteSpace: 'normal', alignItems: 'flex-start' }}>
                 <ListItemText
                   primary={
-                    <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'normal' }}>
+                    <Typography
+                      color="text.secondary"
+                      sx={{ ...DASHBOARD_UX.smallCaption, whiteSpace: 'normal' }}
+                    >
                       {blockedHint}
                     </Typography>
                   }

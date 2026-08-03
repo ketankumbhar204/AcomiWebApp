@@ -1,6 +1,7 @@
 import { Box } from '@mui/material';
 import type { ReactNode } from 'react';
 import { LAYOUT } from './layoutConstants';
+import { ScaleShell } from './ScaleShell';
 
 type ContentLayoutProps = {
   children: ReactNode;
@@ -25,7 +26,7 @@ export function ContentLayout({
         py: { xs: dense ? 1.5 : 2, md: dense ? 1.75 : 3 },
       }}
     >
-      {children}
+      <ScaleShell>{children}</ScaleShell>
     </Box>
   );
 }

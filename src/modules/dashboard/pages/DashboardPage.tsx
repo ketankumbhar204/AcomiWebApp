@@ -1,10 +1,10 @@
-import { Box, Typography, useTheme } from '@mui/material';
+import { Box, Button, Stack, Typography, useTheme } from '@mui/material';
 import { memo, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AccommodationOpsWidget } from '../components/AccommodationOpsWidget';
+import { DashboardCustomerMealsSection } from '../components/customer/DashboardCustomerMealsSection';
 import { DashboardQuickActions } from '../components/DashboardQuickActions';
-import { DashboardScaleShell } from '../components/DashboardScaleShell';
 import { FinancialSummaryWidget } from '../components/FinancialSummaryWidget';
 import { MealOperationsTodayCard } from '../components/MealOperationsTodayCard';
 import { MessOperationsWidget } from '../components/MessOperationsWidget';
@@ -14,13 +14,24 @@ import { usePendingActions } from '../hooks/usePendingActions';
 import { useSpaceDashboard } from '../hooks/useSpaceDashboard';
 import { useSpaceLifecycleSignals } from '../hooks/useSpaceLifecycleSignals';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
+import { ScaleShell } from '@/layouts/ScaleShell';
 import { todayIsoDate } from '@/modules/meals/utils/mealDates';
+import { ContentCard } from '@/shared/components/ContentCard';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { LoadingState } from '@/shared/components/LoadingState';
+import { useLinkedMember } from '@/shared/hooks/useLinkedMember';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
-import { ROUTES, spaceDashboardPath } from '@/routes/paths';
+import {
+  ROUTES,
+  spaceComplaintsPath,
+  spaceDashboardPath,
+  spaceMemberPath,
+  spacePaymentsPath,
+  spacePendingActionsPath,
+} from '@/routes/paths';
 import { isAccommodationApplicable } from '@/shared/utils/spacePermissions';
 import { canManageNotifications } from '@/shared/utils/spaceOperator';
+import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { useSpaceStore } from '@/store/spaceStore';
 import { useSpaceHealth, useSpaceLifecycle } from '@/spaceLifecycle';
 
@@ -34,6 +45,7 @@ export function DashboardPage() {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const navigate = useNavigate();
   const { spaceId = '' } = useParams<{ spaceId: string }>();
   const selectSpace = useSpaceStore((state) => state.selectSpace);
   const mySpaces = useSpaceStore((state) => state.mySpaces);
@@ -45,8 +57,22 @@ export function DashboardPage() {
   const accommodationApplicable = spaceType ? isAccommodationApplicable(spaceType) : true;
   const showMealDay = isOperator && (isMess || permissions.canManageMeals === true);
 
+  const isTenant = permissions.membershipRole === 'TENANT';
+  const isCustomer = permissions.membershipRole === 'CUSTOMER';
+  const isMealParticipant =
+    !isOperator &&
+    permissions.canViewMeals === true &&
+    (isTenant || isCustomer);
+  const { memberId: linkedMemberId } = useLinkedMember(
+    !isOperator && (isTenant || isCustomer) ? spaceId : null,
+  );
+
   const dashboard = useSpaceDashboard(spaceId, spaceType, isOperator);
-  const pending = usePendingActions(spaceId, true);
+  const pending = usePendingActions(
+    spaceId,
+    true,
+    isOperator,
+  );
   const pendingCount = isOperator
     ? (dashboard.pendingActions?.totalCount ?? pending.totalCount)
     : pending.totalCount;
@@ -135,20 +161,7 @@ export function DashboardPage() {
 
   const menuDate = todayIsoDate();
 
-  return (
-    <Box
-      sx={{
-        mx: { xs: -1.5, md: -3 },
-        mt: { xs: -1.5, md: -1.75 },
-        mb: { xs: -1.5, md: -1.75 },
-        px: `${DASHBOARD_UX.pagePadding}px`,
-        py: `${DASHBOARD_UX.pagePadding}px`,
-        minHeight: `calc(100vh - ${DASHBOARD_UX.headerHeight}px)`,
-        bgcolor: s.pageBg,
-        width: '100%',
-      }}
-    >
-      <DashboardScaleShell>
+  const pageBody = (
         <Box
           sx={{
             display: 'flex',
@@ -286,13 +299,115 @@ export function DashboardPage() {
             </>
           ) : null}
 
-          {!showInitialLoader && !error && !isOperator ? (
-            <Typography sx={{ color: s.textSecondary }}>
-              {t('dashboard.owner.heroSubtitle')}
-            </Typography>
+          {!showInitialLoader && !error && !isOperator && isMealParticipant ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, width: '100%' }}>
+              <DashboardCustomerMealsSection spaceId={spaceId} />
+              {pending.totalCount > 0 ? (
+                <ContentCard onClick={() => navigate(spacePendingActionsPath(spaceId))}>
+                  <Stack
+                    direction="row"
+                    sx={{ justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <Box>
+                      <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+                        {t('dashboard.attention.pendingActions')}
+                      </Typography>
+                      <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
+                        {t('dashboard.attention.pendingActionsSubtitle', {
+                          count: pending.totalCount,
+                        })}
+                      </Typography>
+                    </Box>
+                    <Button size="small" sx={dashOutlinedButtonSx}>
+                      {t('common.viewAll', { defaultValue: 'View all' })} →
+                    </Button>
+                  </Stack>
+                </ContentCard>
+              ) : null}
+            </Box>
+          ) : null}
+
+          {!showInitialLoader && !error && !isOperator && !isMealParticipant ? (
+            <Stack spacing={`${DASHBOARD_UX.cardGap}px`}>
+              <Typography sx={{ ...DASHBOARD_UX.pageTitle, color: s.textPrimary }}>
+                {space?.spaceName ?? t('navigation.dashboard')}
+              </Typography>
+              <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
+                {t('dashboard.customer.tenantHomeSubtitle', {
+                  defaultValue: 'Quick links for your stay and payments.',
+                })}
+              </Typography>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                  gap: `${DASHBOARD_UX.cardGap}px`,
+                }}
+              >
+                {isTenant && linkedMemberId ? (
+                  <ContentCard onClick={() => navigate(spaceMemberPath(spaceId, linkedMemberId))}>
+                    <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+                      {t('dashboard.customer.myStay', { defaultValue: 'My stay' })}
+                    </Typography>
+                    <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }}>
+                      {t('dashboard.customer.myStayHint', {
+                        defaultValue: 'View your occupancy and profile',
+                      })}
+                    </Typography>
+                  </ContentCard>
+                ) : null}
+                {linkedMemberId ? (
+                  <ContentCard onClick={() => navigate(spacePaymentsPath(spaceId))}>
+                    <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+                      {t('dashboard.customer.quickActions.payments', { defaultValue: 'Payments' })}
+                    </Typography>
+                    <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }}>
+                      {t('dashboard.customer.myPaymentsHint', {
+                        defaultValue: 'Review dues and submit proof',
+                      })}
+                    </Typography>
+                  </ContentCard>
+                ) : null}
+                <ContentCard onClick={() => navigate(spaceComplaintsPath(spaceId))}>
+                  <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+                    {t('dashboard.customer.quickActions.complaints', {
+                      defaultValue: 'Complaints',
+                    })}
+                  </Typography>
+                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }}>
+                    {t('dashboard.customer.complaintsHint', {
+                      defaultValue: 'Raise or track service requests',
+                    })}
+                  </Typography>
+                </ContentCard>
+              </Box>
+              {pending.totalCount > 0 ? (
+                <Button
+                  variant="contained"
+                  onClick={() => navigate(spacePendingActionsPath(spaceId))}
+                  sx={dashContainedButtonSx}
+                >
+                  {t('dashboard.attention.pendingActions')} ({pending.totalCount})
+                </Button>
+              ) : null}
+            </Stack>
           ) : null}
         </Box>
-      </DashboardScaleShell>
+  );
+
+  return (
+    <Box
+      sx={{
+        px: { xs: 2, md: isOperator ? `${DASHBOARD_UX.pagePadding}px` : 3 },
+        py: { xs: 2, md: isOperator ? `${DASHBOARD_UX.pagePadding}px` : 3 },
+        minHeight: `calc(100vh - ${DASHBOARD_UX.headerHeight}px)`,
+        bgcolor: s.pageBg,
+        width: '100%',
+        boxSizing: 'border-box',
+      }}
+    >
+      {/* ScaleShell is for owner ops canvas; consumers need natural scroll to match mock. */}
+      {isOperator ? <ScaleShell>{pageBody}</ScaleShell> : pageBody}
     </Box>
   );
 }

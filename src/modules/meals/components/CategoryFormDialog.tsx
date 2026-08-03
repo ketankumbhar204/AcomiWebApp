@@ -114,18 +114,69 @@ export function CategoryFormDialog({
 export function InlineCreateCategoryRow({
   spaceId,
   onCreated,
+  variant = 'button',
 }: {
   spaceId: string;
   onCreated?: (categoryId: string) => void;
+  /** `chip` = pill in category rail (planner Items tab). */
+  variant?: 'button' | 'chip';
 }) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const mutations = useMealMutations(spaceId);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
 
+  const save = () => {
+    if (!name.trim()) {
+      enqueueSnackbar(t('meals.library.categoryNameRequired'), { variant: 'warning' });
+      return;
+    }
+    setBusy(true);
+    void mutations.createFoodCategory
+      .mutateAsync({ name: name.trim() })
+      .then((created) => {
+        enqueueSnackbar(t('meals.library.categoryCreateSuccess'), { variant: 'success' });
+        onCreated?.(created.categoryId);
+        setOpen(false);
+        setName('');
+      })
+      .catch(() => {
+        enqueueSnackbar(t('common.errors.generic'), { variant: 'error' });
+      })
+      .finally(() => setBusy(false));
+  };
+
   if (!open) {
+    if (variant === 'chip') {
+      return (
+        <Box
+          component="button"
+          type="button"
+          onClick={() => setOpen(true)}
+          sx={{
+            all: 'unset',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.35,
+            px: 1.1,
+            py: 0.45,
+            borderRadius: 99,
+            border: `1px dashed ${colors.primary}`,
+            bgcolor: `${colors.primary}0F`,
+            color: colors.primaryDark,
+            ...DASHBOARD_UX.badge,
+            '&:hover': { bgcolor: `${colors.primary}1A` },
+          }}
+        >
+          + {t('meals.library.category', { defaultValue: 'Category' })}
+        </Box>
+      );
+    }
     return (
       <Button size="small" onClick={() => setOpen(true)} sx={dashOutlinedButtonSx}>
         {t('meals.library.chipAddCategory')}
@@ -134,13 +185,42 @@ export function InlineCreateCategoryRow({
   }
 
   return (
-    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
+    <Box
+      sx={{
+        display: 'inline-flex',
+        gap: 0.75,
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        px: variant === 'chip' ? 0.5 : 0,
+        py: variant === 'chip' ? 0.25 : 0,
+        borderRadius: variant === 'chip' ? 99 : 0,
+        border: variant === 'chip' ? `1px solid ${colors.primary}` : 'none',
+        bgcolor: variant === 'chip' ? s.surface : 'transparent',
+      }}
+    >
       <TextField
         size="small"
+        autoFocus
         value={name}
         onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') save();
+          if (e.key === 'Escape') {
+            setOpen(false);
+            setName('');
+          }
+        }}
         placeholder={t('meals.library.categoryNameInlinePlaceholder')}
-        sx={{ flex: '1 1 140px' }}
+        sx={{
+          width: variant === 'chip' ? 140 : undefined,
+          flex: variant === 'chip' ? undefined : '1 1 140px',
+          '& .MuiOutlinedInput-root': {
+            minHeight: DASHBOARD_UX.buttonHeight,
+            height: DASHBOARD_UX.buttonHeight,
+            borderRadius: 99,
+            ...DASHBOARD_UX.inputText,
+          },
+        }}
         inputProps={{ maxLength: 80 }}
       />
       <Button
@@ -150,7 +230,7 @@ export function InlineCreateCategoryRow({
           setOpen(false);
           setName('');
         }}
-        sx={dashOutlinedButtonSx}
+        sx={{ ...dashOutlinedButtonSx, px: 1 }}
       >
         {t('common.cancel')}
       </Button>
@@ -158,27 +238,10 @@ export function InlineCreateCategoryRow({
         size="small"
         variant="contained"
         disabled={busy}
-        onClick={() => {
-          if (!name.trim()) {
-            enqueueSnackbar(t('meals.library.categoryNameRequired'), { variant: 'warning' });
-            return;
-          }
-          setBusy(true);
-          void mutations.createFoodCategory
-            .mutateAsync({ name: name.trim() })
-            .then((created) => {
-              enqueueSnackbar(t('meals.library.categoryCreateSuccess'), { variant: 'success' });
-              onCreated?.(created.categoryId);
-              setOpen(false);
-              setName('');
-            })
-            .catch(() => {
-              enqueueSnackbar(t('common.errors.generic'), { variant: 'error' });
-            })
-            .finally(() => setBusy(false));
-        }}
+        onClick={save}
         sx={{
           ...dashContainedButtonSx,
+          px: 1.25,
           bgcolor: colors.primaryDark,
           '&:hover': { bgcolor: colors.primaryHover },
         }}

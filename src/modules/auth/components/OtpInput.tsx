@@ -131,8 +131,7 @@ export function OtpInput({
                 'aria-label': `Digit ${index + 1} of ${OTP_LENGTH}`,
                 style: {
                   textAlign: 'center',
-                  fontWeight: 700,
-                  fontSize: 18,
+                  ...DASHBOARD_UX.cardTitle,
                   color: s.textPrimary,
                 },
               },

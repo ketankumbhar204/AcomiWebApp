@@ -246,7 +246,7 @@ function DayMealReviewInspector({
               <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
                 {t('navigation.meals')}
               </Typography>
-              <Typography sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}>
+              <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
                 {t(`meals.mealType.${mealType}`)}
               </Typography>
             </Box>
@@ -254,7 +254,7 @@ function DayMealReviewInspector({
               <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
                 {t('meals.subscriptionPlans.mealsLabel')}
               </Typography>
-              <Typography sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}>
+              <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
                 {member.quantity ?? 1}
               </Typography>
             </Box>
@@ -262,7 +262,7 @@ function DayMealReviewInspector({
               <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
                 {t('common.date', { defaultValue: 'Date' })}
               </Typography>
-              <Typography sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}>
+              <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
                 {date}
               </Typography>
             </Box>
@@ -271,7 +271,7 @@ function DayMealReviewInspector({
                 <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
                   {t('meals.activity.deliveryLocation', { defaultValue: 'Delivery' })}
                 </Typography>
-                <Typography sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}>
+                <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
                   {member.deliveryLocationName}
                 </Typography>
               </Box>
@@ -349,9 +349,7 @@ function DayMealReviewInspector({
                     }}
                   />
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography
-                      sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}
-                    >
+                    <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
                       {t(`meals.paymentTimeline.events.${event.eventType}`, {
                         date: event.pollDate,
                       })}
@@ -467,15 +465,14 @@ export function OwnerDayMealReview({ spaceId }: { spaceId: string }) {
             sx={{
               width: 28,
               height: 28,
-              fontSize: '0.7rem',
-              fontWeight: 700,
+              ...DASHBOARD_UX.badge,
               bgcolor: `${colors.primaryDark}1A`,
               color: colors.primaryDark,
             }}
           >
             {initials(row.memberName) || '?'}
           </Avatar>
-          <Typography sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }} noWrap>
+          <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }} noWrap>
             {row.memberName}
           </Typography>
         </Box>
@@ -565,7 +562,7 @@ export function OwnerDayMealReview({ spaceId }: { spaceId: string }) {
       <IconBadge accent="#3B82F6">
         <Info />
       </IconBadge>
-      <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary, fontWeight: 500 }}>
+      <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textPrimary }}>
         {t('paymentCollection.dayMeals.pendingCount', {
           defaultValue: '{{count}} members need attention',
           count: pending.length,

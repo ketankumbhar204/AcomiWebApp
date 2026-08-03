@@ -24,7 +24,7 @@ export function InfoRow({ label, value, dense = false }: InfoRowProps) {
       }}
     >
       <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textMuted }}>{label}</Typography>
-      <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary, fontWeight: 500 }}>
+      <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textPrimary }}>
         {value}
       </Typography>
     </Box>

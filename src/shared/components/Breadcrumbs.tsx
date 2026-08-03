@@ -1,6 +1,7 @@
-import { Box, Breadcrumbs as MuiBreadcrumbs, Link, Typography } from '@mui/material';
+import { Box, Breadcrumbs as MuiBreadcrumbs, Link, Typography, useTheme } from '@mui/material';
 import { ChevronRight } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
+import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 
 export type BreadcrumbItem = {
   label: string;
@@ -12,21 +13,27 @@ type BreadcrumbsProps = {
 };
 
 export function Breadcrumbs({ items }: BreadcrumbsProps) {
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
+
   if (items.length === 0) {
     return null;
   }
 
   return (
     <MuiBreadcrumbs
-      separator={<ChevronRight size={14} />}
+      separator={<ChevronRight size={DASHBOARD_UX.iconSize} />}
       aria-label="Breadcrumb"
-      sx={{ mb: 1.5, '& .MuiBreadcrumbs-separator': { mx: 0.75 } }}
+      sx={{ mb: 1.25, '& .MuiBreadcrumbs-separator': { mx: 0.5, color: s.textMuted } }}
     >
       {items.map((item, index) => {
         const isLast = index === items.length - 1;
         if (isLast || !item.to) {
           return (
-            <Typography key={`${item.label}-${index}`} variant="body2" color="text.primary">
+            <Typography
+              key={`${item.label}-${index}`}
+              sx={{ ...DASHBOARD_UX.breadcrumb, color: s.textPrimary }}
+            >
               {item.label}
             </Typography>
           );
@@ -37,8 +44,7 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
             component={RouterLink}
             to={item.to}
             underline="hover"
-            color="text.secondary"
-            variant="body2"
+            sx={{ ...DASHBOARD_UX.breadcrumb, color: s.textSecondary }}
           >
             {item.label}
           </Link>

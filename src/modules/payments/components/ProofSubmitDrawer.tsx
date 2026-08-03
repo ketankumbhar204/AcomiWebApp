@@ -8,11 +8,13 @@ import {
   Stack,
   TextField,
   Typography,
+  useTheme,
 } from '@mui/material';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { AppDrawer } from '@/shared/components/AppDrawer';
+import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StickyFooter } from '@/shared/components/StickyFooter';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type { UniversalPaymentMethod } from '@/shared/types/payments';
@@ -40,6 +42,8 @@ export function ProofSubmitDrawer({
   onClose,
 }: ProofSubmitDrawerProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const mutations = usePaymentMutations(spaceId);
   const [referenceNumber, setReferenceNumber] = useState('');
@@ -89,7 +93,7 @@ export function ProofSubmitDrawer({
     <AppDrawer open={open} onClose={onClose} width={420}>
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+          <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
             {t('paymentCollection.proof.submit')}
           </Typography>
         </Box>
@@ -136,7 +140,7 @@ export function ProofSubmitDrawer({
             />
           </Button>
           {proofImageBase64 ? (
-            <Typography variant="caption" color="text.secondary">
+            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textSecondary }}>
               {t('paymentCollection.proof.selected')}
             </Typography>
           ) : null}

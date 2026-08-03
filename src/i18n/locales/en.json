@@ -385,6 +385,63 @@
       "heroSubtitle": "Here's your operations overview",
       "heroSubtitleForSpace": "Here's your operations overview for {{spaceName}}"
     },
+    "customer": {
+      "greetingMorning": "Good morning",
+      "greetingAfternoon": "Good afternoon",
+      "greetingEvening": "Good evening",
+      "heroSubtitle": "Here's what's cooking today",
+      "linkPending": "Your member profile is still linking. Meal history will appear shortly.",
+      "tenantHomeSubtitle": "Quick links for your stay and payments.",
+      "myStay": "My stay",
+      "myStayHint": "View your occupancy and profile",
+      "myPaymentsHint": "Review dues and submit proof",
+      "complaintsHint": "Raise or track service requests",
+      "stats": {
+        "title": "Quick stats",
+        "menuItems": "Total menu items",
+        "yourOrders": "Your orders",
+        "dueAmount": "Due amount",
+        "upcomingPayments": "Upcoming payments"
+      },
+      "recentOrders": {
+        "title": "Recent orders",
+        "viewAll": "View all",
+        "empty": "No recent orders yet. Choose meals to get started.",
+        "itemCount_one": "{{count}} item",
+        "itemCount_other": "{{count}} items"
+      },
+      "quickActions": {
+        "title": "Quick actions",
+        "myOrders": "My Orders",
+        "myOrdersHint": "View your past & upcoming orders",
+        "payments": "Payments",
+        "paymentsHint": "View bills and payment history",
+        "complaints": "Complaints",
+        "complaintsHint": "Raise or track your complaints"
+      },
+      "chooseMeals": "Choose your meals",
+      "guest": "there",
+      "managedBy": "Managed by {{name}}",
+      "managedByOwnerFallback": "{{space}} Owner",
+      "spaceOwner": "owner",
+      "mealTimings": "Meal timings",
+      "noMenuItems": "No menu items",
+      "toPrepare": "to prepare",
+      "pollsCloseHint": "Polls close before meal time. Please submit your responses on time."
+    },
+    "pollCard": {
+      "updateChoices": "Update choices",
+      "viewFullMenu": "View menus",
+      "continueSelection": "Continue selection",
+      "chooseNow": "Choose your meals now",
+      "statusSelected": "✓ Meals selected",
+      "statusPartial": "Selection incomplete",
+      "statusReady": "Choose your meals",
+      "statusPastMenus": "Past menus",
+      "notPublished": "Menus are not planned yet.",
+      "uploadProof": "Upload payment proof",
+      "previewMore": "+{{count}} more"
+    },
     "health": {
       "title": "Space Health",
       "emptyTitle": "Space Health",
@@ -476,12 +533,27 @@
       "noResponse": "No response",
       "emptyTitle": "No headcount yet",
       "emptyBody": "Share a meal menu to start collecting responses and headcount.",
-      "view": "View headcount"
+      "view": "View headcount",
+      "label": "Headcount",
+      "viewDetails": "View details",
+      "acrossAll": "Across all meals",
+      "toPrepare": "To prepare",
+      "collectedExpected": "Headcount collected / Expected",
+      "viewPollResults": "View poll results",
+      "unavailableHint": "Marked as not available",
+      "basedOnResponses": "Numbers are based on confirmed poll responses so far.",
+      "lastUpdated": "Last updated: {{time}}",
+      "allMeals": "All meals",
+      "daySummary": "Day summary",
+      "todaysPollStatus": "Today's poll status",
+      "colMenuItem": "Menu item",
+      "colDescription": "Description",
+      "addItemToMeal": "Add item to {{meal}}"
     },
     "attention": {
       "pendingActions": "Pending actions",
       "pendingActionsSubtitle": "{{count}} items need your attention",
-      "morePending": "+{{count}} more →"
+      "morePending": "+ {{count}} more →"
     },
     "spaceOverview": {
       "title": "Space overview"
@@ -672,6 +744,7 @@
       "inviteInsteadAction": "Send invitation",
       "subheadingMess": "Choose people you've already added to another space. We'll add them to this mess without asking for their details again.",
       "fullNamePlaceholder": "e.g. Rahul Sharma",
+      "detailsHeading": "Member details",
       "saveImport": "Add",
       "importSuccessToast": "Customer added to this mess.",
       "importFailed": "Could not import this customer. Please try again.",
@@ -697,16 +770,21 @@
     "roles": {
       "label": "Role",
       "tenant": {
-        "label": "Tenant"
+        "label": "Tenant",
+        "description": "Stays in the PG / Hostel"
       },
       "customer": {
-        "label": "Customer"
+        "label": "Customer",
+        "description": "Uses mess / co-living",
+        "descriptionMess": "Meal subscriber at this mess"
       },
       "staff": {
-        "label": "Staff"
+        "label": "Staff",
+        "description": "Works at this space"
       },
       "manager": {
-        "label": "Manager"
+        "label": "Manager",
+        "description": "Helps manage the space"
       }
     },
     "details": {
@@ -936,7 +1014,12 @@
       "emptyBody": "Try another search, or create a new customer.",
       "createHint": "Can't find the person? Create a new customer manually.",
       "createCta": "Create new customer",
-      "emptyDescription": "Try another search, or create a new customer."
+      "emptyDescription": "Try another search, or create a new customer.",
+      "add": "Add",
+      "confirmTitle": "Add this person?",
+      "confirmMessage": "Add {{name}} ({{mobile}}) to this mess?",
+      "confirmAdd": "Add",
+      "fromSpace": "Source"
     },
     "addCustomersHub": {
       "navTitle": "Add Customers",
@@ -961,14 +1044,21 @@
   "members": {
     "mealBilling": {
       "title": "Meal billing",
+      "subtitle": "Choose how this member pays for meals. Override only if they need a different plan from the mess default.",
+      "typeWithDefault": "{{type}} (Default choice)",
       "useSpaceDefault": "Space default ({{type}})",
       "mealsTabHint": "This member is on {{type}}. Switch to Subscription to sell prepaid meal packs."
     },
     "subscriptionSetup": {
       "title": "Subscription details",
+      "subtitle": "Record the first pack when adding this member. Meals are debited when they confirm poll choices.",
       "subtitleOptional": "Optional — record a new pack now, or add balance later from member meal activity.",
       "mealQtyLabel": "Number of meals",
+      "mealQtyPlaceholder": "e.g. 30",
       "priceLabel": "Subscription price (₹)",
+      "pricePlaceholder": "e.g. 3000",
+      "amountLabel": "Subscription amount (₹)",
+      "amountPlaceholder": "e.g. 3000",
       "mealQtyRequired": "Enter how many meals are in this subscription pack.",
       "priceRequired": "Enter the subscription amount collected."
     }
@@ -1986,7 +2076,7 @@
       "today": "Today",
       "tomorrow": "Tomorrow",
       "emptySlot": "Not planned",
-      "noOptions": "No dishes yet. Edit to add combos or items.",
+      "noOptions": "No dishes yet. Add combos or items from library.",
       "moreOptions": "+{{count}} more",
       "publish": "Publish",
       "publishSuccess": "Menu published.",
@@ -1998,12 +2088,39 @@
       "openPolls": "Open polls",
       "inspector": "Day summary",
       "inspectorHint": "Headcount updates when polls are open.",
+      "selectedDaySubtitle": "Plan your menu for the day",
+      "planForAnotherDay": "Plan for another day",
       "headcount": "{{count}} to prepare",
       "editSlot": "Edit {{meal}}",
       "selectedCount": "{{count}} selected",
       "notes": "Notes",
       "draftHint": "Save as draft or publish immediately.",
       "saveAndPublish": "Save & publish",
+      "discard": "Discard",
+      "saveDraft": "Save Draft",
+      "publishMenu": "Publish Menu",
+      "libraryTitle": "Library",
+      "librarySubtitle": "Browse and add combos or items to your menu.",
+      "selectedMenuTitle": "Selected Menu",
+      "clearAll": "Clear all",
+      "emptySelectedTitle": "Nothing selected yet",
+      "emptySelectedBody": "Add from Library to build this meal.",
+      "addFromLibrary": "Add from Library",
+      "addMoreFromLibrary": "+ Add more from library",
+      "allCategories": "All Categories",
+      "colItem": "Item",
+      "colQty": "Qty / Servings",
+      "colUnit": "Unit Price",
+      "colTotal": "Total Price",
+      "servings": "Servings",
+      "notesOptional": "Notes (Optional)",
+      "saveAsDraftCheckbox": "Save as draft",
+      "summaryItems": "Items",
+      "summaryServings": "Total Servings",
+      "summaryCost": "Estimated Cost",
+      "summaryCostPerServing": "Cost per Serving",
+      "reorderTip": "Tip: Drag rows to reorder. Qty adjusts estimated cost on this screen; Save Draft / Publish still store each selected dish once (same as mobile).",
+      "readOnlyPast": "Past menus are read-only.",
       "dayStatus": "{{published}} published · {{draft}} draft · {{notPlanned}} not planned",
       "dayStatusVisual": "{{shared}} shared · {{notShared}} not shared · {{empty}} empty",
       "dayOverviewTitle": "This day's meals",
@@ -2126,8 +2243,22 @@
       "addMenu": "+ Add Menu",
       "addMenuDone": "Done",
       "noMenusSelectedYet": "No menus selected yet",
+      "tabHistory": "History",
       "tabCombos": "Combos",
       "tabIndividualItems": "Individual Items",
+      "searchHistory": "Search history...",
+      "historyHint": "Suggestions from {{meal}} only — items used more for other meals stay in their history.",
+      "clearHistory": "Clear history",
+      "historyCleared": "History cleared.",
+      "historyLoadFailed": "Could not load menu history. Try refreshing.",
+      "historyEmpty": "No previous {{meal}} menus found.",
+      "browseCombos": "Browse Combos",
+      "browseItems": "Browse Items",
+      "historyGroupToday": "Today",
+      "historyGroupYesterday": "Yesterday",
+      "historyGroupLast7Days": "Last 7 Days",
+      "historyGroupOlder": "Older",
+      "historyUsedCount": "Used {{count}} times",
       "extrasSectionTitle": "Extras",
       "extrasSectionHint": "Turn on add-ons for this meal.",
       "extrasConfiguredCount": "{{count}} configured",
@@ -2253,6 +2384,7 @@
       "shareHint": "Sharing opens in-app polls automatically. Members pick the same numbered options in the app.",
       "copyMessage": "Share menu",
       "shareEmpty": "No menus planned for this date yet.",
+      "shareNotAvailableOption": "Not available for {{meal}}",
       "tapToPlan": "Tap to plan {{meal}}",
       "tapToEdit": "Tap to edit",
       "editTitle": "Plan {{meal}}",
@@ -2290,6 +2422,7 @@
       },
       "responseTitle": "Choose your meals",
       "responseHint": "Pick one option per meal. Your mess uses this for kitchen headcount.",
+      "respondCta": "Respond to poll",
       "responseHintMess": "Set quantities for each combo. Total plates helps the kitchen prepare accurately.",
       "extrasSection": "Extras",
       "extrasSectionHint": "Optional add-ons for this meal — priced separately.",
@@ -2689,6 +2822,7 @@
     "paymentTimeline": {
       "title": "Payment timeline",
       "empty": "No payment events for this month yet.",
+      "eventCount": "{{count}} events this month",
       "events": {
         "PAY_LATER_SELECTED": "Pay later selected · {{date}}",
         "MARK_AS_PAID_SELECTED": "Marked as paid · {{date}}",
@@ -2751,6 +2885,9 @@
       "legendInactive": "Inactive",
       "viewCalendar": "Calendar",
       "viewHistory": "Activity",
+      "cutoffHint": "Respond to the poll before cutoff time to help your mess plan better.",
+      "cutoffTime": "Cutoff time: {{time}}",
+      "selectDayBody": "Choose a day to view meal status and totals.",
       "headerMealsOn": "Meals ON",
       "headerMealsOff": "Meals OFF",
       "history": {
@@ -3181,6 +3318,7 @@
       "copy": "Copy",
       "copied": "Copied to clipboard.",
       "emptyPreview": "No preview available for this date.",
+      "willUpdateSoon": "Will be updated soon",
       "publish": "Publish & open polls",
       "success": "Menus published."
     }
@@ -3197,6 +3335,16 @@
       "mealsFallback": "Meals",
       "batchId": "Batch {{id}}",
       "paymentReference": "Ref {{id}}",
+      "filterAll": "All",
+      "actionNeeded": "Action needed",
+      "underReview": "Under review",
+      "empty": "No day meals in this view",
+      "selectDay": "Select a day",
+      "selectDayBody": "Choose a row to view meals, amount, and payment proof.",
+      "breadcrumb": "Day meals",
+      "mealAccepted": "Meal accepted",
+      "inspectorHint": "Payments are updated once the meal poll is closed and reviewed.",
+      "referenceCopied": "Reference copied",
       "status": {
         "pending": "Pending",
         "overdue": "Overdue",
@@ -4092,6 +4240,22 @@
     }
   },
   "progressiveWorkflow": {
+    "nextStep": "Next step",
+    "stepOf": "Step {{current}} of {{total}}",
+    "member": {
+      "reviewMealsTitle": "Review meal settings",
+      "reviewMealsHint": "Billing, subscription, and meal access are optional but easy to miss.",
+      "continueToMeals": "Continue to meal settings ↓",
+      "progressIdentityNext": "✓ Customer details  ·  Next: Meal settings",
+      "progressReady": "✓ Details reviewed  ·  Ready to save"
+    },
+    "sharePreview": {
+      "reviewMessageTitle": "Review message & recipients",
+      "reviewMessageHint": "Confirm other spaces and the share message before sending.",
+      "continueToMessage": "Continue to message ↓",
+      "progressSlotsNext": "✓ Meals selected  ·  Next: Message",
+      "progressReady": "✓ Ready to share"
+    },
     "editSpace": {
       "tabGeneral": "General",
       "tabMeals": "Meals & billing",

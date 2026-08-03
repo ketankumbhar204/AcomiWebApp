@@ -328,8 +328,7 @@ export function MembersWorkspacePage() {
             height: 32,
             bgcolor: theme.palette.mode === 'dark' ? s.elevated : colors.lightGreen,
             color: colors.primaryDark,
-            ...DASHBOARD_UX.caption,
-            fontWeight: 600,
+            ...DASHBOARD_UX.badge,
           }}
         >
           {initials(row.fullName)}
@@ -343,10 +342,8 @@ export function MembersWorkspacePage() {
         <Box sx={{ minWidth: 0, py: 0.5 }}>
           <Typography
             sx={{
-              ...DASHBOARD_UX.body,
-              fontWeight: 600,
+              ...DASHBOARD_UX.link,
               color: s.textPrimary,
-              lineHeight: '1.25rem',
             }}
             noWrap
           >
@@ -867,6 +864,12 @@ export function MembersWorkspacePage() {
         onClose={() => {
           setFormMode(null);
           setEditTarget(null);
+        }}
+        onInvite={() => {
+          setFormMode(null);
+          setEditTarget(null);
+          setInvitePrefill({});
+          setInviteOpen(true);
         }}
       />
 

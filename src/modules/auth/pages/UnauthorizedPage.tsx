@@ -8,6 +8,7 @@ import { colors } from '@/shared/theme/colors';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { IconBadge } from '@/modules/dashboard/components/IconBadge';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
 
 export function UnauthorizedPage() {
   const { t } = useTranslation();
@@ -51,14 +52,7 @@ export function UnauthorizedPage() {
                 to={ROUTES.login}
                 variant="contained"
                 color="primary"
-                sx={{
-                  minHeight: 40,
-                  borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-                  fontSize: DASHBOARD_UX.button.fontSize,
-                  fontWeight: DASHBOARD_UX.button.fontWeight,
-                  textTransform: 'none',
-                  boxShadow: 'none',
-                }}
+                sx={dashContainedButtonSx}
               >
                 {t('auth.unauthorized.action')}
               </Button>

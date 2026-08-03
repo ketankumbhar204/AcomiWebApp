@@ -12,14 +12,12 @@ import {
   Stack,
   Tab,
   Tabs,
-  TextField,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
 import {
   CalendarDays,
-  ChevronLeft,
   ChevronRight,
   Clock3,
   Inbox,
@@ -38,6 +36,7 @@ import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
+import { PeriodMonthNav } from '@/shared/components/PeriodMonthNav';
 import { StatCard } from '@/shared/components/StatCard';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
@@ -102,15 +101,14 @@ function MemberCell({ name }: { name: string }) {
         sx={{
           width: 28,
           height: 28,
-          fontSize: '0.7rem',
-          fontWeight: 700,
+          ...DASHBOARD_UX.badge,
           bgcolor: `${colors.primaryDark}1A`,
           color: colors.primaryDark,
         }}
       >
         {initials(name) || '?'}
       </Avatar>
-      <Typography sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }} noWrap>
+      <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }} noWrap>
         {name}
       </Typography>
     </Box>
@@ -276,8 +274,7 @@ function OwnerPaymentsWorkspace({
         accessor: (row) => (
           <Typography
             sx={{
-              ...DASHBOARD_UX.body,
-              fontWeight: 600,
+              ...DASHBOARD_UX.link,
               color: s.textPrimary,
               fontVariantNumeric: 'tabular-nums',
             }}
@@ -351,8 +348,7 @@ function OwnerPaymentsWorkspace({
         accessor: (row) => (
           <Typography
             sx={{
-              ...DASHBOARD_UX.body,
-              fontWeight: 600,
+              ...DASHBOARD_UX.link,
               color: s.textPrimary,
               fontVariantNumeric: 'tabular-nums',
             }}
@@ -420,8 +416,7 @@ function OwnerPaymentsWorkspace({
         accessor: (row) => (
           <Typography
             sx={{
-              ...DASHBOARD_UX.body,
-              fontWeight: 600,
+              ...DASHBOARD_UX.link,
               color: s.textPrimary,
               fontVariantNumeric: 'tabular-nums',
             }}
@@ -597,56 +592,13 @@ function OwnerPaymentsWorkspace({
               useFlexGap
               sx={{ flexWrap: 'wrap', alignItems: 'center' }}
             >
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  px: 0.5,
-                  height: DASHBOARD_UX.buttonHeight,
-                  borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-                  border: `1px solid ${s.border}`,
-                  bgcolor: s.surface,
-                }}
-              >
-                <IconButton
-                  size="small"
-                  aria-label={t('payments.workspace.prevMonth', { defaultValue: 'Previous month' })}
-                  onClick={() => setMonth(shiftMonth(month, -1))}
-                  sx={{ width: 28, height: 28 }}
-                >
-                  <ChevronLeft size={16} />
-                </IconButton>
-                <TextField
-                  size="small"
-                  value={month}
-                  onChange={(e) => setMonth(e.target.value)}
-                  placeholder="YYYY-MM"
-                  variant="standard"
-                  sx={{
-                    width: 88,
-                    '& .MuiInputBase-input': {
-                      ...DASHBOARD_UX.body,
-                      fontWeight: 600,
-                      textAlign: 'center',
-                      color: s.textPrimary,
-                      py: 0,
-                    },
-                    '& .MuiInput-underline:before, & .MuiInput-underline:after': {
-                      display: 'none',
-                    },
-                  }}
-                  slotProps={{ htmlInput: { 'aria-label': t('payments.workspace.month') } }}
-                />
-                <IconButton
-                  size="small"
-                  aria-label={t('payments.workspace.nextMonth', { defaultValue: 'Next month' })}
-                  onClick={() => setMonth(shiftMonth(month, 1))}
-                  sx={{ width: 28, height: 28 }}
-                >
-                  <ChevronRight size={16} />
-                </IconButton>
-              </Box>
+              <PeriodMonthNav
+                month={month}
+                onPrevious={() => setMonth(shiftMonth(month, -1))}
+                onNext={() => setMonth(shiftMonth(month, 1))}
+                onMonthSelect={setMonth}
+                size="compact"
+              />
               <IconButton
                 size="small"
                 aria-label={t('common.refresh')}

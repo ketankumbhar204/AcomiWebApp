@@ -8,11 +8,13 @@ import {
   Stack,
   TextField,
   Typography,
+  useTheme,
 } from '@mui/material';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { AppDrawer } from '@/shared/components/AppDrawer';
+import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StickyFooter } from '@/shared/components/StickyFooter';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type { MealType } from '@/shared/types/meals';
@@ -50,6 +52,8 @@ export function RaiseComplaintDrawer({
   onCreated,
 }: RaiseComplaintDrawerProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const mutations = useComplaintMutations(spaceId);
   const categories = useMemo(() => categoriesForSpaceType(spaceType), [spaceType]);
@@ -129,7 +133,7 @@ export function RaiseComplaintDrawer({
   return (
     <AppDrawer open={open} onClose={onClose} width={480}>
       <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+        <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary, mb: 2 }}>
           {t('complaints.raiseTitle')}
         </Typography>
         <Stack spacing={1.5} sx={{ flex: 1, overflow: 'auto', pb: 10 }}>
@@ -210,10 +214,10 @@ export function RaiseComplaintDrawer({
             </Stack>
           ) : null}
           <Box>
-            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+            <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary, mb: 0.5 }}>
               {t('complaints.fields.photos')}
             </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textSecondary, display: 'block', mb: 1 }}>
               {t('complaints.photos.helper')}
             </Typography>
             <Button component="label" variant="outlined" size="small" sx={dashOutlinedButtonSx}>
@@ -227,7 +231,7 @@ export function RaiseComplaintDrawer({
               />
             </Button>
             {photos.length > 0 ? (
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+              <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textSecondary, display: 'block', mt: 1 }}>
                 {t('complaints.photos.selected', { count: photos.length })}
               </Typography>
             ) : null}

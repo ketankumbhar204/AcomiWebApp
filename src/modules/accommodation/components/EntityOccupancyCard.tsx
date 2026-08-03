@@ -135,7 +135,7 @@ export function EntityOccupancyCard({
             {subtitle}
           </Typography>
         ) : null}
-        <Typography sx={{ ...DASHBOARD_UX.counterLabel, color: accent, fontWeight: 600 }}>
+        <Typography sx={{ ...DASHBOARD_UX.link, color: accent }}>
           {occupancyLabel ?? `${occupied}/${total}`}
         </Typography>
         <LinearProgress

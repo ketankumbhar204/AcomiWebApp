@@ -41,12 +41,12 @@ export function InspectorDetailsList({
           gap: 0.75,
           px: 1.5,
           py: 1,
-          bgcolor: theme.palette.mode === 'dark' ? s.elevated : '#F8FAFC',
+          bgcolor: s.elevated,
           borderBottom: `1px solid ${s.border}`,
         }}
       >
         <Info size={14} color={s.textMuted} />
-        <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textPrimary, fontWeight: 700 }}>
+        <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textPrimary }}>
           {title}
         </Typography>
       </Box>
@@ -73,8 +73,7 @@ export function InspectorDetailsList({
           <Typography
             component="div"
             sx={{
-              ...DASHBOARD_UX.body,
-              fontWeight: 700,
+              ...DASHBOARD_UX.link,
               color: s.textPrimary,
               textAlign: 'right',
             }}
@@ -113,7 +112,7 @@ export function PastelQuickActions({
 
   return (
     <Box>
-      <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textPrimary, fontWeight: 700, mb: 1 }}>
+      <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textPrimary, mb: 1 }}>
         {title}
       </Typography>
       <Box
@@ -158,11 +157,9 @@ export function PastelQuickActions({
             <Box sx={{ display: 'flex', color: 'inherit' }}>{action.icon}</Box>
             <Typography
               sx={{
-                ...DASHBOARD_UX.metricCaption,
-                fontWeight: 700,
+                ...DASHBOARD_UX.link,
                 color: 'inherit',
                 textAlign: 'center',
-                lineHeight: 1.2,
               }}
             >
               {action.label}

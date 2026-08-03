@@ -44,7 +44,6 @@ type SpaceOverviewCardProps = {
 
 /**
  * Row-1 left card — Space Overview (greeting + context + health + refresh).
- * Replaces the standalone greeting row.
  */
 export function SpaceOverviewCard({
   spaceId,
@@ -83,7 +82,7 @@ export function SpaceOverviewCard({
         maxHeight: DASHBOARD_UX.summaryCardMaxHeight,
         display: 'flex',
         flexDirection: 'column',
-        gap: 0.75,
+        gap: 0.65,
         minWidth: 0,
         boxSizing: 'border-box',
       }}
@@ -118,9 +117,7 @@ export function SpaceOverviewCard({
 
       <Typography
         sx={{
-          fontSize: '1.125rem',
-          fontWeight: 700,
-          lineHeight: '1.5rem',
+          ...DASHBOARD_UX.spaceName,
           color: s.textPrimary,
         }}
         noWrap
@@ -133,10 +130,10 @@ export function SpaceOverviewCard({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 1,
+          gap: 1.1,
           minWidth: 0,
           flex: 1,
-          mt: 0.75,
+          mt: 0.5,
         }}
       >
         <Box
@@ -160,7 +157,7 @@ export function SpaceOverviewCard({
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 1,
+            gap: 1.15,
             minWidth: 0,
             flex: 1,
             cursor: 'pointer',
@@ -175,17 +172,17 @@ export function SpaceOverviewCard({
           <HealthScoreRing
             score={available ? score : 0}
             color={available ? color : s.border}
-            size={DASHBOARD_UX.healthRingSize}
+            size={Math.max(DASHBOARD_UX.healthRingSize, 58)}
             strokeWidth={DASHBOARD_UX.healthRingStroke}
           />
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
               {t('dashboard.health.title')}
             </Typography>
-            <Typography sx={{ ...DASHBOARD_UX.body, color, fontWeight: 500, mt: 0.1 }}>
+            <Typography sx={{ ...DASHBOARD_UX.link, color, mt: 0.15 }}>
               {available ? t(`dashboard.health.bands.${band}`) : t('dashboard.health.emptyTitle')}
             </Typography>
-            <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, mt: 0.15 }} noWrap>
+            <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, mt: 0.2 }} noWrap>
               {pendingCount > 0
                 ? t('dashboard.health.banner.issuesAttention', { count: pendingCount })
                 : available
@@ -198,7 +195,7 @@ export function SpaceOverviewCard({
         <Button
           variant="outlined"
           size="small"
-          startIcon={<RefreshCw size={14} />}
+          startIcon={<RefreshCw size={DASHBOARD_UX.iconSize} />}
           onClick={(e) => {
             e.stopPropagation();
             onRefresh();
@@ -206,15 +203,18 @@ export function SpaceOverviewCard({
           aria-label={t('common.refresh')}
           sx={{
             flexShrink: 0,
-            height: 30,
-            minHeight: 30,
+            height: DASHBOARD_UX.buttonHeight,
+            minHeight: DASHBOARD_UX.buttonHeight,
             px: 1.25,
             borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-            fontSize: DASHBOARD_UX.button.fontSize,
-            fontWeight: DASHBOARD_UX.button.fontWeight,
-            borderColor: 'primary.main',
-            color: 'primary.dark',
+            ...DASHBOARD_UX.button,
+            borderColor: colors.primary,
+            color: colors.primaryDark,
             bgcolor: s.surface,
+            '&:hover': {
+              borderColor: colors.primaryDark,
+              bgcolor: s.hover,
+            },
           }}
         >
           {t('common.refresh')}

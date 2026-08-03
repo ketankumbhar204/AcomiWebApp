@@ -29,6 +29,7 @@ import { LoadingState } from '@/shared/components/LoadingState';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { DASHBOARD_UX } from '@/modules/dashboard/theme/dashboardUx';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { colors } from '@/shared/theme/colors';
 import { spaceMemberPath, spaceOccupancyWizardPath } from '@/routes/paths';
 import type { TreeSelection } from './HierarchyTree';
 import { AccommodationLifecycleActions } from './AccommodationLifecycleActions';
@@ -385,12 +386,12 @@ export function EntityInspector({
               ) : null}
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{ ...DASHBOARD_UX.cardTitle, fontWeight: 700, mb: 0.5 }}>
+              <Typography sx={{ ...DASHBOARD_UX.cardTitle, mb: 0.5 }}>
                 {b?.name ?? title}
               </Typography>
               {b?.status ? <StatusChip label={t(`accommodation.status.${b.status}`)} /> : null}
               {b?.occupant?.memberName ? (
-                <Typography sx={{ ...DASHBOARD_UX.body, fontWeight: 700, mt: 0.75 }}>
+                <Typography sx={{ ...DASHBOARD_UX.link, mt: 0.75 }}>
                   {b.occupant.memberName}
                 </Typography>
               ) : null}
@@ -481,7 +482,7 @@ export function EntityInspector({
               label: t('occupancy.actions.cancelReservation'),
               icon: <LogOut size={18} />,
               color: '#DD6B20',
-              bgcolor: '#FFFAF0',
+              bgcolor: colors.warningTint,
               onClick: () => openWizard('VACATE', { occupancyId }),
             },
           );
@@ -501,7 +502,7 @@ export function EntityInspector({
               label: t('occupancy.actions.vacate'),
               icon: <LogOut size={18} />,
               color: '#E53E3E',
-              bgcolor: '#FFF5F5',
+              bgcolor: colors.errorTint,
               onClick: () => openWizard('VACATE', { occupancyId }),
             },
           );

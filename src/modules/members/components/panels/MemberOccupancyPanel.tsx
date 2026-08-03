@@ -1,5 +1,6 @@
-import { Stack, Typography } from '@mui/material';
+import { Stack, Typography, useTheme } from '@mui/material';
 import { useTranslation } from 'react-i18next';
+import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { ErrorState } from '@/shared/components/ErrorState';
@@ -16,6 +17,8 @@ type MemberOccupancyPanelProps = {
 
 export function MemberOccupancyPanel({ spaceId, memberId, mode }: MemberOccupancyPanelProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
   const { data, loading, error, reload } = useMemberOccupancies(spaceId, memberId);
 
   if (loading && !data) {
@@ -152,7 +155,7 @@ export function MemberOccupancyPanel({ spaceId, memberId, mode }: MemberOccupanc
       </PageSection>
       <PageSection title={t('membership.workspace.occupancyEvents')}>
         {historyRows.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
+          <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }}>
             {t('membership.workspace.noOccupancyEvents')}
           </Typography>
         ) : (

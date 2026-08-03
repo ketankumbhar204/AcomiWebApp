@@ -1,11 +1,26 @@
 import { Box, Button, Typography } from '@mui/material';
-import { Bell, Building2, Clock3, LayoutDashboard, Package, TriangleAlert, Users, UserRound, UtensilsCrossed, Wallet } from 'lucide-react';
+import {
+  Bell,
+  Building2,
+  ClipboardList,
+  Clock3,
+  LayoutDashboard,
+  Package,
+  TriangleAlert,
+  Users,
+  UserRound,
+  UtensilsCrossed,
+  Wallet,
+} from 'lucide-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLayout } from '@/layouts/AppLayout';
 import type { AppNavSection } from '@/layouts/navTypes';
 import { useLogout } from '@/modules/auth/hooks/useLogout';
+import {
+  CustomerSidebarProfile,
+} from '@/modules/dashboard/components/customer/CustomerSidebarChrome';
 import { SpaceContextSelector } from '@/modules/dashboard/components/SpaceContextSelector';
 import { usePendingActions } from '@/modules/dashboard/hooks/usePendingActions';
 import { DASHBOARD_UX } from '@/modules/dashboard/theme/dashboardUx';
@@ -38,7 +53,13 @@ export function SpaceShellLayout() {
   const { user } = useAuthSession();
   const permissions = useSpacePermissions(spaceId);
   const isOperator = canManageNotifications(permissions);
-  const pending = usePendingActions(spaceId, isOperator || permissions.membershipRole != null);
+  const role = permissions.membershipRole;
+  const isConsumer = role === 'CUSTOMER' || role === 'TENANT';
+  const pending = usePendingActions(
+    spaceId,
+    isOperator || permissions.membershipRole != null,
+    isOperator,
+  );
 
   const space = permissions.space;
   const displayName = user?.fullName?.trim() || user?.mobileNumber || '';
@@ -49,6 +70,61 @@ export function SpaceShellLayout() {
     location.pathname === `/spaces/${spaceId}/`;
 
   const navSections: AppNavSection[] = useMemo(() => {
+    // Customer / tenant chrome — matches approved consumer mock.
+    if (isConsumer && !isOperator) {
+      const consumerItems: AppNavSection['items'] = [
+        {
+          id: 'dashboard',
+          label: t('navigation.dashboard'),
+          to: spaceDashboardPath(spaceId),
+          icon: <LayoutDashboard size={16} />,
+        },
+      ];
+
+      if (permissions.canViewMeals === true) {
+        consumerItems.push({
+          id: 'my-orders',
+          label: t('dashboard.customer.quickActions.myOrders', { defaultValue: 'My Orders' }),
+          to: spaceMealsPath(spaceId),
+          icon: <ClipboardList size={16} />,
+        });
+      }
+
+      if (permissions.membershipRole) {
+        consumerItems.push({
+          id: 'payments',
+          label: t('navigation.payments'),
+          to:
+            space?.spaceType === 'MESS'
+              ? spaceDayMealsPath(spaceId)
+              : spacePaymentsPath(spaceId),
+          icon: <Wallet size={16} />,
+        });
+      }
+
+      const mayComplaints =
+        permissions.canViewAllComplaints === true ||
+        permissions.canManageComplaints === true ||
+        canRaiseComplaint(permissions.membershipRole, permissions.canRaiseComplaint);
+      if (mayComplaints) {
+        consumerItems.push({
+          id: 'complaints',
+          label: t('navigation.complaints'),
+          to: spaceComplaintsPath(spaceId),
+          icon: <TriangleAlert size={16} />,
+        });
+      }
+
+      consumerItems.push({
+        id: 'notifications',
+        label: t('notifications.title'),
+        to: spaceNotificationsPath(spaceId),
+        icon: <Bell size={16} />,
+      });
+
+      return [{ id: 'space', items: consumerItems }];
+    }
+
     const items: AppNavSection['items'] = [
       {
         id: 'dashboard',
@@ -172,6 +248,8 @@ export function SpaceShellLayout() {
       },
     ];
   }, [
+    isConsumer,
+    isOperator,
     pending.totalCount,
     permissions.canManageMembers,
     permissions.canViewAccommodation,
@@ -182,15 +260,25 @@ export function SpaceShellLayout() {
     permissions.canViewAllComplaints,
     permissions.canManageComplaints,
     permissions.canViewInventory,
+    space?.spaceType,
     spaceId,
     t,
   ]);
 
+  const consumerChrome = isConsumer && !isOperator;
+  const isCustomerMealsHome =
+    consumerChrome &&
+    (location.pathname === spaceMealsPath(spaceId) ||
+      location.pathname === `${spaceMealsPath(spaceId)}/`);
+  // Dashboard + My Orders own their page padding; other consumer pages use ContentLayout.
+  const useFullBleedContent = isDashboardRoute || isCustomerMealsHome;
+
   return (
     <AppLayout
       navSections={navSections}
-      contentDense={isDashboardRoute}
-      contentMaxWidth={isDashboardRoute ? false : undefined}
+      contentDense={useFullBleedContent}
+      contentMaxWidth={useFullBleedContent ? false : undefined}
+      padded={!useFullBleedContent}
       headerLeading={
         <SpaceContextSelector
           spaceId={spaceId}
@@ -210,8 +298,7 @@ export function SpaceShellLayout() {
             '& .MuiButton-root': {
               height: DASHBOARD_UX.buttonHeight,
               px: `${DASHBOARD_UX.buttonPx}px`,
-              fontSize: DASHBOARD_UX.button.fontSize,
-              fontWeight: DASHBOARD_UX.button.fontWeight,
+              ...DASHBOARD_UX.button,
               borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
               textTransform: 'none',
             },
@@ -230,15 +317,19 @@ export function SpaceShellLayout() {
         </Box>
       }
       sidebarFooter={
-        <Typography
-          sx={{
-            ...DASHBOARD_UX.sidebarAccount,
-            color: 'text.primary',
-            px: 0.5,
-          }}
-        >
-          {displayName}
-        </Typography>
+        consumerChrome ? (
+          <CustomerSidebarProfile displayName={displayName} role={role} />
+        ) : (
+          <Typography
+            sx={{
+              ...DASHBOARD_UX.sidebarAccount,
+              color: 'text.primary',
+              px: 0.5,
+            }}
+          >
+            {displayName}
+          </Typography>
+        )
       }
     >
       <Outlet />

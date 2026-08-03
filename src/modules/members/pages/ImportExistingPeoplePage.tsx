@@ -1,5 +1,4 @@
 import {
-  Box,
   Button,
   Chip,
   Stack,
@@ -19,6 +18,7 @@ import {
 } from '../hooks/useResidentImportSearch';
 import { enrollMemberInFullMeals } from '../utils/enrollMemberInFullMeals';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { ErrorState } from '@/shared/components/ErrorState';
@@ -27,7 +27,7 @@ import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { SearchToolbar } from '@/shared/components/SearchToolbar';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
-import { spaceMemberPath, spaceMembersPath } from '@/routes/paths';
+import { spaceMembersPath } from '@/routes/paths';
 import { ApiError } from '@/shared/api/errors';
 
 type PeopleFilter = 'all' | 'customers' | 'residents' | 'former';
@@ -54,6 +54,7 @@ export function ImportExistingPeoplePage() {
 
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PeopleFilter>('all');
+  const [pendingImport, setPendingImport] = useState<ResidentPickerItem | null>(null);
 
   const importSearch = useResidentImportSearch(spaceId, query, true);
 
@@ -87,11 +88,11 @@ export function ImportExistingPeoplePage() {
       }
       return memberId;
     },
-    onSuccess: async (memberId) => {
+    onSuccess: async () => {
       enqueueSnackbar(t('membership.add.importSuccessToast'), { variant: 'success' });
+      setPendingImport(null);
       await queryClient.invalidateQueries({ queryKey: ['members', spaceId] });
       await importSearch.refetch();
-      navigate(spaceMemberPath(spaceId, memberId));
     },
     onError: (err) => {
       const message =
@@ -144,8 +145,8 @@ export function ImportExistingPeoplePage() {
         <Button
           size="small"
           variant="contained"
-          disabled={importMutation.isPending}
-          onClick={() => importMutation.mutate(row)}
+          disabled={importMutation.isPending || row.alreadyInTargetSpace}
+          onClick={() => setPendingImport(row)}
           sx={dashContainedButtonSx}
         >
           {t('membership.importPeople.add', { defaultValue: 'Add' })}
@@ -237,6 +238,35 @@ export function ImportExistingPeoplePage() {
           {t('membership.importPeople.foundBadge', { count: importSearch.members.length })}
         </Typography>
       </Stack>
+
+      <ConfirmDialog
+        open={Boolean(pendingImport)}
+        title={t('membership.importPeople.confirmTitle', {
+          defaultValue: 'Add this person?',
+        })}
+        description={
+          pendingImport
+            ? t('membership.importPeople.confirmMessage', {
+                name: pendingImport.fullName,
+                mobile: pendingImport.mobileNumber,
+                defaultValue: `Add ${pendingImport.fullName} (${pendingImport.mobileNumber}) to this mess?`,
+              })
+            : undefined
+        }
+        confirmLabel={t('membership.importPeople.confirmAdd', { defaultValue: 'Add' })}
+        cancelLabel={t('common.cancel')}
+        confirming={importMutation.isPending}
+        onClose={() => {
+          if (!importMutation.isPending) {
+            setPendingImport(null);
+          }
+        }}
+        onConfirm={() => {
+          if (pendingImport) {
+            importMutation.mutate(pendingImport);
+          }
+        }}
+      />
     </PageContainer>
   );
 }

@@ -59,6 +59,7 @@ import type {
 } from '@/shared/types/meals';
 import { CategoryFormDialog } from '../components/CategoryFormDialog';
 import { ConfigureLibraryExtrasDrawer } from '../components/ConfigureLibraryExtrasDrawer';
+import { CreateComboPlannerDialog } from '../components/CreateComboPlannerDialog';
 import { FoodItemFormDrawer } from '../components/FoodItemFormDrawer';
 import { MealComboFormDrawer } from '../components/MealComboFormDrawer';
 import {
@@ -285,10 +286,7 @@ function NameCell({
       <IconBadge accent={accent}>
         <Icon />
       </IconBadge>
-      <Typography
-        sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}
-        noWrap
-      >
+      <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }} noWrap>
         {name}
       </Typography>
     </Box>
@@ -383,7 +381,7 @@ export function MenuLibraryPage() {
   const [editingItem, setEditingItem] = useState<FoodItemResponse | null>(null);
 
   const [comboFormOpen, setComboFormOpen] = useState(false);
-  const [comboFormMode, setComboFormMode] = useState<'create' | 'edit'>('create');
+  const [createComboOpen, setCreateComboOpen] = useState(false);
   const [editingCombo, setEditingCombo] = useState<MealComboResponse | null>(null);
   const [deactivateComboId, setDeactivateComboId] = useState<string | null>(null);
 
@@ -566,8 +564,7 @@ export function MenuLibraryPage() {
       accessor: (row) => (
         <Typography
           sx={{
-            ...DASHBOARD_UX.body,
-            fontWeight: 600,
+            ...DASHBOARD_UX.link,
             color: s.textPrimary,
             fontVariantNumeric: 'tabular-nums',
           }}
@@ -587,7 +584,6 @@ export function MenuLibraryPage() {
               <ComboRowActions
                 onEdit={() => {
                   setEditingCombo(row);
-                  setComboFormMode('edit');
                   setComboFormOpen(true);
                 }}
                 onDeactivate={() => setDeactivateComboId(row.comboId)}
@@ -600,9 +596,7 @@ export function MenuLibraryPage() {
 
   const openCreate = () => {
     if (tab === 'combos') {
-      setEditingCombo(null);
-      setComboFormMode('create');
-      setComboFormOpen(true);
+      setCreateComboOpen(true);
       return;
     }
     setEditingItem(null);
@@ -818,14 +812,7 @@ export function MenuLibraryPage() {
               }
               footer={
                 row.defaultPrice != null ? (
-                  <Typography
-                    sx={{
-                      ...DASHBOARD_UX.body,
-                      fontWeight: 600,
-                      color: s.textPrimary,
-                      mt: 'auto',
-                    }}
-                  >
+                  <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary, mt: 'auto' }}>
                     {`₹${row.defaultPrice}`}
                   </Typography>
                 ) : null
@@ -887,7 +874,6 @@ export function MenuLibraryPage() {
                     <ComboRowActions
                       onEdit={() => {
                         setEditingCombo(row);
-                        setComboFormMode('edit');
                         setComboFormOpen(true);
                       }}
                       onDeactivate={() => setDeactivateComboId(row.comboId)}
@@ -1144,9 +1130,26 @@ export function MenuLibraryPage() {
         }}
       />
 
+      <CreateComboPlannerDialog
+        open={createComboOpen}
+        spaceId={spaceId}
+        variant="library"
+        enableItemQuantities={enableItemQuantities}
+        items={items.items}
+        categories={categories.categories}
+        existingOptions={[]}
+        existingComboNames={combos.combos.map((c) => c.name)}
+        onClose={() => setCreateComboOpen(false)}
+        onCreatedCatalog={reloadAll}
+        onSave={async () => {
+          reloadAll();
+          setCreateComboOpen(false);
+        }}
+      />
+
       <MealComboFormDrawer
         open={comboFormOpen}
-        mode={comboFormMode}
+        mode="edit"
         combo={editingCombo}
         spaceId={spaceId}
         enableItemQuantities={enableItemQuantities}

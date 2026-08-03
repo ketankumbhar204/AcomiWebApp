@@ -10,9 +10,11 @@ import {
   Toolbar,
   Tooltip,
   Typography,
+  useTheme,
 } from '@mui/material';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { APP_NAME } from '@/shared/constants/app';
 import { useAppStore } from '@/store/appStore';
 import { LAYOUT } from './layoutConstants';
@@ -20,6 +22,7 @@ import type { AppNavSection } from './navTypes';
 
 type AppSidebarProps = {
   sections?: AppNavSection[];
+  panel?: React.ReactNode;
   footer?: React.ReactNode;
   variant: 'permanent' | 'temporary';
   open: boolean;
@@ -28,15 +31,19 @@ type AppSidebarProps = {
 
 function SidebarBody({
   sections,
+  panel,
   footer,
   collapsed,
   onNavigate,
 }: {
   sections: AppNavSection[];
+  panel?: React.ReactNode;
   footer?: React.ReactNode;
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
   const toggleSidebarCollapsed = useAppStore((state) => state.toggleSidebarCollapsed);
 
   return (
@@ -51,7 +58,7 @@ function SidebarBody({
         }}
       >
         {!collapsed ? (
-          <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.dark' }}>
+          <Typography sx={{ ...DASHBOARD_UX.spaceName, color: 'primary.dark' }}>
             {APP_NAME}
           </Typography>
         ) : null}
@@ -61,7 +68,11 @@ function SidebarBody({
             onClick={toggleSidebarCollapsed}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            {collapsed ? (
+              <PanelLeftOpen size={DASHBOARD_UX.iconSize} />
+            ) : (
+              <PanelLeftClose size={DASHBOARD_UX.iconSize} />
+            )}
           </IconButton>
         </Tooltip>
       </Toolbar>
@@ -82,17 +93,12 @@ function SidebarBody({
           <Box key={section.id} sx={{ mb: 1.5 }}>
             {section.label && !collapsed ? (
               <Typography
-                variant="overline"
                 sx={{
+                  ...DASHBOARD_UX.sidebarSection,
                   px: 1.5,
                   mb: 0.5,
-                  color: 'text.secondary',
+                  color: s.textMuted,
                   display: 'block',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  letterSpacing: '0.08em',
-                  lineHeight: 1.3,
-                  textTransform: 'uppercase',
                 }}
               >
                 {section.label}
@@ -110,7 +116,7 @@ function SidebarBody({
                       borderRadius: 1,
                       mb: 0.2,
                       py: 0,
-                      minHeight: 36,
+                      minHeight: DASHBOARD_UX.navRowHeight,
                       px: 1.25,
                       justifyContent: collapsed ? 'center' : 'flex-start',
                       position: 'relative',
@@ -128,7 +134,7 @@ function SidebarBody({
                           bgcolor: 'primary.dark',
                         },
                         '& .MuiListItemIcon-root': { color: 'primary.dark' },
-                        '& .MuiListItemText-primary': { fontWeight: 600 },
+                        '& .MuiListItemText-primary': { ...DASHBOARD_UX.sidebarAccount },
                       },
                     }}
                   >
@@ -137,7 +143,10 @@ function SidebarBody({
                         sx={{
                           minWidth: collapsed ? 0 : 32,
                           color: 'text.secondary',
-                          '& svg': { width: 16, height: 16 },
+                          '& svg': {
+                            width: DASHBOARD_UX.iconSize,
+                            height: DASHBOARD_UX.iconSize,
+                          },
                         }}
                       >
                         <Badge
@@ -146,10 +155,9 @@ function SidebarBody({
                           invisible={!item.badgeCount}
                           sx={{
                             '& .MuiBadge-badge': {
-                              minWidth: 14,
-                              height: 14,
-                              fontSize: 10,
-                              fontWeight: 600,
+                              minWidth: DASHBOARD_UX.badgeSize,
+                              height: DASHBOARD_UX.badgeSize,
+                              ...DASHBOARD_UX.badge,
                             },
                           }}
                         >
@@ -163,9 +171,8 @@ function SidebarBody({
                         slotProps={{
                           primary: {
                             sx: {
-                              fontSize: '0.875rem',
-                              fontWeight: 500,
-                              lineHeight: 1.3,
+                              ...DASHBOARD_UX.sidebar,
+                              color: 'inherit',
                             },
                           },
                         }}
@@ -191,6 +198,8 @@ function SidebarBody({
         ))}
       </Box>
 
+      {!collapsed && panel ? <Box sx={{ flexShrink: 0, px: 0.5 }}>{panel}</Box> : null}
+
       {footer ? (
         <Box sx={{ p: 1.5, borderTop: 1, borderColor: 'divider', flexShrink: 0 }}>{footer}</Box>
       ) : null}
@@ -200,6 +209,7 @@ function SidebarBody({
 
 export function AppSidebar({
   sections = [],
+  panel,
   footer,
   variant,
   open,
@@ -225,7 +235,13 @@ export function AppSidebar({
           },
         }}
       >
-        <SidebarBody sections={sections} footer={footer} collapsed={false} onNavigate={onClose} />
+        <SidebarBody
+          sections={sections}
+          panel={panel}
+          footer={footer}
+          collapsed={false}
+          onNavigate={onClose}
+        />
       </Drawer>
     );
   }
@@ -235,7 +251,6 @@ export function AppSidebar({
       variant="permanent"
       open
       sx={{
-        // Desktop chrome: permanent sidebar from md up (mobile uses temporary drawer)
         display: { xs: 'none', md: 'block' },
         width,
         flexShrink: 0,
@@ -252,7 +267,12 @@ export function AppSidebar({
         },
       }}
     >
-      <SidebarBody sections={sections} footer={footer} collapsed={sidebarCollapsed} />
+      <SidebarBody
+        sections={sections}
+        panel={panel}
+        footer={footer}
+        collapsed={sidebarCollapsed}
+      />
     </Drawer>
   );
 }

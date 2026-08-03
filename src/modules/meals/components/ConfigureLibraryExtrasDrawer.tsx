@@ -319,10 +319,7 @@ export function ConfigureLibraryExtrasDrawer({
                           }}
                         >
                           <Box sx={{ flex: '1 1 140px', minWidth: 0 }}>
-                            <Typography
-                              sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}
-                              noWrap
-                            >
+                            <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }} noWrap>
                               {item.name}
                             </Typography>
                           </Box>

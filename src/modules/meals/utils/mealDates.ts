@@ -23,3 +23,8 @@ export function formatMenuDateLabel(isoDate: string, locale?: string): string {
     return isoDate;
   }
 }
+
+/** Matches mobile `isPastMenuDate` — past calendar days are read-only. */
+export function isPastMenuDate(isoDate: string): boolean {
+  return isoDate < todayIsoDate();
+}

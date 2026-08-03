@@ -4,6 +4,7 @@ import {
   IconButton,
   Stack,
   Typography,
+  useMediaQuery,
   useTheme,
 } from '@mui/material';
 import { Bell, RefreshCw } from 'lucide-react';
@@ -12,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { IconBadge } from '@/modules/dashboard/components/IconBadge';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { AppDrawer } from '@/shared/components/AppDrawer';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { LoadingState } from '@/shared/components/LoadingState';
@@ -27,6 +29,7 @@ import {
   type NotificationFilterId,
 } from '@/shared/utils/notificationVisuals';
 import { NotificationCard } from '../components/NotificationCard';
+import { NotificationInspector } from '../components/NotificationInspector';
 import { useSpaceNotifications } from '../hooks/useSpaceNotifications';
 
 function startOfDay(date: Date): number {
@@ -76,6 +79,7 @@ export function NotificationsPage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const isLgDown = useMediaQuery(theme.breakpoints.down('lg'));
   const permissions = useSpacePermissions(spaceId);
   const { notifications, unreadCount, loading, error, markRead, isOperator, reload } =
     useSpaceNotifications(spaceId, Boolean(spaceId));
@@ -83,6 +87,7 @@ export function NotificationsPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<NotificationFilterId>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [didAutoSelect, setDidAutoSelect] = useState(false);
 
   useEffect(() => {
     document.title = `${t('notifications.title')} · ${t('common.appName')}`;
@@ -145,17 +150,52 @@ export function NotificationsPage() {
     return groups;
   }, [filtered]);
 
-  const onPress = async (notification: SpaceNotification) => {
+  const selectedNotification = useMemo(
+    () => notifications.find((n) => n.notificationId === selectedId) ?? null,
+    [notifications, selectedId],
+  );
+
+  // Keep selection valid when filter/search changes
+  useEffect(() => {
+    if (!selectedId) return;
+    if (!filtered.some((n) => n.notificationId === selectedId)) {
+      setSelectedId(null);
+    }
+  }, [filtered, selectedId]);
+
+  // Auto-open first row on desktop once list is ready
+  useEffect(() => {
+    if (isLgDown || didAutoSelect || selectedId || filtered.length === 0) return;
+    setSelectedId(filtered[0]!.notificationId);
+    setDidAutoSelect(true);
+  }, [didAutoSelect, filtered, isLgDown, selectedId]);
+
+  const selectNotification = async (notification: SpaceNotification) => {
     setSelectedId(notification.notificationId);
     if (notification.status === 'UNREAD') {
       try {
         await markRead(notification.notificationId);
       } catch {
-        // Still navigate even if mark-read fails (mobile parity).
+        // Keep selection even if mark-read fails.
       }
     }
+  };
+
+  const openRelated = (notification: SpaceNotification) => {
     navigateFromNotificationType(navigate, spaceId, notification, isOperator);
   };
+
+  const showDesktopPanel = !isLgDown;
+
+  const inspector = (
+    <NotificationInspector
+      notification={selectedNotification}
+      isOperator={isOperator}
+      framed={!isLgDown}
+      onClose={() => setSelectedId(null)}
+      onOpenRelated={openRelated}
+    />
+  );
 
   const renderBucket = (key: NotificationBucket, items: SpaceNotification[]) => {
     if (items.length === 0) return null;
@@ -185,7 +225,7 @@ export function NotificationsPage() {
               notification={notification}
               timeLabel={formatTime(notification.createdAt)}
               selected={selectedId === notification.notificationId}
-              onClick={() => void onPress(notification)}
+              onClick={() => void selectNotification(notification)}
             />
           ))}
         </Stack>
@@ -268,8 +308,7 @@ export function NotificationsPage() {
                   sx={{
                     height: DASHBOARD_UX.buttonHeight,
                     borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-                    fontSize: DASHBOARD_UX.button.fontSize,
-                    fontWeight: DASHBOARD_UX.button.fontWeight,
+                    ...DASHBOARD_UX.button,
                     bgcolor: active ? accent : `${accent}1A`,
                     color: active ? '#FFFFFF' : accent,
                     border: 'none',
@@ -293,23 +332,88 @@ export function NotificationsPage() {
             onRetry={() => void reload()}
           />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            icon={
-              <IconBadge accent={colors.primaryDark}>
-                <Bell />
-              </IconBadge>
-            }
-            title={t('notifications.emptyTitle')}
-            description={t('notifications.emptyDescription')}
-          />
+          <Box
+            sx={{
+              display: 'grid',
+              gap: `${DASHBOARD_UX.cardGap}px`,
+              gridTemplateColumns: showDesktopPanel
+                ? 'minmax(0, 1.85fr) minmax(300px, 0.95fr)'
+                : '1fr',
+              alignItems: 'start',
+            }}
+          >
+            <EmptyState
+              icon={
+                <IconBadge accent={colors.primaryDark}>
+                  <Bell />
+                </IconBadge>
+              }
+              title={t('notifications.emptyTitle')}
+              description={t('notifications.emptyDescription')}
+            />
+            {showDesktopPanel ? (
+              <Box
+                sx={{
+                  position: 'sticky',
+                  top: 12,
+                  alignSelf: 'start',
+                  height: 'calc(100vh - 112px)',
+                  maxHeight: 'calc(100vh - 112px)',
+                  minHeight: 360,
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                {inspector}
+              </Box>
+            ) : null}
+          </Box>
         ) : (
-          <Stack spacing={`${DASHBOARD_UX.cardGap}px`}>
-            {renderBucket('today', buckets.today)}
-            {renderBucket('yesterday', buckets.yesterday)}
-            {renderBucket('earlier', buckets.earlier)}
-          </Stack>
+          <Box
+            sx={{
+              display: 'grid',
+              gap: `${DASHBOARD_UX.cardGap}px`,
+              gridTemplateColumns: showDesktopPanel
+                ? 'minmax(0, 1.85fr) minmax(300px, 0.95fr)'
+                : '1fr',
+              alignItems: 'start',
+            }}
+          >
+            <Stack spacing={`${DASHBOARD_UX.cardGap}px`} sx={{ minWidth: 0 }}>
+              {renderBucket('today', buckets.today)}
+              {renderBucket('yesterday', buckets.yesterday)}
+              {renderBucket('earlier', buckets.earlier)}
+            </Stack>
+
+            {showDesktopPanel ? (
+              <Box
+                sx={{
+                  position: 'sticky',
+                  top: 12,
+                  alignSelf: 'start',
+                  height: 'calc(100vh - 112px)',
+                  maxHeight: 'calc(100vh - 112px)',
+                  minHeight: 360,
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                {inspector}
+              </Box>
+            ) : null}
+          </Box>
         )}
       </Stack>
+
+      <AppDrawer
+        open={Boolean(selectedId) && isLgDown}
+        onClose={() => setSelectedId(null)}
+        width={400}
+      >
+        {inspector}
+      </AppDrawer>
     </PageContainer>
   );
 }

@@ -170,7 +170,7 @@ export function GlobalAttentionPage() {
                         endIcon={<ChevronRight size={16} />}
                       >
                         <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }} noWrap>
+                          <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }} noWrap>
                             {item.title}
                           </Typography>
                           {item.message ? (

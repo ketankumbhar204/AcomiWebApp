@@ -32,7 +32,6 @@ export function StatusChip({ label, tone = 'default', size = 'small' }: StatusCh
         height: size === 'small' ? 22 : 28,
         borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
         ...DASHBOARD_UX.badge,
-        fontSize: DASHBOARD_UX.badge.fontSize,
         bgcolor: s.surface,
         '& .MuiChip-label': { px: 0.75 },
       }}

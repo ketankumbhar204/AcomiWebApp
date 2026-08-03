@@ -12,6 +12,7 @@ import type {
   FoodCategoryResponse,
   FoodItemResponse,
   MealComboResponse,
+  MenuHistoryPageResponse,
   MealDeliveryLocation,
   MealEligibilitySummaryResponse,
   MealEligibleParticipantResponse,
@@ -38,6 +39,7 @@ import type {
   UpsertDailyMenuRequest,
 } from '@/shared/types/meals';
 import type { SubmitPaymentProofRequest } from '@/shared/types/payments';
+import { normalizeMemberMealActivityDayDetail } from '../utils/memberMealActivityDayDetail';
 
 export const mealsApi = {
   getMealPlans: (spaceId: string) =>
@@ -222,6 +224,28 @@ export const mealsApi = {
       }),
     ),
 
+  getMenuHistory: (
+    spaceId: string,
+    mealType: MealType,
+    params?: { search?: string; page?: number; limit?: number },
+  ) =>
+    unwrapApiResponse(
+      apiClient.get<ApiResponse<MenuHistoryPageResponse>>(`/spaces/${spaceId}/menu-history`, {
+        params: {
+          mealType,
+          search: params?.search?.trim() || undefined,
+          page: params?.page ?? 0,
+          limit: params?.limit ?? 50,
+        },
+      }),
+    ),
+
+  clearMenuHistory: async (spaceId: string, mealType: MealType) => {
+    await unwrapVoidResponse(
+      apiClient.delete(`/spaces/${spaceId}/menu-history`, { params: { mealType } }),
+    );
+  },
+
   getDailyMenu: (spaceId: string, menuDate: string, mealType: MealType) =>
     unwrapApiResponse(
       apiClient.get<ApiResponse<DailyMenuResponse>>(
@@ -359,18 +383,20 @@ export const mealsApi = {
   getMemberMealActivityDay: async (spaceId: string, memberId: string, date: string) => {
     const encoded = encodeURIComponent(date);
     try {
-      return await unwrapApiResponse(
-        apiClient.get<ApiResponse<MemberMealActivityDayDetail>>(
+      const raw = await unwrapApiResponse(
+        apiClient.get<ApiResponse<Record<string, unknown>>>(
           `/spaces/${spaceId}/members/${memberId}/meal-activity/${encoded}`,
         ),
       );
+      return normalizeMemberMealActivityDayDetail(raw as Record<string, unknown>);
     } catch {
-      return unwrapApiResponse(
-        apiClient.get<ApiResponse<MemberMealActivityDayDetail>>(
+      const raw = await unwrapApiResponse(
+        apiClient.get<ApiResponse<Record<string, unknown>>>(
           `/spaces/${spaceId}/members/${memberId}/meal-activity`,
           { params: { date } },
         ),
       );
+      return normalizeMemberMealActivityDayDetail(raw as Record<string, unknown>);
     }
   },
 

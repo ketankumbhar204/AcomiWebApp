@@ -341,10 +341,8 @@ export function AccommodationLifecycleActions({
               </Box>
               <Typography
                 sx={{
-                  ...DASHBOARD_UX.metricCaption,
+                  ...DASHBOARD_UX.link,
                   color: 'inherit',
-                  fontWeight: 600,
-                  lineHeight: 1.2,
                 }}
               >
                 {cell.label}
@@ -365,7 +363,10 @@ export function AccommodationLifecycleActions({
           </Button>
         ) : null}
         {blockedHint ? (
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+          <Typography
+            color="text.secondary"
+            sx={{ ...DASHBOARD_UX.smallCaption, mt: 0.5, display: 'block' }}
+          >
             {blockedHint}
           </Typography>
         ) : null}
@@ -425,7 +426,7 @@ export function AccommodationLifecycleActions({
           </Button>
         ) : null}
         {blockedHint ? (
-          <Typography variant="caption" color="text.secondary">
+          <Typography color="text.secondary" sx={{ ...DASHBOARD_UX.smallCaption }}>
             {blockedHint}
           </Typography>
         ) : null}

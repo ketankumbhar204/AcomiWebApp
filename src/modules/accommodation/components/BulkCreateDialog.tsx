@@ -11,11 +11,13 @@ import {
   Stack,
   TextField,
   Typography,
+  useTheme,
 } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
+import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { accommodationApi } from '../api/accommodationApi';
 import type { BedLabelStyle, RoomType } from '@/shared/types/accommodation';
@@ -47,6 +49,8 @@ type BulkCreateDialogProps =
  */
 export function BulkCreateDialog(props: BulkCreateDialogProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
   const [count, setCount] = useState('3');
@@ -137,7 +141,7 @@ export function BulkCreateDialog(props: BulkCreateDialogProps) {
           : t('accommodation.bulk.rooms.title', { defaultValue: 'Bulk add rooms' })}
       </DialogTitle>
       <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mb: 2 }}>
           {props.parentLabel}
         </Typography>
         <Stack spacing={2} sx={{ pt: 0.5 }}>
@@ -206,7 +210,7 @@ export function BulkCreateDialog(props: BulkCreateDialogProps) {
             </>
           )}
           {fieldError ? (
-            <Typography variant="caption" color="error">
+            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: 'error.main' }}>
               {fieldError}
             </Typography>
           ) : null}

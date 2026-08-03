@@ -11,6 +11,8 @@ import type { AppNavSection } from './navTypes';
 type AppLayoutProps = {
   children?: ReactNode;
   navSections?: AppNavSection[];
+  /** Optional panel between nav list and footer (e.g. customer space card). */
+  sidebarPanel?: ReactNode;
   sidebarFooter?: ReactNode;
   /** Space selector / primary context — rendered on the left of the header. */
   headerLeading?: ReactNode;
@@ -33,6 +35,7 @@ type AppLayoutProps = {
 export function AppLayout({
   children,
   navSections = [],
+  sidebarPanel,
   sidebarFooter,
   headerLeading,
   headerTitle,
@@ -62,13 +65,20 @@ export function AppLayout({
     >
       <SkipLink />
       {isMdUp ? (
-        <AppSidebar variant="permanent" open sections={navSections} footer={sidebarFooter} />
+        <AppSidebar
+          variant="permanent"
+          open
+          sections={navSections}
+          panel={sidebarPanel}
+          footer={sidebarFooter}
+        />
       ) : (
         <AppSidebar
           variant="temporary"
           open={mobileNavOpen}
           onClose={() => setMobileNavOpen(false)}
           sections={navSections}
+          panel={sidebarPanel}
           footer={sidebarFooter}
         />
       )}
@@ -94,13 +104,14 @@ export function AppLayout({
           component="main"
           id={MAIN_CONTENT_ID}
           tabIndex={-1}
-          sx={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'auto', outline: 'none' }}
+          sx={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'auto', outline: 'none', scrollbarGutter: 'stable' }}
         >
           {padded ? (
             <ContentLayout maxWidth={contentMaxWidth} dense={contentDense}>
               {content}
             </ContentLayout>
           ) : (
+            // Dashboard owns its own ScaleShell — avoid double-wrapping.
             content
           )}
         </Box>

@@ -1,11 +1,12 @@
 import { Box, Stack, Typography, useTheme } from '@mui/material';
-import { Moon, Sun, Sunrise } from 'lucide-react';
+import { CircleDashed, Moon, Package, Sun, Sunrise, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useDailyMenus } from '@/modules/meals/hooks/useMeals';
+import { useDailyMenus, useMealHeadcountDay } from '@/modules/meals/hooks/useMeals';
 import { spaceMealHeadcountPath, spaceMealsPath } from '@/routes/paths';
+import { StatusChip } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
 import type { DailyMenuResponse, MealType } from '@/shared/types/meals';
 import { IconBadge } from './IconBadge';
@@ -36,9 +37,8 @@ type MealOperationsTodayCardProps = {
 };
 
 /**
- * Compact Row-1 center card:
- * Header = title + Shared / Not shared / Empty (top-right)
- * Body = Breakfast · Lunch · Dinner slots
+ * Row-1 center — Meal Operations (Today).
+ * Header chips + Breakfast / Lunch / Dinner tiles with headcount.
  */
 export function MealOperationsTodayCard({
   spaceId,
@@ -50,6 +50,7 @@ export function MealOperationsTodayCard({
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const menus = useDailyMenus(spaceId, menuDate, enabled);
+  const headcount = useMealHeadcountDay(spaceId, menuDate, enabled);
 
   const summary = useMemo(() => {
     let shared = 0;
@@ -63,6 +64,14 @@ export function MealOperationsTodayCard({
     }
     return { shared, notShared, empty };
   }, [menus.menus]);
+
+  const headcountByType = useMemo(() => {
+    const map: Partial<Record<MealType, number>> = {};
+    for (const slot of headcount.headcount?.slots ?? []) {
+      map[slot.mealType] = slot.mealsToPrepare;
+    }
+    return map;
+  }, [headcount.headcount]);
 
   const goPlan = () => navigate(spaceMealsPath(spaceId, menuDate));
   const goHeadcount = (mealType: MealType) =>
@@ -92,14 +101,18 @@ export function MealOperationsTodayCard({
     >
       <Stack
         direction="row"
-        spacing={1.5}
-        sx={{ alignItems: 'center', justifyContent: 'space-between', minWidth: 0 }}
+        spacing={1}
+        sx={{ alignItems: 'center', justifyContent: 'space-between', minWidth: 0, gap: 1 }}
       >
         <Typography
           sx={{
             ...DASHBOARD_UX.sectionHeading,
             color: s.textPrimary,
-            flexShrink: 0,
+            flexShrink: 1,
+            minWidth: 0,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}
         >
           {t('dashboard.mealOperations.titleToday', {
@@ -107,10 +120,28 @@ export function MealOperationsTodayCard({
           })}
         </Typography>
 
-        <Stack direction="row" spacing={1.75} sx={{ alignItems: 'flex-end', flexShrink: 0 }}>
-          <HeaderMetric label={t('dashboard.todaysOverview.shared')} value={summary.shared} />
-          <HeaderMetric label={t('dashboard.todaysOverview.notShared')} value={summary.notShared} />
-          <HeaderMetric label={t('dashboard.todaysOverview.empty')} value={summary.empty} />
+        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexShrink: 0 }}>
+          <SummaryChip
+            icon={<Users size={12} strokeWidth={2.4} />}
+            value={summary.shared}
+            label={t('dashboard.todaysOverview.shared')}
+            accent={colors.success}
+            soft={s.successTint}
+          />
+          <SummaryChip
+            icon={<Package size={12} strokeWidth={2.4} />}
+            value={summary.notShared}
+            label={t('dashboard.todaysOverview.notShared')}
+            accent="#D97706"
+            soft={s.warningTint}
+          />
+          <SummaryChip
+            icon={<CircleDashed size={12} strokeWidth={2.4} />}
+            value={summary.empty}
+            label={t('dashboard.todaysOverview.empty')}
+            accent={s.textMuted}
+            soft={s.elevated}
+          />
         </Stack>
       </Stack>
 
@@ -129,13 +160,18 @@ export function MealOperationsTodayCard({
           const Icon = ICONS[mealType];
           const accent = ACCENTS[mealType];
           const isShared = planned && menu?.status === 'PUBLISHED';
+          const count = headcountByType[mealType];
+
           let statusLabel = t('meals.status.empty', { defaultValue: 'Empty' });
+          let statusTone: 'success' | 'warning' | 'neutral' = 'neutral';
           if (isShared) {
-            statusLabel = t('meals.status.PUBLISHED', { defaultValue: 'Shared' });
+            statusLabel = t('meals.status.PUBLISHED', { defaultValue: 'Published' });
+            statusTone = 'success';
           } else if (planned) {
             statusLabel = t(`meals.status.${menu?.status ?? 'DRAFT'}`, {
               defaultValue: 'Not shared',
             });
+            statusTone = 'warning';
           }
 
           const onSlotPress = () => {
@@ -161,20 +197,20 @@ export function MealOperationsTodayCard({
               aria-label={`${t(`meals.mealType.${mealType}`)} — ${statusLabel}`}
               sx={{
                 minWidth: 0,
-                px: 1,
-                py: 0.85,
+                px: 1.1,
+                py: 1,
                 bgcolor: s.elevated,
                 border: `1px solid ${s.border}`,
                 borderRadius: `${DASHBOARD_UX.tileRadius}px`,
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'center',
-                gap: 0.25,
+                gap: 0.35,
                 cursor: 'pointer',
                 transition: DASHBOARD_UX.transition,
                 '&:hover': {
                   bgcolor: s.surface,
                   boxShadow: s.shadow,
+                  transform: 'translateY(-1px)',
                 },
                 '&:focus-visible': {
                   outline: `2px solid ${colors.primary}`,
@@ -182,7 +218,7 @@ export function MealOperationsTodayCard({
                 },
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, minWidth: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.65, minWidth: 0 }}>
                 <IconBadge accent={accent}>
                   <Icon />
                 </IconBadge>
@@ -193,23 +229,50 @@ export function MealOperationsTodayCard({
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
+                    flex: 1,
+                    minWidth: 0,
                   }}
                 >
                   {t(`meals.mealType.${mealType}`)}
                 </Typography>
               </Box>
-              <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }} noWrap>
-                {statusLabel}
-              </Typography>
+
+              <StatusChip label={statusLabel} tone={statusTone} />
+
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                {isShared && count != null ? (
+                  <>
+                    <Typography
+                      sx={{
+                        ...DASHBOARD_UX.largeNumber,
+                        color: s.textPrimary,
+                      }}
+                    >
+                      {count}
+                    </Typography>
+                    <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted, mt: 0.1 }}>
+                      {t('dashboard.headcount.label', { defaultValue: 'Headcount' })}
+                    </Typography>
+                  </>
+                ) : (
+                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mt: 0.25 }}>
+                    {planned
+                      ? t('dashboard.todaysOverview.notShared')
+                      : t('meals.planning.emptySlot', { defaultValue: 'Not planned' })}
+                  </Typography>
+                )}
+              </Box>
+
               <Typography
                 sx={{
                   ...DASHBOARD_UX.link,
                   color: 'primary.dark',
                   alignSelf: 'flex-start',
+                  mt: 'auto',
                 }}
               >
                 {isShared
-                  ? `${t('dashboard.headcount.view', { defaultValue: 'View headcount' })} →`
+                  ? `${t('dashboard.headcount.viewDetails', { defaultValue: 'View details' })} →`
                   : `${t('dashboard.mealOperations.planMenu')} →`}
               </Typography>
             </Box>
@@ -220,13 +283,52 @@ export function MealOperationsTodayCard({
   );
 }
 
-function HeaderMetric({ label, value }: { label: string; value: number }) {
+function SummaryChip({
+  icon,
+  value,
+  label,
+  accent,
+  soft,
+}: {
+  icon: ReactNode;
+  value: number;
+  label: string;
+  accent: string;
+  soft: string;
+}) {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+
   return (
-    <Box sx={{ textAlign: 'right', minWidth: 36 }}>
-      <Typography sx={{ ...DASHBOARD_UX.counterValue, color: s.textPrimary }}>{value}</Typography>
-      <Typography sx={{ ...DASHBOARD_UX.counterLabel, color: s.textSecondary, mt: 0.1 }}>
+    <Box
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.45,
+        px: 0.75,
+        py: 0.35,
+        borderRadius: 999,
+        bgcolor: soft,
+        border: `1px solid ${accent}33`,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <Box sx={{ color: accent, display: 'flex', alignItems: 'center' }}>{icon}</Box>
+      <Typography
+        sx={{
+          ...DASHBOARD_UX.badge,
+          color: s.textPrimary,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {value}
+      </Typography>
+      <Typography
+        sx={{
+          ...DASHBOARD_UX.badge,
+          color: accent,
+        }}
+      >
         {label}
       </Typography>
     </Box>

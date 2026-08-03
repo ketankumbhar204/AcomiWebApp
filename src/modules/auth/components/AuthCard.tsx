@@ -42,7 +42,7 @@ export function AuthCard({ children }: AuthCardProps) {
           }}
           aria-hidden
         >
-          <Typography sx={{ fontSize: 18, fontWeight: 700, lineHeight: 1 }}>C</Typography>
+          <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: 'inherit' }}>C</Typography>
         </Box>
         <Typography
           sx={{

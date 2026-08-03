@@ -127,10 +127,8 @@ function OverviewMetric({ icon: Icon, accent, label, value, hint, valueColor }: 
       </Box>
       <Typography
         sx={{
-          ...DASHBOARD_UX.largeNumber,
+          ...DASHBOARD_UX.counterValue,
           color: valueColor ?? s.textPrimary,
-          fontSize: '1.375rem',
-          lineHeight: '1.75rem',
         }}
       >
         {value}
@@ -157,7 +155,7 @@ function DetailField({ icon: Icon, label, value }: DetailFieldProps) {
       </IconBadge>
       <Box sx={{ minWidth: 0 }}>
         <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textMuted }}>{label}</Typography>
-        <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary, fontWeight: 600 }}>
+        <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
           {value}
         </Typography>
       </Box>
@@ -467,7 +465,6 @@ export function SpaceDetailsPage() {
                       ...DASHBOARD_UX.cardTitle,
                       color: s.textPrimary,
                       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                      fontSize: '0.8125rem',
                       wordBreak: 'break-all',
                     }}
                   >
@@ -514,7 +511,6 @@ export function SpaceDetailsPage() {
                       ...DASHBOARD_UX.cardTitle,
                       color: colors.primaryDark,
                       mt: 0.25,
-                      fontWeight: 700,
                     }}
                   >
                     {planLabel}

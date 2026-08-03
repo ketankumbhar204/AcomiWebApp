@@ -1,7 +1,8 @@
-import { AppBar, Box, IconButton, Toolbar, Tooltip, Typography } from '@mui/material';
+import { AppBar, Box, IconButton, Toolbar, Tooltip, Typography, useTheme } from '@mui/material';
 import { Menu, Moon, Sun } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { useAppStore } from '@/store/appStore';
 import { LAYOUT } from './layoutConstants';
 
@@ -22,6 +23,8 @@ export function AppHeader({
   onMenuClick,
 }: AppHeaderProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
   const themeMode = useAppStore((state) => state.themeMode);
   const toggleThemeMode = useAppStore((state) => state.toggleThemeMode);
   const themeLabel =
@@ -39,7 +42,7 @@ export function AppHeader({
         borderColor: 'divider',
         bgcolor: 'background.paper',
         color: 'text.primary',
-        zIndex: (theme) => theme.zIndex.appBar,
+        zIndex: (z) => z.zIndex.appBar,
       }}
     >
       <Toolbar
@@ -74,12 +77,12 @@ export function AppHeader({
         {!leading && (title || subtitle) ? (
           <Box sx={{ flex: 1, minWidth: 0 }}>
             {title ? (
-              <Typography variant="h6" noWrap sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+              <Typography sx={{ ...DASHBOARD_UX.spaceName, color: s.textPrimary }} noWrap>
                 {title}
               </Typography>
             ) : null}
             {subtitle ? (
-              <Typography variant="body2" color="text.secondary" noWrap>
+              <Typography sx={{ ...DASHBOARD_UX.spaceRole, color: s.textSecondary }} noWrap>
                 {subtitle}
               </Typography>
             ) : null}
@@ -92,7 +95,11 @@ export function AppHeader({
           {actions}
           <Tooltip title={themeLabel}>
             <IconButton onClick={toggleThemeMode} aria-label={themeLabel}>
-              {themeMode === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+              {themeMode === 'light' ? (
+                <Moon size={DASHBOARD_UX.iconSize} />
+              ) : (
+                <Sun size={DASHBOARD_UX.iconSize} />
+              )}
             </IconButton>
           </Tooltip>
         </Box>

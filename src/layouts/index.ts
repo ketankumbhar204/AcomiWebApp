@@ -5,5 +5,6 @@ export { BlankLayout } from './BlankLayout';
 export { AppHeader } from './AppHeader';
 export { AppSidebar } from './AppSidebar';
 export { ContentLayout } from './ContentLayout';
+export { ScaleShell, DashboardScaleShell } from './ScaleShell';
 export { LAYOUT } from './layoutConstants';
 export type { AppNavItem, AppNavSection } from './navTypes';

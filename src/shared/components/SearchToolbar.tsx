@@ -28,6 +28,8 @@ export function SearchToolbar({
         alignItems: 'center',
         gap: `${DASHBOARD_UX.internalGap + 4}px`,
         flexWrap: 'wrap',
+        width: '100%',
+        minWidth: 0,
       }}
     >
       <TextField
@@ -37,14 +39,15 @@ export function SearchToolbar({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         sx={{
-          minWidth: { xs: '100%', sm: 280 },
+          width: '100%',
+          minWidth: 0,
           flex: 1,
           '& .MuiOutlinedInput-root': {
             minHeight: DASHBOARD_UX.buttonHeight,
             height: DASHBOARD_UX.buttonHeight,
             borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
             bgcolor: s.surface,
-            fontSize: DASHBOARD_UX.body.fontSize,
+            ...DASHBOARD_UX.inputText,
           },
         }}
         slotProps={{
@@ -57,7 +60,7 @@ export function SearchToolbar({
             endAdornment: value ? (
               <InputAdornment position="end">
                 <IconButton size="small" aria-label="Clear search" onClick={() => onChange('')}>
-                  <X size={14} />
+                  <X size={DASHBOARD_UX.iconSize} />
                 </IconButton>
               </InputAdornment>
             ) : undefined,

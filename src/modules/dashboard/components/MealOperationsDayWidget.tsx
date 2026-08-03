@@ -1,5 +1,5 @@
-import { Box, IconButton, Link, Stack, Typography, useTheme } from '@mui/material';
-import { ChevronLeft, ChevronRight, Moon, Sun, Sunrise } from 'lucide-react';
+import { Box, Link, Stack, Typography, useTheme } from '@mui/material';
+import { Moon, Sun, Sunrise } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +16,7 @@ import {
   todayIsoDate,
 } from '@/modules/meals/utils/mealDates';
 import { spaceMealsPath } from '@/routes/paths';
+import { PeriodDayNav } from '@/shared/components/PeriodDayNav';
 import { colors } from '@/shared/theme/colors';
 import type { DailyMenuResponse, MealType } from '@/shared/types/meals';
 import { IconBadge } from './IconBadge';
@@ -107,34 +108,19 @@ export function MealOperationsDayWidget({ spaceId, enabled }: MealOperationsDayW
         <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
           {t('dashboard.mealOperations.title')}
         </Typography>
-        <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center', flexShrink: 0 }}>
-          <IconButton
-            size="small"
-            aria-label={t('common.previous', { defaultValue: 'Previous day' })}
-            onClick={() => setMenuDate((d) => addDaysIso(d, -1))}
-            sx={{ p: 0.5 }}
-          >
-            <ChevronLeft size={14} />
-          </IconButton>
-          <Typography
-            sx={{
-              ...DASHBOARD_UX.button,
-              color: s.textPrimary,
-              minWidth: 136,
-              textAlign: 'center',
-            }}
-          >
-            {formatMenuDateLabel(menuDate)}
-            {isToday ? ` · ${t('common.today', { defaultValue: 'Today' })}` : ''}
-          </Typography>
-          <IconButton
-            size="small"
-            aria-label={t('common.next', { defaultValue: 'Next day' })}
-            onClick={() => setMenuDate((d) => addDaysIso(d, 1))}
-            sx={{ p: 0.5 }}
-          >
-            <ChevronRight size={14} />
-          </IconButton>
+        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexShrink: 0 }}>
+          <PeriodDayNav
+            date={menuDate}
+            onPrevious={() => setMenuDate((d) => addDaysIso(d, -1))}
+            onNext={() => setMenuDate((d) => addDaysIso(d, 1))}
+            onDateSelect={setMenuDate}
+            label={
+              isToday
+                ? `${formatMenuDateLabel(menuDate)} · ${t('common.today', { defaultValue: 'Today' })}`
+                : formatMenuDateLabel(menuDate)
+            }
+            size="compact"
+          />
           <Link
             component="button"
             type="button"

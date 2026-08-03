@@ -8,11 +8,13 @@ import {
   Stack,
   TextField,
   Typography,
+  useTheme,
 } from '@mui/material';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { AppDrawer } from '@/shared/components/AppDrawer';
+import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StickyFooter } from '@/shared/components/StickyFooter';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type { InventoryItem, InventoryTxnType } from '@/shared/types/inventory';
@@ -43,6 +45,8 @@ function StockMoveBody({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const mutations = useInventoryMutations(spaceId);
   const [type, setType] = useState<MoveKind>(initialType);
@@ -89,11 +93,11 @@ function StockMoveBody({
 
   return (
     <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Typography variant="h6" sx={{ fontWeight: 700 }}>
+      <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
         {t(`inventory.actions.${actionKey}`)}
       </Typography>
       {item ? (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mb: 2 }}>
           {item.name} · {formatStockQty(availableStock(item), item.unit)}{' '}
           {t('inventory.details.available').toLowerCase()}
         </Typography>

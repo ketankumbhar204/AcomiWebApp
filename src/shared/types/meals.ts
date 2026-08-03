@@ -134,6 +134,34 @@ export interface MealComboResponse {
   items?: Array<{ itemId: string; name: string; foodType?: FoodType; quantity?: number }>;
 }
 
+export type MenuHistoryEntryType = 'COMBO' | 'ITEM';
+
+export interface MenuHistoryItemResponse {
+  historyId: string;
+  type: MenuHistoryEntryType;
+  mealType: MealType;
+  name: string;
+  thumbnailUrl?: string | null;
+  foodType?: FoodType | null;
+  summary?: string | null;
+  lastUsedAt: string;
+  lastUsedMenuDate?: string | null;
+  usageCount: number;
+  price?: number | null;
+  currencyCode?: string | null;
+  comboId?: string | null;
+  itemId?: string | null;
+  itemIds?: string[] | null;
+}
+
+export interface MenuHistoryPageResponse {
+  items: MenuHistoryItemResponse[];
+  page: number;
+  limit: number;
+  total: number;
+  hasMore: boolean;
+}
+
 export interface DailyMenuOptionResponse {
   optionId?: string;
   entryType?: DailyMenuEntryType;
@@ -433,13 +461,35 @@ export type MemberMealActivitySlotStatus =
   | 'SKIPPED'
   | 'PENDING'
   | 'NO_MENU'
-  | 'CLOSED';
+  | 'CLOSED'
+  | 'INACTIVE';
 
 export interface MemberMealActivitySlot {
   mealType: MealType;
   status: MemberMealActivitySlotStatus;
   slotAmount?: number | null;
   currencyCode?: string | null;
+}
+
+export interface MemberMealActivitySelection {
+  label: string;
+  price?: number | null;
+  currencyCode?: string | null;
+  quantity: number;
+  itemDetail?: string | null;
+  lineTotal?: number | null;
+}
+
+export interface MemberMealActivitySlotDetail {
+  mealType: MealType;
+  status: MemberMealActivitySlotStatus;
+  menuPublished?: boolean;
+  pollStatus?: MealPollStatus | null;
+  deliveryLocationName?: string | null;
+  deliveryLocationDescription?: string | null;
+  respondedAt?: string | null;
+  slotTotal?: number | null;
+  selections: MemberMealActivitySelection[];
 }
 
 export interface MemberMealActivityDay {
@@ -495,11 +545,14 @@ export interface MemberMealActivityDayPayment {
 
 export interface MemberMealActivityDayDetail {
   date: string;
+  memberName?: string | null;
   dayTotal?: number | null;
   currencyCode?: string | null;
   paymentStatus?: MealPollPaymentStatus | null;
   payment?: MemberMealActivityDayPayment | null;
-  slots?: MemberMealActivitySlot[];
+  notes?: string | null;
+  /** Detail payload uses full slot rows with selections (mobile SoT). */
+  slots?: MemberMealActivitySlotDetail[];
 }
 
 export interface BulkMealPollPaymentProofResponse {

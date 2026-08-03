@@ -144,10 +144,8 @@ function TreeRow({
         <Typography
           noWrap
           sx={{
-            ...DASHBOARD_UX.body,
-            fontWeight: selected ? 700 : 600,
+            ...DASHBOARD_UX.link,
             color: s.textPrimary,
-            lineHeight: 1.25,
             flex: 1,
             minWidth: 0,
           }}
@@ -160,7 +158,6 @@ function TreeRow({
             sx={{
               ...DASHBOARD_UX.metricCaption,
               color: s.textMuted,
-              lineHeight: 1.2,
               flexShrink: 0,
             }}
           >

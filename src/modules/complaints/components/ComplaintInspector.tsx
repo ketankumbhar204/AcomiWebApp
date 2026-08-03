@@ -110,7 +110,7 @@ function DetailGrid({
             {item.label}
           </Typography>
           <Typography
-            sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary, mt: 0.15 }}
+            sx={{ ...DASHBOARD_UX.link, color: s.textPrimary, mt: 0.15 }}
             noWrap
           >
             {item.value}
@@ -513,7 +513,7 @@ export function ComplaintInspector({
                   }}
                 >
                   <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between' }}>
-                    <Typography sx={{ ...DASHBOARD_UX.smallCaption, fontWeight: 600, color: s.textPrimary }}>
+                    <Typography sx={{ ...DASHBOARD_UX.badge, color: s.textPrimary }}>
                       {c.authorName ?? t('complaints.operator')}
                       {c.internal ? ` · ${t('complaints.internal')}` : ''}
                     </Typography>
@@ -605,7 +605,7 @@ export function ComplaintInspector({
                     />
                     <Box sx={{ minWidth: 0 }}>
                       <Typography
-                        sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}
+                        sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}
                       >
                         {t(timelineEventLabelKey(event.eventType))}
                       </Typography>

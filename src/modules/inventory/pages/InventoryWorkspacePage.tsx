@@ -246,8 +246,7 @@ export function InventoryWorkspacePage() {
                 sx={{
                   width: 28,
                   height: 28,
-                  fontSize: '0.7rem',
-                  fontWeight: 700,
+                  ...DASHBOARD_UX.badge,
                   bgcolor: `${accent}1A`,
                   color: accent,
                   flexShrink: 0,
@@ -256,7 +255,7 @@ export function InventoryWorkspacePage() {
                 {(row.name?.trim()?.[0] ?? '?').toUpperCase()}
               </Avatar>
               <Typography
-                sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}
+                sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}
                 noWrap
               >
                 {row.name}
@@ -616,7 +615,7 @@ export function InventoryWorkspacePage() {
                 mb: 0.5,
                 borderRadius: `${DASHBOARD_UX.radius}px`,
                 border: `1px solid #F59E0B55`,
-                bgcolor: theme.palette.mode === 'dark' ? s.elevated : '#FFFBEB',
+                bgcolor: theme.palette.mode === 'dark' ? s.elevated : colors.warningTint,
                 boxShadow: s.shadow,
                 minWidth: 0,
               }}
@@ -626,9 +625,8 @@ export function InventoryWorkspacePage() {
               </IconBadge>
               <Typography
                 sx={{
-                  ...DASHBOARD_UX.body,
+                  ...DASHBOARD_UX.metricLabel,
                   color: s.textPrimary,
-                  fontWeight: 500,
                   flex: 1,
                   minWidth: 0,
                 }}
@@ -662,7 +660,7 @@ export function InventoryWorkspacePage() {
               py: 1.25,
               borderRadius: `${DASHBOARD_UX.radius}px`,
               border: `1px solid #F59E0B55`,
-              bgcolor: theme.palette.mode === 'dark' ? s.elevated : '#FFFBEB',
+              bgcolor: theme.palette.mode === 'dark' ? s.elevated : colors.warningTint,
               boxShadow: s.shadow,
             }}
           >
@@ -670,7 +668,7 @@ export function InventoryWorkspacePage() {
               <AlertTriangle />
             </IconBadge>
             <Typography
-              sx={{ ...DASHBOARD_UX.body, color: s.textPrimary, fontWeight: 500, flex: 1 }}
+              sx={{ ...DASHBOARD_UX.metricLabel, color: s.textPrimary, flex: 1 }}
             >
               {t('inventory.banner.attention', { count: attentionCount })}
             </Typography>

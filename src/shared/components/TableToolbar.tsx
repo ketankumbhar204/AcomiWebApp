@@ -34,12 +34,20 @@ export function TableToolbar({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 1,
+          gap: 1.25,
           flexWrap: 'wrap',
+          rowGap: 1,
         }}
       >
         {onSearchChange ? (
-          <Box sx={{ flex: '1 1 220px', maxWidth: 360, minWidth: 180 }}>
+          <Box
+            sx={{
+              flex: '1 1 240px',
+              maxWidth: { xs: '100%', sm: 360 },
+              minWidth: { xs: '100%', sm: 200 },
+              width: { xs: '100%', sm: 'auto' },
+            }}
+          >
             <SearchToolbar
               value={searchValue ?? ''}
               onChange={onSearchChange}
@@ -49,7 +57,16 @@ export function TableToolbar({
           </Box>
         ) : null}
         {filters ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              flexWrap: 'wrap',
+              flex: '1 1 auto',
+              minWidth: 0,
+            }}
+          >
             {filters}
           </Box>
         ) : null}
@@ -60,6 +77,7 @@ export function TableToolbar({
             alignItems: 'center',
             gap: 1,
             flexWrap: 'wrap',
+            flexShrink: 0,
             ml: { sm: 'auto' },
           }}
         >

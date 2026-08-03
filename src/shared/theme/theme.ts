@@ -1,5 +1,6 @@
 import { createTheme, type Theme } from '@mui/material/styles';
 import type { ThemeMode } from '@/shared/types/common';
+import { DASHBOARD_UX } from '@/modules/dashboard/theme/dashboardUx';
 import { colors, darkColors } from './colors';
 import { elevation } from './elevation';
 import { radius } from './radius';
@@ -32,7 +33,7 @@ function buildPalette(mode: ThemeMode) {
       secondary: c.textSecondary,
       disabled: c.muted,
     },
-    divider: c.border,
+    divider: c.divider ?? c.border,
   } as const;
 }
 
@@ -88,7 +89,8 @@ export function createCountInTheme(mode: ThemeMode = 'light'): Theme {
         styleOverrides: {
           root: {
             borderRadius: radius.button,
-            fontWeight: 600,
+            ...DASHBOARD_UX.button,
+            textTransform: 'none',
           },
           contained: {
             '&.MuiButton-colorPrimary:hover': {

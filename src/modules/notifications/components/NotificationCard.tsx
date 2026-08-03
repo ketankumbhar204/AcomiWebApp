@@ -79,8 +79,7 @@ export function NotificationCard({
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', gap: 0.75 }}>
           <Typography
             sx={{
-              ...DASHBOARD_UX.body,
-              fontWeight: isUnread ? 700 : 600,
+              ...DASHBOARD_UX.link,
               color: s.textPrimary,
               flex: 1,
               minWidth: 0,

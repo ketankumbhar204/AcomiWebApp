@@ -196,7 +196,6 @@ export function SpaceCardCompact({
               <Typography
                 sx={{
                   ...DASHBOARD_UX.spaceName,
-                  fontWeight: 700,
                   color: s.textPrimary,
                   flex: 1,
                   minWidth: 0,
@@ -212,7 +211,6 @@ export function SpaceCardCompact({
                   height: 18,
                   borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
                   ...DASHBOARD_UX.badge,
-                  fontSize: DASHBOARD_UX.badge.fontSize,
                   bgcolor: soft.bgcolor,
                   color: soft.color,
                   border: 'none',
@@ -283,7 +281,7 @@ export function SpaceCardCompact({
             sx={{
               height: 4,
               borderRadius: 99,
-              bgcolor: theme.palette.mode === 'dark' ? s.elevated : '#E7EBF0',
+              bgcolor: theme.palette.mode === 'dark' ? s.elevated : colors.border,
               '& .MuiLinearProgress-bar': {
                 borderRadius: 99,
                 bgcolor: colors.primaryDark,

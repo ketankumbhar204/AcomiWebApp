@@ -259,7 +259,7 @@ export function SpaceHealthPage() {
                     <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textPrimary }}>
                       {t(CATEGORY_SHORT[category.category])}
                     </Typography>
-                    <Typography sx={{ ...DASHBOARD_UX.caption, color: accent.accent, fontWeight: 700 }}>
+                    <Typography sx={{ ...DASHBOARD_UX.link, color: accent.accent }}>
                       {formatPercent(category.score)}
                     </Typography>
                   </Box>
@@ -341,7 +341,7 @@ export function SpaceHealthPage() {
               );
               return (
                 <Box key={id}>
-                  <Typography sx={{ ...DASHBOARD_UX.body, fontWeight: 700, color: s.textPrimary }}>
+                  <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
                     {t(CATEGORY_TITLE[id])} ({weightPct}%)
                   </Typography>
                   <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted }}>
@@ -359,7 +359,7 @@ export function SpaceHealthPage() {
                 {row.contribution}
               </Typography>
             ))}
-            <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary, fontWeight: 700 }}>
+            <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
               {t('dashboard.health.weightsInfo.overallLabel')}:{' '}
               {exampleRows.map((r) => r.contribution).join(' + ')} ={' '}
               {formatPercent(health?.score ?? 0)}

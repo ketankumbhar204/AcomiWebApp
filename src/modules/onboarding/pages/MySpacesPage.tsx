@@ -509,7 +509,7 @@ export function MySpacesPage() {
                   height: DASHBOARD_UX.buttonHeight,
                   borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
                   bgcolor: s.surface,
-                  fontSize: DASHBOARD_UX.body.fontSize,
+                  ...DASHBOARD_UX.inputText,
                 },
               }}
               slotProps={{
@@ -526,7 +526,7 @@ export function MySpacesPage() {
                         aria-label="Clear search"
                         onClick={() => setSearch('')}
                       >
-                        <X size={14} />
+                        <X size={DASHBOARD_UX.iconSize} />
                       </IconButton>
                     </InputAdornment>
                   ) : undefined,

@@ -44,7 +44,7 @@ export function MobileNumberInput({
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
         <Smartphone size={DASHBOARD_UX.iconSize} color={colors.primaryDark} strokeWidth={2} />
-        <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textPrimary, fontWeight: 600 }}>
+        <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
           {t('auth.login.mobileLabel')}
         </Typography>
       </Box>
@@ -74,8 +74,7 @@ export function MobileNumberInput({
             bgcolor: s.elevated,
             borderRight: `1px solid ${s.border}`,
             color: s.textSecondary,
-            ...DASHBOARD_UX.metricLabel,
-            fontWeight: 600,
+            ...DASHBOARD_UX.link,
           }}
           aria-hidden
         >

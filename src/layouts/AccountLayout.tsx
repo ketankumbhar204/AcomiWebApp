@@ -69,8 +69,7 @@ function AccountNotificationBell() {
             '& .MuiBadge-badge': {
               minWidth: 14,
               height: 14,
-              fontSize: 10,
-              fontWeight: 600,
+              ...DASHBOARD_UX.badge,
             },
           }}
         >
@@ -158,9 +157,7 @@ export function AccountLayout({
                 color: '#fff',
                 display: 'grid',
                 placeItems: 'center',
-                fontSize: '0.875rem',
-                fontWeight: 700,
-                lineHeight: 1,
+                ...DASHBOARD_UX.sidebarAccount,
                 flexShrink: 0,
               }}
             >
@@ -169,7 +166,6 @@ export function AccountLayout({
             <Typography
               sx={{
                 ...DASHBOARD_UX.spaceName,
-                fontWeight: 700,
                 color: s.textPrimary,
                 letterSpacing: '-0.01em',
               }}

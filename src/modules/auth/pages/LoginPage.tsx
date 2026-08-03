@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/routes/paths';
 import { isValidIndianMobile } from '@/shared/utils/indianMobile';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
 import { AuthCard } from '../components/AuthCard';
 import { AuthErrorBanner } from '../components/AuthErrorBanner';
 import { AuthHero } from '../components/AuthHero';
@@ -103,12 +104,7 @@ export function LoginPage() {
           startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
           sx={{
             mt: 0.5,
-            minHeight: 40,
-            borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-            fontSize: DASHBOARD_UX.button.fontSize,
-            fontWeight: DASHBOARD_UX.button.fontWeight,
-            textTransform: 'none',
-            boxShadow: 'none',
+            ...dashContainedButtonSx,
             '&:hover': { boxShadow: s.shadowHover },
           }}
         >

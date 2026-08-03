@@ -228,8 +228,7 @@ function EditSpaceForm({
       '&.Mui-focused': { color: colors.primaryDark },
     },
     '& .MuiInputBase-input': {
-      ...DASHBOARD_UX.cardTitle,
-      fontWeight: 500,
+      ...DASHBOARD_UX.inputText,
       color: s.textPrimary,
       py: 1.15,
     },

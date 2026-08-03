@@ -138,7 +138,7 @@ export function PendingActionsPage() {
   const s = dashSurfaces(theme.palette.mode);
   const permissions = useSpacePermissions(spaceId);
   const isOperator = canManageNotifications(permissions);
-  const pending = usePendingActions(spaceId, Boolean(spaceId));
+  const pending = usePendingActions(spaceId, Boolean(spaceId), isOperator);
 
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -231,7 +231,7 @@ export function PendingActionsPage() {
                 <Icon />
               </IconBadge>
               <Typography
-                sx={{ ...DASHBOARD_UX.body, fontWeight: 600, color: s.textPrimary }}
+                sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}
                 noWrap
               >
                 {row.title}
