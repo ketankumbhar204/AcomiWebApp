@@ -22,7 +22,7 @@ import { FormSection } from '@/shared/components/FormSection';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { StatCard } from '@/shared/components/StatCard';
-import { StickyFooter } from '@/shared/components/StickyFooter';
+import { StickyFooter, StickyFooterClearance } from '@/shared/components/StickyFooter';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { spaceAccommodationPath } from '@/routes/paths';
@@ -366,8 +366,9 @@ export function QuickSetupWizardPage() {
         </ContentCard>
       </Stack>
 
-      <Box sx={{ mt: 2 }}>
-        <StickyFooter>
+      <StickyFooterClearance height={{ xs: 96, md: 80 }} />
+
+      <StickyFooter pin="fixed">
           <Button
             onClick={() => {
               if (stepIndex === 0) {
@@ -394,7 +395,6 @@ export function QuickSetupWizardPage() {
                 : t('common.continue')}
           </Button>
         </StickyFooter>
-      </Box>
     </PageContainer>
   );
 }

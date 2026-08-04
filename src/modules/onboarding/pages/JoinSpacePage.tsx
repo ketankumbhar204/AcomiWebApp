@@ -12,7 +12,7 @@ import { ContentCard } from '@/shared/components/ContentCard';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
-import { StickyFooter } from '@/shared/components/StickyFooter';
+import { StickyFooter, StickyFooterClearance } from '@/shared/components/StickyFooter';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { ROUTES, spaceDashboardPath } from '@/routes/paths';
@@ -116,9 +116,10 @@ export function JoinSpacePage() {
             {t('onboarding.join.manageInstead')}
           </Button>
         </Stack>
+        <StickyFooterClearance height={{ xs: 88, md: 80 }} />
       </PageContainer>
 
-      <StickyFooter>
+      <StickyFooter pin="fixed">
         <Button
           variant="contained"
           onClick={() => void handleRefresh()}

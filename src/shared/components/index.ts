@@ -39,6 +39,6 @@ export { SidePanel } from './SidePanel';
 export { StatCard } from './StatCard';
 export { StatusChip } from './StatusChip';
 export type { StatusChipTone } from './StatusChip';
-export { StickyFooter } from './StickyFooter';
+export { StickyFooter, StickyFooterClearance, stickyFooterAccentSx } from './StickyFooter';
 export { TableToolbar } from './TableToolbar';
 export { WidgetCard } from './WidgetCard';

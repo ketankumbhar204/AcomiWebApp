@@ -1,9 +1,10 @@
 import { Box, Button, Stack, Typography, useTheme } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { Clock3, Info, MessageCircle, UtensilsCrossed } from 'lucide-react';
+import { Clock3, Info, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { DashboardCustomerMealsSection } from '@/modules/dashboard/components/customer/DashboardCustomerMealsSection';
 import { IconBadge } from '@/modules/dashboard/components/IconBadge';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { useCustomerSubscriptionStatus } from '@/modules/meals/hooks/useCustomerSubscriptionStatus';
@@ -15,13 +16,12 @@ import { LoadingState } from '@/shared/components/LoadingState';
 import { useLinkedMember } from '@/shared/hooks/useLinkedMember';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type { MealBillingType } from '@/shared/types/meals';
 import {
   spaceDashboardPath,
   spaceMealsPath,
   spaceMealsPlansCustomerPath,
-  spaceMealsPollPath,
 } from '@/routes/paths';
 
 function resolveCustomerBillingType(
@@ -139,51 +139,37 @@ export function CustomerMealsHomePage() {
                     color: s.textPrimary,
                   }}
                 >
-                  {t('meals.todayMealsTitle', { defaultValue: "Today's Meals" })}
+                  {t('dashboard.customer.quickActions.myOrders', {
+                    defaultValue: 'My Orders',
+                  })}
                 </Typography>
                 <Typography sx={{ fontSize: 13, color: s.textSecondary, mt: 0.25, lineHeight: 1.4 }}>
-                  {t('meals.poll.responseHint', {
+                  {t('meals.myOrdersSubtitle', {
                     defaultValue:
-                      'Pick one option per meal. Your mess uses this for kitchen headcount.',
+                      'Choose meals for today, then review your order history below.',
                   })}
                 </Typography>
               </Box>
             </Stack>
-            <Stack direction="row" spacing={1} sx={{ flexShrink: 0, flexWrap: 'wrap' }}>
+            {subscriptionStatus?.prepaidBilling ? (
               <Button
-                variant="contained"
-                startIcon={<MessageCircle size={15} />}
-                onClick={() => navigate(spaceMealsPollPath(spaceId))}
+                variant="outlined"
+                onClick={() => navigate(spaceMealsPlansCustomerPath(spaceId))}
                 sx={{
-                  ...dashContainedButtonSx,
-                  minHeight: '32px !important',
-                  height: '32px !important',
+                  ...dashOutlinedButtonSx,
+                  minHeight: 32,
+                  height: 32,
                   py: 0,
-                  px: 1.5,
-                  fontSize: 13,
-                  boxShadow: 'none',
-                  '&:hover': { boxShadow: 'none' },
+                  flexShrink: 0,
                 }}
               >
-                {t('meals.poll.respondCta', { defaultValue: 'Respond to poll' })}
+                {t('meals.subscription.customer.viewPlans', { defaultValue: 'View plans' })}
               </Button>
-              {subscriptionStatus?.prepaidBilling ? (
-                <Button
-                  variant="outlined"
-                  onClick={() => navigate(spaceMealsPlansCustomerPath(spaceId))}
-                  sx={{
-                    ...dashOutlinedButtonSx,
-                    minHeight: 32,
-                    height: 32,
-                    py: 0,
-                  }}
-                >
-                  {t('meals.subscription.customer.viewPlans', { defaultValue: 'View plans' })}
-                </Button>
-              ) : null}
-            </Stack>
+            ) : null}
           </Stack>
         </Box>
+
+        <DashboardCustomerMealsSection spaceId={spaceId} variant="orders" />
 
         {loading && !linkedMemberId ? <LoadingState label={t('common.loading')} /> : null}
 

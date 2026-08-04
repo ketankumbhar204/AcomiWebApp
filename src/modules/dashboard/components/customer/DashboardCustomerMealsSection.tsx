@@ -20,7 +20,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { IconBadge } from '@/modules/dashboard/components/IconBadge';
@@ -33,12 +33,12 @@ import {
   countMenuItemsFromPolls,
   countUpcomingPayments,
 } from '@/modules/meals/utils/customerDashboardStats';
+import { addDaysIso, formatMenuDateLabel, isPastMenuDate, MEAL_TYPES, todayIsoDate } from '@/modules/meals/utils/mealDates';
 import {
   canShiftCustomerMealDate,
   customerMealDateBounds,
   resolveCustomerMealFocusDate,
 } from '@/modules/meals/utils/customerMealFocusDate';
-import { addDaysIso, formatMenuDateLabel, isPastMenuDate, MEAL_TYPES } from '@/modules/meals/utils/mealDates';
 import { buildMealSummaryFromPolls } from '@/modules/meals/utils/mealSelectionSummary';
 import { showMealPrices } from '@/modules/meals/utils/mealPricingPolicy';
 import { ContentCard } from '@/shared/components/ContentCard';
@@ -64,6 +64,11 @@ type DashboardPollCardState = 'empty' | 'active' | 'partial' | 'complete';
 
 type DashboardCustomerMealsSectionProps = {
   spaceId: string;
+  /**
+   * `dashboard` — full home section (default).
+   * `orders` — same poll picker + stats; skip greeting/recent/quick-actions that duplicate My Orders.
+   */
+  variant?: 'dashboard' | 'orders';
 };
 
 const MEAL_ICONS: Record<MealType, LucideIcon> = {
@@ -76,6 +81,37 @@ const MEAL_ACCENTS: Record<MealType, string> = {
   BREAKFAST: '#D97706',
   LUNCH: colors.primaryDark,
   DINNER: '#7C3AED',
+};
+
+/** Meal-tinted card fills (customer dashboard meal columns) — light washes. */
+const MEAL_CARD_SURFACE: Record<
+  MealType,
+  { light: string; dark: string; borderLight: string; borderDark: string; hoverLight: string; hoverDark: string }
+> = {
+  BREAKFAST: {
+    light: '#FFF7ED',
+    dark: 'rgba(217, 119, 6, 0.14)',
+    borderLight: '#FED7AA',
+    borderDark: 'rgba(251, 191, 36, 0.28)',
+    hoverLight: '#FFEDD5',
+    hoverDark: 'rgba(217, 119, 6, 0.22)',
+  },
+  LUNCH: {
+    light: '#ECFDF5',
+    dark: 'rgba(5, 150, 105, 0.12)',
+    borderLight: '#A7F3D0',
+    borderDark: 'rgba(52, 211, 153, 0.28)',
+    hoverLight: '#D1FAE5',
+    hoverDark: 'rgba(5, 150, 105, 0.2)',
+  },
+  DINNER: {
+    light: '#F5F3FF',
+    dark: 'rgba(124, 58, 237, 0.14)',
+    borderLight: '#DDD6FE',
+    borderDark: 'rgba(167, 139, 250, 0.28)',
+    hoverLight: '#EDE9FE',
+    hoverDark: 'rgba(124, 58, 237, 0.22)',
+  },
 };
 
 function firstName(fullName: string | null | undefined): string {
@@ -149,10 +185,59 @@ function menuPreview(
   return { lines, moreCount: Math.max(0, entries.length - maxVisible) };
 }
 
+/** Customer order preview for a poll slot (selected items only). */
+function selectionPreview(
+  poll: MealPollSlot | undefined,
+  multiQuantity: boolean,
+  showPrices: boolean,
+  maxVisible = 2,
+): { lines: string[]; moreCount: number } {
+  if (!poll) return { lines: [], moreCount: 0 };
+
+  const items: { label: string; quantity: number; price: number | null; currency: string }[] = [];
+  if (multiQuantity) {
+    for (const selection of poll.mySelections ?? []) {
+      if (selection.quantity <= 0) continue;
+      const option = poll.options.find((row) => row.id === selection.optionId);
+      if (!option || option.optionType !== 'MENU_ENTRY') continue;
+      items.push({
+        label: option.label,
+        quantity: selection.quantity,
+        price: option.price != null ? Number(option.price) : null,
+        currency: option.currencyCode || 'INR',
+      });
+    }
+  } else if (poll.mySelectedOptionId) {
+    const option = poll.options.find((row) => row.id === poll.mySelectedOptionId);
+    if (option && option.optionType === 'MENU_ENTRY') {
+      items.push({
+        label: option.label,
+        quantity: 1,
+        price: option.price != null ? Number(option.price) : null,
+        currency: option.currencyCode || 'INR',
+      });
+    }
+  }
+
+  const lines = items.slice(0, maxVisible).map((item) => {
+    const qty = item.quantity > 1 ? ` ×${item.quantity}` : '';
+    if (showPrices && item.price != null) {
+      return `${item.label}${qty} (${formatCurrency(item.price * item.quantity, item.currency)})`;
+    }
+    return `${item.label}${qty}`;
+  });
+  return { lines, moreCount: Math.max(0, items.length - maxVisible) };
+}
+
 /**
  * Customer dashboard — matches approved customer mock (interactive parity with owner ops board).
+ * Also reused on My Orders so members can open menu selection from both pages.
  */
-export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMealsSectionProps) {
+export function DashboardCustomerMealsSection({
+  spaceId,
+  variant = 'dashboard',
+}: DashboardCustomerMealsSectionProps) {
+  const embeddedOnOrders = variant === 'orders';
   const { t, i18n } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
@@ -162,8 +247,21 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
   const { memberId: linkedMemberId } = useLinkedMember(spaceId);
   const { status: subscriptionStatus } = useCustomerSubscriptionStatus(spaceId, linkedMemberId);
 
-  const [menuDate, setMenuDate] = useState(resolveCustomerMealFocusDate);
+  const [menuDate, setMenuDate] = useState(todayIsoDate);
+  const [userPickedDate, setUserPickedDate] = useState(false);
   const pollsQuery = useMealPolls(spaceId, menuDate, true);
+
+  useEffect(() => {
+    if (userPickedDate || !spaceId) return;
+    let cancelled = false;
+    void resolveCustomerMealFocusDate(spaceId).then((date) => {
+      if (!cancelled) setMenuDate(date);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [spaceId, userPickedDate]);
+
   const activity = useMemberMealActivity(
     spaceId,
     linkedMemberId ?? spaceId,
@@ -267,12 +365,13 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
 
   const shiftDate = (delta: number) => {
     if (!canShiftCustomerMealDate(menuDate, delta)) return;
+    setUserPickedDate(true);
     setMenuDate((prev) => addDaysIso(prev, delta));
   };
 
-  const openPoll = (date = menuDate) => {
+  const openPoll = (date = menuDate, mealType?: MealType) => {
     if (mealSelectionBlocked && !reviewOnly && date === menuDate) return;
-    navigate(spaceMealsPollPath(spaceId, date));
+    navigate(spaceMealsPollPath(spaceId, date, mealType));
   };
 
   const refreshAll = () => {
@@ -311,16 +410,23 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
   const lastUpdatedMs =
     Math.max(pollsQuery.dataUpdatedAt || 0, activity.dataUpdatedAt || 0) || undefined;
 
-  const pollBadge = (poll: MealPollSlot | undefined) => {
+  const pollBadge = (poll: MealPollSlot | undefined, selected: boolean) => {
     if (!poll) return null;
-    if (poll.status === 'OPEN') {
+    // Prefer customer selection state over kitchen/poll-status copy.
+    if (selected) {
       return {
-        label: t('meals.poll.pollOpen', { defaultValue: 'Poll open' }),
+        label: t('meals.poll.selectedShort', { defaultValue: 'Selected' }),
         tone: 'success' as const,
       };
     }
+    if (poll.status === 'OPEN') {
+      return {
+        label: t('meals.poll.pollOpenShort', { defaultValue: 'Poll open' }),
+        tone: 'warning' as const,
+      };
+    }
     return {
-      label: t('meals.poll.pollClosed', { defaultValue: 'Poll closed' }),
+      label: t('dashboard.pollCard.notSelected', { defaultValue: 'Not selected' }),
       tone: 'neutral' as const,
     };
   };
@@ -454,7 +560,10 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
             disablePrevious={!canShiftCustomerMealDate(menuDate, -1)}
             disableNext={!canShiftCustomerMealDate(menuDate, 1)}
             onDateSelect={(next) => {
-              if (next >= minDate && next <= maxDate) setMenuDate(next);
+              if (next >= minDate && next <= maxDate) {
+                setUserPickedDate(true);
+                setMenuDate(next);
+              }
             }}
             minDate={minDate}
             maxDate={maxDate}
@@ -479,17 +588,37 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
         </Stack>
 
         <Box sx={{ p: 1.5, pt: 1.25 }}>
-          <Typography
-            sx={{
-              fontSize: 14,
-              fontWeight: 700,
-              color: s.textPrimary,
-              mb: 1,
-              lineHeight: 1.3,
-            }}
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1, gap: 1 }}
           >
-            {formatMenuDateLabel(menuDate, i18n.language)}
-          </Typography>
+            <Typography
+              sx={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: s.textPrimary,
+                lineHeight: 1.3,
+                minWidth: 0,
+              }}
+            >
+              {formatMenuDateLabel(menuDate, i18n.language)}
+            </Typography>
+            {cardState === 'complete' || cardState === 'partial' ? (
+              <StatusChip
+                label={
+                  cardState === 'complete'
+                    ? t('dashboard.pollCard.statusSelected', {
+                        defaultValue: '✓ Meals selected',
+                      })
+                    : t('dashboard.pollCard.statusPartial', {
+                        defaultValue: 'Selection incomplete',
+                      })
+                }
+                tone={cardState === 'complete' ? 'success' : 'warning'}
+              />
+            ) : null}
+          </Stack>
           {pollsQuery.loading && displayPolls.length === 0 ? (
             <Typography sx={{ fontSize: 13, color: s.textMuted }}>{t('common.loading')}</Typography>
           ) : cardState === 'empty' ? (
@@ -511,27 +640,36 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
                   const poll = pollByType[mealType];
                   const Icon = MEAL_ICONS[mealType];
                   const accent = MEAL_ACCENTS[mealType];
-                  const { lines, moreCount } = menuPreview(poll, showPrices, 2);
+                  const cardSurface = MEAL_CARD_SURFACE[mealType];
+                  const isDark = theme.palette.mode === 'dark';
+                  const cardBg = isDark ? cardSurface.dark : cardSurface.light;
+                  const cardBorder = isDark ? cardSurface.borderDark : cardSurface.borderLight;
+                  const cardHover = isDark ? cardSurface.hoverDark : cardSurface.hoverLight;
                   const plates = poll ? platesForPoll(poll, multiQuantity) : 0;
+                  const selected = plates > 0;
+                  const preview = selected
+                    ? selectionPreview(poll, multiQuantity, showPrices, 2)
+                    : menuPreview(poll, showPrices, 2);
+                  const { lines, moreCount } = preview;
                   const hasSlot = Boolean(poll);
-                  const badge = pollBadge(poll);
+                  const badge = pollBadge(poll, selected);
                   return (
                     <Box
                       key={mealType}
                       role="button"
                       tabIndex={hasSlot ? 0 : undefined}
-                      onClick={() => (hasSlot ? openPoll() : undefined)}
+                      onClick={() => (hasSlot ? openPoll(menuDate, mealType) : undefined)}
                       onKeyDown={(e) => {
                         if ((e.key === 'Enter' || e.key === ' ') && hasSlot) {
                           e.preventDefault();
-                          openPoll();
+                          openPoll(menuDate, mealType);
                         }
                       }}
                       sx={{
                         p: 1.1,
                         borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-                        border: `1px solid ${s.border}`,
-                        bgcolor: s.surface,
+                        border: `1px solid ${cardBorder}`,
+                        bgcolor: cardBg,
                         cursor: hasSlot ? 'pointer' : 'default',
                         opacity: hasSlot ? 1 : 0.55,
                         transition: DASHBOARD_UX.transition,
@@ -539,9 +677,9 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
                         flexDirection: 'column',
                         gap: 0.6,
                         minHeight: 108,
-                        '&:hover': hasSlot ? { bgcolor: s.hover } : undefined,
+                        '&:hover': hasSlot ? { bgcolor: cardHover } : undefined,
                         '&:focus-visible': {
-                          outline: `2px solid ${colors.primary}`,
+                          outline: `2px solid ${accent}`,
                           outlineOffset: 1,
                         },
                       }}
@@ -599,8 +737,24 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
                       </Stack>
 
                       <Box sx={{ flex: 1, minHeight: 52, display: 'flex', flexDirection: 'column' }}>
+                        {selected ? (
+                          <Typography
+                            sx={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: colors.primaryDark,
+                              mt: 0.15,
+                              mb: 0.25,
+                              lineHeight: 1.3,
+                            }}
+                          >
+                            {t('dashboard.pollCard.youHaveSelected', {
+                              defaultValue: 'You have selected',
+                            })}
+                          </Typography>
+                        ) : null}
                         {lines.length > 0 ? (
-                          <Stack spacing={0.35} sx={{ mt: 0.15 }}>
+                          <Stack spacing={0.35} sx={{ mt: selected ? 0 : 0.15 }}>
                             {lines.map((line) => (
                               <Stack
                                 key={line}
@@ -638,6 +792,7 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
                                     color: s.textSecondary,
                                     minWidth: 0,
                                     flex: 1,
+                                    fontWeight: selected ? 600 : 400,
                                   }}
                                   noWrap
                                 >
@@ -667,29 +822,16 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
                           </Stack>
                         ) : (
                           <Typography sx={{ fontSize: 12, color: s.textMuted, mt: 0.15 }}>
-                            {t('dashboard.customer.noMenuItems', {
-                              defaultValue: 'No menu items',
-                            })}
+                            {selected
+                              ? t('dashboard.pollCard.notSelected', {
+                                  defaultValue: 'Not selected',
+                                })
+                              : t('dashboard.customer.noMenuItems', {
+                                  defaultValue: 'No menu items',
+                                })}
                           </Typography>
                         )}
                       </Box>
-
-                      <Stack
-                        direction="row"
-                        spacing={0.5}
-                        sx={{
-                          alignItems: 'center',
-                          mt: 'auto',
-                          pt: 0.45,
-                          borderTop: `1px solid ${s.divider}`,
-                        }}
-                      >
-                        <UtensilsCrossed size={11} color={s.textMuted} />
-                        <Typography sx={{ fontSize: 11, color: s.textMuted }}>
-                          {plates}{' '}
-                          {t('dashboard.customer.toPrepare', { defaultValue: 'to prepare' })}
-                        </Typography>
-                      </Stack>
                     </Box>
                   );
                 })}
@@ -854,6 +996,7 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
       </Box>
 
       {/* Recent orders */}
+      {!embeddedOnOrders ? (
       <Box>
         <Stack
           direction="row"
@@ -912,6 +1055,7 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
           </Stack>
         )}
       </Box>
+      ) : null}
 
       {/* Quick actions */}
       <Box>
@@ -921,7 +1065,10 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: embeddedOnOrders ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))',
+            },
             gap: 1,
           }}
         >
@@ -936,6 +1083,7 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
                 icon: ClipboardList,
                 accent: colors.primaryDark,
                 onClick: goMeals,
+                hideOnOrders: true,
               },
               {
                 id: 'payments',
@@ -946,6 +1094,7 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
                 icon: Wallet,
                 accent: '#D97706',
                 onClick: goPayments,
+                hideOnOrders: false,
               },
               {
                 id: 'complaints',
@@ -958,9 +1107,12 @@ export function DashboardCustomerMealsSection({ spaceId }: DashboardCustomerMeal
                 icon: CircleAlert,
                 accent: '#DC2626',
                 onClick: goComplaints,
+                hideOnOrders: false,
               },
             ] as const
-          ).map((action) => {
+          )
+            .filter((action) => !(embeddedOnOrders && action.hideOnOrders))
+            .map((action) => {
             const Icon = action.icon;
             return (
               <ContentCard key={action.id} onClick={action.onClick}>

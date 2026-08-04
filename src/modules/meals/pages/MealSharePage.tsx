@@ -28,7 +28,7 @@ import { ContentCard } from '@/shared/components/ContentCard';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { PageContainer } from '@/shared/components/PageContainer';
-import { StickyFooter } from '@/shared/components/StickyFooter';
+import { StickyFooter, StickyFooterClearance } from '@/shared/components/StickyFooter';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
@@ -260,7 +260,7 @@ export function MealSharePage() {
 
   return (
     <PageContainer gap={0}>
-      <Stack spacing={`${DASHBOARD_UX.sectionGap}px`} sx={{ width: '100%', pb: 10 }}>
+      <Stack spacing={`${DASHBOARD_UX.sectionGap}px`} sx={{ width: '100%' }}>
         {/* Hero */}
         <Box
           sx={{
@@ -494,8 +494,10 @@ export function MealSharePage() {
         </Stack>
       </Stack>
 
+      <StickyFooterClearance />
+
       {!dateReadOnly && hasShareableSlot ? (
-        <StickyFooter>
+        <StickyFooter pin="fixed">
           {progressiveContinue ? (
             <>
               <Box sx={{ flex: 1, mr: 'auto', minWidth: 0 }}>
@@ -554,7 +556,7 @@ export function MealSharePage() {
           )}
         </StickyFooter>
       ) : (
-        <StickyFooter>
+        <StickyFooter pin="fixed">
           <Button onClick={() => navigate(spaceMealsPath(spaceId))} sx={dashOutlinedButtonSx}>
             {t('common.cancel')}
           </Button>

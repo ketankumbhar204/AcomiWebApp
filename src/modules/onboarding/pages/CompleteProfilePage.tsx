@@ -31,7 +31,7 @@ import { ContentCard } from '@/shared/components/ContentCard';
 import { FormSection } from '@/shared/components/FormSection';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
-import { StickyFooter } from '@/shared/components/StickyFooter';
+import { StickyFooter, StickyFooterClearance } from '@/shared/components/StickyFooter';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { ROUTES, spaceDashboardPath } from '@/routes/paths';
@@ -446,9 +446,10 @@ export function CompleteProfilePage() {
             ) : null}
           </ContentCard>
         </Stack>
+        <StickyFooterClearance height={{ xs: 96, md: 80 }} />
       </PageContainer>
 
-      <StickyFooter>
+      <StickyFooter pin="fixed">
         <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end', width: '100%' }}>
           {stepIndex > 0 ? (
             <Button

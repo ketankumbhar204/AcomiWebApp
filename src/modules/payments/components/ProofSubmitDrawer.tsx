@@ -1,24 +1,19 @@
-import {
-  Box,
-  Button,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  Stack,
-  TextField,
-  Typography,
-  useTheme,
-} from '@mui/material';
-import { useState } from 'react';
+import { Box, Button, Typography, useTheme } from '@mui/material';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StickyFooter } from '@/shared/components/StickyFooter';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
-import type { UniversalPaymentMethod } from '@/shared/types/payments';
+import { UniversalPaymentProofForm } from './UniversalPaymentProofForm';
 import { usePaymentMutations } from '../hooks/usePayments';
+import {
+  EMPTY_PAYMENT_PROOF,
+  toSubmitPaymentProofBody,
+  validatePaymentProofSubmission,
+  type PaymentProofSubmission,
+} from '../utils/paymentProofPolicy';
 
 type ProofSubmitDrawerProps = {
   open: boolean;
@@ -26,14 +21,6 @@ type ProofSubmitDrawerProps = {
   paymentId: string | null;
   onClose: () => void;
 };
-
-const METHODS: UniversalPaymentMethod[] = [
-  'UPI',
-  'BANK_TRANSFER',
-  'CASH',
-  'CHEQUE',
-  'OTHER',
-];
 
 export function ProofSubmitDrawer({
   open,
@@ -46,43 +33,30 @@ export function ProofSubmitDrawer({
   const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const mutations = usePaymentMutations(spaceId);
-  const [referenceNumber, setReferenceNumber] = useState('');
-  const [remarks, setRemarks] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<UniversalPaymentMethod>('UPI');
-  const [proofImageBase64, setProofImageBase64] = useState<string | undefined>();
+  const [proof, setProof] = useState<PaymentProofSubmission>(EMPTY_PAYMENT_PROOF);
 
-  const onFile = (file: File | null) => {
-    if (!file) {
-      setProofImageBase64(undefined);
-      return;
+  useEffect(() => {
+    if (open) {
+      setProof(EMPTY_PAYMENT_PROOF);
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? '');
-      const base64 = result.includes(',') ? result.split(',')[1] : result;
-      setProofImageBase64(base64);
-    };
-    reader.readAsDataURL(file);
-  };
+  }, [open, paymentId]);
 
   const handleSubmit = async () => {
     if (!paymentId) {
       return;
     }
+    const error = validatePaymentProofSubmission(proof);
+    if (error) {
+      enqueueSnackbar(t(`paymentCollection.proof.${error}`), { variant: 'warning' });
+      return;
+    }
     try {
       await mutations.submitProof.mutateAsync({
         paymentId,
-        body: {
-          referenceNumber: referenceNumber.trim() || undefined,
-          remarks: remarks.trim() || undefined,
-          paymentMethod,
-          proofImageBase64,
-        },
+        body: toSubmitPaymentProofBody(proof),
       });
       enqueueSnackbar(t('paymentCollection.proof.success'), { variant: 'success' });
-      setReferenceNumber('');
-      setRemarks('');
-      setProofImageBase64(undefined);
+      setProof(EMPTY_PAYMENT_PROOF);
       onClose();
     } catch {
       enqueueSnackbar(t('common.errors.generic'), { variant: 'error' });
@@ -97,54 +71,13 @@ export function ProofSubmitDrawer({
             {t('paymentCollection.proof.submit')}
           </Typography>
         </Box>
-        <Stack spacing={2} sx={{ p: 2, flex: 1, overflow: 'auto' }}>
-          <FormControl fullWidth size="small">
-            <InputLabel>{t('paymentCollection.fields.method')}</InputLabel>
-            <Select
-              label={t('paymentCollection.fields.method')}
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value as UniversalPaymentMethod)}
-            >
-              {METHODS.map((method) => (
-                <MenuItem key={method} value={method}>
-                  {t(`paymentCollection.method.${method}`)}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            label={t('paymentCollection.fields.reference')}
-            value={referenceNumber}
-            onChange={(e) => setReferenceNumber(e.target.value)}
-            placeholder={t('paymentCollection.proof.utrPlaceholder')}
-            fullWidth
-            size="small"
+        <Box sx={{ p: 2, flex: 1, overflow: 'auto' }}>
+          <UniversalPaymentProofForm
+            value={proof}
+            onChange={setProof}
+            disabled={mutations.submitProof.isPending}
           />
-          <TextField
-            label={t('paymentCollection.proof.remarks')}
-            value={remarks}
-            onChange={(e) => setRemarks(e.target.value)}
-            placeholder={t('paymentCollection.proof.remarksPlaceholder')}
-            fullWidth
-            multiline
-            minRows={2}
-            size="small"
-          />
-          <Button variant="outlined" component="label" sx={dashOutlinedButtonSx}>
-            {t('paymentCollection.proof.upload')}
-            <input
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(e) => onFile(e.target.files?.[0] ?? null)}
-            />
-          </Button>
-          {proofImageBase64 ? (
-            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textSecondary }}>
-              {t('paymentCollection.proof.selected')}
-            </Typography>
-          ) : null}
-        </Stack>
+        </Box>
         <StickyFooter>
           <Button onClick={onClose} sx={dashOutlinedButtonSx}>
             {t('common.cancel')}

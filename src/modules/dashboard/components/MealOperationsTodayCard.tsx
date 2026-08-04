@@ -1,10 +1,11 @@
-import { Box, Stack, Typography, useTheme } from '@mui/material';
-import { CircleDashed, Moon, Package, Sun, Sunrise, Users } from 'lucide-react';
+import { Box, Typography, useTheme } from '@mui/material';
+import { Moon, Sun, Sunrise } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useDailyMenus, useMealHeadcountDay } from '@/modules/meals/hooks/useMeals';
+import { formatMenuDateLabel } from '@/modules/meals/utils/mealDates';
 import { spaceMealHeadcountPath, spaceMealsPath } from '@/routes/paths';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
@@ -37,33 +38,20 @@ type MealOperationsTodayCardProps = {
 };
 
 /**
- * Row-1 center — Meal Operations (Today).
- * Header chips + Breakfast / Lunch / Dinner tiles with headcount.
+ * Row-1 center — Meal operations.
+ * Quiet title + date + one status line; Breakfast / Lunch / Dinner tiles.
  */
 export function MealOperationsTodayCard({
   spaceId,
   menuDate,
   enabled,
 }: MealOperationsTodayCardProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const menus = useDailyMenus(spaceId, menuDate, enabled);
   const headcount = useMealHeadcountDay(spaceId, menuDate, enabled);
-
-  const summary = useMemo(() => {
-    let shared = 0;
-    let notShared = 0;
-    let empty = 0;
-    for (const mealType of MEAL_TYPES) {
-      const menu = menus.menus.find((row) => row.mealType === mealType);
-      if (!hasPlannedMenu(menu)) empty += 1;
-      else if (menu?.status === 'PUBLISHED') shared += 1;
-      else notShared += 1;
-    }
-    return { shared, notShared, empty };
-  }, [menus.menus]);
 
   const headcountByType = useMemo(() => {
     const map: Partial<Record<MealType, number>> = {};
@@ -73,6 +61,8 @@ export function MealOperationsTodayCard({
     return map;
   }, [headcount.headcount]);
 
+  const dateLabel = formatMenuDateLabel(menuDate, i18n.language);
+
   const goPlan = () => navigate(spaceMealsPath(spaceId, menuDate));
   const goHeadcount = (mealType: MealType) =>
     navigate(spaceMealHeadcountPath(spaceId, { date: menuDate, mealType }));
@@ -80,8 +70,8 @@ export function MealOperationsTodayCard({
   return (
     <Box
       component="section"
-      aria-label={t('dashboard.mealOperations.titleToday', {
-        defaultValue: 'Meal Operations (Today)',
+      aria-label={t('dashboard.mealOperations.title', {
+        defaultValue: 'Meal operations',
       })}
       sx={{
         p: 1.5,
@@ -99,51 +89,27 @@ export function MealOperationsTodayCard({
         boxSizing: 'border-box',
       }}
     >
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={{ alignItems: 'center', justifyContent: 'space-between', minWidth: 0, gap: 1 }}
+      <Typography
+        sx={{
+          ...DASHBOARD_UX.sectionHeading,
+          color: s.textPrimary,
+          minWidth: 0,
+        }}
       >
-        <Typography
+        {t('dashboard.mealOperations.title', { defaultValue: 'Meal operations' })}
+        {' '}
+        <Box
+          component="span"
           sx={{
-            ...DASHBOARD_UX.sectionHeading,
-            color: s.textPrimary,
-            flexShrink: 1,
-            minWidth: 0,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            lineHeight: 1.3,
+            color: s.textSecondary,
           }}
         >
-          {t('dashboard.mealOperations.titleToday', {
-            defaultValue: 'Meal Operations (Today)',
-          })}
-        </Typography>
-
-        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexShrink: 0 }}>
-          <SummaryChip
-            icon={<Users size={12} strokeWidth={2.4} />}
-            value={summary.shared}
-            label={t('dashboard.todaysOverview.shared')}
-            accent={colors.success}
-            soft={s.successTint}
-          />
-          <SummaryChip
-            icon={<Package size={12} strokeWidth={2.4} />}
-            value={summary.notShared}
-            label={t('dashboard.todaysOverview.notShared')}
-            accent="#D97706"
-            soft={s.warningTint}
-          />
-          <SummaryChip
-            icon={<CircleDashed size={12} strokeWidth={2.4} />}
-            value={summary.empty}
-            label={t('dashboard.todaysOverview.empty')}
-            accent={s.textMuted}
-            soft={s.elevated}
-          />
-        </Stack>
-      </Stack>
+          ({dateLabel})
+        </Box>
+      </Typography>
 
       <Box
         sx={{
@@ -279,58 +245,6 @@ export function MealOperationsTodayCard({
           );
         })}
       </Box>
-    </Box>
-  );
-}
-
-function SummaryChip({
-  icon,
-  value,
-  label,
-  accent,
-  soft,
-}: {
-  icon: ReactNode;
-  value: number;
-  label: string;
-  accent: string;
-  soft: string;
-}) {
-  const theme = useTheme();
-  const s = dashSurfaces(theme.palette.mode);
-
-  return (
-    <Box
-      sx={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 0.45,
-        px: 0.75,
-        py: 0.35,
-        borderRadius: 999,
-        bgcolor: soft,
-        border: `1px solid ${accent}33`,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      <Box sx={{ color: accent, display: 'flex', alignItems: 'center' }}>{icon}</Box>
-      <Typography
-        sx={{
-          ...DASHBOARD_UX.badge,
-          color: s.textPrimary,
-          fontVariantNumeric: 'tabular-nums',
-        }}
-      >
-        {value}
-      </Typography>
-      <Typography
-        sx={{
-          ...DASHBOARD_UX.badge,
-          color: accent,
-        }}
-      >
-        {label}
-      </Typography>
     </Box>
   );
 }

@@ -8,13 +8,13 @@ import {
   MenuItem,
   Select,
   Stack,
-  TextField,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
 import {
   BarChart3,
+  ChevronRight,
   Copy,
   FileText,
   Info,
@@ -40,10 +40,17 @@ import { LoadingState } from '@/shared/components/LoadingState';
 import { PeriodMonthNav } from '@/shared/components/PeriodMonthNav';
 import { SidePanel } from '@/shared/components/SidePanel';
 import { AppDrawer } from '@/shared/components/AppDrawer';
-import { StickyFooter } from '@/shared/components/StickyFooter';
+import { StickyFooter, StickyFooterClearance } from '@/shared/components/StickyFooter';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { memberApi } from '@/modules/members/api/memberApi';
+import {
+  EMPTY_PAYMENT_PROOF,
+  toSubmitPaymentProofBody,
+  UniversalPaymentProofForm,
+  validatePaymentProofSubmission,
+  type PaymentProofSubmission,
+} from '@/modules/payments';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import {
   currentMonthKey,
@@ -398,8 +405,7 @@ function TenantDayMealPayments({ spaceId }: { spaceId: string }) {
   const [page, setPage] = useState(0);
   const [didAutoSelect, setDidAutoSelect] = useState(false);
   const [proofOpen, setProofOpen] = useState(false);
-  const [reference, setReference] = useState('');
-  const [proofBase64, setProofBase64] = useState<string | null>(null);
+  const [proof, setProof] = useState<PaymentProofSubmission>(EMPTY_PAYMENT_PROOF);
 
   const linkedMember = useQuery({
     queryKey: ['linked-member-me', spaceId],
@@ -471,13 +477,13 @@ function TenantDayMealPayments({ spaceId }: { spaceId: string }) {
 
   const submitProof = useMutation({
     mutationFn: async () => {
-      if (!proofBase64 && !reference.trim()) {
-        throw new Error('proof');
+      const validationError = validatePaymentProofSubmission(proof, undefined, {
+        requireProofOrReference: true,
+      });
+      if (validationError) {
+        throw new Error(validationError);
       }
-      const body = {
-        proofImageBase64: proofBase64 || undefined,
-        referenceNumber: reference.trim() || undefined,
-      };
+      const body = toSubmitPaymentProofBody(proof);
       const dates =
         selectableSelectedDates.length > 0
           ? selectableSelectedDates
@@ -495,13 +501,21 @@ function TenantDayMealPayments({ spaceId }: { spaceId: string }) {
         variant: 'success',
       });
       setProofOpen(false);
+      setProof(EMPTY_PAYMENT_PROOF);
       setSelectedDates([]);
       await queryClient.invalidateQueries({ queryKey: ['member-meal-activity', spaceId] });
       void detailQuery.refetch();
     },
     onError: (err) => {
-      if (err instanceof Error && err.message === 'proof') {
+      if (err instanceof Error && err.message === 'proofOrReferenceRequired') {
         enqueueSnackbar(t('meals.customerPlans.proofOrReferenceRequired'), { variant: 'warning' });
+        return;
+      }
+      if (
+        err instanceof Error &&
+        (err.message === 'screenshotRequired' || err.message === 'utrRequired')
+      ) {
+        enqueueSnackbar(t(`paymentCollection.proof.${err.message}`), { variant: 'warning' });
         return;
       }
       enqueueSnackbar(t('common.errors.generic'), { variant: 'error' });
@@ -554,9 +568,8 @@ function TenantDayMealPayments({ spaceId }: { spaceId: string }) {
 
   const openProof = (dates: string[]) => {
     setSelectedDates(dates);
+    setProof(EMPTY_PAYMENT_PROOF);
     setProofOpen(true);
-    setReference('');
-    setProofBase64(null);
   };
 
   const showDesktopPanel = !isLgDown;
@@ -800,8 +813,10 @@ function TenantDayMealPayments({ spaceId }: { spaceId: string }) {
         </Box>
       </Stack>
 
+      {selectableSelectedDates.length > 0 ? <StickyFooterClearance /> : null}
+
       {selectableSelectedDates.length > 0 ? (
-        <StickyFooter>
+        <StickyFooter pin="fixed">
           <Button
             variant="contained"
             sx={dashContainedButtonSx}
@@ -837,37 +852,11 @@ function TenantDayMealPayments({ spaceId }: { spaceId: string }) {
                 : []
             ).join(', ')}
           </Typography>
-          <TextField
-            label={t('paymentCollection.proof.reference', { defaultValue: 'UTR / reference' })}
-            value={reference}
-            onChange={(e) => setReference(e.target.value)}
-            placeholder={t('paymentCollection.proof.utrPlaceholder')}
-            fullWidth
+          <UniversalPaymentProofForm
+            value={proof}
+            onChange={setProof}
+            disabled={submitProof.isPending}
           />
-          <Button variant="outlined" component="label" sx={dashOutlinedButtonSx}>
-            {proofBase64
-              ? t('meals.customerPlans.removeScreenshot')
-              : t('meals.subscriptionPlans.viewPaymentProof')}
-            <input
-              hidden
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file || proofBase64) {
-                  setProofBase64(null);
-                  e.target.value = '';
-                  return;
-                }
-                const reader = new FileReader();
-                reader.onload = () => {
-                  const result = String(reader.result ?? '');
-                  setProofBase64(result.includes(',') ? result.split(',')[1]! : result);
-                };
-                reader.readAsDataURL(file);
-              }}
-            />
-          </Button>
         </Stack>
         <StickyFooter>
           <Button

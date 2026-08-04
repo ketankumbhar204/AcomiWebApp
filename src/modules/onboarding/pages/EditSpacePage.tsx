@@ -56,7 +56,7 @@ import { FormSection } from '@/shared/components/FormSection';
 import { LoadingFallback } from '@/shared/components/LoadingBoundary';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
-import { StickyFooter } from '@/shared/components/StickyFooter';
+import { StickyFooter, StickyFooterClearance } from '@/shared/components/StickyFooter';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { ROUTES, spaceDetailsPath } from '@/routes/paths';
@@ -694,14 +694,9 @@ function EditSpaceForm({
         ) : null}
       </Stack>
 
-      <Box
-        sx={{
-          mx: { xs: -1.5, md: -3 },
-          mb: { xs: -2, md: -3 },
-          mt: `${DASHBOARD_UX.sectionGap}px`,
-        }}
-      >
-        <StickyFooter>
+      <StickyFooterClearance height={{ xs: 88, md: 80 }} />
+
+      <StickyFooter pin="fixed">
           <Button
             variant="outlined"
             color="primary"
@@ -725,7 +720,6 @@ function EditSpaceForm({
             {saving ? t('common.pleaseWait') : t('spaces.editSpace.save')}
           </Button>
         </StickyFooter>
-      </Box>
 
       <ConfirmDialog
         open={deactivateOpen}

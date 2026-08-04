@@ -3,7 +3,6 @@ import { AuthLayoutOutlet } from './AuthLayoutOutlet';
 import { GuestRoute, ProtectedRoute } from './ProtectedRoute';
 import { SpaceBootstrapOutlet } from '@/modules/dashboard/layouts/SpaceBootstrapOutlet';
 import { SpaceShellLayout } from '@/modules/dashboard/layouts/SpaceShellLayout';
-import { BlankLayout } from '@/layouts/BlankLayout';
 import { AccommodationPermissionGate } from '@/modules/accommodation/components/AccommodationPermissionGate';
 import { MealsPermissionGate } from '@/modules/meals/components/MealsPermissionGate';
 import { PaymentsPermissionGate } from '@/modules/payments/components/PaymentsPermissionGate';
@@ -676,11 +675,9 @@ export const appRoutes = [
                       {
                         index: true,
                         element: (
-                          <BlankLayout>
-                            <L>
-                              <MealMenuEditorPage />
-                            </L>
-                          </BlankLayout>
+                          <L>
+                            <MealMenuEditorPage />
+                          </L>
                         ),
                       },
                     ],

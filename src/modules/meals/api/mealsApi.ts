@@ -359,19 +359,30 @@ export const mealsApi = {
     menuDate: string,
     selections: SubmitMealPollSelection[],
     paymentChoice?: MealPollPaymentChoice,
-    proofImageBase64?: string,
-  ) =>
-    unwrapApiResponse(
+    proof?: string | SubmitPaymentProofRequest,
+  ) => {
+    const proofBody: SubmitPaymentProofRequest | undefined =
+      typeof proof === 'string'
+        ? { proofImageBase64: proof }
+        : proof ?? undefined;
+    return unwrapApiResponse(
       apiClient.post<ApiResponse<MealPollDayResponse>>(
         `/spaces/${spaceId}/meal-polls/${menuDate}/responses`,
         {
           selections,
           ...(paymentChoice ? { paymentChoice } : {}),
-          ...(proofImageBase64 ? { proofImageBase64 } : {}),
+          ...(proofBody?.proofImageBase64
+            ? { proofImageBase64: proofBody.proofImageBase64 }
+            : {}),
+          ...(proofBody?.referenceNumber
+            ? { referenceNumber: proofBody.referenceNumber }
+            : {}),
+          ...(proofBody?.remarks ? { remarks: proofBody.remarks } : {}),
+          ...(proofBody?.paymentMethod ? { paymentMethod: proofBody.paymentMethod } : {}),
         },
       ),
-    ),
-
+    );
+  },
   getMemberMealActivity: (spaceId: string, memberId: string, month?: string) =>
     unwrapApiResponse(
       apiClient.get<ApiResponse<MemberMealActivityMonth>>(

@@ -23,7 +23,7 @@ import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardU
 import { ContentCard } from '@/shared/components/ContentCard';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
-import { StickyFooter } from '@/shared/components/StickyFooter';
+import { StickyFooter, StickyFooterClearance } from '@/shared/components/StickyFooter';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { WidgetCard } from '@/shared/components/WidgetCard';
@@ -737,8 +737,9 @@ export function OccupancyWizardPage() {
         </Box>
       </Stack>
 
-      <Box sx={{ mt: 2 }}>
-        <StickyFooter>
+      <StickyFooterClearance height={{ xs: 96, md: 80 }} />
+
+      <StickyFooter pin="fixed">
           <Button onClick={goBack} disabled={submitting} sx={dashOutlinedButtonSx}>
             {stepIndex === 0 ? t('common.cancel') : t('common.back')}
           </Button>
@@ -751,7 +752,6 @@ export function OccupancyWizardPage() {
             {isLast ? t('common.confirm') : t('common.continue')}
           </Button>
         </StickyFooter>
-      </Box>
     </PageContainer>
   );
 }

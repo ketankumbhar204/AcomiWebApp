@@ -57,7 +57,6 @@ import {
   dayHasListActivity,
   dayMatchesActivityFilter,
   formatActivityListDate,
-  mealSlotPrefix,
   resolveActivityPaymentDisplay,
   sortActivityDays,
   type ActivityHistoryFilter,
@@ -89,12 +88,88 @@ function SlotDot({ status }: { status: MemberMealActivitySlotStatus }) {
   );
 }
 
-function slotStatusLetter(status: MemberMealActivitySlotStatus): string {
-  if (status === 'ACCEPTED') return 'A';
-  if (status === 'PENDING') return 'P';
-  if (status === 'SKIPPED') return 'S';
-  if (status === 'NO_MENU') return 'N';
-  return status.slice(0, 1);
+function slotStatusLabelKey(status: MemberMealActivitySlotStatus): string {
+  switch (status) {
+    case 'ACCEPTED':
+      return 'meals.activity.legendAccepted';
+    case 'PENDING':
+      return 'meals.activity.legendPending';
+    case 'SKIPPED':
+      return 'meals.activity.legendSkipped';
+    case 'NO_MENU':
+      return 'meals.activity.legendNoMenu';
+    case 'CLOSED':
+      return 'meals.poll.pollClosed';
+    case 'INACTIVE':
+      return 'meals.activity.statusInactive';
+    default:
+      return 'meals.activity.history.notSelected';
+  }
+}
+
+function DaySlotStatusLine({
+  slots,
+}: {
+  slots: MemberMealActivityDay['slots'] | undefined;
+}) {
+  const { t } = useTranslation();
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
+  const ordered = MEAL_ORDER.map((mealType) =>
+    (slots ?? []).find((slot) => slot.mealType === mealType),
+  ).filter((slot): slot is NonNullable<typeof slot> => Boolean(slot));
+
+  if (ordered.length === 0) return null;
+
+  return (
+    <Typography
+      component="div"
+      sx={{
+        mt: 0.35,
+        fontSize: 12,
+        lineHeight: 1.45,
+        color: s.textSecondary,
+        display: 'flex',
+        flexWrap: 'wrap',
+        columnGap: 1.25,
+        rowGap: 0.25,
+      }}
+    >
+      {ordered.map((slot, index) => {
+        const statusColor =
+          slot.status === 'ACCEPTED'
+            ? colors.primaryDark
+            : slot.status === 'PENDING'
+              ? '#B45309'
+              : slot.status === 'SKIPPED'
+                ? '#B91C1C'
+                : s.textMuted;
+        return (
+          <Box
+            key={slot.mealType}
+            component="span"
+            sx={{ display: 'inline-flex', alignItems: 'baseline', gap: 0.4 }}
+          >
+            {index > 0 ? (
+              <Box
+                component="span"
+                aria-hidden
+                sx={{ color: s.textMuted, mr: 0.25, userSelect: 'none' }}
+              >
+                ·
+              </Box>
+            ) : null}
+            <Box component="span" sx={{ fontWeight: 600, color: s.textPrimary }}>
+              {t(`meals.mealType.${slot.mealType}`)}:
+            </Box>
+            <Box component="span" sx={{ fontWeight: 600, color: statusColor }}>
+              {t(slotStatusLabelKey(slot.status))}
+            </Box>
+          </Box>
+        );
+      })}
+    </Typography>
+  );
 }
 
 function DayActivityInspector({
@@ -508,12 +583,6 @@ export function MemberMealActivitySection({
             historyDays.filter(dayHasListActivity).map((day) => {
               const dateKey = normalizeActivityDate(day.date) ?? day.date;
               const paymentDisplay = resolveActivityPaymentDisplay(day, todayIso);
-              const slotLine = (day.slots ?? [])
-                .map(
-                  (slot) =>
-                    `${mealSlotPrefix(slot.mealType)}:${slotStatusLetter(slot.status)}`,
-                )
-                .join(' â€¢ ');
               const selected = selectedDate === dateKey;
 
               if (isCustomer) {
@@ -559,9 +628,7 @@ export function MemberMealActivitySection({
                       <Typography sx={{ fontSize: 14, fontWeight: 700, color: s.textPrimary }}>
                         {formatActivityListDate(dateKey)}
                       </Typography>
-                      <Typography sx={{ fontSize: 12, color: s.textMuted, mt: 0.15 }}>
-                        {slotLine}
-                      </Typography>
+                      <DaySlotStatusLine slots={day.slots} />
                     </Box>
                     <ChevronRight size={16} color={s.textMuted} />
                   </Box>
@@ -590,13 +657,11 @@ export function MemberMealActivitySection({
                     direction="row"
                     sx={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}
                   >
-                    <Box sx={{ minWidth: 0 }}>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
                       <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
                         {formatActivityListDate(dateKey)}
                       </Typography>
-                      <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textMuted }}>
-                        {slotLine}
-                      </Typography>
+                      <DaySlotStatusLine slots={day.slots} />
                     </Box>
                     <Stack spacing={0.5} sx={{ alignItems: 'flex-end' }}>
                       {day.dayTotal != null && day.dayTotal > 0 ? (

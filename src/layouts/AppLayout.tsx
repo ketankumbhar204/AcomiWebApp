@@ -25,6 +25,11 @@ type AppLayoutProps = {
   contentMaxWidth?: number | false;
   /** Tighter page padding for dense workspaces (e.g. dashboard). */
   contentDense?: boolean;
+  /**
+   * When true, main becomes a flex column with overflow hidden so nested
+   * pages can fill height and own their own column scrolling.
+   */
+  lockContentScroll?: boolean;
 };
 
 /**
@@ -44,6 +49,7 @@ export function AppLayout({
   padded = true,
   contentMaxWidth,
   contentDense = false,
+  lockContentScroll = false,
 }: AppLayoutProps) {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
@@ -104,7 +110,31 @@ export function AppLayout({
           component="main"
           id={MAIN_CONTENT_ID}
           tabIndex={-1}
-          sx={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'auto', outline: 'none', scrollbarGutter: 'stable' }}
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            minHeight: 0,
+            outline: 'none',
+            ...(lockContentScroll
+              ? {
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                  // Stretch route outlet so pages can lock to the main viewport height.
+                  '& > *': {
+                    flex: 1,
+                    minHeight: 0,
+                    minWidth: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                  },
+                }
+              : {
+                  overflow: 'auto',
+                  scrollbarGutter: 'stable',
+                }),
+          }}
         >
           {padded ? (
             <ContentLayout maxWidth={contentMaxWidth} dense={contentDense}>

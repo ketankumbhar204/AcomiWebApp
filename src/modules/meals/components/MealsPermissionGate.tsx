@@ -1,3 +1,4 @@
+import { Box } from '@mui/material';
 import { Navigate, Outlet, useParams } from 'react-router-dom';
 import { LoadingFallback } from '@/shared/components/LoadingBoundary';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
@@ -18,5 +19,24 @@ export function MealsPermissionGate() {
     return <Navigate to={ROUTES.forbidden} replace />;
   }
 
-  return <Outlet />;
+  return (
+    <Box
+      sx={{
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        '& > *': {
+          flex: 1,
+          minHeight: 0,
+          minWidth: 0,
+        },
+      }}
+    >
+      <Outlet />
+    </Box>
+  );
 }

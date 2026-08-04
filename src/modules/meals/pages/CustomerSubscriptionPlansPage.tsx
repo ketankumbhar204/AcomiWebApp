@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   Stack,
-  TextField,
   Typography,
   useTheme,
 } from '@mui/material';
@@ -23,6 +22,12 @@ import { AppDrawer } from '@/shared/components/AppDrawer';
 import { StickyFooter } from '@/shared/components/StickyFooter';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { memberApi } from '@/modules/members/api/memberApi';
+import {
+  EMPTY_PAYMENT_PROOF,
+  UniversalPaymentProofForm,
+  validatePaymentProofSubmission,
+  type PaymentProofSubmission,
+} from '@/modules/payments';
 import { formatCurrency } from '@/shared/utils/dashboardFinancial';
 import { spaceMealsPath } from '@/routes/paths';
 import type { SubscriptionPlanResponse } from '@/shared/types/subscription';
@@ -35,6 +40,7 @@ import {
 /**
  * Customer-facing plan catalog + activation request.
  * Mirrors mobile CustomerSubscriptionPlansScreen (no join invent).
+ * Activation API has no paymentMethod field — method is prefixed into customerNotes.
  */
 export function CustomerSubscriptionPlansPage() {
   const { t } = useTranslation();
@@ -53,33 +59,23 @@ export function CustomerSubscriptionPlansPage() {
   });
 
   const [selected, setSelected] = useState<SubscriptionPlanResponse | null>(null);
-  const [reference, setReference] = useState('');
-  const [notes, setNotes] = useState('');
-  const [proofBase64, setProofBase64] = useState<string | null>(null);
+  const [proof, setProof] = useState<PaymentProofSubmission>(EMPTY_PAYMENT_PROOF);
 
   useEffect(() => {
     document.title = `${t('meals.subscriptionPlans.title')} · ${t('common.appName')}`;
   }, [t]);
+
+  useEffect(() => {
+    if (selected) {
+      setProof(EMPTY_PAYMENT_PROOF);
+    }
+  }, [selected?.planId]);
 
   const status = statusQuery.data;
   const blocked =
     status?.subscriptionActive === true || status?.pendingActivationStatus === 'PENDING';
 
   const activePlans = (plansQuery.data ?? []).filter((p) => p.isActive);
-
-  const handleFile = async (file: File | null) => {
-    if (!file) {
-      setProofBase64(null);
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? '');
-      const base64 = result.includes(',') ? result.split(',')[1] : result;
-      setProofBase64(base64 || null);
-    };
-    reader.readAsDataURL(file);
-  };
 
   return (
     <PageContainer gap={0}>
@@ -155,9 +151,7 @@ export function CustomerSubscriptionPlansPage() {
                     sx={dashContainedButtonSx}
                     onClick={() => {
                       setSelected(plan);
-                      setReference('');
-                      setNotes('');
-                      setProofBase64(null);
+                      setProof(EMPTY_PAYMENT_PROOF);
                     }}
                   >
                     {t('meals.customerPlans.submitRequest')}
@@ -183,71 +177,59 @@ export function CustomerSubscriptionPlansPage() {
                 {t('meals.subscriptionPlans.mealsLine', { count: selected.mealsIncluded })}
               </Typography>
               <Alert severity="info">{t('meals.customerPlans.paymentProofHint')}</Alert>
-              <TextField
-                label={t('meals.customerPlans.paymentReferenceLabel', {
-                  defaultValue: 'Payment reference',
-                })}
-                value={reference}
-                onChange={(e) => setReference(e.target.value)}
-                placeholder={t('meals.subscription.customer.paymentReferencePlaceholder')}
-                fullWidth
-              />
-              <Button variant="outlined" component="label" sx={dashOutlinedButtonSx}>
-                {proofBase64
-                  ? t('meals.customerPlans.removeScreenshot')
-                  : t('meals.subscriptionPlans.viewPaymentProof')}
-                <input
-                  hidden
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] ?? null;
-                    if (proofBase64) {
-                      setProofBase64(null);
-                      e.target.value = '';
-                      return;
-                    }
-                    void handleFile(file);
-                  }}
-                />
-              </Button>
-              <TextField
-                label={t('meals.customerPlans.notesLabel')}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder={t('meals.subscription.customer.notesPlaceholder')}
-                fullWidth
-                multiline
-                minRows={2}
+              <UniversalPaymentProofForm
+                value={proof}
+                onChange={setProof}
+                disabled={mutations.createActivation.isPending}
               />
             </Stack>
             <StickyFooter>
+              <Button onClick={() => setSelected(null)} sx={dashOutlinedButtonSx}>
+                {t('common.cancel')}
+              </Button>
               <Button
                 variant="contained"
                 disabled={mutations.createActivation.isPending}
                 sx={dashContainedButtonSx}
                 onClick={async () => {
                   if (!linkedMember.data?.memberId || !selected) return;
-                  if (!reference.trim() && !proofBase64) {
+                  const validationError = validatePaymentProofSubmission(proof, undefined, {
+                    requireProofOrReference: true,
+                  });
+                  if (validationError === 'proofOrReferenceRequired') {
                     enqueueSnackbar(t('meals.customerPlans.proofOrReferenceRequired'), {
                       variant: 'warning',
                     });
                     return;
                   }
+                  if (validationError) {
+                    enqueueSnackbar(t(`paymentCollection.proof.${validationError}`), {
+                      variant: 'warning',
+                    });
+                    return;
+                  }
+                  const methodLabel = t(
+                    `paymentCollection.method.${proof.paymentMethod ?? 'UPI'}`,
+                  );
+                  const noteParts = [
+                    t('paymentCollection.proof.paymentMethod') + `: ${methodLabel}`,
+                    proof.remarks?.trim() || null,
+                  ].filter(Boolean);
                   try {
                     await mutations.createActivation.mutateAsync({
                       memberId: linkedMember.data.memberId,
                       payload: {
                         planId: selected.planId,
-                        paymentReference: reference.trim() || undefined,
-                        proofImageBase64: proofBase64 || undefined,
-                        customerNotes: notes.trim() || undefined,
+                        paymentReference: proof.referenceNumber?.trim() || undefined,
+                        proofImageBase64: proof.proofImageBase64?.trim() || undefined,
+                        customerNotes: noteParts.join('\n') || undefined,
                       },
                     });
                     enqueueSnackbar(t('meals.customerPlans.requestSubmitted'), {
                       variant: 'success',
                     });
                     setSelected(null);
+                    setProof(EMPTY_PAYMENT_PROOF);
                     void statusQuery.refetch();
                   } catch {
                     enqueueSnackbar(t('common.errors.generic'), { variant: 'error' });

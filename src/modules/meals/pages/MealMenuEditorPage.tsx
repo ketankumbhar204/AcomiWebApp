@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
@@ -18,13 +17,12 @@ import {
 } from '@mui/material';
 import {
   ArrowLeft,
+  BookOpen,
   Copy,
   Plus,
-  Search,
   Share2,
   Trash2,
   UtensilsCrossed,
-  X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +33,7 @@ import { Breadcrumbs } from '@/shared/components/Breadcrumbs';
 import { ContentCard } from '@/shared/components/ContentCard';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { LoadingState } from '@/shared/components/LoadingState';
+import { SearchToolbar } from '@/shared/components/SearchToolbar';
 import { StatusChip, type StatusChipTone } from '@/shared/components/StatusChip';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { colors } from '@/shared/theme/colors';
@@ -59,6 +58,12 @@ import { InlineCreateCategoryRow } from '../components/CategoryFormDialog';
 import { MealExtrasEnablePanel, toExtraPackage } from '../components/MealExtrasEnablePanel';
 import { MenuHistoryPanel } from '../components/MenuHistoryPanel';
 import { ProgressiveMealPlanningBar } from '../components/ProgressiveMealPlanningBar';
+import {
+  hideScrollbarSx,
+  MealPlanCompactSelectedCard,
+  MealPlanSelectableCard,
+  MEAL_PLAN_NOTES_MAX,
+} from '../components/mealPlanVisuals';
 import {
   useDailyMenus,
   useFoodCategories,
@@ -91,12 +96,6 @@ type ProgressivePhase = 'select' | 'review_extras' | 'ready';
 function parseMealType(raw: string | null): MealType | null {
   if (raw && MEAL_TYPES.includes(raw as MealType)) return raw as MealType;
   return null;
-}
-
-function foodTypeTone(foodType?: FoodType | string | null): 'success' | 'warning' | 'neutral' {
-  if (foodType === 'VEG') return 'success';
-  if (foodType === 'NON_VEG') return 'warning';
-  return 'neutral';
 }
 
 function menuStatusTone(status?: string | null): StatusChipTone {
@@ -404,6 +403,7 @@ export function MealMenuEditorPage() {
       : extrasReviewed
         ? 'ready'
         : 'review_extras';
+  const showActionFooter = canManage && !readOnly;
 
   useEffect(() => {
     if (!hydrated || !progressiveExtrasEnabled) return;
@@ -530,6 +530,21 @@ export function MealMenuEditorPage() {
       const copy = { ...d };
       delete copy[key];
       return copy;
+    });
+  };
+
+  const clearSelectedMenu = () => {
+    if (!canManage) return;
+    setOptions((prev) => {
+      const remaining = prev.filter((o) => o.isExtra === true);
+      return reindexMenuOptions(remaining);
+    });
+    setPriceDrafts((d) => {
+      const next: Record<string, string> = {};
+      for (const [key, value] of Object.entries(d)) {
+        if (key.startsWith('EXTRA:')) next[key] = value;
+      }
+      return next;
     });
   };
 
@@ -926,99 +941,65 @@ export function MealMenuEditorPage() {
       (option.entryType === 'COMBO' && option.comboId ? comboById.get(option.comboId)?.foodType : undefined);
 
     return (
-      <Box
+      <MealPlanCompactSelectedCard
         key={key}
-        sx={{
-          display: 'flex',
-          gap: 1.25,
-          alignItems: 'center',
-          p: 1.25,
-          borderRadius: `${DASHBOARD_UX.radius}px`,
-          border: `1px solid ${s.border}`,
-          bgcolor: s.surface,
-        }}
-      >
-        <Box
-          sx={{
-            width: 40,
-            height: 40,
-            borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-            bgcolor: `${colors.primary}14`,
-            color: colors.primaryDark,
-            display: 'grid',
-            placeItems: 'center',
-            flexShrink: 0,
-          }}
-        >
-          <UtensilsCrossed size={18} />
-        </Box>
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-            <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
-              {option.label}
-              {option.entryType === 'COMBO'
-                ? ` (${t('meals.library.combos')})`
-                : option.isExtra
-                  ? ` (${t('meals.library.extras')})`
-                  : ''}
-            </Typography>
-            {foodType ? (
-              <StatusChip
-                label={t(`meals.foodType.${foodType}`, { defaultValue: String(foodType) })}
-                tone={foodTypeTone(foodType)}
-              />
-            ) : null}
-          </Stack>
-          {includes.length > 0 ? (
-            <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textMuted }} noWrap>
-              {includes.join(', ')}
-            </Typography>
-          ) : null}
-        </Box>
-        {needPrices && canManage
-          ? renderInlinePriceField({
-              draftKey: key,
-              onBlur: () => void persistOptionPrice(option),
-              inputRef: (el) => {
-                firstInvalidPriceRef.current.set(key, el);
-              },
-            })
-          : needPrices
-            ? renderCatalogPriceLabel(option.price, option.currencyCode)
-            : null}
-        {canManage ? (
-          <IconButton
-            size="small"
-            aria-label={t('common.remove', { defaultValue: 'Remove' })}
-            onClick={() => removeOption(key)}
-          >
-            <X size={16} />
-          </IconButton>
-        ) : null}
-      </Box>
+        name={option.label}
+        foodType={foodType}
+        isExtra={option.isExtra === true}
+        includes={
+          includes.length > 0
+            ? includes.join(', ')
+            : option.entryType === 'COMBO'
+              ? t('meals.library.combos')
+              : undefined
+        }
+        priceSlot={
+          needPrices && canManage
+            ? renderInlinePriceField({
+                draftKey: key,
+                onBlur: () => void persistOptionPrice(option),
+                inputRef: (el) => {
+                  firstInvalidPriceRef.current.set(key, el);
+                },
+              })
+            : needPrices
+              ? renderCatalogPriceLabel(option.price, option.currencyCode)
+              : null
+        }
+        onRemove={canManage ? () => removeOption(key) : undefined}
+      />
     );
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: s.pageBg, display: 'flex', flexDirection: 'column' }}>
+    <Box
+      sx={{
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        bgcolor: s.pageBg,
+      }}
+    >
       <Box
         sx={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 20,
+          flexShrink: 0,
+          zIndex: 2,
           borderBottom: `1px solid ${s.border}`,
           bgcolor: s.surface,
           boxShadow: s.shadow,
           px: { xs: 2, md: 3 },
-          py: 1.5,
+          py: 1.75,
         }}
       >
         <Stack
           direction={{ xs: 'column', md: 'row' }}
-          spacing={1.5}
+          spacing={1.75}
           sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between' }}
         >
-          <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: 0 }}>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
             <IconButton
               aria-label={t('common.back', { defaultValue: 'Back' })}
               onClick={requestLeave}
@@ -1038,7 +1019,12 @@ export function MealMenuEditorPage() {
                   },
                 ]}
               />
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 0.5 }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                useFlexGap
+                sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 0.75, gap: 1 }}
+              >
                 <Typography sx={{ ...DASHBOARD_UX.pageTitle, color: s.textPrimary }}>
                   {t('meals.planning.editSlot', { meal: t(`meals.mealType.${mealType}`) })}
                 </Typography>
@@ -1050,14 +1036,22 @@ export function MealMenuEditorPage() {
                 ) : null}
                 <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary }}>{dateBadge}</Typography>
                 <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }}>
-                  {planned.total === 0 ? t(plannedKey) : t(plannedKey, { count: planned.total })}
+                  {planned.total === 0
+                    ? t(plannedKey)
+                    : `• ${t(plannedKey, { count: planned.total })}`}
                 </Typography>
                 {planned.total > 0 ? (
                   <Link
                     component="button"
                     type="button"
                     onClick={previewShare}
-                    sx={{ ...DASHBOARD_UX.link, color: colors.primaryDark, display: 'inline-flex', alignItems: 'center', gap: 0.4 }}
+                    sx={{
+                      ...DASHBOARD_UX.link,
+                      color: colors.primaryDark,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 0.4,
+                    }}
                   >
                     <Share2 size={13} />
                     {t('meals.planning.previewShare')}
@@ -1069,41 +1063,9 @@ export function MealMenuEditorPage() {
 
           {canManage ? (
             <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-              {menu?.status === 'DRAFT' && !progressiveExtrasEnabled ? (
-                <Button
-                  color="error"
-                  variant="outlined"
-                  startIcon={<Trash2 size={14} />}
-                  disabled={saving}
-                  onClick={() => void clearDraft()}
-                  sx={dashOutlinedButtonSx}
-                >
-                  {t('meals.actions.deleteDraft', { defaultValue: 'Delete draft' })}
-                </Button>
-              ) : null}
               <Button variant="outlined" onClick={requestLeave} disabled={saving} sx={dashOutlinedButtonSx}>
                 {t('common.cancel')}
               </Button>
-              {!progressiveExtrasEnabled ? (
-                <>
-                  <Button
-                    variant="outlined"
-                    disabled={saving}
-                    onClick={() => void persist(false)}
-                    sx={{ ...dashOutlinedButtonSx, color: colors.primaryDark, borderColor: colors.primary }}
-                  >
-                    {t('meals.actions.saveDraft')}
-                  </Button>
-                  <Button
-                    variant="contained"
-                    disabled={saving}
-                    onClick={() => void persist(true)}
-                    sx={dashContainedButtonSx}
-                  >
-                    {t('meals.actions.shareMeal')}
-                  </Button>
-                </>
-              ) : null}
             </Stack>
           ) : null}
         </Stack>
@@ -1112,415 +1074,481 @@ export function MealMenuEditorPage() {
       <Box
         sx={{
           flex: 1,
-          px: { xs: 2, md: 3 },
-          py: { xs: 2, md: 3 },
-          maxWidth: DASHBOARD_UX.contentMaxWidth,
+          minHeight: 0,
           width: '100%',
+          px: { xs: 2, md: 3 },
+          py: { xs: 1.25, md: 1.5 },
+          maxWidth: DASHBOARD_UX.contentMaxWidth,
           mx: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: `${DASHBOARD_UX.sectionGap + 6}px`,
+          gap: 1.25,
+          overflow: 'hidden',
+          bgcolor: s.pageBg,
         }}
       >
-        {readOnly ? (
-          <ContentCard>
-            <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
-              {t('meals.errors.pastDateReadOnly')}
-            </Typography>
-          </ContentCard>
-        ) : null}
-
-        {!hydrated || (menus.loading && !menu) ? (
-          <LoadingState minHeight={320} />
-        ) : (
-          <>
-            {canManage && planned.total === 0 ? (
+            {readOnly ? (
               <ContentCard>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={1}
-                  sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between' }}
-                >
-                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
-                    {t('meals.planning.copyFrom.hint', {
-                      defaultValue: 'Start from a previous day’s menu for this meal.',
-                    })}
-                  </Typography>
-                  <Button
-                    startIcon={<Copy size={14} />}
-                    variant="outlined"
-                    onClick={() => setCopyOpen(true)}
-                    sx={dashOutlinedButtonSx}
-                  >
-                    {t('meals.planning.copyFrom.title', { defaultValue: 'Copy previous menu' })}
-                  </Button>
-                </Stack>
+                <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
+                  {t('meals.errors.pastDateReadOnly')}
+                </Typography>
               </ContentCard>
             ) : null}
 
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) minmax(0, 1fr)' },
-                gap: `${DASHBOARD_UX.sectionGap + 6}px`,
-                alignItems: 'stretch',
-                flex: 1,
-                minHeight: { xs: 420, lg: 0 },
-              }}
-            >
-              {/* Library — Combos / Items (mobile MenuSelectionPanel parity) */}
-              <Box
-                sx={{
-                  minHeight: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  height: { lg: '100%' },
-                }}
-              >
-              <ContentCard padded={false}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    height: { lg: '100%' },
-                    minHeight: {
-                      xs: 420,
-                      // Header + page padding + progressive footer ≈ leave rest for the card.
-                      lg: 'calc(100vh - 220px)',
-                    },
-                  }}
-                >
-                <Box sx={{ p: `${DASHBOARD_UX.cardPadding + 4}px`, pb: 1, flexShrink: 0 }}>
-                  <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
-                      {t('meals.planning.libraryTitle', { defaultValue: 'Library' })}
+            {!hydrated || (menus.loading && !menu) ? (
+              <LoadingState minHeight={320} />
+            ) : (
+              <>
+                {canManage && planned.total === 0 ? (
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      flexShrink: 0,
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      px: 1.5,
+                      py: 0.75,
+                      borderRadius: `${DASHBOARD_UX.radius}px`,
+                      border: `1px solid ${s.border}`,
+                      bgcolor: s.surface,
+                    }}
+                  >
+                    <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary, minWidth: 0 }} noWrap>
+                      {t('meals.planning.copyFrom.hint', {
+                        defaultValue: 'Start from a previous day’s menu for this meal.',
+                      })}
                     </Typography>
-                    <Link
-                      component="button"
-                      type="button"
-                      onClick={() => navigate(spaceMealsLibraryPath(spaceId))}
-                      sx={{ ...DASHBOARD_UX.link, color: colors.primaryDark }}
-                    >
-                      {t('meals.library.title', { defaultValue: 'Menu library' })}
-                    </Link>
-                  </Stack>
-                  {tab !== 'history' ? (
-                    <TextField
+                    <Button
                       size="small"
-                      fullWidth
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder={t('meals.library.search')}
-                      sx={{ mt: 1.5 }}
-                      slotProps={{
-                        input: {
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <Search size={16} color={s.textMuted} />
-                            </InputAdornment>
-                          ),
-                        },
-                      }}
-                    />
-                  ) : null}
-                  <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
-                    <Tabs
-                      value={tab}
-                      onChange={(_, v: LibraryTab) => setTab(v)}
-                      sx={{ minHeight: 40, '& .MuiTab-root': { textTransform: 'none', minHeight: 40 } }}
+                      startIcon={<Copy size={14} />}
+                      variant="outlined"
+                      onClick={() => setCopyOpen(true)}
+                      sx={{ ...dashOutlinedButtonSx, flexShrink: 0, minHeight: 32, py: 0.25 }}
                     >
-                      <Tab value="history" label={t('meals.planning.tabHistory')} />
-                      <Tab value="combos" label={t('meals.library.combos')} />
-                      <Tab value="items" label={t('meals.library.items')} />
-                    </Tabs>
-                    {canManage && tab !== 'history' ? (
-                      <Button
-                        size="small"
-                        startIcon={<Plus size={14} />}
-                        onClick={() => setCreateComboOpen(true)}
-                        sx={dashOutlinedButtonSx}
-                      >
-                        {t('meals.planning.createNewCombo', { defaultValue: '+ Create New Combo' })}
-                      </Button>
-                    ) : null}
+                      {t('meals.planning.copyFrom.title', { defaultValue: 'Copy previous menu' })}
+                    </Button>
                   </Stack>
-                  {tab === 'items' ? (
-                    <Stack
-                      direction="row"
-                      spacing={0.75}
-                      useFlexGap
-                      sx={{ flexWrap: 'wrap', mt: 1.25, alignItems: 'center' }}
-                    >
-                      <ChipButton
-                        active={!categoryId}
-                        label={t('common.all', { defaultValue: 'All' })}
-                        onClick={() => setCategoryId('')}
-                      />
-                      {activeCategories.map((c) => (
-                        <ChipButton
-                          key={c.categoryId}
-                          active={categoryId === c.categoryId}
-                          label={c.name}
-                          onClick={() => setCategoryId(c.categoryId)}
-                        />
-                      ))}
-                      {canManage ? (
-                        <InlineCreateCategoryRow
-                          spaceId={spaceId}
-                          variant="chip"
-                          onCreated={(id) => {
-                            refreshCatalog();
-                            setCategoryId(id);
-                          }}
-                        />
-                      ) : null}
-                    </Stack>
-                  ) : null}
-                </Box>
+                ) : null}
+
                 <Box
                   sx={{
-                    px: 2,
-                    pb: 2,
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) minmax(0, 1fr)' },
+                    gridTemplateRows: { xs: 'minmax(0, 1fr) minmax(0, 1fr)', lg: 'minmax(0, 1fr)' },
+                    gap: `${DASHBOARD_UX.sectionGap + 6}px`,
+                    alignItems: 'stretch',
                     flex: 1,
                     minHeight: 0,
-                    overflow: 'auto',
+                    overflow: 'hidden',
                   }}
                 >
-                  {tab === 'history' && mealType ? (
-                    <MenuHistoryPanel
-                      key={`${spaceId}-${mealType}`}
-                      spaceId={spaceId}
-                      mealType={mealType}
-                      canManage={canManage}
-                      needPrices={needPrices}
-                      selectedComboIds={selectedComboIds}
-                      selectedItemIds={selectedMainItemIds}
-                      onToggleCombo={toggleHistoryCombo}
-                      onToggleItem={toggleHistoryItem}
-                      onBrowseCombos={() => setTab('combos')}
-                      onBrowseItems={() => setTab('items')}
-                    />
-                  ) : combosQuery.loading || itemsQuery.loading ? (
-                    <LoadingState />
-                  ) : tab === 'combos' ? (
-                    filteredCombos.length === 0 ? (
-                      <EmptyState
-                        title={t('meals.library.emptyCombos', { defaultValue: 'No combos found' })}
-                        icon={<UtensilsCrossed size={28} />}
-                      />
-                    ) : (
-                      <Stack spacing={1}>
-                        {filteredCombos.map((combo) => {
-                          const selected = selectedComboIds.has(combo.comboId);
-                          return (
-                            <Box
-                              key={combo.comboId}
-                              component="button"
-                              type="button"
-                              disabled={!canManage}
-                              onClick={() => toggleCombo(combo)}
+                  {/* Library — History / Combos / Items */}
+                  <Box
+                    sx={{
+                      minHeight: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      height: '100%',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        flex: 1,
+                        minHeight: 0,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                        '& > .MuiPaper-root': {
+                          flex: 1,
+                          minHeight: 0,
+                          display: 'flex',
+                          flexDirection: 'column',
+                        },
+                      }}
+                    >
+                      <ContentCard padded={false}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            flex: 1,
+                            minHeight: 0,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <Box sx={{ p: `${DASHBOARD_UX.cardPadding + 4}px`, pb: 1, flexShrink: 0 }}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+                            >
+                              <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
+                                {t('meals.planning.libraryTitle', { defaultValue: 'Library' })}
+                              </Typography>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<BookOpen size={14} />}
+                                onClick={() => navigate(spaceMealsLibraryPath(spaceId))}
+                                sx={dashOutlinedButtonSx}
+                              >
+                                {t('meals.library.title', { defaultValue: 'Menu library' })}
+                              </Button>
+                            </Stack>
+
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              useFlexGap
                               sx={{
-                                all: 'unset',
-                                cursor: canManage ? 'pointer' : 'default',
-                                display: 'flex',
-                                gap: 1,
                                 alignItems: 'center',
-                                p: 1.25,
-                                borderRadius: `${DASHBOARD_UX.radius}px`,
-                                border: `1px solid ${selected ? colors.primary : s.border}`,
-                                bgcolor: selected ? `${colors.primary}14` : s.surface,
+                                justifyContent: 'space-between',
+                                flexWrap: 'wrap',
+                                mt: 1,
+                                gap: 1,
                               }}
                             >
-                              <Checkbox checked={selected} tabIndex={-1} disableRipple sx={{ p: 0.5 }} />
-                              <Box sx={{ minWidth: 0, flex: 1 }}>
-                                <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                                  <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }} noWrap>
-                                    {combo.name}
-                                  </Typography>
-                                  {combo.foodType ? (
-                                    <StatusChip
-                                      label={t(`meals.foodType.${combo.foodType}`)}
-                                      tone={foodTypeTone(combo.foodType)}
-                                    />
-                                  ) : null}
-                                </Stack>
-                                <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textMuted }} noWrap>
-                                  {combo.items
-                                    ?.map((i) => formatComboIncludeLine(i.name, i.quantity))
-                                    .join(', ') || '—'}
-                                </Typography>
+                              <Tabs
+                                value={tab}
+                                onChange={(_, v: LibraryTab) => setTab(v)}
+                                sx={{
+                                  minHeight: DASHBOARD_UX.buttonHeight,
+                                  '& .MuiTab-root': {
+                                    minHeight: DASHBOARD_UX.buttonHeight,
+                                    ...DASHBOARD_UX.button,
+                                    textTransform: 'none',
+                                    color: s.textMuted,
+                                  },
+                                  '& .Mui-selected': {
+                                    color: `${colors.primaryDark} !important`,
+                                  },
+                                  '& .MuiTabs-indicator': {
+                                    bgcolor: colors.primaryDark,
+                                    height: 2,
+                                  },
+                                }}
+                              >
+                                <Tab value="history" label={t('meals.planning.tabHistory')} />
+                                <Tab value="combos" label={t('meals.library.combos')} />
+                                <Tab value="items" label={t('meals.library.items')} />
+                              </Tabs>
+                              {canManage && tab !== 'history' ? (
+                                <Button
+                                  size="small"
+                                  startIcon={<Plus size={14} />}
+                                  onClick={() => setCreateComboOpen(true)}
+                                  sx={dashOutlinedButtonSx}
+                                >
+                                  {t('meals.planning.createNewCombo', { defaultValue: '+ Create New Combo' })}
+                                </Button>
+                              ) : null}
+                            </Stack>
+
+                            {tab !== 'history' ? (
+                              <Box sx={{ mt: 1.5 }}>
+                                <SearchToolbar
+                                  value={search}
+                                  onChange={setSearch}
+                                  placeholder={t('meals.library.search')}
+                                />
                               </Box>
-                              {needPrices && selected && canManage
-                                ? renderInlinePriceField({
-                                    draftKey: `COMBO:${combo.comboId}`,
-                                    onBlur: () => void persistLibraryComboPrice(combo),
-                                  })
-                                : needPrices
-                                  ? renderCatalogPriceLabel(combo.price, combo.currencyCode)
-                                  : null}
-                            </Box>
-                          );
-                        })}
-                      </Stack>
-                    )
-                  ) : filteredItems.length === 0 ? (
-                    <EmptyState
-                      title={t('meals.library.emptyItems', { defaultValue: 'No items found' })}
-                      icon={<UtensilsCrossed size={28} />}
-                    />
-                  ) : (
-                    <Stack spacing={1}>
-                      {filteredItems.map((item) => {
-                        const selected = selectedMainItemIds.has(item.itemId);
-                        return (
-                          <Box
-                            key={item.itemId}
-                            component="button"
-                            type="button"
-                            disabled={!canManage}
-                            onClick={() => toggleItem(item)}
-                            sx={{
-                              all: 'unset',
-                              cursor: canManage ? 'pointer' : 'default',
-                              display: 'flex',
-                              gap: 1,
-                              alignItems: 'center',
-                              p: 1.25,
-                              borderRadius: `${DASHBOARD_UX.radius}px`,
-                              border: `1px solid ${selected ? colors.primary : s.border}`,
-                              bgcolor: selected ? `${colors.primary}14` : s.surface,
-                            }}
-                          >
-                            <Checkbox checked={selected} tabIndex={-1} disableRipple sx={{ p: 0.5 }} />
-                            <Box sx={{ minWidth: 0, flex: 1 }}>
-                              <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                                <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }} noWrap>
-                                  {item.name}
-                                </Typography>
-                                {item.foodType ? (
-                                  <StatusChip
-                                    label={t(`meals.foodType.${item.foodType}`)}
-                                    tone={foodTypeTone(item.foodType)}
+                            ) : null}
+
+                            {tab === 'items' ? (
+                              <Stack
+                                direction="row"
+                                spacing={0.75}
+                                useFlexGap
+                                sx={{ flexWrap: 'wrap', mt: 1.25, alignItems: 'center' }}
+                              >
+                                <ChipButton
+                                  active={!categoryId}
+                                  label={t('common.all', { defaultValue: 'All' })}
+                                  onClick={() => setCategoryId('')}
+                                />
+                                {activeCategories.map((c) => (
+                                  <ChipButton
+                                    key={c.categoryId}
+                                    active={categoryId === c.categoryId}
+                                    label={c.name}
+                                    onClick={() => setCategoryId(c.categoryId)}
+                                  />
+                                ))}
+                                {canManage ? (
+                                  <InlineCreateCategoryRow
+                                    spaceId={spaceId}
+                                    variant="chip"
+                                    onCreated={(id) => {
+                                      refreshCatalog();
+                                      setCategoryId(id);
+                                    }}
                                   />
                                 ) : null}
                               </Stack>
-                              <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textMuted }} noWrap>
-                                {item.categoryName || t('meals.library.items')}
+                            ) : null}
+                          </Box>
+
+                          <Box
+                            sx={{
+                              px: 2,
+                              pb: 2,
+                              flex: 1,
+                              minHeight: 0,
+                              overflowY: 'auto',
+                              overflowX: 'hidden',
+                              ...hideScrollbarSx,
+                            }}
+                          >
+                            {tab === 'history' && mealType ? (
+                              <MenuHistoryPanel
+                                key={`${spaceId}-${mealType}`}
+                                spaceId={spaceId}
+                                mealType={mealType}
+                                canManage={canManage}
+                                needPrices={needPrices}
+                                selectedComboIds={selectedComboIds}
+                                selectedItemIds={selectedMainItemIds}
+                                onToggleCombo={toggleHistoryCombo}
+                                onToggleItem={toggleHistoryItem}
+                                onBrowseCombos={() => setTab('combos')}
+                                onBrowseItems={() => setTab('items')}
+                              />
+                            ) : combosQuery.loading || itemsQuery.loading ? (
+                              <LoadingState />
+                            ) : tab === 'combos' ? (
+                              filteredCombos.length === 0 ? (
+                                <EmptyState
+                                  title={t('meals.library.emptyCombos', { defaultValue: 'No combos found' })}
+                                  icon={<UtensilsCrossed size={28} />}
+                                />
+                              ) : (
+                                <Stack spacing={1}>
+                                  {filteredCombos.map((combo) => {
+                                    const selected = selectedComboIds.has(combo.comboId);
+                                    return (
+                                      <MealPlanSelectableCard
+                                        key={combo.comboId}
+                                        selected={selected}
+                                        disabled={!canManage}
+                                        onToggle={() => toggleCombo(combo)}
+                                        name={combo.name}
+                                        foodType={combo.foodType}
+                                        subtitle={
+                                          combo.items
+                                            ?.map((i) => formatComboIncludeLine(i.name, i.quantity))
+                                            .join(', ') || '—'
+                                        }
+                                        trailing={
+                                          needPrices && selected && canManage
+                                            ? renderInlinePriceField({
+                                                draftKey: `COMBO:${combo.comboId}`,
+                                                onBlur: () => void persistLibraryComboPrice(combo),
+                                              })
+                                            : needPrices
+                                              ? renderCatalogPriceLabel(combo.price, combo.currencyCode)
+                                              : null
+                                        }
+                                      />
+                                    );
+                                  })}
+                                </Stack>
+                              )
+                            ) : filteredItems.length === 0 ? (
+                              <EmptyState
+                                title={t('meals.library.emptyItems', { defaultValue: 'No items found' })}
+                                icon={<UtensilsCrossed size={28} />}
+                              />
+                            ) : (
+                              <Stack spacing={1}>
+                                {filteredItems.map((item) => {
+                                  const selected = selectedMainItemIds.has(item.itemId);
+                                  return (
+                                    <MealPlanSelectableCard
+                                      key={item.itemId}
+                                      selected={selected}
+                                      disabled={!canManage}
+                                      onToggle={() => toggleItem(item)}
+                                      name={item.name}
+                                      foodType={item.foodType}
+                                      subtitle={item.categoryName || t('meals.library.items')}
+                                      trailing={
+                                        needPrices && selected && canManage
+                                          ? renderInlinePriceField({
+                                              draftKey: `PKG:${item.itemId}`,
+                                              onBlur: () => void persistLibraryItemPrice(item),
+                                            })
+                                          : needPrices
+                                            ? renderCatalogPriceLabel(item.defaultPrice, item.currencyCode)
+                                            : null
+                                      }
+                                    />
+                                  );
+                                })}
+                              </Stack>
+                            )}
+                            {tab === 'items' && canManage ? (
+                              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mt: 1.5 }}>
+                                <InlineCreateFoodItemRow
+                                  spaceId={spaceId}
+                                  categories={activeCategories}
+                                  defaultCategoryId={categoryId}
+                                  onCreated={(created) => {
+                                    refreshCatalog();
+                                    addItemToSelection(created);
+                                  }}
+                                />
+                              </Stack>
+                            ) : null}
+                          </Box>
+                        </Box>
+                      </ContentCard>
+                    </Box>
+                  </Box>
+
+                  {/* Selected menu + extras + notes */}
+                  <Box
+                    sx={{
+                      minHeight: 0,
+                      height: '100%',
+                      overflowY: 'auto',
+                      overflowX: 'hidden',
+                      ...hideScrollbarSx,
+                    }}
+                  >
+                    <Stack spacing={`${DASHBOARD_UX.sectionGap}px`}>
+                      <ContentCard padded={false}>
+                        <Box sx={{ p: `${DASHBOARD_UX.cardPadding + 4}px`, pb: 1.5 }}>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
+                          >
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
+                                {t('meals.planning.selectedMenuTitle', { defaultValue: 'Selected Menu' })}
+                              </Typography>
+                              <Typography
+                                sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, mt: 0.25 }}
+                              >
+                                {t('meals.planning.selectedCount', { count: mainOptions.length })}
                               </Typography>
                             </Box>
-                            {needPrices && selected && canManage
-                              ? renderInlinePriceField({
-                                  draftKey: `PKG:${item.itemId}`,
-                                  onBlur: () => void persistLibraryItemPrice(item),
-                                })
-                              : needPrices
-                                ? renderCatalogPriceLabel(item.defaultPrice, item.currencyCode)
-                                : null}
-                          </Box>
-                        );
-                      })}
+                            {canManage && mainOptions.length > 0 ? (
+                              <Button
+                                size="small"
+                                variant="text"
+                                startIcon={<Trash2 size={14} />}
+                                onClick={clearSelectedMenu}
+                                sx={{
+                                  ...DASHBOARD_UX.button,
+                                  flexShrink: 0,
+                                  color: colors.danger,
+                                  textTransform: 'none',
+                                }}
+                              >
+                                {t('meals.planning.clearAll', { defaultValue: 'Clear all' })}
+                              </Button>
+                            ) : null}
+                          </Stack>
+                        </Box>
+                        <Box sx={{ px: 2, pb: 2 }}>
+                          {mainOptions.length === 0 ? (
+                            <EmptyState
+                              title={t('meals.planning.emptySelectedTitle', {
+                                defaultValue: 'Nothing selected yet',
+                              })}
+                              description={t('meals.planning.emptySelectedBody', {
+                                defaultValue: 'Add from Library to build this meal.',
+                              })}
+                              icon={<UtensilsCrossed size={28} />}
+                            />
+                          ) : (
+                            <Stack spacing={1}>{mainOptions.map(renderSelectedRow)}</Stack>
+                          )}
+                        </Box>
+                      </ContentCard>
+
+                      {isMess && needPrices ? (
+                        <MealExtrasEnablePanel
+                          spaceId={spaceId}
+                          options={options}
+                          comboById={comboById}
+                          catalogItems={itemsQuery.items}
+                          enabledExtraIds={selectedExtraIds}
+                          canManage={canManage}
+                          highlighted={extrasHighlighted}
+                          onToggleExtra={handleToggleExtra}
+                          onCatalogChanged={refreshCatalog}
+                          onInteract={() => setExtrasReviewed(true)}
+                        />
+                      ) : null}
+
+                      {extraOptions.length > 0 && !(isMess && needPrices) ? (
+                        <ContentCard>
+                          <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary, mb: 1 }}>
+                            {t('meals.planning.extrasSectionTitle')}
+                          </Typography>
+                          <Stack spacing={1}>{extraOptions.map(renderSelectedRow)}</Stack>
+                        </ContentCard>
+                      ) : null}
+
+                      <ContentCard>
+                        <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary, mb: 1 }}>
+                          {t('meals.planning.notes')}
+                        </Typography>
+                        <TextField
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value.slice(0, MEAL_PLAN_NOTES_MAX))}
+                          placeholder={t('meals.menu.notesPlaceholder')}
+                          fullWidth
+                          multiline
+                          minRows={4}
+                          disabled={!canManage}
+                          slotProps={{
+                            htmlInput: { maxLength: MEAL_PLAN_NOTES_MAX },
+                          }}
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
+                              bgcolor: s.surface,
+                              ...DASHBOARD_UX.inputText,
+                            },
+                          }}
+                        />
+                        <Typography
+                          sx={{
+                            ...DASHBOARD_UX.caption,
+                            color: s.textMuted,
+                            mt: 0.75,
+                            textAlign: 'end',
+                          }}
+                        >
+                          {`${notes.length}/${MEAL_PLAN_NOTES_MAX}`}
+                        </Typography>
+                      </ContentCard>
                     </Stack>
-                  )}
-                  {tab === 'items' && canManage ? (
-                    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mt: 1.5 }}>
-                      <InlineCreateFoodItemRow
-                        spaceId={spaceId}
-                        categories={activeCategories}
-                        defaultCategoryId={categoryId}
-                        onCreated={(created) => {
-                          refreshCatalog();
-                          addItemToSelection(created);
-                        }}
-                      />
-                    </Stack>
-                  ) : null}
-                </Box>
-                </Box>
-              </ContentCard>
-              </Box>
-
-              {/* Selected menu + extras + notes (mobile summary parity) */}
-              <Stack spacing={`${DASHBOARD_UX.sectionGap}px`}>
-                <ContentCard padded={false}>
-                  <Box sx={{ p: `${DASHBOARD_UX.cardPadding + 4}px`, pb: 1.5 }}>
-                    <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
-                      {t('meals.planning.selectedMenuTitle', { defaultValue: 'Selected Menu' })}
-                    </Typography>
-                    <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, mt: 0.25 }}>
-                      {t('meals.planning.selectedCount', { count: mainOptions.length })}
-                    </Typography>
                   </Box>
-                  <Box sx={{ px: 2, pb: 2, maxHeight: { xs: 280, lg: 360 }, overflow: 'auto' }}>
-                    {mainOptions.length === 0 ? (
-                      <EmptyState
-                        title={t('meals.menu.plannedSummaryEmpty')}
-                        description={t('meals.planning.emptySelectedBody', {
-                          defaultValue: 'Select combos or items from the library.',
-                        })}
-                        icon={<UtensilsCrossed size={28} />}
-                      />
-                    ) : (
-                      <Stack spacing={1}>{mainOptions.map(renderSelectedRow)}</Stack>
-                    )}
-                  </Box>
-                </ContentCard>
-
-                {isMess && needPrices ? (
-                  <MealExtrasEnablePanel
-                    spaceId={spaceId}
-                    options={options}
-                    comboById={comboById}
-                    catalogItems={itemsQuery.items}
-                    enabledExtraIds={selectedExtraIds}
-                    canManage={canManage}
-                    highlighted={extrasHighlighted}
-                    onToggleExtra={handleToggleExtra}
-                    onCatalogChanged={refreshCatalog}
-                    onInteract={() => setExtrasReviewed(true)}
-                  />
-                ) : null}
-
-                {extraOptions.length > 0 && !(isMess && needPrices) ? (
-                  <ContentCard>
-                    <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary, mb: 1 }}>
-                      {t('meals.planning.extrasSectionTitle')}
-                    </Typography>
-                    <Stack spacing={1}>{extraOptions.map(renderSelectedRow)}</Stack>
-                  </ContentCard>
-                ) : null}
-
-                <ContentCard>
-                  <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary, mb: 1 }}>
-                    {t('meals.planning.notes')}
-                  </Typography>
-                  <TextField
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder={t('meals.menu.notesPlaceholder')}
-                    fullWidth
-                    multiline
-                    minRows={3}
-                    disabled={!canManage}
-                  />
-                </ContentCard>
-              </Stack>
-            </Box>
-          </>
-        )}
+                </Box>
+              </>
+            )}
       </Box>
 
-      {canManage && progressiveExtrasEnabled ? (
-        <ProgressiveMealPlanningBar
-          phase={phase}
-          saving={saving}
-          saveDisabled={mainOptions.length === 0}
-          shareDisabled={mainOptions.length === 0}
-          canDeleteDraft={menu?.status === 'DRAFT' && options.length > 0}
-          onContinueToExtras={continueToExtras}
-          onSaveDraft={() => void persist(false)}
-          onShareMeal={() => void persist(true)}
-          onDeleteDraft={() => void clearDraft()}
-        />
+      {showActionFooter ? (
+        <Box sx={{ flexShrink: 0, zIndex: 2 }}>
+          <ProgressiveMealPlanningBar
+            phase={phase}
+            saving={saving}
+            saveDisabled={mainOptions.length === 0}
+            shareDisabled={mainOptions.length === 0}
+            canDeleteDraft={menu?.status === 'DRAFT' && options.length > 0}
+            onContinueToExtras={continueToExtras}
+            onSaveDraft={() => void persist(false)}
+            onShareMeal={() => void persist(true)}
+            onDeleteDraft={() => void clearDraft()}
+          />
+        </Box>
       ) : null}
 
       {mealType ? (

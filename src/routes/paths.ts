@@ -155,9 +155,17 @@ export function spaceMealsSharePath(spaceId: string, date?: string): string {
   return date ? `${base}?date=${encodeURIComponent(date)}` : base;
 }
 
-export function spaceMealsPollPath(spaceId: string, date?: string): string {
+export function spaceMealsPollPath(
+  spaceId: string,
+  date?: string,
+  mealType?: 'BREAKFAST' | 'LUNCH' | 'DINNER',
+): string {
   const base = `/spaces/${spaceId}/meals/poll`;
-  return date ? `${base}?date=${encodeURIComponent(date)}` : base;
+  const params = new URLSearchParams();
+  if (date) params.set('date', date);
+  if (mealType) params.set('meal', mealType);
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
 }
 
 export function spaceMealsPlansPath(spaceId: string, tab?: 'plans' | 'requests'): string {

@@ -36,6 +36,7 @@ import {
   spaceInventoryPath,
   spaceMealsPath,
   spaceMealsPlansPath,
+  spaceMealsPollPath,
   spaceMembersPath,
   spaceNotificationsPath,
   spacePaymentsPath,
@@ -270,8 +271,15 @@ export function SpaceShellLayout() {
     consumerChrome &&
     (location.pathname === spaceMealsPath(spaceId) ||
       location.pathname === `${spaceMealsPath(spaceId)}/`);
-  // Dashboard + My Orders own their page padding; other consumer pages use ContentLayout.
-  const useFullBleedContent = isDashboardRoute || isCustomerMealsHome;
+  const isMealPollPage =
+    location.pathname === spaceMealsPollPath(spaceId) ||
+    location.pathname.startsWith(`${spaceMealsPollPath(spaceId)}/`);
+  const isMealMenuEditorPage =
+    location.pathname === `/spaces/${spaceId}/meals/edit` ||
+    location.pathname.startsWith(`/spaces/${spaceId}/meals/edit/`);
+  // Dashboard + My Orders + meal poll + menu editor own their page padding; other pages use ContentLayout.
+  const useFullBleedContent =
+    isDashboardRoute || isCustomerMealsHome || isMealPollPage || isMealMenuEditorPage;
 
   return (
     <AppLayout
@@ -279,6 +287,7 @@ export function SpaceShellLayout() {
       contentDense={useFullBleedContent}
       contentMaxWidth={useFullBleedContent ? false : undefined}
       padded={!useFullBleedContent}
+      lockContentScroll={isMealMenuEditorPage}
       headerLeading={
         <SpaceContextSelector
           spaceId={spaceId}

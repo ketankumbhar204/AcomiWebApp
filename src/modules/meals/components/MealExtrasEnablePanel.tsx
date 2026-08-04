@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Checkbox,
   InputAdornment,
   Link,
   Stack,
@@ -9,12 +8,14 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
+import { ChevronRight, Library, Search, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { ContentCard } from '@/shared/components/ContentCard';
+import { SearchToolbar } from '@/shared/components/SearchToolbar';
 import { colors } from '@/shared/theme/colors';
 import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { formatCurrency } from '@/shared/utils/dashboardFinancial';
@@ -30,6 +31,7 @@ import {
   toExtraPackage,
 } from '../utils/mealExtrasSuggestions';
 import { parsePriceInput, validatePriceInput } from '../utils/comboPrice';
+import { MealPlanSelectableCard, formatUnitEach } from './mealPlanVisuals';
 
 type MealExtrasEnablePanelProps = {
   spaceId: string;
@@ -44,7 +46,7 @@ type MealExtrasEnablePanelProps = {
   onInteract: () => void;
 };
 
-/** MESS extras section — parity with mobile MealExtrasEnableSection. */
+/** MESS extras section — distinct Extra cards + “₹N each” pricing. */
 export function MealExtrasEnablePanel({
   spaceId,
   options,
@@ -68,7 +70,6 @@ export function MealExtrasEnablePanel({
   const [browseSearch, setBrowseSearch] = useState('');
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
   const [addingAll, setAddingAll] = useState(false);
-  /** User manually turned these off — do not auto-select again until they re-check. */
   const optedOutRef = useRef<Set<string>>(new Set());
 
   const hasMealSelection = options.some((o) => o.isExtra !== true);
@@ -98,7 +99,11 @@ export function MealExtrasEnablePanel({
     });
   }, [browseSearch, buckets.other, buckets.related, buckets.relevant]);
 
-  /** In-meal library extras are selected by default (user can still turn off). */
+  const availableExtras = useMemo(
+    () => [...buckets.relevant, ...buckets.related],
+    [buckets.related, buckets.relevant],
+  );
+
   const autoAttemptedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!canManage || !hasMealSelection) return;
@@ -237,69 +242,75 @@ export function MealExtrasEnablePanel({
     }
   };
 
-  const renderRow = (item: FoodItemResponse, mode: 'library' | 'missing') => {
+  const renderExtraCard = (item: FoodItemResponse, mode: 'library' | 'missing') => {
     const enabled = enabledExtraIds.has(item.itemId);
     const priceText =
       priceDrafts[item.itemId] ??
       (item.defaultPrice != null ? String(item.defaultPrice) : '');
+    const parsedLive = priceText.trim() ? parsePriceInput(priceText) : item.defaultPrice ?? null;
+    const eachLabel = formatUnitEach(parsedLive, item.currencyCode, t);
 
     return (
-      <Box
+      <MealPlanSelectableCard
         key={`${mode}-${item.itemId}`}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          p: 1.1,
-          borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-          border: `1px solid ${enabled ? colors.primary : s.border}`,
-          bgcolor: enabled ? `${colors.primary}0F` : s.surface,
+        variant="extra"
+        selected={enabled}
+        disabled={!canManage}
+        icon={Sparkles}
+        onToggle={() => {
+          if (mode === 'missing' && !enabled) {
+            void addMissingAsExtra(item);
+            return;
+          }
+          if (!enabled) void enableLibraryExtra(item);
+          else disableExtra(item);
         }}
-      >
-        <Checkbox
-          checked={enabled}
-          disabled={!canManage}
-          onChange={(_, checked) => {
-            if (mode === 'missing' && checked) {
-              void addMissingAsExtra(item);
-              return;
-            }
-            if (checked) void enableLibraryExtra(item);
-            else disableExtra(item);
-          }}
-        />
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }} noWrap>
-            {item.name}
-          </Typography>
-          {item.categoryName ? (
-            <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textMuted }} noWrap>
-              {item.categoryName}
+        name={item.name}
+        foodType={item.foodType}
+        subtitle={item.categoryName || t('meals.library.extras', { defaultValue: 'Extra' })}
+        trailing={
+          canManage ? (
+            <Stack spacing={0.35} sx={{ alignItems: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
+              <TextField
+                size="small"
+                value={priceText}
+                onChange={(e) =>
+                  setPriceDrafts((d) => ({ ...d, [item.itemId]: e.target.value }))
+                }
+                onBlur={() => void persistPrice(item, priceText)}
+                placeholder="₹"
+                sx={{
+                  width: 108,
+                  '& .MuiOutlinedInput-root': {
+                    minHeight: DASHBOARD_UX.buttonHeight,
+                    height: DASHBOARD_UX.buttonHeight,
+                    borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
+                    ...DASHBOARD_UX.inputText,
+                  },
+                }}
+                slotProps={{
+                  input: {
+                    startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                  },
+                }}
+              />
+              {eachLabel ? (
+                <Typography sx={{ ...DASHBOARD_UX.badge, color: s.textSecondary, fontWeight: 600 }}>
+                  {eachLabel}
+                </Typography>
+              ) : null}
+            </Stack>
+          ) : eachLabel ? (
+            <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, fontWeight: 600 }}>
+              {eachLabel}
             </Typography>
-          ) : null}
-        </Box>
-        {canManage ? (
-          <TextField
-            size="small"
-            value={priceText}
-            onChange={(e) =>
-              setPriceDrafts((d) => ({ ...d, [item.itemId]: e.target.value }))
-            }
-            onBlur={() => void persistPrice(item, priceText)}
-            placeholder="₹"
-            sx={{ width: 110 }}
-            slotProps={{
-              input: {
-                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-              },
-            }}
-          />
-        ) : item.defaultPrice != null ? (
-          <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
-            {formatCurrency(item.defaultPrice, item.currencyCode)}
-          </Typography>
-        ) : null}
-      </Box>
+          ) : item.defaultPrice != null ? (
+            <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
+              {formatCurrency(item.defaultPrice, item.currencyCode)}
+            </Typography>
+          ) : null
+        }
+      />
     );
   };
 
@@ -317,115 +328,149 @@ export function MealExtrasEnablePanel({
       }
     >
       <ContentCard padded={false}>
-      <Box id="meal-extras-section" sx={{ p: `${DASHBOARD_UX.cardPadding + 4}px`, pb: 1.5 }}>
-        <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
-          {t('meals.planning.extrasSectionTitle')}
-        </Typography>
-        <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, mt: 0.25 }}>
-          {t('meals.planning.extrasSectionHint')}
-        </Typography>
-      </Box>
+        <Box id="meal-extras-section" sx={{ p: `${DASHBOARD_UX.cardPadding}px`, pb: 1.25 }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: `${DASHBOARD_UX.iconWellRadius}px`,
+                bgcolor: `${colors.primary}14`,
+                color: colors.primaryDark,
+                display: 'grid',
+                placeItems: 'center',
+              }}
+            >
+              <Sparkles size={16} />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
+                {t('meals.planning.extrasSectionTitle')}
+              </Typography>
+              <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, mt: 0.15 }}>
+                {t('meals.poll.extrasSectionHint', {
+                  defaultValue: 'Optional add-ons for this meal — priced separately.',
+                })}
+              </Typography>
+            </Box>
+          </Stack>
+        </Box>
 
-      <Box sx={{ px: 2, pb: 2 }}>
-        {!hasMealSelection ? (
-          <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }}>
-            {t('meals.planning.extrasSelectMealFirst')}
-          </Typography>
-        ) : (
-          <Stack spacing={1.5}>
-            {buckets.relevant.length > 0 ? (
-              <Stack spacing={0.75}>
-                <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textSecondary }}>
-                  {t('meals.planning.extrasFromMealTitle', { count: buckets.relevant.length })}
-                </Typography>
-                {buckets.relevant.map((item) => renderRow(item, 'library'))}
-              </Stack>
-            ) : null}
-
-            {buckets.missing.length > 0 ? (
-              <Stack spacing={0.75}>
-                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textSecondary }}>
-                    {t('meals.planning.extrasMissingTitle', { count: buckets.missing.length })}
+        <Box sx={{ px: 2, pb: 2 }}>
+          {!hasMealSelection ? (
+            <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }}>
+              {t('meals.planning.extrasSelectMealFirst')}
+            </Typography>
+          ) : (
+            <Stack spacing={1.75}>
+              {availableExtras.length > 0 ? (
+                <Stack spacing={1}>
+                  <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted, fontWeight: 600 }}>
+                    {t('meals.planning.availableExtras', {
+                      defaultValue: 'Available extras',
+                    })}{' '}
+                    ({availableExtras.length})
                   </Typography>
-                  {buckets.missing.length > 1 && canManage ? (
-                    <Button
-                      size="small"
-                      disabled={addingAll}
-                      onClick={() => void addAllMissing()}
-                      sx={dashOutlinedButtonSx}
-                    >
-                      {t('meals.planning.extrasAddAllMissing')}
-                    </Button>
-                  ) : null}
+                  {buckets.relevant.map((item) => renderExtraCard(item, 'library'))}
+                  {buckets.related.map((item) => renderExtraCard(item, 'library'))}
                 </Stack>
-                <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textMuted }}>
-                  {t('meals.planning.extrasMissingHint')}
-                </Typography>
-                {buckets.missing.map((item) => renderRow(item, 'missing'))}
-              </Stack>
-            ) : null}
+              ) : null}
 
-            {buckets.related.length > 0 ? (
+              {buckets.missing.length > 0 ? (
+                <Stack spacing={1}>
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted, fontWeight: 600 }}>
+                      {t('meals.planning.extrasMissingTitle', { count: buckets.missing.length })}
+                    </Typography>
+                    {buckets.missing.length > 1 && canManage ? (
+                      <Button
+                        size="small"
+                        disabled={addingAll}
+                        onClick={() => void addAllMissing()}
+                        sx={dashOutlinedButtonSx}
+                      >
+                        {t('meals.planning.extrasAddAllMissing')}
+                      </Button>
+                    ) : null}
+                  </Stack>
+                  <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted }}>
+                    {t('meals.planning.extrasMissingHint')}
+                  </Typography>
+                  {buckets.missing.map((item) => renderExtraCard(item, 'missing'))}
+                </Stack>
+              ) : null}
+
               <Stack spacing={0.75}>
-                <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textSecondary }}>
-                  {t('meals.planning.extrasRelatedTitle', { count: buckets.related.length })}
-                </Typography>
-                {buckets.related.map((item) => renderRow(item, 'library'))}
-              </Stack>
-            ) : null}
-
-            {libraryExtraCount > 0 ? (
-              <Box>
-                <Link
-                  component="button"
-                  type="button"
-                  underline="hover"
-                  onClick={() => setBrowseOpen((o) => !o)}
-                  sx={{ ...DASHBOARD_UX.link, color: colors.primaryDark }}
-                >
-                  {browseOpen
-                    ? t('meals.planning.extrasBrowseHide', { count: libraryExtraCount })
-                    : t('meals.planning.extrasBrowseShow', { count: libraryExtraCount })}
-                </Link>
+                {libraryExtraCount > 0 ? (
+                  <Link
+                    component="button"
+                    type="button"
+                    underline="hover"
+                    onClick={() => setBrowseOpen((o) => !o)}
+                    sx={{
+                      ...DASHBOARD_UX.link,
+                      color: colors.primaryDark,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      alignSelf: 'flex-start',
+                    }}
+                  >
+                    <Search size={14} />
+                    {browseOpen
+                      ? t('meals.planning.extrasBrowseHide', { count: libraryExtraCount })
+                      : t('meals.planning.extrasBrowseShow', {
+                          count: libraryExtraCount,
+                          defaultValue: 'Browse all extras ({{count}})',
+                        })}
+                    <ChevronRight size={14} />
+                  </Link>
+                ) : null}
                 {browseOpen ? (
-                  <Stack spacing={1} sx={{ mt: 1 }}>
-                    <TextField
-                      size="small"
+                  <Stack spacing={1}>
+                    <SearchToolbar
                       value={browseSearch}
-                      onChange={(e) => setBrowseSearch(e.target.value)}
+                      onChange={setBrowseSearch}
                       placeholder={t('meals.planning.extrasBrowseSearch')}
                     />
-                    {browseList.map((item) => renderRow(item, 'library'))}
+                    {browseList.map((item) => renderExtraCard(item, 'library'))}
                   </Stack>
                 ) : null}
-              </Box>
-            ) : null}
 
-            {canManage ? (
-              <Link
-                component="button"
-                type="button"
-                underline="hover"
-                onClick={() => {
-                  onInteract();
-                  navigate(spaceMealsLibraryPath(spaceId));
-                }}
-                sx={{ ...DASHBOARD_UX.link, color: colors.primaryDark, alignSelf: 'flex-start' }}
-              >
-                {t('meals.planning.manageExtrasCta')}
-              </Link>
-            ) : null}
+                {canManage ? (
+                  <Link
+                    component="button"
+                    type="button"
+                    underline="hover"
+                    onClick={() => {
+                      onInteract();
+                      navigate(spaceMealsLibraryPath(spaceId));
+                    }}
+                    sx={{
+                      ...DASHBOARD_UX.link,
+                      color: colors.primaryDark,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      alignSelf: 'flex-start',
+                    }}
+                  >
+                    <Library size={14} />
+                    {t('meals.planning.manageExtrasCta')}
+                    <ChevronRight size={14} />
+                  </Link>
+                ) : null}
+              </Stack>
 
-            {enabledExtraIds.size > 0 ? (
-              <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textMuted }}>
-                {t('meals.planning.extrasEnabledCount', { count: enabledExtraIds.size })}
-              </Typography>
-            ) : null}
-          </Stack>
-        )}
-      </Box>
-    </ContentCard>
+              {enabledExtraIds.size > 0 ? (
+                <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted }}>
+                  {t('meals.planning.extrasEnabledCount', { count: enabledExtraIds.size })}
+                </Typography>
+              ) : null}
+            </Stack>
+          )}
+        </Box>
+      </ContentCard>
     </Box>
   );
 }

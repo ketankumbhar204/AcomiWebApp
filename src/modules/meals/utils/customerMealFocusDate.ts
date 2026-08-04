@@ -1,13 +1,9 @@
+import { mealsApi } from '../api/mealsApi';
 import { addDaysIso, todayIsoDate } from './mealDates';
 
 /** How far back customers may browse past menus / orders. */
 export const CUSTOMER_MEAL_DATE_MIN_OFFSET = -90;
 export const CUSTOMER_MEAL_DATE_MAX_OFFSET = 7;
-
-/** Customers always land on today when opening the dashboard. */
-export function resolveCustomerMealFocusDate(): string {
-  return todayIsoDate();
-}
 
 export function customerMealDateBounds(): { minDate: string; maxDate: string } {
   const today = todayIsoDate();
@@ -21,4 +17,34 @@ export function canShiftCustomerMealDate(menuDate: string, delta: number): boole
   const { minDate, maxDate } = customerMealDateBounds();
   const nextDate = addDaysIso(menuDate, delta);
   return nextDate >= minDate && nextDate <= maxDate;
+}
+
+function dayHasPlannedMenu(pollCount: number): boolean {
+  return pollCount > 0;
+}
+
+/**
+ * Land on today when it has polls; otherwise skip forward to the next day
+ * with a planned menu within the customer date bound (+7).
+ * Falls back to today when nothing is planned ahead.
+ */
+export async function resolveCustomerMealFocusDate(spaceId: string): Promise<string> {
+  const today = todayIsoDate();
+  const { maxDate } = customerMealDateBounds();
+  let cursor = today;
+
+  while (cursor <= maxDate) {
+    try {
+      const day = await mealsApi.getMealPolls(spaceId, cursor);
+      if (dayHasPlannedMenu(day.polls?.length ?? 0)) {
+        return cursor;
+      }
+    } catch {
+      // Keep scanning — transient/empty days should not block focus.
+    }
+    if (cursor === maxDate) break;
+    cursor = addDaysIso(cursor, 1);
+  }
+
+  return today;
 }

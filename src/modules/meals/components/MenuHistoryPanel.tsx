@@ -1,12 +1,12 @@
-import { Box, Button, Checkbox, InputAdornment, Link, Stack, TextField, Typography, useTheme } from '@mui/material';
-import { Clock3, Search, UtensilsCrossed } from 'lucide-react';
+import { Box, Button, Link, Stack, Typography, useTheme } from '@mui/material';
+import { Clock3, Info, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { LoadingState } from '@/shared/components/LoadingState';
-import { StatusChip } from '@/shared/components/StatusChip';
+import { SearchToolbar } from '@/shared/components/SearchToolbar';
 import { colors } from '@/shared/theme/colors';
 import { formatCurrency } from '@/shared/utils/dashboardFinancial';
 import type { MealType, MenuHistoryItemResponse } from '@/shared/types/meals';
@@ -16,6 +16,7 @@ import {
   filterHistoryForMealType,
   groupMenuHistoryItems,
 } from '../utils/menuHistoryGroups';
+import { MealPlanSelectableCard } from './mealPlanVisuals';
 
 type MenuHistoryPanelProps = {
   spaceId: string;
@@ -29,13 +30,6 @@ type MenuHistoryPanelProps = {
   onBrowseCombos: () => void;
   onBrowseItems: () => void;
 };
-
-function foodTypeTone(foodType?: string | null): 'success' | 'warning' | 'info' | 'neutral' {
-  if (foodType === 'VEG') return 'success';
-  if (foodType === 'EGG') return 'warning';
-  if (foodType === 'NON_VEG') return 'info';
-  return 'neutral';
-}
 
 export function MenuHistoryPanel({
   spaceId,
@@ -121,50 +115,58 @@ export function MenuHistoryPanel({
   if (loading) return <LoadingState />;
 
   return (
-    <Stack spacing={1.25}>
-      <TextField
-        size="small"
-        fullWidth
+    <Stack spacing={1.5}>
+      <SearchToolbar
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={setSearch}
         placeholder={t('meals.planning.searchHistory')}
-        slotProps={{
-          input: {
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search size={16} color={s.textMuted} />
-              </InputAdornment>
-            ),
-          },
-        }}
       />
 
       <Box
         sx={{
           display: 'flex',
-          gap: 1,
+          gap: 1.25,
           alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          p: 1.25,
-          borderRadius: `${DASHBOARD_UX.tileRadius}px`,
+          p: 1.5,
+          borderRadius: `${DASHBOARD_UX.radius}px`,
           bgcolor: s.elevated,
           border: `1px solid ${s.border}`,
         }}
       >
-        <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted, flex: 1 }}>
-          {t('meals.planning.historyHint', { meal: t(`meals.mealType.${mealType}`) })}
-        </Typography>
-        {canManage && mealItems.length > 0 ? (
-          <Link
-            component="button"
-            type="button"
-            underline="hover"
-            onClick={() => void clearHistory()}
-            sx={{ ...DASHBOARD_UX.link, color: colors.primaryDark, whiteSpace: 'nowrap' }}
-          >
-            {t('meals.planning.clearHistory')}
-          </Link>
-        ) : null}
+        <Box
+          sx={{
+            width: 32,
+            height: 32,
+            borderRadius: `${DASHBOARD_UX.iconWellRadius}px`,
+            bgcolor: `${colors.primary}18`,
+            color: colors.primaryDark,
+            display: 'grid',
+            placeItems: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <Info size={16} />
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
+            {t('meals.planning.historyHintModern', {
+              meal: t(`meals.mealType.${mealType}`),
+              defaultValue:
+                'Suggestions are from {{meal}} only. Items used in other meals remain in their own history.',
+            })}
+          </Typography>
+          {canManage && mealItems.length > 0 ? (
+            <Link
+              component="button"
+              type="button"
+              underline="hover"
+              onClick={() => void clearHistory()}
+              sx={{ ...DASHBOARD_UX.link, color: colors.primaryDark, mt: 0.75, display: 'inline-block' }}
+            >
+              {t('meals.planning.clearHistory')}
+            </Link>
+          ) : null}
+        </Box>
       </Box>
 
       {mealItems.length === 0 ? (
@@ -185,7 +187,7 @@ export function MenuHistoryPanel({
       ) : (
         groups.map((group) => (
           <Box key={group.key}>
-            <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textMuted, mb: 1 }}>
+            <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted, mb: 1, fontWeight: 600 }}>
               {group.key === 'today'
                 ? t('meals.planning.historyGroupToday')
                 : group.key === 'yesterday'
@@ -199,81 +201,47 @@ export function MenuHistoryPanel({
                 const selected =
                   (item.type === 'COMBO' && !!item.comboId && selectedComboIds.has(item.comboId)) ||
                   (item.type === 'ITEM' && !!item.itemId && selectedItemIds.has(item.itemId));
-                const lastUsed = formatHistoryLastUsedLabel(
-                  item,
-                  formatDate,
-                  {
-                    today: t('meals.planning.historyGroupToday'),
-                    yesterday: t('meals.planning.historyGroupYesterday'),
-                  },
-                );
+                const lastUsed = formatHistoryLastUsedLabel(item, formatDate, {
+                  today: t('meals.planning.historyGroupToday'),
+                  yesterday: t('meals.planning.historyGroupYesterday'),
+                });
+                const price =
+                  needPrices && item.price != null && item.price > 0
+                    ? formatCurrency(item.price, item.currencyCode ?? undefined)
+                    : null;
+
                 return (
-                  <Box
+                  <MealPlanSelectableCard
                     key={item.historyId}
-                    component="button"
-                    type="button"
+                    selected={selected}
                     disabled={!canManage}
-                    onClick={() => {
+                    onToggle={() => {
                       if (item.type === 'COMBO') onToggleCombo(item);
                       else onToggleItem(item);
                     }}
-                    sx={{
-                      all: 'unset',
-                      cursor: canManage ? 'pointer' : 'default',
-                      display: 'flex',
-                      gap: 1,
-                      alignItems: 'center',
-                      p: 1.25,
-                      borderRadius: `${DASHBOARD_UX.radius}px`,
-                      border: `1px solid ${selected ? colors.primary : s.border}`,
-                      bgcolor: selected ? `${colors.primary}14` : s.surface,
-                    }}
-                  >
-                    <Checkbox checked={selected} tabIndex={-1} disableRipple sx={{ p: 0.5 }} />
-                    <Box
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-                        bgcolor: s.elevated,
-                        color: colors.primaryDark,
-                        display: 'grid',
-                        placeItems: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <UtensilsCrossed size={18} />
-                    </Box>
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                        <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }} noWrap>
-                          {item.name}
-                        </Typography>
-                        {item.foodType ? (
-                          <StatusChip
-                            label={t(`meals.foodType.${item.foodType}`)}
-                            tone={foodTypeTone(item.foodType)}
-                          />
-                        ) : null}
-                      </Stack>
-                      {item.summary ? (
-                        <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textMuted }} noWrap>
-                          {item.summary}
-                        </Typography>
-                      ) : null}
+                    name={item.name}
+                    foodType={item.foodType}
+                    subtitle={
+                      item.summary ||
+                      t(`meals.mealType.${mealType}`, { defaultValue: String(mealType) })
+                    }
+                    meta={
                       <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mt: 0.35 }}>
                         <Clock3 size={12} color={s.textMuted} />
-                        <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textMuted }} noWrap>
-                          {t('meals.planning.historyUsedCount', { count: item.usageCount })} · {lastUsed}
+                        <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted }} noWrap>
+                          {t('meals.planning.historyUsedCount', { count: item.usageCount })}
+                          {lastUsed ? ` · ${lastUsed}` : ''}
                         </Typography>
                       </Stack>
-                    </Box>
-                    {needPrices && item.price != null && item.price > 0 ? (
-                      <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, flexShrink: 0 }}>
-                        {formatCurrency(item.price, item.currencyCode ?? undefined)}
-                      </Typography>
-                    ) : null}
-                  </Box>
+                    }
+                    trailing={
+                      price ? (
+                        <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+                          {price}
+                        </Typography>
+                      ) : null
+                    }
+                  />
                 );
               })}
             </Stack>
