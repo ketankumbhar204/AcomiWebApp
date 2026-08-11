@@ -1,9 +1,9 @@
-# CountIn Web — Complete Gap Analysis
+# Amico Web — Complete Gap Analysis
 
 **Date:** 2026-07-28 (updated after Final Implementation Audit)  
-**Mobile source of truth:** `K:\CountIn`  
-**Web application:** `K:\CountInWeb`  
-**Shared backend:** `K:\Projects\CountIn\Backend\countin-backend`  
+**Mobile source of truth:** `K:\Amico`  
+**Web application:** `K:\AmicoWeb`  
+**Shared backend:** `K:\Projects\Amico\Backend\amico-backend` (now amico-backend Maven artifact)  
 
 **Scope:** Living parity tracker. Recalculated after independent Phases 1–12 source audit (not documentation-only).
 
@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-CountIn Web has shipped **Phases 1–12**, then closed audit-found mobile-wired gaps (**Add Customers hub**, **bulk beds/rooms** outside Quick Setup). Core operator and tenant workflows wired in React Native are present on web with desktop UX improvements and **unchanged** APIs / DTOs / permissions.
+Amico Web has shipped **Phases 1–12**, then closed audit-found mobile-wired gaps (**Add Customers hub**, **bulk beds/rooms** outside Quick Setup). Core operator and tenant workflows wired in React Native are present on web with desktop UX improvements and **unchanged** APIs / DTOs / permissions.
 
 ### Overall completion (weighted, mobile-wired surfaces)
 

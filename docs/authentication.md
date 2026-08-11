@@ -1,6 +1,6 @@
-# Authentication (CountIn Web)
+# Authentication (Amico Web)
 
-See also the blueprint doc: `K:\CountIn\docs\web\authentication.md`.
+See also the blueprint doc: `K:\Amico\docs\web\authentication.md`.
 
 ## Routes
 

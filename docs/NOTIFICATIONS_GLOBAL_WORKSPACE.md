@@ -1,8 +1,8 @@
 # NOTIFICATIONS_GLOBAL_WORKSPACE.md — Phase 11
 
 **Status:** Complete (web)  
-**Mobile source of truth:** `K:\CountIn`  
-**Web:** `K:\CountInWeb`  
+**Mobile source of truth:** `K:\Amico`  
+**Web:** `K:\AmicoWeb`  
 **Backend:** unchanged  
 
 > Desktop UX may improve layout only. Business rules, APIs, DTOs, validation, and permissions match mobile.  

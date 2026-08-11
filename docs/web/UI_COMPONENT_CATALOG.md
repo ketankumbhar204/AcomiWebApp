@@ -1,4 +1,4 @@
-# CountIn Web — UI Component Catalog
+# Amico Web — UI Component Catalog
 
 > Catalog of reusable UI building blocks.  
 > **Primary visual reference:** Dashboard (`DashboardPage` + `dashboardUx.ts`).  

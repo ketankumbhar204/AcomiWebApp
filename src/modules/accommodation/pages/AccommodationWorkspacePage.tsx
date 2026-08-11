@@ -46,7 +46,7 @@ import { AccommodationPathBar } from '../components/AccommodationPathBar';
 import { useBuildings } from '../hooks/useAccommodation';
 import { getAccommodationUiProfile } from '../utils/accommodationProfile';
 
-const VIEW_STORAGE_KEY = 'countin.accommodation.viewMode.v2';
+const VIEW_STORAGE_KEY = 'amico.accommodation.viewMode.v2';
 
 type ViewMode = 'cards' | 'table';
 

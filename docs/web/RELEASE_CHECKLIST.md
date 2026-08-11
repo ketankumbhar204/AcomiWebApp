@@ -1,4 +1,4 @@
-# CountIn Web — Release checklist (Phase 22)
+# Amico Web — Release checklist (Phase 22)
 
 Signed off: **2026-07-30** (Dashboard DS rollout Phases 1–22)
 

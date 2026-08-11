@@ -1,8 +1,8 @@
-# CountIn Web
+# Amico Web
 
-React web client for CountIn. Consumes the **same Spring Boot APIs** as the React Native mobile app (`K:\CountIn`). The mobile app is the product source of truth; this repo is the desktop presentation layer.
+React web client for Amico. Consumes the **same Spring Boot APIs** as the React Native mobile app (`K:\Amico`). The mobile app is the product source of truth; this repo is the desktop presentation layer.
 
-Backend: `K:\Projects\CountIn\Backend\countin-backend` (unchanged, shared).
+Backend: `K:\Projects\Amico\Backend\amico-backend` (now amico-backend Maven artifact; shared, unchanged).
 
 ---
 
@@ -26,14 +26,14 @@ Backend: `K:\Projects\CountIn\Backend\countin-backend` (unchanged, shared).
 ## Prerequisites
 
 - Node.js 22+ (recommended)
-- Running CountIn backend on `http://localhost:8080` (for API calls later)
+- Running Amico backend on `http://localhost:8080` (for API calls later)
 
 ---
 
 ## Setup
 
 ```bash
-cd K:\CountInWeb
+cd K:\AmicoWeb
 npm install
 cp .env.example .env   # if needed
 npm run dev
@@ -69,7 +69,7 @@ src/
     constants/
     hooks/             # Shared hooks (auth session reader only)
     layouts/           # Re-exports root layouts
-    theme/             # CountIn MUI theme + tokens
+    theme/             # Amico MUI theme + tokens
     types/             # API / auth contracts
     utils/
     assets/
@@ -103,7 +103,7 @@ Foundation (done)
   → Payments → Complaints → Inventory → Settings → Reports
 ```
 
-See `K:\CountIn\docs\web\implementation-roadmap.md`, [`docs/page-template.md`](./docs/page-template.md), and [`docs/authentication.md`](./docs/authentication.md).
+See `K:\Amico\docs\web\implementation-roadmap.md`, [`docs/page-template.md`](./docs/page-template.md), and [`docs/authentication.md`](./docs/authentication.md).
 
 ---
 
@@ -151,4 +151,4 @@ Suggested first modules (when ready): **Authentication** → Spaces shell → Da
 
 ## Related docs
 
-Mobile web blueprint (reference only): `K:\CountIn\docs\web\`
+Mobile web blueprint (reference only): `K:\Amico\docs\web\`

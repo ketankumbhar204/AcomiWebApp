@@ -21,15 +21,14 @@ Desktop UX may improve layout and productivity, but functionality must remain id
 
 ## Mobile
 
-K:\CountIn
+K:\Amico
 
 ## Backend
 
-K:\Projects\CountIn\Backend\countin-backend
-
+K:\Projects\Amico\Backend\amico-backend (now amico-backend Maven artifact)
 ## Web
 
-K:\CountInWeb
+K:\AmicoWeb
 
 ---
 

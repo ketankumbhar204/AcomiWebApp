@@ -1,6 +1,6 @@
 # Dashboard UI Audit (Current Implementation)
 
-> **Scope:** Reverse-engineered visual design tokens from CountInWeb Dashboard code.  
+> **Scope:** Reverse-engineered visual design tokens from AmicoWeb Dashboard code.  
 > **Date:** 2026-07-29  
 > **Status:** Read-only inspection — no code was modified.  
 > **Styling system:** MUI `sx` + TypeScript theme tokens. **Tailwind is not used** on the Dashboard.
@@ -325,4 +325,4 @@ CSS variables: **none** custom `--*` in dashboard theme; colors are TS string co
 7. **Color tokens** — see §7  
 8. **Responsive rules** — see §9  
 9. **Tailwind classes** — **none** (§10)  
-10. **Report path:** [`docs/web/DASHBOARD_UI_AUDIT.md`](./DASHBOARD_UI_AUDIT.md) → `K:\CountInWeb\docs\web\DASHBOARD_UI_AUDIT.md`
+10. **Report path:** [`docs/web/DASHBOARD_UI_AUDIT.md`](./DASHBOARD_UI_AUDIT.md) → `K:\AmicoWeb\docs\web\DASHBOARD_UI_AUDIT.md`

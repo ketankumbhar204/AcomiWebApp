@@ -8,7 +8,7 @@ import type { ApiErrorBody } from '@/shared/types/api';
 import type { AuthTokenPort } from '@/shared/types/auth';
 import { ApiError } from './errors';
 
-const LOG_TAG = '[CountIn API]';
+const LOG_TAG = '[Amico API]';
 
 let tokenPort: AuthTokenPort = {
   getToken: () => null,

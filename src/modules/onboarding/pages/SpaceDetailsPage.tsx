@@ -584,7 +584,7 @@ export function SpaceDetailsPage() {
           </Box>
           <Stack direction="row" spacing={2} useFlexGap sx={{ flexWrap: 'wrap', flexShrink: 0 }}>
             <Link
-              href="https://countin.app/help"
+              href="https://amico.app/help"
               target="_blank"
               rel="noopener noreferrer"
               underline="hover"
@@ -600,7 +600,7 @@ export function SpaceDetailsPage() {
               <ExternalLink size={12} />
             </Link>
             <Link
-              href="mailto:support@countin.app"
+              href="mailto:support@amico.app"
               underline="hover"
               sx={{
                 ...DASHBOARD_UX.link,

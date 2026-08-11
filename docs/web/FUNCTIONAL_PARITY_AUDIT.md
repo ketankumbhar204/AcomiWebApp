@@ -1,9 +1,9 @@
 # Functional Parity Audit — Mobile (SoT) vs Web
 
 > **Date:** 2026-07-31  
-> **Mobile SoT:** `K:\CountIn` (React Native)  
-> **Web:** `K:\CountInWeb`  
-> **Backend SoT:** `K:\Projects\CountIn\Backend\countin-backend`  
+> **Mobile SoT:** `K:\Amico` (React Native)  
+> **Web:** `K:\AmicoWeb`  
+> **Backend SoT:** `K:\Projects\Amico\Backend\amico-backend` (now amico-backend Maven artifact)  
 > **Scope:** Functionality only (actions, APIs, navigation, permissions, workflows). Styling/layout ignored.  
 > **Rule:** Mobile is the behavioral source of truth. Web may consolidate multiple mobile screens into workspace + drawer/inspector **if** the same actions/APIs/permissions exist.
 

@@ -1,8 +1,8 @@
 # ACCOUNT_ONBOARDING.md — Phase 9
 
 **Status:** Complete (web)  
-**Mobile source of truth:** `K:\CountIn`  
-**Web module:** `K:\CountInWeb\src\modules\onboarding`  
+**Mobile source of truth:** `K:\Amico`  
+**Web module:** `K:\AmicoWeb\src\modules\onboarding`  
 **Backend:** unchanged — reuse existing auth, spaces, invitations, meal settings APIs  
 
 > Before implementing any screen, web was compared to the corresponding React Native screen and backend API. Intentional desktop UX deviations below preserve the same workflow, validation, permissions, and API contracts.

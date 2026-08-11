@@ -56,7 +56,7 @@ export interface VerifyOtpRequest {
 export interface AuthTokenResponse {
   accessToken: string;
   tokenType: string;
-  /** Milliseconds (backend `countin.jwt.expiration-ms`). */
+  /** Milliseconds (backend `amico.jwt.expiration-ms`). */
   expiresIn: number;
   user: UserResponse;
 }

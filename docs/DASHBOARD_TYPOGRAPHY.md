@@ -1,6 +1,6 @@
 # Dashboard Typography Scale
 
-Source of truth for CountIn Web desktop typography. Use these tokens on every screen so hierarchy stays consistent with the Dashboard.
+Source of truth for Amico Web desktop typography. Use these tokens on every screen so hierarchy stays consistent with the Dashboard.
 
 **Implementation:** `src/modules/dashboard/theme/dashboardUx.ts` → `DASHBOARD_UX.*`  
 **Surfaces / text colors:** `dashSurfaces(mode)` (`textPrimary`, `textSecondary`, `textMuted`)

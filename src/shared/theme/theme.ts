@@ -37,7 +37,7 @@ function buildPalette(mode: ThemeMode) {
   } as const;
 }
 
-export function createCountInTheme(mode: ThemeMode = 'light'): Theme {
+export function createAmicoTheme(mode: ThemeMode = 'light'): Theme {
   const c = mode === 'light' ? colors : darkColors;
 
   return createTheme({

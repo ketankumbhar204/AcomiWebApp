@@ -1,8 +1,8 @@
 # MEAL_SUBSCRIPTION_BILLING.md — Phase 10
 
 **Status:** Complete (web)  
-**Mobile source of truth:** `K:\CountIn`  
-**Web:** `K:\CountInWeb\src\modules\meals` (+ payments/members integrations)  
+**Mobile source of truth:** `K:\Amico`  
+**Web:** `K:\AmicoWeb\src\modules\meals` (+ payments/members integrations)  
 **Backend:** unchanged  
 
 > Desktop UX may improve layout only. Business rules, APIs, DTOs, validation, and permissions match mobile. Meal billing settings remain on Edit Space (Phase 9); not re-implemented here.

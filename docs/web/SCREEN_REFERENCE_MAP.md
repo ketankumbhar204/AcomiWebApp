@@ -1,4 +1,4 @@
-# CountIn Web — Screen Reference Map
+# Amico Web — Screen Reference Map
 
 > **Every screen has exactly one RN business reference and a predefined set of reusable Web / Dashboard components.**  
 > Before implementing, read this row — do not invent a new pattern.  

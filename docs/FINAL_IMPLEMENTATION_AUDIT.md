@@ -2,9 +2,9 @@
 
 **Date:** 2026-07-28  
 **Auditor method:** Independent source comparison (React Native ↔ React Web ↔ Spring Boot contracts)  
-**Mobile SoT:** `K:\CountIn`  
-**Web app:** `K:\CountInWeb`  
-**Backend SoT:** `K:\Projects\CountIn\Backend\countin-backend` (contracts unchanged)
+**Mobile SoT:** `K:\Amico`  
+**Web app:** `K:\AmicoWeb`  
+**Backend SoT:** `K:\Projects\Amico\Backend\amico-backend` (now amico-backend Maven artifact; contracts unchanged)
 
 ---
 
@@ -168,7 +168,7 @@ Updated / created as part of this audit:
 - [README.md](./README.md) — audit link + % 
 - [MEMBERS.md](./MEMBERS.md) / [ACCOMMODATION.md](./ACCOMMODATION.md) — hub + bulk notes
 - [FINAL_PARITY_REPORT.md](./FINAL_PARITY_REPORT.md) — aligned %
-- Mirrored under `K:\CountInWeb\docs\` where applicable
+- Mirrored under `K:\AmicoWeb\docs\` where applicable
 
 ---
 

@@ -1,8 +1,8 @@
 # PHASE_12_FINAL_PARITY.md
 
 **Status:** Complete (web)  
-**Mobile source of truth:** `K:\CountIn`  
-**Web:** `K:\CountInWeb`  
+**Mobile source of truth:** `K:\Amico`  
+**Web:** `K:\AmicoWeb`  
 **Backend:** unchanged  
 
 > Phase 12 closes remaining **mobile-wired** gaps and hardens production quality.  

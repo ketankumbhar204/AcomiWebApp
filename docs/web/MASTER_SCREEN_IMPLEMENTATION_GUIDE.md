@@ -1,4 +1,4 @@
-# CountIn Web Screen Implementation Guide
+# Amico Web Screen Implementation Guide
 
 > **Every future screen implementation MUST first analyze previously completed screens and reuse existing components before creating new ones.**
 >
@@ -13,9 +13,9 @@
 | Item | Value |
 |------|-------|
 | Design SoT (visual) | **Web Dashboard** (`DashboardPage` + `dashboardUx.ts`) |
-| Business SoT | **React Native** (`K:\CountIn`) |
-| API SoT | **Backend** (`K:\Projects\CountIn\Backend\countin-backend`) |
-| Implementation target | **CountIn Web** (`K:\CountInWeb`) |
+| Business SoT | **React Native** (`K:\Amico`) |
+| API SoT | **Backend** (`K:\Projects\Amico\Backend\amico-backend`) (now amico-backend Maven artifact) |
+| Implementation target | **Amico Web** (`K:\AmicoWeb`) |
 | Companion catalog | [`UI_COMPONENT_CATALOG.md`](./UI_COMPONENT_CATALOG.md) |
 | Screen checklist (daily tracker) | [`SCREEN_IMPLEMENTATION_CHECKLIST.md`](./SCREEN_IMPLEMENTATION_CHECKLIST.md) |
 | Screen reference map | [`SCREEN_REFERENCE_MAP.md`](./SCREEN_REFERENCE_MAP.md) |
@@ -60,7 +60,7 @@ Web often consolidates many RN screens into **workspace** pages (list + detail i
 
 See chapter **[Dashboard Design System](#dashboard-design-system)** below and tokens in:
 
-`K:\CountInWeb\src\modules\dashboard\theme\dashboardUx.ts`
+`K:\AmicoWeb\src\modules\dashboard\theme\dashboardUx.ts`
 
 Do **not** invent new visual styles. Prefer tokens + catalog components from [`UI_COMPONENT_CATALOG.md`](./UI_COMPONENT_CATALOG.md).
 
@@ -869,4 +869,4 @@ When a module is finished:
 5. **Missing screens:** primarily dedicated Accommodation CRUD routes, some Member/Subscription/Inventory subflows, optional Space Health page, subscription activation requests — see each module  
 6. **Shared reusable components:** Dashboard widgets + `src/shared/components` + layouts — see catalog  
 7. **Recommended order:** see Implementation order  
-8. **This file:** `K:\CountInWeb\docs\web\MASTER_SCREEN_IMPLEMENTATION_GUIDE.md`
+8. **This file:** `K:\AmicoWeb\docs\web\MASTER_SCREEN_IMPLEMENTATION_GUIDE.md`

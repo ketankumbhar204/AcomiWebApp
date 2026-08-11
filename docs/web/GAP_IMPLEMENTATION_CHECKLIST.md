@@ -1,6 +1,6 @@
 # Gap Implementation Checklist — Web Functional Parity
 
-> Mobile (`K:\CountIn`) is the source of truth. Check items only when **functional** behavior matches mobile.  
+> Mobile (`K:\Amico`) is the source of truth. Check items only when **functional** behavior matches mobile.  
 > Do **not** invent features beyond mobile. Shared mobile+web gaps are marked **(shared)**.
 
 ---

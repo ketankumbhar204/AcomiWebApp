@@ -1,6 +1,6 @@
 # Accommodation & Occupancy — Web (Phase 4)
 
-Desktop Accommodation & Occupancy module for CountIn Web. Mobile remains the business source of truth for APIs, DTOs, permissions, validation, hierarchy rules, and occupancy workflows. Presentation uses a **three-panel operational workspace** instead of stacked mobile screens.
+Desktop Accommodation & Occupancy module for Amico Web. Mobile remains the business source of truth for APIs, DTOs, permissions, validation, hierarchy rules, and occupancy workflows. Presentation uses a **three-panel operational workspace** instead of stacked mobile screens.
 
 ---
 
@@ -148,7 +148,7 @@ No horizontal scroll; inspector becomes drawer on smaller screens.
 - Hierarchy children fetched only when nodes expand / selection requires them
 - Query `staleTime` 10–20s on list endpoints
 - Broad invalidation after mutations refreshes buildings/floors/rooms/beds/occupancy keys
-- View mode persisted in `localStorage` (`countin.accommodation.viewMode`)
+- View mode persisted in `localStorage` (`amico.accommodation.viewMode`)
 
 ---
 

@@ -351,8 +351,8 @@ export function MembersWorkspacePage() {
           </Typography>
           <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textMuted }} noWrap>
             {row.linkedUser
-              ? t('membership.members.onCountIn')
-              : t('membership.members.notOnCountInYet')}
+              ? t('membership.members.onAmico')
+              : t('membership.members.notOnAmicoYet')}
           </Typography>
         </Box>
       ),
