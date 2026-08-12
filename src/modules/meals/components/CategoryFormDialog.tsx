@@ -86,7 +86,7 @@ export function CategoryFormDialog({
           }}
           error={Boolean(error)}
           helperText={error}
-          inputProps={{ maxLength: 80 }}
+          slotProps={{ htmlInput: { maxLength: 80 } }}
         />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -221,7 +221,7 @@ export function InlineCreateCategoryRow({
             ...DASHBOARD_UX.inputText,
           },
         }}
-        inputProps={{ maxLength: 80 }}
+        slotProps={{ htmlInput: { maxLength: 80 } }}
       />
       <Button
         size="small"
@@ -293,7 +293,7 @@ export function InlineCreateItemRow({
         onChange={(e) => setName(e.target.value)}
         placeholder={t('meals.library.itemNameInlinePlaceholder')}
         sx={{ flex: '1 1 120px' }}
-        inputProps={{ maxLength: 80 }}
+        slotProps={{ htmlInput: { maxLength: 80 } }}
       />
       <TextField
         select

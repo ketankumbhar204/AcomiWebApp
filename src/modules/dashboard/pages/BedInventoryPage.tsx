@@ -314,7 +314,12 @@ export function BedInventoryPage() {
     if (!canManage) return null;
     if (row.status === 'AVAILABLE') {
       return (
-        <Stack direction="row" spacing={0.75} justifyContent="flex-end" useFlexGap sx={{ flexWrap: 'wrap' }}>
+        <Stack
+          direction="row"
+          spacing={0.75}
+          useFlexGap
+          sx={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}
+        >
           <Button
             size="small"
             variant="contained"

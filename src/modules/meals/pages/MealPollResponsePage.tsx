@@ -721,13 +721,6 @@ export function MealPollResponsePage() {
     () => Math.max(0, ...polls.map((p) => p.responseCount ?? 0), 0),
     [polls],
   );
-  const pollStatusLabel =
-    pollStatus.labelKey === 'meals.poll.pollOpen'
-      ? t('meals.poll.pollOpen', {
-          count: responseCount,
-          defaultValue: 'Poll open · {{count}} responded',
-        })
-      : t(pollStatus.labelKey, { defaultValue: pollStatus.defaultLabel });
   const countdown = formatCountdown(earliestCloseAt, t);
   const dateLabel = formatMenuDateLabel(menuDate, i18n.language);
 

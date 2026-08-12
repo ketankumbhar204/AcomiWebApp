@@ -25,7 +25,6 @@ import type {
   MealPollSlot,
   MealSharePreviewResponse,
   MealType,
-  MemberMealActivityDayDetail,
   MemberMealActivityMonth,
   MealPollPaymentChoice,
   MealPollPaymentEvent,

@@ -191,11 +191,13 @@ export function DuplicateEntityDialog({
       onClose={mutation.isPending ? undefined : onClose}
       fullWidth
       maxWidth="xs"
-      PaperProps={{
-        sx: {
-          borderRadius: `${DASHBOARD_UX.radius}px`,
-          border: `1px solid ${s.border}`,
-          boxShadow: s.shadowHover,
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: `${DASHBOARD_UX.radius}px`,
+            border: `1px solid ${s.border}`,
+            boxShadow: s.shadowHover,
+          },
         },
       }}
     >

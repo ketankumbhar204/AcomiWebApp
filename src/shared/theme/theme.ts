@@ -33,7 +33,7 @@ function buildPalette(mode: ThemeMode) {
       secondary: c.textSecondary,
       disabled: c.muted,
     },
-    divider: c.divider ?? c.border,
+    divider: c.divider,
   } as const;
 }
 

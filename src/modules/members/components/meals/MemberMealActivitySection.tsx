@@ -1,6 +1,5 @@
 ﻿import {
   Box,
-  Button,
   Stack,
   Tab,
   Tabs,
@@ -241,7 +240,7 @@ function DayActivityInspector({
                 {t('meals.activity.dayTotal', { defaultValue: 'Day total' })}
               </Typography>
               <Typography sx={{ ...DASHBOARD_UX.counterValue, color: s.textPrimary, mt: 0.25 }}>
-                {formatCurrency(detail.dayTotal, detail.currencyCode)}
+                {formatCurrency(detail.dayTotal, detail.currencyCode ?? undefined)}
               </Typography>
             </Box>
           ) : null}
@@ -666,7 +665,7 @@ export function MemberMealActivitySection({
                     <Stack spacing={0.5} sx={{ alignItems: 'flex-end' }}>
                       {day.dayTotal != null && day.dayTotal > 0 ? (
                         <Typography sx={{ ...DASHBOARD_UX.link, color: colors.success }}>
-                          {formatCurrency(day.dayTotal, day.currencyCode)}
+                          {formatCurrency(day.dayTotal, day.currencyCode ?? undefined)}
                         </Typography>
                       ) : null}
                       {paymentDisplay !== 'NONE' ? (

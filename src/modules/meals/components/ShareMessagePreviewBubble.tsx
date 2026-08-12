@@ -240,7 +240,11 @@ export function ShareMessagePreviewBubble({
       />
 
       {/* Header: space + date */}
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.25, position: 'relative', zIndex: 1 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ mb: 1.25, position: 'relative', zIndex: 1, alignItems: 'center' }}
+      >
         <Box
           sx={{
             width: 32,
@@ -259,7 +263,7 @@ export function ShareMessagePreviewBubble({
           <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }} noWrap>
             {spaceName}
           </Typography>
-          <Stack direction="row" spacing={0.5} alignItems="center">
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
             <CalendarDays size={12} color={s.textMuted} />
             <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
               {formatLongDate(menuDate, i18n.language)}
@@ -286,7 +290,7 @@ export function ShareMessagePreviewBubble({
             const accent = MEAL_ACCENTS[section.mealType];
             return (
               <Box key={section.mealType}>
-                <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75 }}>
+                <Stack direction="row" spacing={0.75} sx={{ mb: 0.75, alignItems: 'center' }}>
                   <Box
                     sx={{
                       width: 22,
@@ -307,7 +311,7 @@ export function ShareMessagePreviewBubble({
                 </Stack>
 
                 {section.placeholder ? (
-                  <Stack direction="row" spacing={0.75} alignItems="baseline" sx={{ pl: 0.25 }}>
+                  <Stack direction="row" spacing={0.75} sx={{ pl: 0.25, alignItems: 'baseline' }}>
                     <Typography sx={{ ...DASHBOARD_UX.link, color: s.textMuted }}>–</Typography>
                     <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted, fontStyle: 'italic' }}>
                       {section.placeholder}
@@ -341,9 +345,14 @@ export function ShareMessagePreviewBubble({
       <Stack
         direction="row"
         spacing={0.5}
-        alignItems="center"
-        justifyContent="flex-end"
-        sx={{ mt: 0.85, position: 'relative', zIndex: 1, pr: 0.25 }}
+        sx={{
+          mt: 0.85,
+          position: 'relative',
+          zIndex: 1,
+          pr: 0.25,
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+        }}
       >
         <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
           {formatNowTime(i18n.language)}

@@ -31,7 +31,6 @@ import { useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type { MembershipRole, MySpaceResponse, SpaceType } from '@/shared/types/space';
 
 export const SPACE_CARD_COMPACT_WIDTH = { min: 360, max: 420 } as const;
@@ -78,11 +77,20 @@ function statusForRole(
 }
 
 const actionBtnSx = {
-  ...dashOutlinedButtonSx,
+  ...DASHBOARD_UX.button,
+  borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
+  textTransform: 'none',
+  boxShadow: 'none',
   minHeight: DASHBOARD_UX.buttonHeight,
   height: DASHBOARD_UX.buttonHeight,
   px: 1.25,
   flex: '0 0 auto',
+} as const;
+
+const containedActionBtnSx = {
+  ...actionBtnSx,
+  minHeight: 40,
+  height: 40,
 } as const;
 
 export type SpaceCardCompactProps = {
@@ -312,8 +320,7 @@ export function SpaceCardCompact({
           }}
           aria-label={`${t('spaces.details.openDashboard')}: ${space.spaceName}`}
           sx={{
-            ...dashContainedButtonSx,
-            ...actionBtnSx,
+            ...containedActionBtnSx,
             bgcolor: colors.primaryDark,
             color: '#fff',
             '&:hover': { bgcolor: colors.primaryHover },

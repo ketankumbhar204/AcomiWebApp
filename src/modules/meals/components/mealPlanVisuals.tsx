@@ -1,6 +1,7 @@
 import { Box, Stack, Typography, useTheme } from '@mui/material';
 import { Check, Drumstick, Egg, Leaf, Sparkles, UtensilsCrossed, X } from 'lucide-react';
-import type { LucideIcon, ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StatusChip } from '@/shared/components/StatusChip';

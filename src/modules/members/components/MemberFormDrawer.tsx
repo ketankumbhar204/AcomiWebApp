@@ -22,6 +22,7 @@ import type {
   MealBillingType,
   MemberDetailsResponse,
   MemberGender,
+  MemberResponse,
   PrepaidBalanceUnit,
 } from '@/shared/types/member';
 import type { MembershipRole, SpaceType } from '@/shared/types/space';
@@ -62,7 +63,7 @@ type MemberFormDrawerProps = {
   mode: 'create' | 'edit';
   spaceId: string;
   spaceType?: SpaceType;
-  member?: MemberDetailsResponse | null;
+  member?: MemberDetailsResponse | MemberResponse | null;
   onClose: () => void;
   /** Opens invite flow (mobile “Send invitation” link). */
   onInvite?: () => void;
@@ -125,7 +126,9 @@ function MemberFormBody({
   const [mealAccessEnabled, setMealAccessEnabled] = useState(true);
   const [mealBillingSelection, setMealBillingSelection] =
     useState<MemberMealBillingSelection>(() =>
-      isEdit ? (member?.mealBillingType ?? 'DEFAULT') : 'DEFAULT',
+      isEdit && member && 'mealBillingType' in member
+        ? (member.mealBillingType ?? 'DEFAULT')
+        : 'DEFAULT',
     );
   const [spaceDefaultBilling, setSpaceDefaultBilling] =
     useState<MealBillingType>('PAY_PER_MEAL');

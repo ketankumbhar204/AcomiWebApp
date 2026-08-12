@@ -324,7 +324,6 @@ export function MealHeadcountPage() {
   const goPoll = () => navigate(spaceMealsPollPath(spaceId, menuDate));
 
   const detail = detailQuery.data;
-  const pollOpen = detail?.pollStatus !== 'CLOSED';
   const lastUpdatedMs =
     activeTab === 'ALL'
       ? Math.max(0, ...allDetailQueries.map((q) => q.dataUpdatedAt || 0)) || undefined

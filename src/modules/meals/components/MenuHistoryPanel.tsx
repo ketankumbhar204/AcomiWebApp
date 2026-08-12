@@ -57,7 +57,7 @@ export function MenuHistoryPanel({
     setLoading(true);
     const timer = setTimeout(() => {
       void mealsApi
-        .getMenuHistory(spaceId, mealType, { search: search.trim() || undefined, page: 0, size: 100 })
+        .getMenuHistory(spaceId, mealType, { search: search.trim() || undefined, page: 0, limit: 100 })
         .then((page) => {
           if (!active) return;
           setItems(filterHistoryForMealType(page.items ?? [], mealType));

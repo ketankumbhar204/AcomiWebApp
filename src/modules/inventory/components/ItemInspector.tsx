@@ -21,7 +21,6 @@ import { StatusChip } from '@/shared/components/StatusChip';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type { InventoryCategory, InventorySupplier } from '@/shared/types/inventory';
 import {
   useInventoryItem,
@@ -86,9 +85,21 @@ function DetailGrid({
 }
 
 const fullWidthBtnSx = {
-  ...dashOutlinedButtonSx,
+  ...DASHBOARD_UX.button,
+  minHeight: DASHBOARD_UX.buttonHeight,
+  height: DASHBOARD_UX.buttonHeight,
+  px: `${DASHBOARD_UX.buttonPx}px`,
+  borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
+  textTransform: 'none',
+  boxShadow: 'none',
   width: '100%',
   justifyContent: 'center',
+} as const;
+
+const fullWidthContainedBtnSx = {
+  ...fullWidthBtnSx,
+  minHeight: 40,
+  height: 40,
 } as const;
 
 export function ItemInspector({
@@ -165,9 +176,7 @@ export function ItemInspector({
               startIcon={<PackagePlus size={16} />}
               onClick={onStockIn}
               sx={{
-                ...fullWidthBtnSx,
-                ...dashContainedButtonSx,
-                width: '100%',
+                ...fullWidthContainedBtnSx,
                 bgcolor: colors.primaryDark,
                 '&:hover': { bgcolor: colors.primaryHover },
               }}

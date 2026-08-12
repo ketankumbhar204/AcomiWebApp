@@ -328,10 +328,12 @@ export function ConfigureLibraryExtrasDrawer({
                             checked={enabled}
                             disabled={busy}
                             onChange={(_, checked) => void setExtra(item, checked)}
-                            inputProps={{
-                              'aria-label': t('meals.library.toggleExtraA11y', {
-                                name: item.name,
-                              }),
+                            slotProps={{
+                              input: {
+                                'aria-label': t('meals.library.toggleExtraA11y', {
+                                  name: item.name,
+                                }),
+                              },
                             }}
                           />
                           <TextField

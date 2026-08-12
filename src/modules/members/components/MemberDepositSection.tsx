@@ -105,7 +105,7 @@ export function MemberDepositSection({
             value={depositAmount}
             onChange={(e) => setDepositAmount(e.target.value)}
             placeholder="e.g. 15000"
-            inputProps={{ min: 0, step: 'any' }}
+            slotProps={{ htmlInput: { min: 0, step: 'any' } }}
           />
           <TextField
             size="small"
@@ -115,7 +115,7 @@ export function MemberDepositSection({
             value={depositPaid}
             onChange={(e) => setDepositPaid(e.target.value)}
             placeholder="e.g. 10000"
-            inputProps={{ min: 0, step: 'any' }}
+            slotProps={{ htmlInput: { min: 0, step: 'any' } }}
           />
           <TextField
             size="small"
@@ -125,7 +125,7 @@ export function MemberDepositSection({
             value={depositRefunded}
             onChange={(e) => setDepositRefunded(e.target.value)}
             placeholder="e.g. 0"
-            inputProps={{ min: 0, step: 'any' }}
+            slotProps={{ htmlInput: { min: 0, step: 'any' } }}
           />
           {error ? (
             <Typography sx={{ ...DASHBOARD_UX.caption, color: 'error.main' }}>{error}</Typography>

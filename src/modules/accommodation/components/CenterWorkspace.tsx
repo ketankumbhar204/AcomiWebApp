@@ -456,7 +456,7 @@ export function CenterWorkspace({
                           floorId: r.floorId,
                         },
                         r.name,
-                        { isInactive: r.active === false, status: r.status },
+                        { isInactive: r.active === false },
                       ),
                   },
                 ]}
@@ -843,7 +843,7 @@ export function CenterWorkspace({
                           floorId: selection.floorId,
                         },
                         r.name,
-                        { isInactive: r.active === false, status: r.status },
+                        { isInactive: r.active === false },
                       ),
                   },
                 ]}

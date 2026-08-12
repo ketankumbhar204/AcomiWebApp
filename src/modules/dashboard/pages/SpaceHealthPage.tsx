@@ -317,10 +317,12 @@ export function SpaceHealthPage() {
         onClose={() => setWeightsOpen(false)}
         fullWidth
         maxWidth="sm"
-        PaperProps={{
-          sx: {
-            borderRadius: `${DASHBOARD_UX.radius}px`,
-            border: `1px solid ${s.border}`,
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: `${DASHBOARD_UX.radius}px`,
+              border: `1px solid ${s.border}`,
+            },
           },
         }}
       >

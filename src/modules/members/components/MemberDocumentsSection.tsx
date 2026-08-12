@@ -203,11 +203,13 @@ export function MemberDocumentsSection({
         }}
         maxWidth="xs"
         fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: `${DASHBOARD_UX.radius}px`,
-            border: `1px solid ${s.border}`,
-            boxShadow: s.shadowHover,
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: `${DASHBOARD_UX.radius}px`,
+              border: `1px solid ${s.border}`,
+              boxShadow: s.shadowHover,
+            },
           },
         }}
       >

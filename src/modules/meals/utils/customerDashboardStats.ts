@@ -22,7 +22,10 @@ function slotItemCount(day: MemberMealActivityDay): number {
     if (slot.status !== 'ACCEPTED' && slot.status !== 'PENDING') {
       return sum;
     }
-    const qty = slot.quantity != null && slot.quantity > 0 ? Number(slot.quantity) : 1;
+    const qty =
+      'quantity' in slot && typeof slot.quantity === 'number' && slot.quantity > 0
+        ? slot.quantity
+        : 1;
     return sum + qty;
   }, 0);
 }

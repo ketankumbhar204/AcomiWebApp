@@ -232,7 +232,7 @@ export function CopyPreviousMenuDialog({
                   type="date"
                   value={customDate}
                   onChange={(e) => setCustomDate(e.target.value)}
-                  inputProps={{ max: addDaysIso(targetDate, -1) }}
+                  slotProps={{ htmlInput: { max: addDaysIso(targetDate, -1) } }}
                 />
                 <Button size="small" onClick={() => void loadCustomDate()} sx={dashOutlinedButtonSx}>
                   {t('meals.planning.copyFrom.chooseDate', { defaultValue: 'Choose date' })}
@@ -255,8 +255,10 @@ export function CopyPreviousMenuDialog({
                           .filter((m) => m.options?.length)
                           .map((m) => t(`meals.mealType.${m.mealType}`))
                           .join(' · ')}
-                        primaryTypographyProps={{ sx: DASHBOARD_UX.cardTitle }}
-                        secondaryTypographyProps={{ sx: DASHBOARD_UX.metricCaption }}
+                        slotProps={{
+                          primary: { sx: DASHBOARD_UX.cardTitle },
+                          secondary: { sx: DASHBOARD_UX.metricCaption },
+                        }}
                       />
                     </ListItemButton>
                   ))}

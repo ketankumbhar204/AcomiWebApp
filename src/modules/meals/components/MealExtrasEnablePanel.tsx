@@ -306,7 +306,7 @@ export function MealExtrasEnablePanel({
             </Typography>
           ) : item.defaultPrice != null ? (
             <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
-              {formatCurrency(item.defaultPrice, item.currencyCode)}
+              {formatCurrency(item.defaultPrice, item.currencyCode ?? undefined)}
             </Typography>
           ) : null
         }

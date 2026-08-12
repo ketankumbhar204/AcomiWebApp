@@ -1,4 +1,4 @@
-import { Box, Link, useTheme } from '@mui/material';
+import { Link, useTheme } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';

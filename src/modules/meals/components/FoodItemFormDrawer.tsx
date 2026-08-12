@@ -149,7 +149,7 @@ export function FoodItemFormDrawer({
               placeholder={t('meals.library.itemNamePlaceholder')}
               fullWidth
               size="small"
-              inputProps={{ maxLength: 80 }}
+              slotProps={{ htmlInput: { maxLength: 80 } }}
             />
             <FormControl fullWidth size="small">
               <InputLabel>{t('meals.library.category')}</InputLabel>

@@ -100,8 +100,9 @@ export function AccommodationWorkspacePage() {
 
   // Default-select first building so center + children populate
   useEffect(() => {
-    if (!selection && buildingsQuery.buildings.length > 0) {
-      setSelection({ type: 'building', buildingId: buildingsQuery.buildings[0].buildingId });
+    const firstBuilding = buildingsQuery.buildings[0];
+    if (!selection && firstBuilding) {
+      setSelection({ type: 'building', buildingId: firstBuilding.buildingId });
     }
   }, [buildingsQuery.buildings, selection]);
 

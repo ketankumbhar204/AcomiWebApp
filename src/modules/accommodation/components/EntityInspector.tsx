@@ -28,7 +28,7 @@ import { StatusChip } from '@/shared/components/StatusChip';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { DASHBOARD_UX } from '@/modules/dashboard/theme/dashboardUx';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { colors } from '@/shared/theme/colors';
 import { spaceMemberPath, spaceOccupancyWizardPath } from '@/routes/paths';
 import type { TreeSelection } from './HierarchyTree';

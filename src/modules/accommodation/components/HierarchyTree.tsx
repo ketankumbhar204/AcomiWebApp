@@ -188,8 +188,7 @@ function FloorNode({
     (selection?.type === 'floor' && selection.floorId === floor.floorId) ||
     (selection &&
       'floorId' in selection &&
-      selection.floorId === floor.floorId &&
-      selection.type !== 'building');
+      selection.floorId === floor.floorId);
 
   const [open, setOpen] = useState(Boolean(selectedUnder));
   useEffect(() => {
