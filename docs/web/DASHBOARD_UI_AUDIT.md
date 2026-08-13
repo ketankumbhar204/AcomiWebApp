@@ -1,6 +1,6 @@
 # Dashboard UI Audit (Current Implementation)
 
-> **Scope:** Reverse-engineered visual design tokens from AmicoWeb Dashboard code.  
+> **Scope:** Reverse-engineered visual design tokens from AcomiWeb Dashboard code.  
 > **Date:** 2026-07-29  
 > **Status:** Read-only inspection — no code was modified.  
 > **Styling system:** MUI `sx` + TypeScript theme tokens. **Tailwind is not used** on the Dashboard.

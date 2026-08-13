@@ -2,9 +2,9 @@
 
 **Date:** 2026-07-28  
 **Auditor method:** Independent source comparison (React Native ↔ React Web ↔ Spring Boot contracts)  
-**Mobile SoT:** `K:\Amico`  
+**Mobile SoT:** `K:\AmicoMobile`  
 **Web app:** `K:\AmicoWeb`  
-**Backend SoT:** `K:\Projects\Amico\Backend\amico-backend` (now amico-backend Maven artifact; contracts unchanged)
+**Backend SoT:** `K:\Projects\Acomi\Backend\acomi-backend` (now acomi-backend Maven artifact; contracts unchanged)
 
 ---
 

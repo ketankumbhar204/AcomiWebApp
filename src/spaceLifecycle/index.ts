@@ -1,6 +1,6 @@
 /**
  * Space Lifecycle Engine — pure domain evaluation for setup milestones + Space Health.
- * Ported from React Native Amico (same calculator / predicates).
+ * Ported from React Native Acomi (same calculator / predicates).
  */
 
 export type {

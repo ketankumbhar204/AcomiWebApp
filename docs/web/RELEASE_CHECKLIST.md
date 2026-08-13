@@ -1,4 +1,4 @@
-# Amico Web — Release checklist (Phase 22)
+# Acomi Web — Release checklist (Phase 22)
 
 Signed off: **2026-07-30** (Dashboard DS rollout Phases 1–22)
 

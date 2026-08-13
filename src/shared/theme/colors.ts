@@ -1,5 +1,5 @@
 /**
- * Amico color tokens — shared surface system with mobile.
+ * Acomi color tokens — shared surface system with mobile.
  * Page uses a subtle light-green canvas; cards stay pure white.
  */
 export const colors = {

@@ -1,9 +1,9 @@
-# Amico Web — Complete Gap Analysis
+# Acomi Web — Complete Gap Analysis
 
 **Date:** 2026-07-28 (updated after Final Implementation Audit)  
-**Mobile source of truth:** `K:\Amico`  
+**Mobile source of truth:** `K:\AmicoMobile`  
 **Web application:** `K:\AmicoWeb`  
-**Shared backend:** `K:\Projects\Amico\Backend\amico-backend` (now amico-backend Maven artifact)  
+**Shared backend:** `K:\Projects\Acomi\Backend\acomi-backend` (now acomi-backend Maven artifact)  
 
 **Scope:** Living parity tracker. Recalculated after independent Phases 1–12 source audit (not documentation-only).
 
@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-Amico Web has shipped **Phases 1–12**, then closed audit-found mobile-wired gaps (**Add Customers hub**, **bulk beds/rooms** outside Quick Setup). Core operator and tenant workflows wired in React Native are present on web with desktop UX improvements and **unchanged** APIs / DTOs / permissions.
+Acomi Web has shipped **Phases 1–12**, then closed audit-found mobile-wired gaps (**Add Customers hub**, **bulk beds/rooms** outside Quick Setup). Core operator and tenant workflows wired in React Native are present on web with desktop UX improvements and **unchanged** APIs / DTOs / permissions.
 
 ### Overall completion (weighted, mobile-wired surfaces)
 

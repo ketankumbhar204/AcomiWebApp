@@ -12,7 +12,7 @@ import type {
 } from '@/shared/types/auth';
 import { env } from '@/shared/config/env';
 
-const LOG_TAG = '[Amico Auth]';
+const LOG_TAG = '[Acomi Auth]';
 
 export const authApi = {
   sendOtp: async (payload: SendOtpRequest): Promise<SendOtpResponse> => {

@@ -1,6 +1,6 @@
-# Authentication (Amico Web)
+# Authentication (Acomi Web)
 
-See also the blueprint doc: `K:\Amico\docs\web\authentication.md`.
+See also the blueprint doc: `K:\AmicoMobile\docs\web\authentication.md`.
 
 ## Routes
 

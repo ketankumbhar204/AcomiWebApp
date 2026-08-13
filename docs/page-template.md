@@ -1,6 +1,6 @@
 # Page Template
 
-Standard page structure for Amico Web modules. Every list/ops page should follow this pattern so the product feels cohesive.
+Standard page structure for Acomi Web modules. Every list/ops page should follow this pattern so the product feels cohesive.
 
 ```
 ┌────────────────────────────────────────────────────────────┐

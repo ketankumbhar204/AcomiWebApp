@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Amico",
+    "appName": "ACOMI",
     "ok": "OK",
     "cancel": "Cancel",
     "close": "Close",
@@ -68,10 +68,10 @@
       "mobilePlaceholder": "9876543210",
       "mobileHelper": "We will text a 6-digit code. Standard SMS rates may apply.",
       "sendOtp": "Send OTP",
-      "disclaimer": "New to Amico? Your account will be created automatically.",
+      "disclaimer": "New to ACOMI? Your account will be created automatically.",
       "mobileRequired": "Mobile number is required.",
       "mobileInvalid": "Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.",
-      "brandPanelTitle": "Amico",
+      "brandPanelTitle": "ACOMI",
       "brandPanelSubtitle": "Property and meal operations for PGs, hostels, and messes — the same product you use on mobile."
     },
     "otp": {
@@ -722,8 +722,8 @@
       "emptyTitle": "No members yet",
       "emptyDescription": "Add your first tenant, customer, or staff member to this space.",
       "listSubtitle": "People in this space",
-      "onAmico": "On Amico",
-      "notOnAmicoYet": "Not on Amico yet",
+      "onAcomi": "On ACOMI",
+      "notOnAcomiYet": "Not on ACOMI yet",
       "mobile": "Mobile: {{value}}",
       "created": "Added: {{date}}",
       "remove": "Remove Member"
@@ -733,7 +733,7 @@
       "eyebrow": "Members",
       "heading": "Add a Member",
       "headingMess": "Add a Customer",
-      "subheading": "Create a business record directly. They do not need the Amico app.",
+      "subheading": "Create a business record directly. They do not need the ACOMI app.",
       "fullNameLabel": "Full Name",
       "fullNameRequired": "Full name is required.",
       "save": "Add Member",
@@ -742,7 +742,7 @@
       "fabMenuTitle": "Add or invite",
       "fabAddRecord": "Add member",
       "fabInviteApp": "Send invitation",
-      "inviteInstead": "Want them on Amico?",
+      "inviteInstead": "Want them on ACOMI?",
       "inviteInsteadAction": "Send invitation",
       "subheadingMess": "Choose people you've already added to another space. We'll add them to this mess without asking for their details again.",
       "fullNamePlaceholder": "e.g. Rahul Sharma",
@@ -823,7 +823,7 @@
     "invite": {
       "headerAction": "Send invitation",
       "heading": "Send invitation",
-      "subheading": "They will receive an invitation to connect with this space on Amico.",
+      "subheading": "They will receive an invitation to connect with this space on ACOMI.",
       "mobileLabel": "Mobile Number",
       "mobileRequired": "Mobile number is required.",
       "mobileInvalid": "Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.",
@@ -4151,8 +4151,8 @@
   "onboarding": {
     "choice": {
       "title": "Welcome",
-      "eyebrow": "Welcome to Amico",
-      "heading": "How will you use Amico?",
+      "eyebrow": "Welcome to ACOMI",
+      "heading": "How will you use ACOMI?",
       "subheading": "Choose whether you are an owner or joining as a member.",
       "manageTitle": "I Am an Owner",
       "manageSubtitle": "PG · Mess · Hostel · Co-living · Rental",
@@ -4356,7 +4356,7 @@
       "sessionBody": "Logging out clears your session on this device. You can sign in again with your mobile number.",
       "logout": "Log out",
       "logoutTitle": "Log out",
-      "logoutMessage": "Are you sure you want to log out of Amico?",
+      "logoutMessage": "Are you sure you want to log out of ACOMI?",
       "logoutConfirm": "Log out",
       "spacesJoined": "{{count}} spaces",
       "completionLabel": "Profile completion",

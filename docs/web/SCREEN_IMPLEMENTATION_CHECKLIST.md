@@ -1,4 +1,4 @@
-# Amico Web — Screen Implementation Checklist
+# Acomi Web — Screen Implementation Checklist
 
 > **Daily implementation tracker.**  
 > Mark each screen as you polish it to the Dashboard design system.  

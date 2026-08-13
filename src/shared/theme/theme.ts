@@ -37,7 +37,7 @@ function buildPalette(mode: ThemeMode) {
   } as const;
 }
 
-export function createAmicoTheme(mode: ThemeMode = 'light'): Theme {
+export function createAcomiTheme(mode: ThemeMode = 'light'): Theme {
   const c = mode === 'light' ? colors : darkColors;
 
   return createTheme({

@@ -1,8 +1,8 @@
-# Amico Web
+# ACOMI Web
 
-React web client for Amico. Consumes the **same Spring Boot APIs** as the React Native mobile app (`K:\Amico`). The mobile app is the product source of truth; this repo is the desktop presentation layer.
+React web client for **ACOMI** (Accommodation + Meals — Manage Your Stay & Meals). Consumes the **same Spring Boot APIs** as the React Native mobile app. The mobile app is the product source of truth; this repo is the desktop presentation layer.
 
-Backend: `K:\Projects\Amico\Backend\amico-backend` (now amico-backend Maven artifact; shared, unchanged).
+Backend Maven artifact: `acomi-backend` (`com.acomi`).
 
 ---
 
@@ -26,7 +26,7 @@ Backend: `K:\Projects\Amico\Backend\amico-backend` (now amico-backend Maven arti
 ## Prerequisites
 
 - Node.js 22+ (recommended)
-- Running Amico backend on `http://localhost:8080` (for API calls later)
+- Running ACOMI backend on `http://localhost:8080` (for API calls later)
 
 ---
 
@@ -69,7 +69,7 @@ src/
     constants/
     hooks/             # Shared hooks (auth session reader only)
     layouts/           # Re-exports root layouts
-    theme/             # Amico MUI theme + tokens
+    theme/             # Acomi MUI theme + tokens
     types/             # API / auth contracts
     utils/
     assets/
@@ -103,7 +103,7 @@ Foundation (done)
   → Payments → Complaints → Inventory → Settings → Reports
 ```
 
-See `K:\Amico\docs\web\implementation-roadmap.md`, [`docs/page-template.md`](./docs/page-template.md), and [`docs/authentication.md`](./docs/authentication.md).
+See `K:\AmicoMobile\docs\web\implementation-roadmap.md`, [`docs/page-template.md`](./docs/page-template.md), and [`docs/authentication.md`](./docs/authentication.md).
 
 ---
 
@@ -151,4 +151,4 @@ Suggested first modules (when ready): **Authentication** → Spaces shell → Da
 
 ## Related docs
 
-Mobile web blueprint (reference only): `K:\Amico\docs\web\`
+Mobile web blueprint (reference only): `K:\AmicoMobile\docs\web\`

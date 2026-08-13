@@ -1,3 +1,3 @@
-export const APP_NAME = 'Amico';
+export const APP_NAME = 'ACOMI';
 
-export const APP_DESCRIPTION = 'Property and meal operations platform';
+export const APP_DESCRIPTION = 'Accommodation + Meals — Manage Your Stay & Meals';

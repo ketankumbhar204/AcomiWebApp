@@ -21,11 +21,11 @@ Desktop UX may improve layout and productivity, but functionality must remain id
 
 ## Mobile
 
-K:\Amico
+K:\AmicoMobile
 
 ## Backend
 
-K:\Projects\Amico\Backend\amico-backend (now amico-backend Maven artifact)
+K:\Projects\Acomi\Backend\acomi-backend (now acomi-backend Maven artifact)
 ## Web
 
 K:\AmicoWeb

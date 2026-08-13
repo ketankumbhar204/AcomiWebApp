@@ -1,4 +1,4 @@
-# Amico Web Screen Implementation Guide
+# Acomi Web Screen Implementation Guide
 
 > **Every future screen implementation MUST first analyze previously completed screens and reuse existing components before creating new ones.**
 >
@@ -13,9 +13,9 @@
 | Item | Value |
 |------|-------|
 | Design SoT (visual) | **Web Dashboard** (`DashboardPage` + `dashboardUx.ts`) |
-| Business SoT | **React Native** (`K:\Amico`) |
-| API SoT | **Backend** (`K:\Projects\Amico\Backend\amico-backend`) (now amico-backend Maven artifact) |
-| Implementation target | **Amico Web** (`K:\AmicoWeb`) |
+| Business SoT | **React Native** (`K:\AmicoMobile`) |
+| API SoT | **Backend** (`K:\Projects\Acomi\Backend\acomi-backend`) (now acomi-backend Maven artifact) |
+| Implementation target | **Acomi Web** (`K:\AmicoWeb`) |
 | Companion catalog | [`UI_COMPONENT_CATALOG.md`](./UI_COMPONENT_CATALOG.md) |
 | Screen checklist (daily tracker) | [`SCREEN_IMPLEMENTATION_CHECKLIST.md`](./SCREEN_IMPLEMENTATION_CHECKLIST.md) |
 | Screen reference map | [`SCREEN_REFERENCE_MAP.md`](./SCREEN_REFERENCE_MAP.md) |

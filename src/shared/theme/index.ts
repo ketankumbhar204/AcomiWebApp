@@ -3,4 +3,4 @@ export { spacing } from './spacing';
 export { radius } from './radius';
 export { elevation } from './elevation';
 export { fontFamily, fontSize, typographyOptions } from './typography';
-export { createAmicoTheme } from './theme';
+export { createAcomiTheme } from './theme';

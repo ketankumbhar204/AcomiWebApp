@@ -1,7 +1,7 @@
 # Image & Illustration Parity Audit — Mobile (SoT) vs Web
 
 > **Date:** 2026-07-31  
-> **Mobile:** `K:\Amico`  
+> **Mobile:** `K:\AmicoMobile`  
 > **Web:** `K:\AmicoWeb`  
 > **Assets:** `src/assets` copied (45 PNGs, accommodation only)  
 > **Rule:** Mobile is SoT. Do not invent illustrations. Empty states on Mobile use Lucide/emoji — **not** PNGs.

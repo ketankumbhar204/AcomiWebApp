@@ -184,9 +184,9 @@ export function MemberInspector({
                   tone={memberStatusTone(member.status)}
                 />
                 {member.linkedUser ? (
-                  <Chip size="small" label={t('membership.members.onAmico')} />
+                  <Chip size="small" label={t('membership.members.onAcomi')} />
                 ) : (
-                  <Chip size="small" variant="outlined" label={t('membership.members.notOnAmicoYet')} />
+                  <Chip size="small" variant="outlined" label={t('membership.members.notOnAcomiYet')} />
                 )}
               </Stack>
             </Box>
