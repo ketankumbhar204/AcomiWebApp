@@ -18,7 +18,15 @@
       "network": "Unable to connect. Check your internet connection.",
       "authRequired": "Session not found. Please log in again.",
       "sendOtp": "Unable to send OTP. Check your connection and try again.",
-      "incorrectOtp": "Incorrect OTP. Please try again.",
+      "incorrectOtp": "The OTP is incorrect. Please try again.",
+      "otpExpired": "This OTP has expired. Please request a new OTP.",
+      "otpMaxAttempts": "Too many attempts. Please request a new OTP.",
+      "otpConsumed": "This OTP is no longer valid. Please request a new OTP.",
+      "otpCooldown": "Please wait before requesting another OTP.",
+      "otpRateLimited": "Too many OTP requests. Please try again later.",
+      "registrationTokenExpired": "Your verification has expired. Please request a new OTP.",
+      "invalidCredentials": "Invalid mobile number or password.",
+      "mobileAlreadyRegistered": "This mobile number is already registered.",
       "accountDisabled": "Your account has been disabled. Please contact support.",
       "forbidden": "You do not have permission to view this page.",
       "unauthorized": "Your session has expired. Please sign in again.",
@@ -35,6 +43,7 @@
   },
   "navigation": {
     "verifyOtp": "Verify OTP",
+    "createPassword": "Create password",
     "login": "Sign in",
     "unauthorized": "Unauthorized",
     "forbidden": "Forbidden",
@@ -63,24 +72,64 @@
     "login": {
       "eyebrow": "Sign in",
       "heading": "Welcome back",
-      "subheading": "Enter your mobile number to receive a one-time password.",
+      "subheading": "Sign in with your mobile number and password.",
       "mobileLabel": "Mobile number",
       "mobilePlaceholder": "9876543210",
-      "mobileHelper": "We will text a 6-digit code. Standard SMS rates may apply.",
+      "mobileHelper": "Use the 10-digit Indian mobile number on your ACOMI account.",
       "sendOtp": "Send OTP",
-      "disclaimer": "New to ACOMI? Your account will be created automatically.",
+      "submit": "Sign In",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Enter your password",
+      "passwordRequired": "Password is required.",
+      "passwordTooShort": "Password must be at least 8 characters.",
+      "passwordTooLong": "Password must be at most 72 characters.",
+      "registerPrompt": "New to ACOMI?",
+      "registerLink": "Create an account",
+      "disclaimer": "New to ACOMI? Create an account to get started.",
       "mobileRequired": "Mobile number is required.",
       "mobileInvalid": "Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.",
       "brandPanelTitle": "ACOMI",
       "brandPanelSubtitle": "Property and meal operations for PGs, hostels, and messes — the same product you use on mobile."
+    },
+    "register": {
+      "eyebrow": "Create account",
+      "heading": "Join ACOMI",
+      "subheading": "Enter your name, mobile number, and a password.",
+      "mobileSubheading": "Enter your mobile number. We will send an OTP to verify it.",
+      "sendOtp": "Send OTP",
+      "otpSent": "OTP sent",
+      "nameLabel": "Name",
+      "namePlaceholder": "Your name",
+      "nameRequired": "Name is required.",
+      "verifiedEyebrow": "Mobile verified",
+      "passwordHeading": "Create your password",
+      "passwordSubheading": "Choose a password to finish creating your account.",
+      "mobileVerified": "Mobile verified",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Create a password",
+      "passwordRequired": "Password is required.",
+      "passwordTooShort": "Password must be at least 8 characters.",
+      "passwordTooLong": "Password must be at most 72 characters.",
+      "confirmPasswordLabel": "Confirm password",
+      "confirmPasswordPlaceholder": "Re-enter your password",
+      "confirmPasswordRequired": "Confirm your password.",
+      "passwordMismatch": "Passwords do not match.",
+      "submit": "Create Account",
+      "success": "Registration successful",
+      "loginPrompt": "Already have an account?",
+      "loginLink": "Sign in"
     },
     "otp": {
       "eyebrow": "Verification",
       "heading": "Enter OTP",
       "subheading": "We sent a code to",
       "codeLabel": "6-digit code",
-      "verifyContinue": "Verify & Continue",
-      "devHint": "Dev: Use OTP 111111",
+      "verifyContinue": "Verify OTP",
+      "resend": "Resend OTP",
+      "resendIn": "Resend in {{time}}",
+      "expiresIn": "OTP expires in {{time}}",
+      "expiredHint": "This OTP has expired. Request a new OTP.",
+      "devHint": "Check the backend development log for your OTP.",
       "wrongNumber": "Wrong number?",
       "changeIt": "Change it",
       "otpRequired": "Enter the 6-digit OTP.",
@@ -100,6 +149,65 @@
       "signedInAs": "Signed in as {{name}}",
       "readyTitle": "You're signed in",
       "readyBody": "Authentication is ready. Business modules such as Dashboard will appear here next."
+    }
+  },
+  "legal": {
+    "deleteAccount": {
+      "title": "Delete account",
+      "eyebrow": "ACOMI",
+      "heading": "Delete your ACOMI account",
+      "subheading": "You can request deletion of your ACOMI account and associated personal data from this page. You do not need the mobile app.",
+      "linkLabel": "Delete account",
+      "whatIsDeleted": "We delete your login and personal account information: name, mobile number, email, address, photo, and identity documents you uploaded. You are signed out and this account cannot be used again.",
+      "whatIsRetained": "Property records such as spaces, rooms, occupancy, meals, payments, and complaints stay with the business so operations and history remain intact. Your personal details on those records are removed or replaced with a generic deleted-user label. Spaces you own are not deleted. Other managers can keep operating them.",
+      "sendOtp": "Send verification code",
+      "passwordHelper": "Enter the password for this ACOMI account.",
+      "otpSentTo": "Enter the 6-digit code sent for {{mobile}}.",
+      "confirmLabel": "I understand this cannot be undone.",
+      "submit": "Delete my account",
+      "changeNumber": "Use a different number",
+      "success": "If an ACOMI account existed for that mobile number, it has been deleted. You can create a new account later with the same number.",
+      "backToSignIn": "Back to sign in"
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "heading": "ACOMI Privacy Policy",
+      "linkLabel": "Privacy Policy",
+      "lastUpdated": "Last updated: 16 August 2026. Operator legal name, registered address, and privacy contact email: [TO BE PROVIDED].",
+      "sections": {
+        "intro": {
+          "title": "Who we are",
+          "body": "ACOMI is a property operations product for PGs, hostels, co-living, rentals, and messes. This policy describes how the ACOMI mobile app and website (app.acomi.in) handle information. The legal entity that operates ACOMI is [TO BE PROVIDED]."
+        },
+        "account": {
+          "title": "Account creation",
+          "body": "You create an account with an Indian mobile number and a password. ACOMI stores only a password hash, never the password itself. The same mobile number can register again after account deletion."
+        },
+        "dataWeCollect": {
+          "title": "Information we collect",
+          "body": "Account and profile: mobile number, name, optional email, gender, date of birth, address, profile photo, and identity/address documents you upload.\n\nOperations you run in ACOMI: spaces, buildings, rooms, beds, members, occupancy, meals, payments (including payment proofs you upload), complaints, invitations, and notifications.\n\nWe do not collect precise device location, contacts, or SMS content. We do not currently use third-party analytics or crash-reporting SDKs in the app or website."
+        },
+        "howWeUse": {
+          "title": "How we use information",
+          "body": "We use this information to authenticate you, operate your properties, show dashboards, process occupancy and meal workflows, record payment proofs, and handle complaints. ACOMI is not a payment gateway; payment records are operational ledgers and proofs, not card processing."
+        },
+        "sharing": {
+          "title": "Sharing",
+          "body": "People you add to a space (owners, managers, tenants, customers, staff) can see operational information for that space according to their role. We do not sell personal information. Hosting and API infrastructure is used to run the service. Specific subprocessors are [TO BE PROVIDED] if applicable."
+        },
+        "retention": {
+          "title": "Retention",
+          "body": "Account profile data is kept while the account is active. After you delete your account, personal login data is removed or anonymized. Shared property records may remain because they belong to the business/space, not only to one login. A specific numeric retention period is [TO BE PROVIDED] if you require one for legal reasons."
+        },
+        "deletion": {
+          "title": "Account and data deletion",
+          "body": "You can delete your account in the ACOMI app (Profile → Delete account) or on this website at /delete-account. Deletion removes your login and personal account information, removes your space memberships, and anonymizes your personal details on linked member records. Spaces, occupancy, meals, payments, and complaints are kept as business records, without your identifiable profile. You can register again later with the same mobile number."
+        },
+        "contact": {
+          "title": "Contact",
+          "body": "Privacy questions: [TO BE PROVIDED]. This page will be updated when the operator contact details are confirmed."
+        }
+      }
     }
   },
   "spaces": {

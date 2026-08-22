@@ -1,4 +1,5 @@
 import { lazy, Suspense, type ComponentType, type ReactNode } from 'react';
+import { Navigate } from 'react-router-dom';
 import { AuthLayoutOutlet } from './AuthLayoutOutlet';
 import { GuestRoute, ProtectedRoute } from './ProtectedRoute';
 import { SpaceBootstrapOutlet } from '@/modules/dashboard/layouts/SpaceBootstrapOutlet';
@@ -50,14 +51,20 @@ function L({ children }: { children: ReactNode }) {
 const LoginPage = lazyPage(() =>
   import('@/modules/auth/pages/LoginPage').then((m) => ({ default: m.LoginPage })),
 );
-const OtpPage = lazyPage(() =>
-  import('@/modules/auth/pages/OtpPage').then((m) => ({ default: m.OtpPage })),
+const RegisterPage = lazyPage(() =>
+  import('@/modules/auth/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })),
 );
 const UnauthorizedPage = lazyPage(() =>
   import('@/modules/auth/pages/UnauthorizedPage').then((m) => ({ default: m.UnauthorizedPage })),
 );
 const ForbiddenPage = lazyPage(() =>
   import('@/modules/auth/pages/ForbiddenPage').then((m) => ({ default: m.ForbiddenPage })),
+);
+const DeleteAccountPage = lazyPage(() =>
+  import('@/modules/legal/pages/DeleteAccountPage').then((m) => ({ default: m.DeleteAccountPage })),
+);
+const PrivacyPolicyPage = lazyPage(() =>
+  import('@/modules/legal/pages/PrivacyPolicyPage').then((m) => ({ default: m.PrivacyPolicyPage })),
 );
 const NotFoundPage = lazyPage(() =>
   import('@/shared/components/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
@@ -261,12 +268,25 @@ export const appRoutes = [
                 ),
               },
               {
-                path: ROUTES.otp,
+                path: ROUTES.register,
                 element: (
                   <L>
-                    <OtpPage />
+                    <RegisterPage />
                   </L>
                 ),
+              },
+              /* OTP register paths remain reserved for future OTP authentication. */
+              {
+                path: ROUTES.registerOtp,
+                element: <Navigate to={ROUTES.register} replace />,
+              },
+              {
+                path: ROUTES.registerPassword,
+                element: <Navigate to={ROUTES.register} replace />,
+              },
+              {
+                path: ROUTES.otp,
+                element: <Navigate to={ROUTES.register} replace />,
               },
             ],
           },
@@ -685,6 +705,27 @@ export const appRoutes = [
                 ],
               },
             ],
+          },
+        ],
+      },
+      {
+        element: <AuthLayoutOutlet />,
+        children: [
+          {
+            path: ROUTES.deleteAccount,
+            element: (
+              <L>
+                <DeleteAccountPage />
+              </L>
+            ),
+          },
+          {
+            path: ROUTES.privacy,
+            element: (
+              <L>
+                <PrivacyPolicyPage />
+              </L>
+            ),
           },
         ],
       },

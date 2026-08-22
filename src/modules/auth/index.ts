@@ -1,8 +1,11 @@
 export { authApi } from './api/authApi';
 export { LoginPage } from './pages/LoginPage';
+export { RegisterPage } from './pages/RegisterPage';
 export { OtpPage } from './pages/OtpPage';
+export { RegisterPasswordPage } from './pages/RegisterPasswordPage';
 export { UnauthorizedPage } from './pages/UnauthorizedPage';
 export { ForbiddenPage } from './pages/ForbiddenPage';
+export { useLogin, useRegister } from './hooks/usePasswordAuth';
 export { useSendOtp } from './hooks/useSendOtp';
 export { useVerifyOtp } from './hooks/useVerifyOtp';
 export { useLogout } from './hooks/useLogout';

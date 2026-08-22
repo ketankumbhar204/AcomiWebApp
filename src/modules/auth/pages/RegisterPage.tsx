@@ -1,6 +1,6 @@
 import { Box, Button, CircularProgress, Link, Typography, useTheme } from '@mui/material';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { LogIn } from 'lucide-react';
+import { UserRound } from 'lucide-react';
 import { useMemo } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -13,25 +13,29 @@ import { AuthCard } from '../components/AuthCard';
 import { AuthErrorBanner } from '../components/AuthErrorBanner';
 import { AuthHero } from '../components/AuthHero';
 import { MobileNumberInput } from '../components/MobileNumberInput';
+import { NameInput } from '../components/NameInput';
 import { PasswordInput } from '../components/PasswordInput';
-import { useLogin } from '../hooks/usePasswordAuth';
-import { createLoginSchema, type LoginFormValues } from '../schemas/loginSchema';
-import { validatePassword } from '../passwordRules';
+import { useRegister } from '../hooks/usePasswordAuth';
+import { passwordsMatch, validatePassword } from '../passwordRules';
+import { createRegisterSchema, type RegisterFormValues } from '../schemas/loginSchema';
 
-export function LoginPage() {
+export function RegisterPage() {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
-  const { login, isLoading, error, clearError } = useLogin();
+  const { register, isLoading, error, clearError } = useRegister();
 
   const schema = useMemo(
     () =>
-      createLoginSchema({
+      createRegisterSchema({
+        nameRequired: t('auth.register.nameRequired'),
         mobileRequired: t('auth.login.mobileRequired'),
         mobileInvalid: t('auth.login.mobileInvalid'),
-        passwordRequired: t('auth.login.passwordRequired'),
-        passwordTooShort: t('auth.login.passwordTooShort'),
-        passwordTooLong: t('auth.login.passwordTooLong'),
+        passwordRequired: t('auth.register.passwordRequired'),
+        passwordTooShort: t('auth.register.passwordTooShort'),
+        passwordTooLong: t('auth.register.passwordTooLong'),
+        confirmRequired: t('auth.register.confirmPasswordRequired'),
+        passwordMismatch: t('auth.register.passwordMismatch'),
       }),
     [t],
   );
@@ -40,20 +44,36 @@ export function LoginPage() {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormValues>({
+  } = useForm<RegisterFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { mobileNumber: '', password: '' },
+    defaultValues: {
+      fullName: '',
+      mobileNumber: '',
+      password: '',
+      confirmPassword: '',
+    },
     mode: 'onSubmit',
   });
 
+  const fullName = useWatch({ control, name: 'fullName' }) ?? '';
   const mobileNumber = useWatch({ control, name: 'mobileNumber' }) ?? '';
   const password = useWatch({ control, name: 'password' }) ?? '';
+  const confirmPassword = useWatch({ control, name: 'confirmPassword' }) ?? '';
   const canSubmit =
-    isValidIndianMobile(mobileNumber) && validatePassword(password) == null && !isLoading;
+    fullName.trim().length > 0 &&
+    isValidIndianMobile(mobileNumber) &&
+    validatePassword(password) == null &&
+    passwordsMatch(password, confirmPassword) &&
+    !isLoading;
 
   const onSubmit = handleSubmit(async (values) => {
     clearError();
-    await login(values.mobileNumber, values.password);
+    await register({
+      fullName: values.fullName.trim(),
+      mobileNumber: values.mobileNumber,
+      password: values.password,
+      confirmPassword: values.confirmPassword,
+    });
   });
 
   return (
@@ -65,13 +85,34 @@ export function LoginPage() {
         sx={{ display: 'flex', flexDirection: 'column', gap: `${DASHBOARD_UX.internalGap + 4}px` }}
       >
         <AuthHero
-          icon={LogIn}
-          eyebrow={t('auth.login.eyebrow')}
-          heading={t('auth.login.heading')}
-          subheading={t('auth.login.subheading')}
+          icon={UserRound}
+          eyebrow={t('auth.register.eyebrow')}
+          heading={t('auth.register.heading')}
+          subheading={t('auth.register.subheading')}
         />
 
         {error ? <AuthErrorBanner message={error} /> : null}
+
+        <Controller
+          name="fullName"
+          control={control}
+          render={({ field }) => (
+            <NameInput
+              label={t('auth.register.nameLabel')}
+              value={field.value}
+              onChange={(value) => {
+                field.onChange(value);
+                if (error) {
+                  clearError();
+                }
+              }}
+              onBlur={field.onBlur}
+              error={errors.fullName?.message}
+              disabled={isLoading}
+              placeholder={t('auth.register.namePlaceholder')}
+            />
+          )}
+        />
 
         <Controller
           name="mobileNumber"
@@ -88,7 +129,6 @@ export function LoginPage() {
               onBlur={field.onBlur}
               error={errors.mobileNumber?.message}
               disabled={isLoading}
-              autoFocus
             />
           )}
         />
@@ -98,7 +138,7 @@ export function LoginPage() {
           control={control}
           render={({ field }) => (
             <PasswordInput
-              label={t('auth.login.passwordLabel')}
+              label={t('auth.register.passwordLabel')}
               value={field.value}
               onChange={(value) => {
                 field.onChange(value);
@@ -109,7 +149,30 @@ export function LoginPage() {
               onBlur={field.onBlur}
               error={errors.password?.message}
               disabled={isLoading}
-              placeholder={t('auth.login.passwordPlaceholder')}
+              autoComplete="new-password"
+              placeholder={t('auth.register.passwordPlaceholder')}
+            />
+          )}
+        />
+
+        <Controller
+          name="confirmPassword"
+          control={control}
+          render={({ field }) => (
+            <PasswordInput
+              label={t('auth.register.confirmPasswordLabel')}
+              value={field.value}
+              onChange={(value) => {
+                field.onChange(value);
+                if (error) {
+                  clearError();
+                }
+              }}
+              onBlur={field.onBlur}
+              error={errors.confirmPassword?.message}
+              disabled={isLoading}
+              autoComplete="new-password"
+              placeholder={t('auth.register.confirmPasswordPlaceholder')}
               onSubmit={() => void onSubmit()}
             />
           )}
@@ -128,13 +191,13 @@ export function LoginPage() {
             '&:hover': { boxShadow: s.shadowHover },
           }}
         >
-          {isLoading ? t('common.pleaseWait') : t('auth.login.submit')}
+          {isLoading ? t('common.pleaseWait') : t('auth.register.submit')}
         </Button>
 
         <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, textAlign: 'center' }}>
-          {t('auth.login.registerPrompt')}{' '}
-          <Link component={RouterLink} to={ROUTES.register} underline="hover">
-            {t('auth.login.registerLink')}
+          {t('auth.register.loginPrompt')}{' '}
+          <Link component={RouterLink} to={ROUTES.login} underline="hover">
+            {t('auth.register.loginLink')}
           </Link>
         </Typography>
 

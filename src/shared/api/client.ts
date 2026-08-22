@@ -98,13 +98,26 @@ apiClient.interceptors.response.use(
     if (apiError.status === 401) {
       const requestUrl = error.config?.url ?? '';
       const isPublicAuth =
-        requestUrl.includes('/auth/send-otp') || requestUrl.includes('/auth/verify-otp');
+        requestUrl.includes('/auth/login') ||
+        requestUrl.includes('/auth/register') ||
+        requestUrl.includes('/auth/send-otp') ||
+        requestUrl.includes('/auth/verify-otp') ||
+        requestUrl.includes('/auth/account-deletion');
 
       tokenPort.setToken(null);
 
       if (!isPublicAuth && typeof window !== 'undefined') {
         const path = window.location.pathname;
-        if (path !== '/login' && path !== '/otp' && path !== '/unauthorized') {
+        if (
+          path !== '/login' &&
+          path !== '/register' &&
+          path !== '/register/otp' &&
+          path !== '/register/password' &&
+          path !== '/otp' &&
+          path !== '/unauthorized' &&
+          path !== '/delete-account' &&
+          path !== '/privacy'
+        ) {
           window.location.assign('/unauthorized');
         }
       }

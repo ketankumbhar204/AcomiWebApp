@@ -1,52 +1,41 @@
 import { useCallback, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ApiError } from '@/shared/api/errors';
-import { useAuthStore } from '@/store/authStore';
 import { authApi } from '../api/authApi';
+import { useRegistrationDraftStore } from '@/store/registrationDraftStore';
+import type { VerifyOtpResponse } from '@/shared/types/auth';
+import { mapOtpVerifyError } from '../utils/otpAuthErrors';
 
 type UseVerifyOtpResult = {
-  verifyOtp: (mobileNumber: string, otp: string) => Promise<boolean>;
+  verifyOtp: (mobileNumber: string, otp: string) => Promise<VerifyOtpResponse | null>;
   isLoading: boolean;
   error: string | null;
   clearError: () => void;
 };
 
 export function useVerifyOtp(): UseVerifyOtpResult {
-  const { t } = useTranslation();
-  const setSession = useAuthStore((state) => state.setSession);
+  const setVerified = useRegistrationDraftStore((state) => state.setVerified);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const verifyOtp = useCallback(
-    async (mobileNumber: string, otp: string): Promise<boolean> => {
+    async (mobileNumber: string, otp: string): Promise<VerifyOtpResponse | null> => {
       setIsLoading(true);
       setError(null);
       try {
-        const result = await authApi.verifyOtp({ mobileNumber, otp });
-        setSession(result.user, result.accessToken);
-        return true;
+        const result = await authApi.verifyOtp({
+          mobileNumber,
+          otp,
+          purpose: 'REGISTER',
+        });
+        setVerified(result.verificationToken, result.expiresIn);
+        return result;
       } catch (err) {
-        let message = t('common.errors.generic');
-        if (err instanceof ApiError) {
-          if (err.status === 400) {
-            message = err.message.toLowerCase().includes('inactive')
-              ? t('common.errors.accountDisabled')
-              : t('common.errors.incorrectOtp');
-          } else if (err.isNetworkError) {
-            message = t('common.errors.network');
-          } else if (err.status >= 500) {
-            message = t('common.errors.server');
-          } else {
-            message = err.message;
-          }
-        }
-        setError(message);
-        return false;
+        setError(mapOtpVerifyError(err));
+        return null;
       } finally {
         setIsLoading(false);
       }
     },
-    [setSession, t],
+    [setVerified],
   );
 
   return { verifyOtp, isLoading, error, clearError: () => setError(null) };

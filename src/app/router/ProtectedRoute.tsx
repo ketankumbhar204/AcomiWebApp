@@ -23,7 +23,7 @@ export function ProtectedRoute({ redirectTo = ROUTES.login }: ProtectedRouteProp
   return <Outlet />;
 }
 
-/** Redirects authenticated users away from login/OTP. */
+/** Redirects authenticated users away from login/register. */
 export function GuestRoute({ redirectTo = ROUTES.root }: { redirectTo?: string }) {
   const { isAuthenticated, isBootstrapping } = useAuthSession();
 
