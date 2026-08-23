@@ -11,21 +11,22 @@ import {
   UtensilsCrossed,
   Wallet,
 } from 'lucide-react';
+import { colors } from '@/shared/theme/colors';
 import type { NotificationCategory } from '@/shared/types/dashboard';
 
 export function getNotificationCategoryColor(category: NotificationCategory | string): string {
   switch (category) {
     case 'SUCCESS':
-      return '#059669';
+      return colors.success;
     case 'WARNING':
-      return '#D97706';
+      return colors.warning;
     case 'ACTION_REQUIRED':
       return '#B45309';
     case 'ERROR':
-      return '#DC2626';
+      return colors.danger;
     case 'INFORMATION':
     default:
-      return '#2563EB';
+      return colors.info;
   }
 }
 

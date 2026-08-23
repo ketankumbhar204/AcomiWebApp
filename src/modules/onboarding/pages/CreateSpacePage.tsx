@@ -2,84 +2,69 @@ import {
   Alert,
   Box,
   Button,
-  Checkbox,
-  FormControl,
-  FormControlLabel,
-  FormHelperText,
-  FormLabel,
-  InputLabel,
-  MenuItem,
-  Radio,
-  RadioGroup,
-  Select,
-  Stack,
-  Step,
-  StepLabel,
-  Stepper,
+  InputAdornment,
   TextField,
   Typography,
   useTheme,
 } from '@mui/material';
+import { ArrowRight, Building2, Info, MapPin, Pencil, Phone } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
-import { AppLayout } from '@/layouts/AppLayout';
-import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { OnboardingLayout } from '@/layouts/OnboardingLayout';
+import { AUTH_UX, authContainedButtonSx, authSurfaces } from '@/modules/auth/theme/authUx';
+import { CreateSpaceAmenityGrid } from '@/modules/onboarding/components/createSpace/CreateSpaceAmenityGrid';
+import { CreateSpaceLeftPanel } from '@/modules/onboarding/components/createSpace/CreateSpaceLeftPanel';
+import { CreateSpaceStepper } from '@/modules/onboarding/components/createSpace/CreateSpaceStepper';
+import { CreateSpaceTypeCards } from '@/modules/onboarding/components/createSpace/CreateSpaceTypeCards';
+import {
+  createSpaceSteps,
+  spaceTypeDescriptionKey,
+  spaceTypeLabelKey,
+  type CreateSpaceStepId,
+} from '@/modules/onboarding/components/createSpace/createSpaceVisuals';
 import { useCreateSpace } from '@/modules/onboarding/hooks/useCreateSpace';
 import {
+  buildAllPresetAmenities,
   normalizeAmenityAssignments,
-  PRESET_AMENITY_CODES,
-  presetAmenityLabelKey,
+  resolvePresetAmenityLabel,
   supportsSpaceAmenities,
+  type AmenityCode,
 } from '@/modules/onboarding/utils/amenities';
 import {
   PROPERTY_CATEGORY_VALUES,
   propertyCategoryLabelKey,
   supportsSpacePropertyCategory,
 } from '@/modules/onboarding/utils/spacePropertyCategory';
-import { ContentCard } from '@/shared/components/ContentCard';
-import { FormSection } from '@/shared/components/FormSection';
-import { InfoRow } from '@/shared/components/InfoRow';
-import { PageContainer } from '@/shared/components/PageContainer';
-import { PageHeader } from '@/shared/components/PageHeader';
-import { StickyFooter, StickyFooterClearance } from '@/shared/components/StickyFooter';
-import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
-import { isAccommodationApplicable } from '@/shared/utils/spacePermissions';
-import {
-  ROUTES,
-  spaceAccommodationPath,
-  spaceDashboardPath,
-} from '@/routes/paths';
+import { resolveDefaultSpaceContact } from '@/modules/onboarding/utils/defaultSpaceContact';
+import { ROUTES, spaceAccommodationPath, spaceDashboardPath } from '@/routes/paths';
 import type { AmenityAssignment, GenderPolicy, SpaceType } from '@/shared/types/space';
+import { isAccommodationApplicable } from '@/shared/utils/spacePermissions';
+import { useAuthStore } from '@/store/authStore';
 import { useSpaceStore } from '@/store/spaceStore';
-
-const SPACE_TYPES: SpaceType[] = ['PG', 'MESS', 'HOSTEL', 'CO_LIVING', 'RENTAL'];
-const STEPS = ['basics', 'configuration', 'review'] as const;
-
-function typeLabelKey(type: SpaceType): string {
-  if (type === 'CO_LIVING') return 'spaces.types.coLiving.label';
-  return `spaces.types.${type.toLowerCase()}.label`;
-}
 
 export function CreateSpacePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const theme = useTheme();
-  const s = dashSurfaces(theme.palette.mode);
+  const a = authSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const { createSpace, isSubmitting, error, clearError } = useCreateSpace();
   const loadMySpaces = useSpaceStore((state) => state.loadMySpaces);
   const switchSpace = useSpaceStore((state) => state.switchSpace);
+  const userMobile = useAuthStore((state) => state.user?.mobileNumber);
+  const accessToken = useAuthStore((state) => state.accessToken);
 
-  const [stepIndex, setStepIndex] = useState(0);
+  const [step, setStep] = useState<CreateSpaceStepId>('type');
   const [name, setName] = useState('');
   const [type, setType] = useState<SpaceType | ''>('');
   const [address, setAddress] = useState('');
-  const [contactNumber, setContactNumber] = useState('');
+  const [contactNumber, setContactNumber] = useState(() =>
+    resolveDefaultSpaceContact({ userMobile, accessToken }),
+  );
   const [genderPolicy, setGenderPolicy] = useState<GenderPolicy | ''>('');
-  const [selectedAmenities, setSelectedAmenities] = useState<Set<string>>(new Set());
+  const [amenities, setAmenities] = useState<AmenityAssignment[]>([]);
   const [nameError, setNameError] = useState<string | null>(null);
   const [typeError, setTypeError] = useState<string | null>(null);
 
@@ -87,44 +72,78 @@ export function CreateSpacePage() {
     document.title = `${t('navigation.createSpace')} · ${t('common.appName')}`;
   }, [t]);
 
-  const showAmenities = supportsSpaceAmenities(type || null);
-  const showCategory = supportsSpacePropertyCategory(type || null);
-
-  const amenitiesPayload: AmenityAssignment[] = useMemo(() => {
-    if (!showAmenities) return [];
-    return normalizeAmenityAssignments(
-      [...selectedAmenities].map((code) => ({
-        code,
-        label: t(presetAmenityLabelKey(code as (typeof PRESET_AMENITY_CODES)[number])),
-      })),
-    );
-  }, [selectedAmenities, showAmenities, t]);
-
-  const validateBasics = () => {
-    let ok = true;
-    if (!name.trim()) {
-      setNameError(t('spaces.createSpace.nameRequired'));
-      ok = false;
-    } else {
-      setNameError(null);
+  useEffect(() => {
+    const next = resolveDefaultSpaceContact({ userMobile, accessToken });
+    if (!next) {
+      return;
     }
+    setContactNumber((current) => (current.trim() ? current : next));
+  }, [accessToken, userMobile]);
+
+  const includeAmenities = supportsSpaceAmenities(type || null);
+  const includeCategory = supportsSpacePropertyCategory(type || null);
+  const steps = useMemo(() => createSpaceSteps(includeAmenities), [includeAmenities]);
+  const stepIndex = Math.max(0, steps.indexOf(step));
+
+  useEffect(() => {
+    if (!steps.includes(step)) {
+      setStep('details');
+    }
+  }, [step, steps]);
+
+  function handleTypeChange(nextType: SpaceType) {
+    setType(nextType);
+    setTypeError(null);
+    if (!supportsSpacePropertyCategory(nextType)) {
+      setGenderPolicy('');
+    }
+    if (!supportsSpaceAmenities(nextType)) {
+      setAmenities([]);
+    } else if (amenities.length === 0) {
+      setAmenities(buildAllPresetAmenities((code) => resolvePresetAmenityLabel(code, t)));
+    }
+  }
+
+  function validateType() {
     if (!type) {
       setTypeError(t('spaces.createSpace.typeRequired'));
-      ok = false;
-    } else {
-      setTypeError(null);
+      return false;
     }
-    return ok;
-  };
+    setTypeError(null);
+    return true;
+  }
 
-  const handleNext = () => {
+  function validateDetails() {
+    if (!name.trim()) {
+      setNameError(t('spaces.createSpace.nameRequired'));
+      return false;
+    }
+    setNameError(null);
+    return true;
+  }
+
+  function goTo(next: CreateSpaceStepId) {
+    const targetIndex = steps.indexOf(next);
+    if (targetIndex < 0 || targetIndex > stepIndex) return;
+    setStep(next);
+  }
+
+  function handleBack() {
     clearError();
-    if (stepIndex === 0 && !validateBasics()) return;
-    setStepIndex((prev) => Math.min(prev + 1, STEPS.length - 1));
-  };
+    const prev = steps[stepIndex - 1];
+    if (prev) setStep(prev);
+  }
 
-  const handleSave = async () => {
-    if (!validateBasics() || !type) return;
+  function handleContinue() {
+    clearError();
+    if (step === 'type' && !validateType()) return;
+    if (step === 'details' && !validateDetails()) return;
+    const next = steps[stepIndex + 1];
+    if (next) setStep(next);
+  }
+
+  async function handleSave() {
+    if (!validateType() || !validateDetails() || !type) return;
     clearError();
 
     const space = await createSpace({
@@ -132,8 +151,8 @@ export function CreateSpacePage() {
       type,
       address: address.trim() || undefined,
       contactNumber: contactNumber.trim() || undefined,
-      amenities: showAmenities ? amenitiesPayload : undefined,
-      genderPolicy: showCategory && genderPolicy ? genderPolicy : undefined,
+      amenities: includeAmenities ? normalizeAmenityAssignments(amenities) : undefined,
+      genderPolicy: includeCategory && genderPolicy ? genderPolicy : undefined,
     });
 
     if (!space?.id) return;
@@ -141,7 +160,7 @@ export function CreateSpacePage() {
     try {
       await loadMySpaces();
     } catch {
-      // ignore
+      // Created space id is enough to enter the app.
     }
     await switchSpace(space.id);
 
@@ -154,282 +173,438 @@ export function CreateSpacePage() {
     } else {
       navigate(spaceDashboardPath(space.id), { replace: true });
     }
+  }
+
+  const fieldSx = {
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '14px',
+      minHeight: 48,
+      bgcolor: a.surface,
+    },
+  } as const;
+
+  const primaryButtonSx = {
+    ...authContainedButtonSx(a.cta, a.ctaHover),
+    minWidth: { xs: '100%', sm: 168 },
+    px: 2.5,
+    borderRadius: '14px',
+  };
+
+  const secondaryButtonSx = {
+    ...AUTH_UX.button,
+    minHeight: 48,
+    height: 48,
+    minWidth: { xs: '100%', sm: 120 },
+    px: 2.25,
+    borderRadius: '14px',
+    color: a.textSecondary,
+    borderColor: a.border,
+    bgcolor: a.surface,
+    boxShadow: 'none',
+    '&:hover': {
+      borderColor: a.brand,
+      bgcolor: a.brandSoft,
+      boxShadow: 'none',
+    },
   };
 
   return (
-    <AppLayout
-      headerTitle={t('navigation.createSpace')}
-      headerActions={
-        <Button
-          variant="outlined"
-          onClick={() => navigate(ROUTES.onboarding)}
-          sx={dashOutlinedButtonSx}
-        >
-          {t('common.cancel')}
-        </Button>
-      }
-      contentDense
-      contentMaxWidth={880}
+    <OnboardingLayout
+      pageTitle={t('navigation.createSpace')}
+      onCancel={() => navigate(ROUTES.onboarding)}
+      cancelLabel={t('common.cancel')}
+      showLogout={false}
     >
-      <PageContainer gap={0}>
-        <Stack spacing={`${DASHBOARD_UX.sectionGap}px`} sx={{ width: '100%' }}>
-          <PageHeader
-            title={t('spaces.createSpace.heading')}
-            description={t('spaces.createSpace.subheading')}
-          />
+      <Box
+        sx={{
+          width: '100%',
+          maxWidth: 1480,
+          mx: 'auto',
+          flex: 1,
+          minHeight: 0,
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', md: 'minmax(240px, 0.28fr) minmax(0, 1fr)' },
+          gap: { xs: 2, md: 3 },
+          alignItems: 'stretch',
+        }}
+      >
+        <CreateSpaceLeftPanel />
 
-          <Stepper
-            activeStep={stepIndex}
-            alternativeLabel
-            sx={{
-              display: { xs: 'none', sm: 'flex' },
-              '& .MuiStepLabel-label': {
-                ...DASHBOARD_UX.body,
-                color: s.textMuted,
-                '&.Mui-active, &.Mui-completed': { ...DASHBOARD_UX.link, color: s.textPrimary },
-              },
-              '& .MuiStepIcon-root': {
-                color: s.border,
-                '&.Mui-active, &.Mui-completed': { color: colors.primaryDark },
-              },
-            }}
-          >
-            <Step>
-              <StepLabel>{t('spaces.createSpace.eyebrow')}</StepLabel>
-            </Step>
-            <Step>
-              <StepLabel>{t('spaces.amenities.title')}</StepLabel>
-            </Step>
-            <Step>
-              <StepLabel>{t('common.confirm')}</StepLabel>
-            </Step>
-          </Stepper>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: { md: 'calc(100dvh - 120px)' },
+            bgcolor: a.surface,
+            border: `1px solid ${a.border}`,
+            borderRadius: '20px',
+            boxShadow: a.shadow,
+            overflow: 'hidden',
+          }}
+        >
+          <Box sx={{ px: { xs: 2, md: 3 }, pt: 2.25, pb: 1.5, borderBottom: `1px solid ${a.border}` }}>
+            <CreateSpaceStepper steps={steps} current={step} onStepClick={goTo} />
+          </Box>
 
-          <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted, display: { sm: 'none' } }}>
-            {t('profileCompletion.wizard.stepProgress', {
-              current: stepIndex + 1,
-              total: STEPS.length,
-              defaultValue: `Step ${stepIndex + 1} of ${STEPS.length}`,
-            })}
-          </Typography>
-
-          {error ? (
-            <Alert severity="error" onClose={clearError}>
-              {error}
-            </Alert>
-          ) : null}
-
-          <ContentCard>
-            {stepIndex === 0 ? (
-              <FormSection title={t('spaces.createSpace.eyebrow')}>
-                <TextField
-                  label={t('spaces.createSpace.nameLabel')}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={
-                    type
-                      ? t(`spaces.createSpace.namePlaceholderByType.${type}`, {
-                          defaultValue: t('spaces.createSpace.namePlaceholder'),
-                        })
-                      : t('spaces.createSpace.namePlaceholder')
-                  }
-                  error={Boolean(nameError)}
-                  helperText={nameError}
-                  required
-                  fullWidth
-                  size="small"
-                  sx={{ gridColumn: { md: '1 / -1' } }}
-                />
-                <FormControl fullWidth size="small" error={Boolean(typeError)} required>
-                  <InputLabel id="space-type-label">{t('spaces.types.label')}</InputLabel>
-                  <Select
-                    labelId="space-type-label"
-                    label={t('spaces.types.label')}
-                    value={type}
-                    onChange={(e) => {
-                      setType(e.target.value as SpaceType);
-                      setSelectedAmenities(new Set());
-                      setGenderPolicy('');
-                    }}
-                  >
-                    {SPACE_TYPES.map((value) => (
-                      <MenuItem key={value} value={value}>
-                        {t(typeLabelKey(value))}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {typeError ? <FormHelperText>{typeError}</FormHelperText> : null}
-                </FormControl>
-                <TextField
-                  label={t('spaces.createSpace.contactLabel')}
-                  value={contactNumber}
-                  onChange={(e) => setContactNumber(e.target.value)}
-                  placeholder={t('spaces.createSpace.contactPlaceholder')}
-                  fullWidth
-                  size="small"
-                />
-                <TextField
-                  label={t('spaces.createSpace.addressLabel')}
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder={t('spaces.createSpace.addressPlaceholder')}
-                  fullWidth
-                  size="small"
-                  multiline
-                  minRows={2}
-                  sx={{ gridColumn: { md: '1 / -1' } }}
-                />
-              </FormSection>
+          <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', px: { xs: 2, md: 3 }, py: 2.25 }}>
+            {error ? (
+              <Alert severity="error" onClose={clearError} sx={{ mb: 2, borderRadius: '12px' }}>
+                {error}
+              </Alert>
             ) : null}
 
-            {stepIndex === 1 ? (
-              <Stack spacing={`${DASHBOARD_UX.cardGap}px`}>
-                {showCategory ? (
-                  <FormSection title={t('spaces.propertyCategory.label')}>
-                    <FormControl sx={{ gridColumn: { md: '1 / -1' } }}>
-                      <FormLabel sx={{ ...DASHBOARD_UX.metricLabel, color: s.textMuted, mb: 0.5 }}>
-                        {t('spaces.propertyCategory.label')}
-                      </FormLabel>
-                      <RadioGroup
-                        row
-                        value={genderPolicy}
-                        onChange={(e) => setGenderPolicy(e.target.value as GenderPolicy)}
-                      >
-                        {PROPERTY_CATEGORY_VALUES.map((policy) => (
-                          <FormControlLabel
+            {step === 'type' ? (
+              <Box>
+                <StepHeading
+                  title={t('spaces.createSpace.wizard.chooseTypeTitle', {
+                    defaultValue: 'Choose your space type',
+                  })}
+                  subtitle={t('spaces.createSpace.wizard.chooseTypeSubtitle', {
+                    defaultValue: 'Select the type of space you want to create.',
+                  })}
+                />
+                <CreateSpaceTypeCards value={type} onChange={handleTypeChange} error={typeError} />
+              </Box>
+            ) : null}
+
+            {step === 'details' ? (
+              <Box>
+                <StepHeading
+                  title={t('spaces.createSpace.wizard.detailsTitle', { defaultValue: 'Space details' })}
+                  subtitle={t('spaces.createSpace.wizard.detailsSubtitle', {
+                    defaultValue: 'Add a name and optional contact details.',
+                  })}
+                />
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+                    gap: 1.5,
+                  }}
+                >
+                  <TextField
+                    label={t('spaces.createSpace.nameLabel')}
+                    value={name}
+                    onChange={(event) => {
+                      setName(event.target.value);
+                      if (nameError) setNameError(null);
+                    }}
+                    placeholder={
+                      type
+                        ? t(`spaces.createSpace.namePlaceholderByType.${type}`, {
+                            defaultValue: t('spaces.createSpace.namePlaceholder'),
+                          })
+                        : t('spaces.createSpace.namePlaceholder')
+                    }
+                    error={Boolean(nameError)}
+                    helperText={nameError}
+                    required
+                    fullWidth
+                    sx={{ ...fieldSx, gridColumn: { md: '1 / -1' } }}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <Building2 size={18} color={a.brand} />
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
+                  />
+                  <TextField
+                    label={t('spaces.createSpace.contactLabel')}
+                    value={contactNumber}
+                    onChange={(event) => {
+                      const digits = event.target.value.replace(/\D/g, '');
+                      const local =
+                        digits.startsWith('91') && digits.length >= 11
+                          ? digits.slice(-10)
+                          : digits.slice(0, 10);
+                      setContactNumber(local);
+                    }}
+                    placeholder={t('spaces.createSpace.contactPlaceholder')}
+                    fullWidth
+                    sx={fieldSx}
+                    slotProps={{
+                      htmlInput: { maxLength: 10, inputMode: 'numeric' },
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start" sx={{ gap: 0.75 }}>
+                            <Phone size={18} color={a.brand} />
+                            <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: a.textPrimary }}>
+                              +91
+                            </Typography>
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
+                  />
+                  <TextField
+                    label={t('spaces.createSpace.addressLabel')}
+                    value={address}
+                    onChange={(event) => setAddress(event.target.value)}
+                    placeholder={t('spaces.createSpace.addressPlaceholder')}
+                    fullWidth
+                    sx={fieldSx}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <MapPin size={18} color={a.brand} />
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
+                  />
+                </Box>
+
+                {includeCategory && type ? (
+                  <Box sx={{ mt: 2.25 }}>
+                    <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: a.textMuted, mb: 1 }}>
+                      {t('spaces.propertyCategory.label')}
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {PROPERTY_CATEGORY_VALUES.map((policy) => {
+                        const selected = genderPolicy === policy;
+                        return (
+                          <Box
                             key={policy}
-                            value={policy}
-                            control={<Radio size="small" />}
-                            label={t(propertyCategoryLabelKey(type as SpaceType, policy))}
-                          />
-                        ))}
-                      </RadioGroup>
-                    </FormControl>
-                  </FormSection>
-                ) : null}
-
-                {showAmenities ? (
-                  <FormSection
-                    title={t('spaces.amenities.title')}
-                    description={t('spaces.amenities.hint')}
-                  >
-                    <Box
-                      sx={{
-                        gridColumn: { md: '1 / -1' },
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                        gap: 0.5,
-                      }}
-                    >
-                      {PRESET_AMENITY_CODES.map((code) => (
-                        <FormControlLabel
-                          key={code}
-                          control={
-                            <Checkbox
-                              size="small"
-                              checked={selectedAmenities.has(code)}
-                              onChange={(e) => {
-                                setSelectedAmenities((prev) => {
-                                  const next = new Set(prev);
-                                  if (e.target.checked) next.add(code);
-                                  else next.delete(code);
-                                  return next;
-                                });
-                              }}
-                            />
-                          }
-                          label={t(presetAmenityLabelKey(code))}
-                        />
-                      ))}
+                            component="button"
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => setGenderPolicy(policy)}
+                            sx={{
+                              px: 1.5,
+                              py: 1,
+                              borderRadius: '999px',
+                              border: `1.5px solid ${selected ? a.cta : a.border}`,
+                              bgcolor: selected ? a.brandSoft : a.surface,
+                              color: selected ? a.cta : a.textPrimary,
+                              fontSize: '0.8125rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              '&:focus-visible': {
+                                outline: `2px solid ${a.brand}`,
+                                outlineOffset: 2,
+                              },
+                            }}
+                          >
+                            {t(propertyCategoryLabelKey(type, policy))}
+                          </Box>
+                        );
+                      })}
                     </Box>
-                  </FormSection>
-                ) : (
-                  <Alert
-                    severity="info"
-                    sx={{
-                      borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-                      ...DASHBOARD_UX.body,
-                    }}
-                  >
-                    {t('spaces.createSpace.subheading')}
-                  </Alert>
-                )}
-              </Stack>
+                  </Box>
+                ) : null}
+              </Box>
             ) : null}
 
-            {stepIndex === 2 ? (
-              <FormSection title={t('common.confirm')}>
-                <Box sx={{ gridColumn: { md: '1 / -1' } }}>
-                  <InfoRow label={t('spaces.details.name')} value={name.trim()} dense />
-                  <InfoRow
-                    label={t('spaces.details.type')}
-                    value={type ? t(typeLabelKey(type)) : '—'}
-                    dense
+            {step === 'amenities' ? (
+              <Box>
+                <StepHeading title={t('spaces.amenities.title')} subtitle={t('spaces.amenities.hint')} />
+                <CreateSpaceAmenityGrid value={amenities} onChange={setAmenities} disabled={isSubmitting} />
+              </Box>
+            ) : null}
+
+            {step === 'confirm' ? (
+              <Box>
+                <StepHeading
+                  title={t('spaces.createSpace.wizard.confirmTitle', { defaultValue: 'Confirm space' })}
+                  subtitle={t('spaces.createSpace.wizard.confirmSubtitle', {
+                    defaultValue: 'Review the details before creating your space.',
+                  })}
+                />
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                  <SummaryCard
+                    title={t('spaces.details.name')}
+                    value={name.trim()}
+                    extra={
+                      type
+                        ? `${t(spaceTypeLabelKey(type))} · ${t(spaceTypeDescriptionKey(type))}${
+                            includeCategory && genderPolicy
+                              ? ` · ${t(propertyCategoryLabelKey(type, genderPolicy))}`
+                              : ''
+                          }`
+                        : undefined
+                    }
+                    onEdit={() => setStep('details')}
                   />
-                  <InfoRow
-                    label={t('spaces.details.address')}
+                  <SummaryCard
+                    title={t('spaces.details.address')}
                     value={address.trim() || t('spaces.details.notProvided')}
-                    dense
+                    onEdit={() => setStep('details')}
                   />
-                  <InfoRow
-                    label={t('spaces.details.contact')}
-                    value={contactNumber.trim() || t('spaces.details.notProvided')}
-                    dense
+                  <SummaryCard
+                    title={t('spaces.details.contact')}
+                    value={
+                      contactNumber.trim()
+                        ? `+91 ${contactNumber.trim()}`
+                        : t('spaces.details.notProvided')
+                    }
+                    onEdit={() => setStep('details')}
                   />
-                  {showCategory && genderPolicy ? (
-                    <InfoRow
-                      label={t('spaces.propertyCategory.label')}
-                      value={t(propertyCategoryLabelKey(type as SpaceType, genderPolicy))}
-                      dense
-                    />
-                  ) : null}
-                  {showAmenities ? (
-                    <InfoRow
-                      label={t('spaces.amenities.title')}
+                  {includeAmenities ? (
+                    <SummaryCard
+                      title={t('spaces.amenities.title')}
                       value={
-                        amenitiesPayload.length
-                          ? amenitiesPayload.map((a) => a.label).join(', ')
+                        amenities.length
+                          ? amenities
+                              .map((item) =>
+                                item.code === 'CUSTOM'
+                                  ? item.label
+                                  : resolvePresetAmenityLabel(item.code as Exclude<AmenityCode, 'CUSTOM'>, t),
+                              )
+                              .join(', ')
                           : t('spaces.details.notProvided')
                       }
-                      dense
+                      onEdit={() => setStep('amenities')}
                     />
                   ) : null}
                 </Box>
-              </FormSection>
+              </Box>
             ) : null}
-          </ContentCard>
-        </Stack>
-        <StickyFooterClearance height={{ xs: 96, md: 80 }} />
-      </PageContainer>
 
-      <StickyFooter pin="fixed">
-        <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end', width: '100%' }}>
-          {stepIndex > 0 ? (
-            <Button
-              variant="outlined"
-              onClick={() => setStepIndex((i) => i - 1)}
-              disabled={isSubmitting}
-              sx={dashOutlinedButtonSx}
+            <Box
+              sx={{
+                mt: 2.5,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 1,
+                px: 1.5,
+                py: 1.15,
+                borderRadius: '14px',
+                bgcolor: theme.palette.mode === 'dark' ? 'rgba(37, 99, 235, 0.16)' : '#EFF6FF',
+                border: '1px solid rgba(37, 99, 235, 0.16)',
+              }}
             >
-              {t('common.back')}
-            </Button>
-          ) : null}
-          {stepIndex < STEPS.length - 1 ? (
-            <Button variant="contained" onClick={handleNext} sx={dashContainedButtonSx}>
-              {t('common.continue')}
-            </Button>
-          ) : (
-            <Button
-              variant="contained"
-              onClick={() => void handleSave()}
-              disabled={isSubmitting}
-              sx={dashContainedButtonSx}
-            >
-              {isSubmitting ? t('common.pleaseWait') : t('spaces.createSpace.save')}
-            </Button>
-          )}
-        </Stack>
-      </StickyFooter>
-    </AppLayout>
+              <Info size={16} color="#2563EB" style={{ marginTop: 2, flexShrink: 0 }} />
+              <Typography sx={{ fontSize: '0.78rem', fontWeight: 600, color: a.textSecondary, lineHeight: 1.45 }}>
+                {t('spaces.createSpace.wizard.updateLater', {
+                  defaultValue: 'You can update these details anytime later from space settings.',
+                })}
+              </Typography>
+            </Box>
+          </Box>
+
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column-reverse', sm: 'row' },
+              justifyContent: 'flex-end',
+              gap: 1,
+              px: { xs: 2, md: 3 },
+              py: 1.5,
+              borderTop: `1px solid ${a.border}`,
+              bgcolor: theme.palette.mode === 'dark' ? a.elevated : '#F8FBFA',
+            }}
+          >
+            {stepIndex > 0 ? (
+              <Button variant="outlined" onClick={handleBack} disabled={isSubmitting} sx={secondaryButtonSx}>
+                {t('common.back')}
+              </Button>
+            ) : null}
+            {step !== 'confirm' ? (
+              <Button variant="contained" onClick={handleContinue} endIcon={<ArrowRight size={16} />} sx={primaryButtonSx}>
+                {t('common.continue')}
+              </Button>
+            ) : (
+              <Button variant="contained" onClick={() => void handleSave()} disabled={isSubmitting} sx={primaryButtonSx}>
+                {isSubmitting
+                  ? t('common.pleaseWait')
+                  : t('spaces.createSpace.wizard.create', { defaultValue: t('navigation.createSpace') })}
+              </Button>
+            )}
+          </Box>
+        </Box>
+      </Box>
+    </OnboardingLayout>
+  );
+}
+
+function StepHeading({ title, subtitle }: { title: string; subtitle: string }) {
+  const theme = useTheme();
+  const a = authSurfaces(theme.palette.mode);
+  return (
+    <Box sx={{ mb: 2 }}>
+      <Typography
+        sx={{
+          fontSize: { xs: '1.2rem', md: '1.35rem' },
+          fontWeight: 800,
+          letterSpacing: '-0.03em',
+          color: a.textPrimary,
+        }}
+      >
+        {title}
+      </Typography>
+      <Typography sx={{ fontSize: '0.875rem', fontWeight: 500, color: a.textMuted, mt: 0.4 }}>
+        {subtitle}
+      </Typography>
+    </Box>
+  );
+}
+
+function SummaryCard({
+  title,
+  value,
+  extra,
+  onEdit,
+}: {
+  title: string;
+  value: string;
+  extra?: string;
+  onEdit: () => void;
+}) {
+  const { t } = useTranslation();
+  const theme = useTheme();
+  const a = authSurfaces(theme.palette.mode);
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 1.5,
+        p: 1.5,
+        borderRadius: '16px',
+        border: `1px solid ${a.border}`,
+        bgcolor: theme.palette.mode === 'dark' ? a.elevated : '#F8FBFA',
+      }}
+    >
+      <Box sx={{ minWidth: 0 }}>
+        <Typography
+          sx={{
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            color: a.textMuted,
+          }}
+        >
+          {title}
+        </Typography>
+        <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: a.textPrimary, mt: 0.35 }}>
+          {value}
+        </Typography>
+        {extra ? (
+          <Typography sx={{ fontSize: '0.78rem', fontWeight: 600, color: a.textMuted, mt: 0.25 }}>
+            {extra}
+          </Typography>
+        ) : null}
+      </Box>
+      <Button
+        onClick={onEdit}
+        startIcon={<Pencil size={14} />}
+        sx={{
+          ...AUTH_UX.button,
+          minHeight: 34,
+          height: 34,
+          px: 1.25,
+          borderRadius: '10px',
+          color: a.brand,
+        }}
+      >
+        {t('common.edit')}
+      </Button>
+    </Box>
   );
 }

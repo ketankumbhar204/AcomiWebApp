@@ -1,5 +1,4 @@
 import {
-  Box,
   Button,
   Checkbox,
   FormControl,
@@ -209,15 +208,12 @@ export function QuickSetupWizardPage() {
           </Stepper>
 
           {STEPS[stepIndex] === 'layout' ? (
-            <FormSection title={t(`accommodation.setup.steps.layout`)}>
-              <Box sx={{ gridColumn: { md: '1 / -1' }, maxWidth: 560 }}>
-                <PropertyLayoutModePicker
-                  value={layoutMode}
-                  onChange={setLayoutMode}
-                  options={layoutOptions}
-                />
-              </Box>
-            </FormSection>
+            <PropertyLayoutModePicker
+              value={layoutMode}
+              onChange={setLayoutMode}
+              options={layoutOptions}
+              variant="featured"
+            />
           ) : null}
 
           {STEPS[stepIndex] === 'building' ? (

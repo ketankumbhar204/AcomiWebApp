@@ -1,8 +1,7 @@
 import { Box, FormHelperText, InputBase, Typography, useTheme } from '@mui/material';
 import { UserRound } from 'lucide-react';
 import type { ChangeEvent } from 'react';
-import { colors } from '@/shared/theme/colors';
-import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { AUTH_UX, authSurfaces } from '../theme/authUx';
 
 type NameInputProps = {
   label: string;
@@ -24,7 +23,7 @@ export function NameInput({
   placeholder,
 }: NameInputProps) {
   const theme = useTheme();
-  const s = dashSurfaces(theme.palette.mode);
+  const a = authSurfaces(theme.palette.mode);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     onChange(event.target.value);
@@ -33,18 +32,25 @@ export function NameInput({
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
-        <UserRound size={DASHBOARD_UX.iconSize} color={colors.primaryDark} strokeWidth={2} />
-        <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>{label}</Typography>
+        <UserRound size={14} color={a.brand} strokeWidth={2} aria-hidden />
+        <Typography component="label" sx={{ ...AUTH_UX.label, color: a.textPrimary }}>
+          {label}
+        </Typography>
       </Box>
       <Box
         sx={{
           display: 'flex',
           alignItems: 'stretch',
-          borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-          border: `1px solid ${error ? colors.danger : s.border}`,
-          bgcolor: s.surface,
+          borderRadius: `${AUTH_UX.fieldRadius}px`,
+          border: `1px solid ${error ? a.danger : a.border}`,
+          bgcolor: a.surface,
           overflow: 'hidden',
-          minHeight: 40,
+          minHeight: AUTH_UX.fieldHeight,
+          transition: 'border-color 150ms ease, box-shadow 150ms ease',
+          '&:focus-within': {
+            borderColor: error ? a.danger : a.focus,
+            boxShadow: error ? a.dangerRing : a.focusRing,
+          },
         }}
       >
         <InputBase
@@ -55,14 +61,20 @@ export function NameInput({
           autoComplete="name"
           placeholder={placeholder}
           fullWidth
+          inputProps={{ 'aria-invalid': Boolean(error), 'aria-label': label }}
           sx={{
             px: 1.5,
-            ...DASHBOARD_UX.body,
-            color: s.textPrimary,
+            ...AUTH_UX.input,
+            color: a.textPrimary,
+            '& input::placeholder': { color: a.textMuted, opacity: 1 },
           }}
         />
       </Box>
-      {error ? <FormHelperText error>{error}</FormHelperText> : null}
+      {error ? (
+        <FormHelperText error sx={{ mx: 0, mt: 0.5, ...AUTH_UX.helper }}>
+          {error}
+        </FormHelperText>
+      ) : null}
     </Box>
   );
 }

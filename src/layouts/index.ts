@@ -1,6 +1,7 @@
 export { AppLayout } from './AppLayout';
 export { AccountLayout } from './AccountLayout';
 export { AuthLayout } from './AuthLayout';
+export { OnboardingLayout } from './OnboardingLayout';
 export { BlankLayout } from './BlankLayout';
 export { AppHeader } from './AppHeader';
 export { AppSidebar } from './AppSidebar';

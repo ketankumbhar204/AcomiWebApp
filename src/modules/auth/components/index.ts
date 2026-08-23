@@ -1,6 +1,9 @@
+export { AuthBrandMark } from './AuthBrandMark';
 export { AuthCard } from './AuthCard';
 export { AuthErrorBanner } from './AuthErrorBanner';
 export { AuthHero } from './AuthHero';
 export { AuthIllustration } from './AuthIllustration';
+export { AuthPhonePreview } from './AuthPhonePreview';
+export { AuthSceneBuildings } from './AuthSceneBuildings';
 export { MobileNumberInput } from './MobileNumberInput';
 export { OtpInput } from './OtpInput';

@@ -9,7 +9,9 @@ function readInitialThemeMode(): ThemeMode {
 }
 
 function readSidebarCollapsed(): boolean {
-  return readStorage(STORAGE_KEYS.sidebarCollapsed) === '1';
+  // Desktop chrome is a collapsed icon rail. Never restore an expanded rail
+  // from storage — hover (desktop) / tap (tablet) expands ephemerally.
+  return true;
 }
 
 export interface AppStoreState {

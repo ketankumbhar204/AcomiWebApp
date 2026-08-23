@@ -1,53 +1,41 @@
 import { Box, Paper, Typography, useTheme } from '@mui/material';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { colors } from '@/shared/theme/colors';
-import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { AUTH_UX, authSurfaces } from '../theme/authUx';
+import { AuthBrandMark } from './AuthBrandMark';
 
 type AuthCardProps = {
   children: ReactNode;
 };
 
-/** Auth form card — Dashboard radius, border, shadow, padding. */
+/** Auth form card — ACOMI A mark, restrained teal, compact padding. */
 export function AuthCard({ children }: AuthCardProps) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const s = dashSurfaces(theme.palette.mode);
+  const a = authSurfaces(theme.palette.mode);
 
   return (
     <Paper
       elevation={0}
       sx={{
         width: '100%',
-        maxWidth: 440,
-        borderRadius: `${DASHBOARD_UX.radius}px`,
-        border: `1px solid ${s.border}`,
-        bgcolor: s.surface,
-        p: `${DASHBOARD_UX.sectionPadding + 4}px`,
-        boxShadow: s.shadow,
+        maxWidth: AUTH_UX.cardMaxWidth,
+        borderRadius: `${AUTH_UX.cardRadius}px`,
+        border: `1px solid ${a.border}`,
+        bgcolor: a.surface,
+        p: { xs: 2.75, sm: `${AUTH_UX.cardPadding}px` },
+        boxShadow: a.shadow,
       }}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
-        <Box
-          sx={{
-            width: DASHBOARD_UX.iconWell + 10,
-            height: DASHBOARD_UX.iconWell + 10,
-            borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-            bgcolor: colors.primaryDark,
-            color: '#FFFFFF',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            mb: 1,
-          }}
-          aria-hidden
-        >
-          <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: 'inherit' }}>C</Typography>
-        </Box>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2.25 }}>
+        <AuthBrandMark size={40} />
         <Typography
           sx={{
-            ...DASHBOARD_UX.sectionHeading,
-            color: colors.primaryDark,
+            ...AUTH_UX.brandName,
+            fontSize: '1.375rem',
+            color: a.brand,
+            mt: 1,
+            letterSpacing: '-0.02em',
           }}
         >
           {t('common.appName')}

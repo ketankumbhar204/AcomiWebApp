@@ -25,7 +25,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
-import { ContentCard } from '@/shared/components/ContentCard';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { ErrorState } from '@/shared/components/ErrorState';
@@ -43,6 +42,7 @@ import { CenterWorkspace } from '../components/CenterWorkspace';
 import { EntityInspector } from '../components/EntityInspector';
 import { EntityFormDrawer, type EntityFormMode } from '../components/EntityFormDrawer';
 import { AccommodationPathBar } from '../components/AccommodationPathBar';
+import { AccommodationEmptySetup } from '../components/AccommodationEmptySetup';
 import { useBuildings } from '../hooks/useAccommodation';
 import { getAccommodationUiProfile } from '../utils/accommodationProfile';
 
@@ -360,34 +360,16 @@ export function AccommodationWorkspacePage() {
         />
 
         {buildingsQuery.buildings.length === 0 ? (
-          <ContentCard>
-            <EmptyState
-              title={t('accommodation.home.emptyTitle')}
-              description={t('accommodation.home.emptyDescription')}
-              action={
-                permissions.canManageAccommodation ? (
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      variant="contained"
-                      startIcon={<Wand2 size={16} />}
-                      onClick={() => navigate(spaceAccommodationQuickSetupPath(spaceId))}
-                      sx={dashContainedButtonSx}
-                    >
-                      {t('accommodation.home.quickSetup')}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<Plus size={16} />}
-                      onClick={() => setFormMode({ kind: 'create', parent: null })}
-                      sx={dashOutlinedButtonSx}
-                    >
-                      {t('accommodation.home.addManually')}
-                    </Button>
-                  </Stack>
-                ) : undefined
-              }
-            />
-          </ContentCard>
+          <AccommodationEmptySetup
+            spaceId={spaceId}
+            spaceType={spaceType}
+            canManage={permissions.canManageAccommodation}
+            canDrillOccupancy={
+              permissions.canViewSpaceOccupancies === true || permissions.canManageOccupancy
+            }
+            onStartSetup={() => navigate(spaceAccommodationQuickSetupPath(spaceId))}
+            onAddManually={() => setFormMode({ kind: 'create', parent: null })}
+          />
         ) : (
           <Stack spacing={`${DASHBOARD_UX.cardGap}px`} sx={{ width: '100%' }}>
             <AccommodationPathBar

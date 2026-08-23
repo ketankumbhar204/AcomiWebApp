@@ -1,7 +1,7 @@
 import { createTheme, type Theme } from '@mui/material/styles';
 import type { ThemeMode } from '@/shared/types/common';
 import { DASHBOARD_UX } from '@/modules/dashboard/theme/dashboardUx';
-import { colors, darkColors } from './colors';
+import { acomiCssVars, colors, darkColors } from './colors';
 import { elevation } from './elevation';
 import { radius } from './radius';
 import { typographyOptions } from './typography';
@@ -13,17 +13,20 @@ function buildPalette(mode: ThemeMode) {
     mode,
     primary: {
       main: c.primary,
-      dark: c.primaryDark,
+      dark: c.primaryHover,
       light: c.lightGreen,
-      contrastText: mode === 'light' ? colors.white : colors.textPrimary,
+      contrastText: colors.white,
     },
     secondary: {
-      main: c.primaryDark,
+      main: c.teal,
+      dark: c.tealDark,
+      light: c.lightGreen,
       contrastText: colors.white,
     },
     success: { main: c.success },
     warning: { main: c.warning },
     error: { main: c.danger },
+    info: { main: c.info },
     background: {
       default: c.background,
       paper: mode === 'light' ? colors.white : c.surface,
@@ -76,6 +79,7 @@ export function createAcomiTheme(mode: ThemeMode = 'light'): Theme {
     components: {
       MuiCssBaseline: {
         styleOverrides: {
+          html: acomiCssVars(c),
           body: {
             backgroundColor: c.background,
             color: c.textPrimary,
@@ -96,6 +100,13 @@ export function createAcomiTheme(mode: ThemeMode = 'light'): Theme {
             '&.MuiButton-colorPrimary:hover': {
               backgroundColor: c.primaryHover,
             },
+            '&.MuiButton-colorPrimary:active': {
+              backgroundColor: c.primaryActive,
+            },
+            '&.MuiButton-colorPrimary.Mui-disabled': {
+              backgroundColor: mode === 'light' ? '#CDEBD8' : '#1F3A2E',
+              color: mode === 'light' ? '#6B8F78' : '#7A9A88',
+            },
           },
         },
       },
@@ -110,6 +121,66 @@ export function createAcomiTheme(mode: ThemeMode = 'light'): Theme {
         styleOverrides: {
           root: {
             borderRadius: radius.input,
+            '&:hover .MuiOutlinedInput-notchedOutline': {
+              borderColor: c.teal,
+            },
+            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+              borderColor: c.primary,
+              borderWidth: '1.5px',
+            },
+          },
+        },
+      },
+      MuiCheckbox: {
+        styleOverrides: {
+          root: {
+            color: c.muted,
+            '&.Mui-checked': {
+              color: c.primary,
+            },
+          },
+        },
+      },
+      MuiRadio: {
+        styleOverrides: {
+          root: {
+            color: c.muted,
+            '&.Mui-checked': {
+              color: c.primary,
+            },
+          },
+        },
+      },
+      MuiSwitch: {
+        styleOverrides: {
+          switchBase: {
+            '&.Mui-checked': {
+              color: c.primary,
+            },
+            '&.Mui-checked + .MuiSwitch-track': {
+              backgroundColor: c.primary,
+            },
+          },
+        },
+      },
+      MuiChip: {
+        styleOverrides: {
+          colorPrimary: {
+            backgroundColor: c.lightGreen,
+            color: c.tealDark,
+          },
+        },
+      },
+      MuiStepIcon: {
+        styleOverrides: {
+          root: {
+            color: c.border,
+            '&.Mui-active': {
+              color: c.primary,
+            },
+            '&.Mui-completed': {
+              color: c.primary,
+            },
           },
         },
       },

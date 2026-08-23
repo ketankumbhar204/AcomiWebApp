@@ -10,6 +10,7 @@ import {
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { colors } from '@/shared/theme/colors';
 import {
   spaceAddCustomersHubPath,
   spaceBedInventoryPath,
@@ -21,7 +22,6 @@ import {
 } from '@/routes/paths';
 import { isAccommodationApplicable } from '@/shared/utils/spacePermissions';
 import { canManagePayments } from '@/shared/utils/dashboardFinancial';
-import { colors } from '@/shared/theme/colors';
 import type { MembershipRole, SpacePermissionsResponse, SpaceType } from '@/shared/types/space';
 import { QuickActionTile } from './QuickActionTile';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
@@ -100,7 +100,7 @@ export function DashboardQuickActions({
     tiles.push(
       <QuickActionTile
         key="inventory"
-        accent="#0F766E"
+        accent={colors.teal}
         icon={Package}
         title={t('dashboard.quickActions.inventory')}
         subtitle={t('dashboard.quickActions.inventorySubtitle')}

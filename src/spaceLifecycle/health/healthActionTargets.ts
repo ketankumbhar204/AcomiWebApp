@@ -1,4 +1,5 @@
 import type { HealthFactor } from './types';
+import { colors } from '@/shared/theme/colors';
 import type { HealthCategoryId } from './healthWeights';
 import type { RecommendedAction, SetupNavigationTarget } from '../types';
 
@@ -53,13 +54,13 @@ export function categoryAccent(category: HealthCategoryId): {
 } {
   switch (category) {
     case 'setup':
-      return { accent: '#059669', soft: '#05966918' };
+      return { accent: colors.success, soft: `${colors.success}18` };
     case 'operations':
-      return { accent: '#2563EB', soft: '#2563EB18' };
+      return { accent: colors.info, soft: `${colors.info}18` };
     case 'attention':
-      return { accent: '#D97706', soft: '#D9770618' };
+      return { accent: colors.warning, soft: `${colors.warning}18` };
     default:
-      return { accent: '#128C7E', soft: '#128C7E18' };
+      return { accent: colors.teal, soft: `${colors.teal}18` };
   }
 }
 
@@ -67,14 +68,14 @@ export function bandAccent(band: string): string {
   switch (band) {
     case 'excellent':
     case 'healthy':
-      return '#059669';
+      return colors.success;
     case 'needsImprovement':
-      return '#D97706';
+      return colors.warning;
     case 'atRisk':
       return '#EA580C';
     case 'critical':
-      return '#DC2626';
+      return colors.danger;
     default:
-      return '#128C7E';
+      return colors.teal;
   }
 }

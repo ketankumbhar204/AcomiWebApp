@@ -1,15 +1,17 @@
+import { occupancyColors } from '@/shared/theme/colors';
+
 /** Accommodation Figma accent palette — overview, tree, inspector. */
 export const ACC_ACCENTS = {
-  building: '#10B981',
+  building: occupancyColors.vacant,
   floors: '#8B5CF6',
-  units: '#3B82F6',
-  rooms: '#F59E0B',
+  units: occupancyColors.partial,
+  rooms: occupancyColors.full,
   beds: '#6366F1',
-  available: '#10B981',
-  treeFloor: '#3B82F6',
-  treeUnit: '#10B981',
-  treeUnitFull: '#3B82F6',
-  treeRoom: '#10B981',
+  available: occupancyColors.vacant,
+  treeFloor: occupancyColors.partial,
+  treeUnit: occupancyColors.vacant,
+  treeUnitFull: occupancyColors.partial,
+  treeRoom: occupancyColors.vacant,
   treeRoomFull: '#EF4444',
   allocate: '#48BB78',
   allocateBg: '#F0FFF4',
@@ -17,5 +19,5 @@ export const ACC_ACCENTS = {
   reserveBg: '#EBF8FF',
   history: '#9F7AEA',
   historyBg: '#FAF5FF',
-  detailIcon: '#10B981',
+  detailIcon: occupancyColors.vacant,
 } as const;

@@ -41,7 +41,7 @@ import { spaceApi } from '@/modules/onboarding/api/spaceApi';
 import {
   normalizeAmenityAssignments,
   PRESET_AMENITY_CODES,
-  presetAmenityLabelKey,
+  resolvePresetAmenityLabel,
   supportsSpaceAmenities,
 } from '@/modules/onboarding/utils/amenities';
 import { isSpaceOwner } from '@/modules/onboarding/utils/spaceOwnership';
@@ -207,7 +207,7 @@ function EditSpaceForm({
     return normalizeAmenityAssignments(
       [...selectedAmenities].map((code) => ({
         code,
-        label: t(presetAmenityLabelKey(code as (typeof PRESET_AMENITY_CODES)[number])),
+        label: resolvePresetAmenityLabel(code as (typeof PRESET_AMENITY_CODES)[number], t),
       })),
     );
   }, [selectedAmenities, showAmenities, t]);
@@ -471,7 +471,7 @@ function EditSpaceForm({
                               }}
                             />
                           }
-                          label={t(presetAmenityLabelKey(code))}
+                          label={resolvePresetAmenityLabel(code, t)}
                         />
                       ))}
                     </Box>

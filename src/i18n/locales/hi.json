@@ -121,6 +121,30 @@
       "mobileRequired": "मोबाइल नंबर आवश्यक है।",
       "mobileInvalid": "एक वैध 10-अंकीय भारतीय मोबाइल नंबर दर्ज करें।"
     },
+    "illustration": {
+      "headlineLead": "अपना PG, हॉस्टल या मेस चलाएँ",
+      "headlineEase": "आराम से।",
+      "headline": "अपना PG, हॉस्टल या मेस आराम से चलाएँ।",
+      "support": "संपत्ति और भोजन संचालन, भुगतान और अधिक के लिए एक सरल ऐप।",
+      "propertiesTitle": "संपत्ति और कमरे प्रबंधित करें",
+      "propertiesBody": "PG, हॉस्टल और किराये",
+      "mealsTitle": "भोजन और संख्या सरल बनाएँ",
+      "mealsBody": "मेन्यू, पोल और भोजन गणना",
+      "paymentsTitle": "भुगतान और बकाया ट्रैक करें",
+      "paymentsBody": "समय पर वसूलें, ट्रैक करें और भुगतान पाएँ",
+      "communicateTitle": "तुरंत संवाद करें",
+      "communicateBody": "अपडेट, रिमाइंडर और सूचनाएँ",
+      "pgHostel": "PG और Hostel",
+      "messMeals": "Mess और Meals",
+      "payments": "भुगतान"
+    },
+    "password": {
+      "show": "पासवर्ड दिखाएँ",
+      "hide": "पासवर्ड छिपाएँ"
+    },
+    "register": {
+      "subheading": "अपना नाम, मोबाइल नंबर और पासवर्ड दर्ज करें।"
+    },
     "otp": {
       "eyebrow": "सत्यापन",
       "heading": "OTP दर्ज करें",

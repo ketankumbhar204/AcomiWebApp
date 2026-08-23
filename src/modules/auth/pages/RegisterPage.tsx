@@ -7,8 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { ROUTES } from '@/routes/paths';
 import { isValidIndianMobile } from '@/shared/utils/indianMobile';
-import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
-import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
+import { AUTH_UX, authContainedButtonSx, authSurfaces } from '../theme/authUx';
 import { AuthCard } from '../components/AuthCard';
 import { AuthErrorBanner } from '../components/AuthErrorBanner';
 import { AuthHero } from '../components/AuthHero';
@@ -22,7 +21,7 @@ import { createRegisterSchema, type RegisterFormValues } from '../schemas/loginS
 export function RegisterPage() {
   const { t } = useTranslation();
   const theme = useTheme();
-  const s = dashSurfaces(theme.palette.mode);
+  const a = authSurfaces(theme.palette.mode);
   const { register, isLoading, error, clearError } = useRegister();
 
   const schema = useMemo(
@@ -82,7 +81,7 @@ export function RegisterPage() {
         component="form"
         onSubmit={onSubmit}
         noValidate
-        sx={{ display: 'flex', flexDirection: 'column', gap: `${DASHBOARD_UX.internalGap + 4}px` }}
+        sx={{ display: 'flex', flexDirection: 'column', gap: 1.75 }}
       >
         <AuthHero
           icon={UserRound}
@@ -181,31 +180,45 @@ export function RegisterPage() {
         <Button
           type="submit"
           variant="contained"
-          color="primary"
+          disableElevation
           disabled={!canSubmit}
           fullWidth
           startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
           sx={{
             mt: 0.5,
-            ...dashContainedButtonSx,
-            '&:hover': { boxShadow: s.shadowHover },
+            ...authContainedButtonSx(a.cta, a.ctaHover),
           }}
         >
           {isLoading ? t('common.pleaseWait') : t('auth.register.submit')}
         </Button>
 
-        <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, textAlign: 'center' }}>
+        <Typography sx={{ ...AUTH_UX.helper, color: a.textMuted, textAlign: 'center' }}>
           {t('auth.register.loginPrompt')}{' '}
-          <Link component={RouterLink} to={ROUTES.login} underline="hover">
+          <Link
+            component={RouterLink}
+            to={ROUTES.login}
+            underline="hover"
+            sx={{ ...AUTH_UX.label, color: a.brand }}
+          >
             {t('auth.register.loginLink')}
           </Link>
         </Typography>
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
-          <Link component={RouterLink} to={ROUTES.privacy} underline="hover">
+          <Link
+            component={RouterLink}
+            to={ROUTES.privacy}
+            underline="hover"
+            sx={{ ...AUTH_UX.helper, color: a.brand }}
+          >
             {t('legal.privacy.linkLabel')}
           </Link>
-          <Link component={RouterLink} to={ROUTES.deleteAccount} underline="hover">
+          <Link
+            component={RouterLink}
+            to={ROUTES.deleteAccount}
+            underline="hover"
+            sx={{ ...AUTH_UX.helper, color: a.brand }}
+          >
             {t('legal.deleteAccount.linkLabel')}
           </Link>
         </Box>

@@ -4,7 +4,6 @@ import type { SxProps, Theme } from '@mui/material/styles';
 import { LAYOUT } from '@/layouts/layoutConstants';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
-import { useAppStore } from '@/store/appStore';
 
 type StickyFooterProps = {
   children: ReactNode;
@@ -40,10 +39,9 @@ export function StickyFooter({ children, pin = 'sticky', sx }: StickyFooterProps
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
-  const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
-  const sidebarWidth = sidebarCollapsed
-    ? LAYOUT.sidebarCollapsedWidth
-    : LAYOUT.sidebarWidth;
+  // Permanent rail overlays when expanded, so the in-flow reservation is always
+  // the collapsed width.
+  const sidebarWidth = LAYOUT.sidebarCollapsedWidth;
   const accent =
     theme.palette.mode === 'dark'
       ? {

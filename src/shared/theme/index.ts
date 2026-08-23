@@ -1,4 +1,4 @@
-export { colors, darkColors } from './colors';
+export { acomiCssVars, colors, darkColors, occupancyColors, spaceTypePalette } from './colors';
 export { spacing } from './spacing';
 export { radius } from './radius';
 export { elevation } from './elevation';

@@ -2,9 +2,8 @@ import { Box, FormHelperText, InputBase, Typography, useTheme } from '@mui/mater
 import { Smartphone } from 'lucide-react';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { colors } from '@/shared/theme/colors';
 import { normalizeIndianMobileDigits } from '@/shared/utils/indianMobile';
-import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { AUTH_UX, authSurfaces } from '../theme/authUx';
 
 type MobileNumberInputProps = {
   value: string;
@@ -27,7 +26,8 @@ export function MobileNumberInput({
 }: MobileNumberInputProps) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const s = dashSurfaces(theme.palette.mode);
+  const a = authSurfaces(theme.palette.mode);
+  const label = t('auth.login.mobileLabel');
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     onChange(normalizeIndianMobileDigits(event.target.value));
@@ -43,26 +43,24 @@ export function MobileNumberInput({
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
-        <Smartphone size={DASHBOARD_UX.iconSize} color={colors.primaryDark} strokeWidth={2} />
-        <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
-          {t('auth.login.mobileLabel')}
+        <Smartphone size={14} color={a.brand} strokeWidth={2} aria-hidden />
+        <Typography component="label" sx={{ ...AUTH_UX.label, color: a.textPrimary }}>
+          {label}
         </Typography>
       </Box>
       <Box
         sx={{
           display: 'flex',
           alignItems: 'stretch',
-          borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-          border: `1px solid ${error ? colors.danger : s.border}`,
-          bgcolor: s.surface,
+          borderRadius: `${AUTH_UX.fieldRadius}px`,
+          border: `1px solid ${error ? a.danger : a.border}`,
+          bgcolor: a.surface,
           overflow: 'hidden',
-          transition: DASHBOARD_UX.transition,
-          minHeight: 40,
+          minHeight: AUTH_UX.fieldHeight,
+          transition: 'border-color 150ms ease, box-shadow 150ms ease',
           '&:focus-within': {
-            borderColor: error ? colors.danger : colors.primaryDark,
-            boxShadow: error
-              ? '0 0 0 3px rgba(220,38,38,0.12)'
-              : '0 0 0 3px rgba(18, 140, 126, 0.15)',
+            borderColor: error ? a.danger : a.focus,
+            boxShadow: error ? a.dangerRing : a.focusRing,
           },
         }}
       >
@@ -71,10 +69,12 @@ export function MobileNumberInput({
             px: 1.5,
             display: 'flex',
             alignItems: 'center',
-            bgcolor: s.elevated,
-            borderRight: `1px solid ${s.border}`,
-            color: s.textSecondary,
-            ...DASHBOARD_UX.link,
+            bgcolor: a.elevated,
+            borderRight: `1px solid ${a.border}`,
+            color: a.textSecondary,
+            ...AUTH_UX.label,
+            minWidth: 52,
+            justifyContent: 'center',
           }}
           aria-hidden
         >
@@ -91,25 +91,25 @@ export function MobileNumberInput({
           inputProps={{
             inputMode: 'numeric',
             maxLength: 10,
-            'aria-label': t('auth.login.mobileLabel'),
+            'aria-label': label,
             'aria-invalid': Boolean(error),
             autoComplete: 'tel-national',
           }}
           sx={{
             flex: 1,
             px: 1.5,
-            py: 1,
-            ...DASHBOARD_UX.metricLabel,
-            color: s.textPrimary,
+            ...AUTH_UX.input,
+            color: a.textPrimary,
+            '& input::placeholder': { color: a.textMuted, opacity: 1 },
           }}
         />
       </Box>
       {error ? (
-        <FormHelperText error sx={{ mx: 0, mt: 0.75, ...DASHBOARD_UX.sectionSubtitle }}>
+        <FormHelperText error sx={{ mx: 0, mt: 0.5, ...AUTH_UX.helper }}>
           {error}
         </FormHelperText>
       ) : (
-        <FormHelperText sx={{ mx: 0, mt: 0.75, ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted }}>
+        <FormHelperText sx={{ mx: 0, mt: 0.5, ...AUTH_UX.helper, color: a.textMuted }}>
           {t('auth.login.mobileHelper')}
         </FormHelperText>
       )}

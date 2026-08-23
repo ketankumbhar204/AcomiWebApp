@@ -91,6 +91,27 @@
       "brandPanelTitle": "ACOMI",
       "brandPanelSubtitle": "Property and meal operations for PGs, hostels, and messes — the same product you use on mobile."
     },
+    "illustration": {
+      "headlineLead": "Run your PG, hostel, or mess with",
+      "headlineEase": "ease.",
+      "headline": "Run your PG, hostel, or mess with ease.",
+      "support": "One simple app for property and meal operations, payments, and more.",
+      "propertiesTitle": "Manage properties & rooms",
+      "propertiesBody": "PGs, hostels, and rentals",
+      "mealsTitle": "Streamline meals & headcount",
+      "mealsBody": "Menus, polls, and meal counts",
+      "paymentsTitle": "Track payments & dues",
+      "paymentsBody": "Collect, track, and get paid on time",
+      "communicateTitle": "Communicate instantly",
+      "communicateBody": "Updates, reminders, and notifications",
+      "pgHostel": "PG & Hostel",
+      "messMeals": "Mess & Meals",
+      "payments": "Payments"
+    },
+    "password": {
+      "show": "Show password",
+      "hide": "Hide password"
+    },
     "register": {
       "eyebrow": "Create account",
       "heading": "Join ACOMI",
@@ -317,7 +338,34 @@
       "nameRequired": "Space name is required.",
       "typeRequired": "Please select a space type.",
       "successTitle": "Space created",
-      "successMessage": "\"{{name}}\" was created successfully."
+      "successMessage": "\"{{name}}\" was created successfully.",
+      "wizard": {
+        "panelTitle": "One place to run your property & meals",
+        "chooseTypeTitle": "Choose your space type",
+        "chooseTypeSubtitle": "Select the type of space you want to create.",
+        "detailsTitle": "Space details",
+        "detailsSubtitle": "Add a name and optional contact details.",
+        "confirmTitle": "Confirm space",
+        "confirmSubtitle": "Review the details before creating your space.",
+        "updateLater": "You can update these details anytime later from space settings.",
+        "create": "Create Space",
+        "available": "Available",
+        "notSelected": "Not selected",
+        "stepsLabel": "Create space steps",
+        "steps": {
+          "type": "Space Type",
+          "details": "Details",
+          "amenities": "Amenities",
+          "confirm": "Confirm"
+        },
+        "typeBlurb": {
+          "PG": "For paying guest accommodations.",
+          "MESS": "For mess and canteen operations.",
+          "HOSTEL": "For hostel accommodations.",
+          "CO_LIVING": "For shared living spaces.",
+          "RENTAL": "For rental properties."
+        }
+      }
     },
     "types": {
       "label": "Space Type",
@@ -373,14 +421,25 @@
       "codes": {
         "WIFI": "WiFi",
         "FOOD_INCLUDED": "Food",
+        "FOOD_INCLUDED": "Food",
+        "WASHING_MACHINE": "Washing Machine",
         "WASHING_MACHINE": "Washing Machine",
         "HOT_WATER": "Hot Water",
+        "HOT_WATER": "Hot Water",
+        "PARKING": "Parking",
         "PARKING": "Parking",
         "REFRIGERATOR": "Refrigerator",
+        "REFRIGERATOR": "Refrigerator",
+        "HOUSEKEEPING": "Housekeeping",
         "HOUSEKEEPING": "Housekeeping",
         "CCTV": "CCTV",
+        "CCTV": "CCTV",
         "POWER_BACKUP": "Power Backup",
-        "RO_WATER": "RO Water"
+        "POWER_BACKUP": "Power Backup",
+        "RO_WATER": "RO Water",
+        "RO_WATER": "RO Water",
+        "BEDS": "Beds",
+        "WARDROBE": "Wardrobe / Cupboard"
       }
     },
     "roles": {
@@ -1254,6 +1313,8 @@
     },
     "layoutMode": {
       "label": "Property layout",
+      "chooseTitle": "Choose Layout Type",
+      "chooseSubtitle": "Select how your property is structured. You can change this later if needed.",
       "selected": "Selected",
       "CORRIDOR_PG": "Corridor PG",
       "CORRIDOR_PG_desc": "Rooms arranged along a central corridor. Ideal for traditional PG buildings.",
@@ -1262,13 +1323,27 @@
       "CO_LIVING": "Co-living",
       "CO_LIVING_desc": "Units with shared or private rooms",
       "RENTAL": "Rental",
-      "RENTAL_desc": "Rentable units without room subdivisions"
+      "RENTAL_desc": "Rentable units without room subdivisions",
+      "highlights": {
+        "manage": "Corridor layout is easier to manage",
+        "visibility": "Better visibility and room access",
+        "utilization": "Ideal for high room utilization",
+        "operations": "Optimized for PG operations"
+      }
     },
     "home": {
       "emptyTitle": "Welcome!",
       "emptyDescription": "Next step: Create your property layout.",
+      "welcomeTitle": "Welcome to your property operations",
+      "welcomeSubtitle": "Choose an option below to get started with building and room setup.",
       "quickSetup": "Start Setup",
+      "quickSetupSubtitle": "Guided building structure setup",
+      "quickSetupDescription": "Create buildings, floors, rooms and beds step-by-step.",
       "addBuildingManually": "Add Building Manually",
+      "addBuildingSubtitle": "Create your property structure manually.",
+      "addBuildingDescription": "Full control over buildings, rooms and beds.",
+      "operationsGlance": "Property operations at a glance",
+      "pageSubtitle": "Buildings, floors, rooms, and beds in one place",
       "addManually": "Add Manually",
       "manageHint": "Tap to manage",
       "beds": "{{count}} beds",
@@ -4260,18 +4335,36 @@
     "choice": {
       "title": "Welcome",
       "eyebrow": "Welcome to ACOMI",
+      "welcome": "Welcome to ACOMI! 👋",
       "heading": "How will you use ACOMI?",
+      "headingLead": "How will you use",
       "subheading": "Choose whether you are an owner or joining as a member.",
-      "manageTitle": "I Am an Owner",
+      "perkAllInOne": "All-in-one management",
+      "perkAllInOneBody": "Manage properties, meals, payments, inventory, and more in one place.",
+      "perkSaveTime": "Save time & reduce manual work",
+      "perkSaveTimeBody": "Automate daily operations and focus on what matters most.",
+      "perkSecure": "Secure & reliable",
+      "perkSecureBody": "Bank-grade security to keep your data and business safe.",
+      "perkOperators": "Used by 1000+ operators",
+      "perkOperatorsBody": "Trusted by operators across PGs, hostels, messes, and rentals.",
+      "manageTitle": "I am an Owner",
       "manageSubtitle": "PG · Mess · Hostel · Co-living · Rental",
-      "memberTitle": "I am a member",
+      "memberTitle": "I am a Member",
       "memberSubtitle": "Tenant · Customer · Staff",
       "manageBenefit1": "Set up your PG, hostel, or mess",
       "manageBenefit2": "Invite members and staff",
       "manageBenefit3": "Run meals, payments, and occupancy",
+      "manageBenefit4": "Manage inventory and complaints",
+      "manageBenefit5": "Grow your business with ease",
       "joinBenefit1": "Accept a pending invitation",
       "joinBenefit2": "Join as resident or customer",
-      "joinBenefit3": "Access meals and payments quickly"
+      "joinBenefit3": "Access meals and payments quickly",
+      "joinBenefit4": "Raise complaints and get updates",
+      "joinBenefit5": "Stay informed with real-time notifications",
+      "manageProof": "Join 1000+ operators who run their business on ACOMI",
+      "memberProof": "Loved by members for simplicity and speed",
+      "trustTitle": "Your data is safe with us",
+      "trustBody": "ACOMI uses bank-grade security to protect your information."
     },
     "join": {
       "title": "Join Space",

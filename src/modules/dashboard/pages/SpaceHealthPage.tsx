@@ -32,6 +32,7 @@ import { EmptyState } from '@/shared/components/EmptyState';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { colors } from '@/shared/theme/colors';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { canManageNotifications } from '@/shared/utils/spaceOperator';
 import { ROUTES, spaceDashboardPath } from '@/routes/paths';
@@ -502,7 +503,7 @@ function FactorRow({
   const s = dashSurfaces(theme.palette.mode);
   const positive = factor.tone === 'positive';
   const Icon = positive ? CheckCircle2 : TriangleAlert;
-  const color = positive ? '#059669' : '#D97706';
+  const color = positive ? colors.success : colors.warning;
 
   return (
     <Box

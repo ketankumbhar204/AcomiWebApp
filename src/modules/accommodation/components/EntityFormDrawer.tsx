@@ -317,6 +317,7 @@ function EntityFormBody({
                     value={layoutMode}
                     onChange={setLayoutMode}
                     options={layoutOptions}
+                    variant="compact"
                   />
                 ) : (
                   <>

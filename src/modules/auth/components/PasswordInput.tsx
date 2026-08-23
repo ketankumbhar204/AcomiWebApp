@@ -1,8 +1,8 @@
-import { Box, FormHelperText, InputBase, Typography, useTheme } from '@mui/material';
-import { Lock } from 'lucide-react';
-import type { ChangeEvent, KeyboardEvent } from 'react';
-import { colors } from '@/shared/theme/colors';
-import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { Box, FormHelperText, IconButton, InputBase, Typography, useTheme } from '@mui/material';
+import { Eye, EyeOff, Lock } from 'lucide-react';
+import { useState, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useTranslation } from 'react-i18next';
+import { AUTH_UX, authSurfaces } from '../theme/authUx';
 
 type PasswordInputProps = {
   label: string;
@@ -27,8 +27,10 @@ export function PasswordInput({
   placeholder,
   onSubmit,
 }: PasswordInputProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
-  const s = dashSurfaces(theme.palette.mode);
+  const a = authSurfaces(theme.palette.mode);
+  const [visible, setVisible] = useState(false);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     onChange(event.target.value);
@@ -44,23 +46,29 @@ export function PasswordInput({
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.75 }}>
-        <Lock size={DASHBOARD_UX.iconSize} color={colors.primaryDark} strokeWidth={2} />
-        <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>{label}</Typography>
+        <Lock size={14} color={a.brand} strokeWidth={2} aria-hidden />
+        <Typography component="label" sx={{ ...AUTH_UX.label, color: a.textPrimary }}>
+          {label}
+        </Typography>
       </Box>
       <Box
         sx={{
           display: 'flex',
           alignItems: 'stretch',
-          borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-          border: `1px solid ${error ? colors.danger : s.border}`,
-          bgcolor: s.surface,
+          borderRadius: `${AUTH_UX.fieldRadius}px`,
+          border: `1px solid ${error ? a.danger : a.border}`,
+          bgcolor: a.surface,
           overflow: 'hidden',
-          transition: DASHBOARD_UX.transition,
-          minHeight: 40,
+          minHeight: AUTH_UX.fieldHeight,
+          transition: 'border-color 150ms ease, box-shadow 150ms ease',
+          '&:focus-within': {
+            borderColor: error ? a.danger : a.focus,
+            boxShadow: error ? a.dangerRing : a.focusRing,
+          },
         }}
       >
         <InputBase
-          type="password"
+          type={visible ? 'text' : 'password'}
           value={value}
           onChange={handleChange}
           onBlur={onBlur}
@@ -69,14 +77,35 @@ export function PasswordInput({
           autoComplete={autoComplete}
           placeholder={placeholder}
           fullWidth
+          inputProps={{ 'aria-invalid': Boolean(error), 'aria-label': label }}
           sx={{
             px: 1.5,
-            ...DASHBOARD_UX.body,
-            color: s.textPrimary,
+            ...AUTH_UX.input,
+            color: a.textPrimary,
+            '& input::placeholder': { color: a.textMuted, opacity: 1 },
           }}
         />
+        <IconButton
+          type="button"
+          size="small"
+          onClick={() => setVisible((current) => !current)}
+          disabled={disabled}
+          aria-label={visible ? t('auth.password.hide') : t('auth.password.show')}
+          sx={{
+            alignSelf: 'center',
+            mr: 0.5,
+            color: a.textMuted,
+            '&:hover': { color: a.brand, bgcolor: 'transparent' },
+          }}
+        >
+          {visible ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
+        </IconButton>
       </Box>
-      {error ? <FormHelperText error>{error}</FormHelperText> : null}
+      {error ? (
+        <FormHelperText error sx={{ mx: 0, mt: 0.5, ...AUTH_UX.helper }}>
+          {error}
+        </FormHelperText>
+      ) : null}
     </Box>
   );
 }

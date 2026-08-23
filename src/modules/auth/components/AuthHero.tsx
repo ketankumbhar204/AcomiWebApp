@@ -1,8 +1,6 @@
 import { Box, Typography, useTheme } from '@mui/material';
 import type { LucideIcon } from 'lucide-react';
-import { colors } from '@/shared/theme/colors';
-import { IconBadge } from '@/modules/dashboard/components/IconBadge';
-import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { AUTH_UX, authSurfaces } from '../theme/authUx';
 
 type AuthHeroProps = {
   icon: LucideIcon;
@@ -11,42 +9,54 @@ type AuthHeroProps = {
   subheading: string;
 };
 
-/** Compact auth header — Dashboard IconBadge + section typography (no decorative blobs). */
+/** Compact register/login intro — light semantic surface, not a green block. */
 export function AuthHero({ icon: Icon, eyebrow, heading, subheading }: AuthHeroProps) {
   const theme = useTheme();
-  const s = dashSurfaces(theme.palette.mode);
+  const a = authSurfaces(theme.palette.mode);
 
   return (
     <Box
       component="header"
       sx={{
-        mb: 0.5,
-        p: `${DASHBOARD_UX.cardPadding}px`,
-        borderRadius: `${DASHBOARD_UX.radius}px`,
-        border: `1px solid ${s.border}`,
-        bgcolor: s.elevated,
+        mb: 0.25,
+        px: 1.75,
+        py: 1.5,
+        borderRadius: `${AUTH_UX.fieldRadius}px`,
+        border: `1px solid ${a.brandSoftBorder}`,
+        bgcolor: a.brandSoft,
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25 }}>
-        <IconBadge accent={colors.primaryDark}>
-          <Icon />
-        </IconBadge>
+        <Box
+          sx={{
+            width: 28,
+            height: 28,
+            borderRadius: '8px',
+            bgcolor: theme.palette.mode === 'dark' ? 'rgba(15, 23, 42, 0.35)' : '#FFFFFF',
+            color: a.brand,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            mt: 0.15,
+          }}
+        >
+          <Icon size={15} strokeWidth={2} aria-hidden />
+        </Box>
         <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography sx={{ ...AUTH_UX.eyebrow, color: a.textMuted, mb: 0.2 }}>{eyebrow}</Typography>
           <Typography
             sx={{
-              ...DASHBOARD_UX.spaceRole,
-              color: s.textSecondary,
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              mb: 0.35,
+              fontSize: '1.125rem',
+              fontWeight: 700,
+              lineHeight: 1.25,
+              color: a.textPrimary,
+              mb: 0.15,
             }}
           >
-            {eyebrow}
-          </Typography>
-          <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary, mb: 0.35 }}>
             {heading}
           </Typography>
-          <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }}>{subheading}</Typography>
+          <Typography sx={{ ...AUTH_UX.helper, color: a.textSecondary }}>{subheading}</Typography>
         </Box>
       </Box>
     </Box>
