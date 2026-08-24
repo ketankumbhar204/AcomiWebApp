@@ -4,15 +4,15 @@
  * for readability work — adjust type/color only.
  */
 export const DASH_LIGHT = {
-  pageBg: '#F3FAF6',
+  pageBg: '#F5F7FA',
   surface: '#FFFFFF',
-  /** Secondary / section fills behind or inside layout (not cards) */
-  elevated: '#EDF8F2',
-  section: '#EAF7F0',
-  hover: '#F0FAF4',
+  /** Secondary / section fills — cool gray, not mint */
+  elevated: '#F8FAFC',
+  section: '#F1F5F9',
+  hover: '#F8FAFC',
   selected: '#E2F7EC',
-  border: '#DCEFE3',
-  divider: '#E6F2EA',
+  border: '#E2E8F0',
+  divider: '#E8EEF2',
   /** Primary readable text */
   textPrimary: '#0F172A',
   /** Metric labels + body descriptions */

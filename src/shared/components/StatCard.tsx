@@ -2,6 +2,7 @@ import { Box, Paper, Typography, useTheme } from '@mui/material';
 import type { ReactNode } from 'react';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
+import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
 
 type StatCardProps = {
   label: string;
@@ -12,6 +13,7 @@ type StatCardProps = {
   /** Dense KPI used on the redesigned dashboard. */
   dense?: boolean;
   accentColor?: string;
+  tone?: SemanticTone;
 };
 
 export function StatCard({
@@ -22,9 +24,11 @@ export function StatCard({
   onClick,
   dense = false,
   accentColor,
+  tone,
 }: StatCardProps) {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const surface = tone ? semanticSurface(tone, theme.palette.mode) : null;
 
   return (
     <Paper
@@ -47,12 +51,12 @@ export function StatCard({
         p: dense ? `${DASHBOARD_UX.metricPadding}px` : `${DASHBOARD_UX.cardPadding}px`,
         borderRadius: `${DASHBOARD_UX.radius}px`,
         height: '100%',
-        border: `1px solid ${s.border}`,
-        bgcolor: s.surface,
+        border: `1px solid ${surface?.border ?? s.border}`,
+        bgcolor: surface?.bg ?? s.surface,
         boxShadow: s.shadow,
         cursor: onClick ? 'pointer' : 'default',
         transition: DASHBOARD_UX.transition,
-        borderLeft: accentColor ? `3px solid ${accentColor}` : undefined,
+        borderLeft: accentColor && !tone ? `3px solid ${accentColor}` : undefined,
         '&:hover': onClick
           ? {
               boxShadow: s.shadowHover,
@@ -82,7 +86,7 @@ export function StatCard({
         sx={{
           ...(dense ? DASHBOARD_UX.counterValue : DASHBOARD_UX.largeNumber),
           mt: dense ? 0.25 : 0.5,
-          color: accentColor ?? s.textPrimary,
+          color: surface?.fg ?? accentColor ?? s.textPrimary,
         }}
       >
         {value}

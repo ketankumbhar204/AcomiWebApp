@@ -1,6 +1,7 @@
 import { Box, Typography, useTheme } from '@mui/material';
 import type { ReactNode } from 'react';
 import { colors } from '@/shared/theme/colors';
+import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
 import { DASHBOARD_UX, dashSurfaces, metricValueSx } from '../theme/dashboardUx';
 
 export type MetricCell = {
@@ -11,6 +12,7 @@ export type MetricCell = {
   captionColor?: string;
   icon?: ReactNode;
   accent?: string;
+  tone?: SemanticTone;
   onClick?: () => void;
 };
 
@@ -25,7 +27,7 @@ type MetricRowProps = {
 };
 
 /**
- * Metric board — Figma: 2×2 (Payment / Property) or 4-across strip.
+ * Metric board — compact 1px grid with pastel semantic cell fills.
  */
 export function MetricRow({
   items,
@@ -36,6 +38,7 @@ export function MetricRow({
 }: MetricRowProps) {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const mode = theme.palette.mode;
 
   return (
     <Box
@@ -55,87 +58,89 @@ export function MetricRow({
             }),
       }}
     >
-      {items.map((item) => (
-        <Box
-          key={item.id}
-          role={item.onClick ? 'button' : undefined}
-          tabIndex={item.onClick ? 0 : undefined}
-          onClick={item.onClick}
-          onKeyDown={
-            item.onClick
-              ? (e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    item.onClick?.();
-                  }
-                }
-              : undefined
-          }
-          aria-label={item.onClick ? `${item.label}: ${String(item.value)}` : undefined}
-          sx={{
-            minWidth: 0,
-            minHeight,
-            maxHeight,
-            px: `${DASHBOARD_UX.metricPadding}px`,
-            py: `${DASHBOARD_UX.metricPadding}px`,
-            boxSizing: 'border-box',
-            bgcolor: s.surface,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            gap: `${DASHBOARD_UX.metricGap}px`,
-            overflow: 'hidden',
-            cursor: item.onClick ? 'pointer' : 'default',
-            transition: DASHBOARD_UX.transition,
-            '&:hover': item.onClick
-              ? {
-                  bgcolor:
-                    theme.palette.mode === 'dark' ? s.elevated : 'rgba(248, 250, 252, 1)',
-                }
-              : undefined,
-            '&:focus-visible': item.onClick
-              ? { outline: `2px solid ${colors.primary}`, outlineOffset: -2 }
-              : undefined,
-          }}
-        >
+      {items.map((item) => {
+        const surface = item.tone ? semanticSurface(item.tone, mode) : null;
+        return (
           <Box
+            key={item.id}
+            role={item.onClick ? 'button' : undefined}
+            tabIndex={item.onClick ? 0 : undefined}
+            onClick={item.onClick}
+            onKeyDown={
+              item.onClick
+                ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      item.onClick?.();
+                    }
+                  }
+                : undefined
+            }
+            aria-label={item.onClick ? `${item.label}: ${String(item.value)}` : undefined}
             sx={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'space-between',
-              gap: 1,
               minWidth: 0,
+              minHeight,
+              maxHeight,
+              px: `${DASHBOARD_UX.metricPadding}px`,
+              py: `${DASHBOARD_UX.metricPadding}px`,
+              boxSizing: 'border-box',
+              bgcolor: surface?.bg ?? s.surface,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              gap: `${DASHBOARD_UX.metricGap}px`,
+              overflow: 'hidden',
+              cursor: item.onClick ? 'pointer' : 'default',
+              transition: DASHBOARD_UX.transition,
+              '&:hover': item.onClick
+                ? {
+                    bgcolor: surface?.iconBg ?? (theme.palette.mode === 'dark' ? s.elevated : 'rgba(248, 250, 252, 1)'),
+                  }
+                : undefined,
+              '&:focus-visible': item.onClick
+                ? { outline: `2px solid ${colors.primary}`, outlineOffset: -2 }
+                : undefined,
             }}
           >
-            <Typography
+            <Box
               sx={{
-                ...DASHBOARD_UX.metricLabel,
-                color: s.textSecondary,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: 1,
                 minWidth: 0,
               }}
             >
-              {item.label}
-            </Typography>
-            {item.icon ? <Box sx={{ flexShrink: 0 }}>{item.icon}</Box> : null}
-          </Box>
+              <Typography
+                sx={{
+                  ...DASHBOARD_UX.metricLabel,
+                  color: s.textSecondary,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  minWidth: 0,
+                }}
+              >
+                {item.label}
+              </Typography>
+              {item.icon ? <Box sx={{ flexShrink: 0 }}>{item.icon}</Box> : null}
+            </Box>
 
-          <Typography
-            component="div"
-            sx={{
-              ...metricValueSx(),
-              color: item.accent ?? s.textPrimary,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {item.value}
-          </Typography>
-        </Box>
-      ))}
+            <Typography
+              component="div"
+              sx={{
+                ...metricValueSx(),
+                color: surface?.fg ?? item.accent ?? s.textPrimary,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {item.value}
+            </Typography>
+          </Box>
+        );
+      })}
     </Box>
   );
 }

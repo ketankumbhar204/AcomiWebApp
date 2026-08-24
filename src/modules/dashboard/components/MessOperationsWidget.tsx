@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import type { DashboardMessOperations } from '@/shared/types/dashboard';
 import { spaceMealHeadcountPath, spaceMealsPath, spaceMembersPath } from '@/routes/paths';
-import { colors } from '@/shared/theme/colors';
 import { todayIsoDate } from '@/modules/meals/utils/mealDates';
 import { DashboardSection } from './DashboardSection';
 import { IconBadge } from './IconBadge';
@@ -32,9 +31,9 @@ export function MessOperationsWidget({ spaceId, operations }: MessOperationsWidg
             id: 'customers',
             label: t('dashboard.messOperations.membersReceivingMeals'),
             value: operations.membersReceivingMeals,
-            accent: colors.primaryDark,
+            tone: 'pink',
             icon: (
-              <IconBadge accent={colors.primaryDark}>
+              <IconBadge tone="pink">
                 <Users />
               </IconBadge>
             ),
@@ -44,9 +43,9 @@ export function MessOperationsWidget({ spaceId, operations }: MessOperationsWidg
             id: 'menus',
             label: t('dashboard.messOperations.menusPublished'),
             value: operations.menusPublishedThisMonth,
-            accent: '#6366F1',
+            tone: 'purple',
             icon: (
-              <IconBadge accent="#6366F1">
+              <IconBadge tone="purple">
                 <ClipboardList />
               </IconBadge>
             ),
@@ -56,9 +55,9 @@ export function MessOperationsWidget({ spaceId, operations }: MessOperationsWidg
             id: 'polls',
             label: t('dashboard.messOperations.openPolls'),
             value: operations.openPollsCount,
-            accent: '#3B82F6',
+            tone: 'info',
             icon: (
-              <IconBadge accent="#3B82F6">
+              <IconBadge tone="info">
                 <Vote />
               </IconBadge>
             ),
@@ -68,9 +67,9 @@ export function MessOperationsWidget({ spaceId, operations }: MessOperationsWidg
             id: 'headcount',
             label: t('dashboard.messOperations.todaysHeadcount'),
             value: operations.todaysHeadcount ?? '—',
-            accent: '#D97706',
+            tone: 'peach',
             icon: (
-              <IconBadge accent="#D97706">
+              <IconBadge tone="peach">
                 <UtensilsCrossed />
               </IconBadge>
             ),

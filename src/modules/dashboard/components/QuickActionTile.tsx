@@ -1,6 +1,7 @@
 import { Box, Tooltip, Typography, useTheme } from '@mui/material';
 import type { LucideIcon } from 'lucide-react';
 import { colors } from '@/shared/theme/colors';
+import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
 import { IconBadge } from './IconBadge';
 
@@ -11,23 +12,26 @@ type QuickActionTileProps = {
   icon: LucideIcon;
   badgeCount?: number;
   accent?: string;
+  tone?: SemanticTone;
   highlighted?: boolean;
   onClick?: () => void;
 };
 
-/** Compact quick-action tile — icon + title + 2-line subtitle (Figma strip). */
+/** Compact quick-action tile — pastel module color + icon well. */
 export function QuickActionTile({
   title,
   subtitle,
   tooltip,
   icon: Icon,
   badgeCount,
-  accent = colors.primaryDark,
+  accent,
+  tone = 'accent',
   highlighted = false,
   onClick,
 }: QuickActionTileProps) {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const surface = semanticSurface(highlighted ? 'warning' : tone, theme.palette.mode);
 
   const tile = (
     <Box
@@ -48,17 +52,12 @@ export function QuickActionTile({
         maxHeight: DASHBOARD_UX.quickActionMaxHeight,
         height: DASHBOARD_UX.quickActionHeight,
         borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-        bgcolor: highlighted
-          ? theme.palette.mode === 'dark'
-            ? 'rgba(217, 119, 6, 0.12)'
-            : colors.warningTint
-          : s.elevated,
-        border: `1px solid ${highlighted ? 'rgba(245, 158, 11, 0.35)' : s.border}`,
+        bgcolor: surface.bg,
+        border: `1px solid ${surface.border}`,
         cursor: 'pointer',
         transition: DASHBOARD_UX.transition,
         overflow: 'hidden',
         '&:hover': {
-          bgcolor: s.surface,
           boxShadow: s.shadowHover,
           transform: 'translateY(-1px)',
         },
@@ -69,7 +68,7 @@ export function QuickActionTile({
       }}
     >
       <Box sx={{ position: 'relative', width: 'fit-content', flexShrink: 0 }}>
-        <IconBadge accent={accent}>
+        <IconBadge tone={highlighted ? 'warning' : tone} accent={accent ?? surface.fg}>
           <Icon />
         </IconBadge>
         {badgeCount && badgeCount > 0 ? (

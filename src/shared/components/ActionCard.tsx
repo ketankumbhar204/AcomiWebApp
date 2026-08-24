@@ -2,6 +2,7 @@ import { Box, Paper, Typography, useTheme } from '@mui/material';
 import type { LucideIcon } from 'lucide-react';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
+import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
 
 type ActionCardProps = {
   title: string;
@@ -13,6 +14,7 @@ type ActionCardProps = {
   /** Compact 2-column dashboard quick actions. */
   compact?: boolean;
   accent?: string;
+  tone?: SemanticTone;
   highlighted?: boolean;
 };
 
@@ -25,10 +27,12 @@ export function ActionCard({
   onClick,
   compact = false,
   accent = colors.primaryDark,
+  tone,
   highlighted = false,
 }: ActionCardProps) {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const surface = semanticSurface(highlighted ? 'warning' : (tone ?? 'neutral'), theme.palette.mode);
 
   return (
     <Paper
@@ -46,8 +50,8 @@ export function ActionCard({
         gap: compact ? 1.25 : 1.5,
         p: compact ? 1.25 : `${DASHBOARD_UX.cardPadding}px`,
         borderRadius: `${DASHBOARD_UX.radius}px`,
-        border: `1px solid ${highlighted ? s.pendingBorder : s.border}`,
-        bgcolor: highlighted ? s.pendingTint : s.surface,
+        border: `1px solid ${highlighted || tone ? surface.border : s.border}`,
+        bgcolor: highlighted || tone ? surface.bg : s.surface,
         boxShadow: s.shadow,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.55 : 1,
@@ -70,8 +74,8 @@ export function ActionCard({
           width: compact ? DASHBOARD_UX.iconWell + 10 : 40,
           height: compact ? DASHBOARD_UX.iconWell + 10 : 40,
           borderRadius: `${DASHBOARD_UX.iconWellRadius}px`,
-          bgcolor: theme.palette.mode === 'dark' ? s.elevated : `${accent}18`,
-          color: accent,
+          bgcolor: tone || highlighted ? surface.iconBg : theme.palette.mode === 'dark' ? s.elevated : `${accent}18`,
+          color: tone || highlighted ? surface.fg : accent,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

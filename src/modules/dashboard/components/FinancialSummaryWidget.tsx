@@ -7,6 +7,7 @@ import type { DashboardFinancialSummary } from '@/shared/types/dashboard';
 import { formatCurrency } from '@/shared/utils/dashboardFinancial';
 import { spacePaymentsPath } from '@/routes/paths';
 import { colors } from '@/shared/theme/colors';
+import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
 import { DashboardSection } from './DashboardSection';
 import { IconBadge } from './IconBadge';
 import { MetricRow } from './MetricRow';
@@ -25,6 +26,7 @@ type PayMetric = {
   label: string;
   value: string;
   accent: string;
+  tone: SemanticTone;
   icon: ReactNode;
   onClick: () => void;
 };
@@ -47,8 +49,9 @@ export function FinancialSummaryWidget({
       label: t('dashboard.financial.expected'),
       value: formatCurrency(financial.expectedCharges, currency),
       accent: colors.primaryDark,
+      tone: 'accent',
       icon: (
-        <IconBadge accent={colors.primaryDark}>
+        <IconBadge tone="accent">
           <Wallet />
         </IconBadge>
       ),
@@ -59,8 +62,9 @@ export function FinancialSummaryWidget({
       label: t('dashboard.financial.collected'),
       value: formatCurrency(financial.collected, currency),
       accent: colors.success,
+      tone: 'success',
       icon: (
-        <IconBadge accent={colors.success}>
+        <IconBadge tone="success">
           <Inbox />
         </IconBadge>
       ),
@@ -71,8 +75,9 @@ export function FinancialSummaryWidget({
       label: t('dashboard.financial.underReview'),
       value: formatCurrency(financial.underReview, currency),
       accent: '#3B82F6',
+      tone: 'info',
       icon: (
-        <IconBadge accent="#3B82F6">
+        <IconBadge tone="info">
           <Clock />
         </IconBadge>
       ),
@@ -83,8 +88,9 @@ export function FinancialSummaryWidget({
       label: t('dashboard.financial.pending'),
       value: formatCurrency(financial.pending, currency),
       accent: '#F59E0B',
+      tone: 'warning',
       icon: (
-        <IconBadge accent="#F59E0B">
+        <IconBadge tone="warning">
           <IndianRupee />
         </IconBadge>
       ),
@@ -95,11 +101,19 @@ export function FinancialSummaryWidget({
   if (layout === 'row') {
     return (
       <Box component="section" aria-label={t('dashboard.financial.title')} sx={{ width: '100%' }}>
-        <Box sx={{ mb: 1 }}>
+        <Box
+          sx={{
+            mb: 1,
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: 1,
+            flexWrap: 'wrap',
+          }}
+        >
           <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
             {t('dashboard.financial.title')}
           </Typography>
-          <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, mt: 0.15 }}>
+          <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted }}>
             {t('dashboard.financial.period')}
           </Typography>
         </Box>
@@ -112,7 +126,9 @@ export function FinancialSummaryWidget({
             width: '100%',
           }}
         >
-          {items.map((item) => (
+          {items.map((item) => {
+            const surface = semanticSurface(item.tone, theme.palette.mode);
+            return (
             <Box
               key={item.id}
               role="button"
@@ -130,8 +146,8 @@ export function FinancialSummaryWidget({
                 minHeight: DASHBOARD_UX.paymentCardMinHeight,
                 px: `${DASHBOARD_UX.metricPadding + 2}px`,
                 py: `${DASHBOARD_UX.metricPadding + 2}px`,
-                bgcolor: s.surface,
-                border: `1px solid ${s.border}`,
+                bgcolor: surface.bg,
+                border: `1px solid ${surface.border}`,
                 borderRadius: `${DASHBOARD_UX.radius}px`,
                 boxShadow: s.shadow,
                 display: 'flex',
@@ -140,7 +156,7 @@ export function FinancialSummaryWidget({
                 gap: `${DASHBOARD_UX.metricGap}px`,
                 cursor: 'pointer',
                 transition: DASHBOARD_UX.transition,
-                '&:hover': { boxShadow: s.shadowHover },
+                '&:hover': { boxShadow: s.shadowHover, transform: 'translateY(-1px)' },
                 '&:focus-visible': {
                   outline: `2px solid ${colors.primary}`,
                   outlineOffset: 2,
@@ -172,7 +188,7 @@ export function FinancialSummaryWidget({
               <Typography
                 sx={{
                   ...metricValueSx(),
-                  color: item.accent,
+                  color: surface.fg,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -181,7 +197,8 @@ export function FinancialSummaryWidget({
                 {item.value}
               </Typography>
             </Box>
-          ))}
+            );
+          })}
         </Box>
       </Box>
     );

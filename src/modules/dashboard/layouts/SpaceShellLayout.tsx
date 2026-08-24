@@ -314,10 +314,10 @@ export function SpaceShellLayout() {
           }}
         >
           {spaceId ? <NotificationBellButton spaceId={spaceId} /> : null}
-          <Button variant="outlined" onClick={() => navigate(ROUTES.mySpaces)}>
+          <Button variant="outlined" color="primary" onClick={() => navigate(ROUTES.mySpaces)}>
             {t('navigation.mySpaces')}
           </Button>
-          <Button variant="outlined" onClick={() => navigate(ROUTES.profile)}>
+          <Button variant="outlined" color="primary" onClick={() => navigate(ROUTES.profile)}>
             {t('navigation.profile')}
           </Button>
           <Button variant="outlined" color="primary" onClick={() => void logout()}>

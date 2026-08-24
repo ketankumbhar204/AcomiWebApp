@@ -10,7 +10,6 @@ import {
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { colors } from '@/shared/theme/colors';
 import {
   spaceAddCustomersHubPath,
   spaceBedInventoryPath,
@@ -64,7 +63,7 @@ export function DashboardQuickActions({
     tiles.push(
       <QuickActionTile
         key="residents"
-        accent="#2563EB"
+        tone="success"
         icon={Building2}
         title={t('dashboard.quickActions.residents')}
         subtitle={t('dashboard.quickActions.residentsSubtitle')}
@@ -76,7 +75,7 @@ export function DashboardQuickActions({
     tiles.push(
       <QuickActionTile
         key="meals"
-        accent={colors.primaryDark}
+        tone="peach"
         icon={UtensilsCrossed}
         title={t('dashboard.quickActions.meals')}
         subtitle={t('dashboard.quickActions.mealsSubtitleShort')}
@@ -88,7 +87,7 @@ export function DashboardQuickActions({
     tiles.push(
       <QuickActionTile
         key="payments"
-        accent="#D97706"
+        tone="purple"
         icon={Wallet}
         title={t('dashboard.quickActions.payments')}
         subtitle={t('dashboard.quickActions.paymentsSubtitle')}
@@ -100,7 +99,7 @@ export function DashboardQuickActions({
     tiles.push(
       <QuickActionTile
         key="inventory"
-        accent={colors.teal}
+        tone="info"
         icon={Package}
         title={t('dashboard.quickActions.inventory')}
         subtitle={t('dashboard.quickActions.inventorySubtitle')}
@@ -112,7 +111,7 @@ export function DashboardQuickActions({
     tiles.push(
       <QuickActionTile
         key="add-customers"
-        accent="#2563EB"
+        tone="pink"
         icon={Users}
         title={t('dashboard.quickActions.setupAddCustomers')}
         subtitle={t('dashboard.quickActions.setupAddCustomersSubtitle')}
@@ -123,7 +122,7 @@ export function DashboardQuickActions({
     tiles.push(
       <QuickActionTile
         key="members"
-        accent="#2563EB"
+        tone="purple"
         icon={Users}
         title={t('dashboard.quickActions.members')}
         subtitle={t('dashboard.quickActions.membersSubtitle')}
@@ -136,7 +135,7 @@ export function DashboardQuickActions({
     tiles.push(
       <QuickActionTile
         key="notifications"
-        accent="#7C3AED"
+        tone="purple"
         icon={Bell}
         title={t('dashboard.quickActions.notifications', { defaultValue: 'Notifications' })}
         subtitle={t('dashboard.quickActions.notificationsSubtitle', {

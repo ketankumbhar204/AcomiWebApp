@@ -1,7 +1,6 @@
 import { Box, Button, Stack, Typography, useTheme } from '@mui/material';
 import {
   AlertTriangle,
-  Bell,
   ChevronRight,
   Package,
   UtensilsCrossed,
@@ -15,6 +14,7 @@ import type {
   SpaceNotification,
 } from '@/shared/types/dashboard';
 import { spacePendingActionsPath } from '@/routes/paths';
+import { semanticSurface } from '@/shared/theme/semantic';
 import { IconBadge } from './IconBadge';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
 
@@ -37,19 +37,19 @@ function flattenItems(groups: PendingActionGroup[], limit: number): SpaceNotific
   return items;
 }
 
-function itemIcon(item: SpaceNotification): { Icon: LucideIcon; accent: string } {
+function itemIcon(item: SpaceNotification): { Icon: LucideIcon; tone: 'warning' | 'peach' | 'danger' } {
   const type = (item.notificationType ?? '').toUpperCase();
   const title = (item.title ?? '').toLowerCase();
   if (type.includes('INVENTORY') || title.includes('stock') || title.includes('inventory')) {
-    return { Icon: Package, accent: '#D97706' };
+    return { Icon: Package, tone: 'warning' };
   }
   if (type.includes('MEAL') || type.includes('MENU') || title.includes('menu')) {
-    return { Icon: UtensilsCrossed, accent: '#D97706' };
+    return { Icon: UtensilsCrossed, tone: 'peach' };
   }
   if (item.priority === 'CRITICAL' || item.priority === 'HIGH') {
-    return { Icon: AlertTriangle, accent: '#EA580C' };
+    return { Icon: AlertTriangle, tone: 'danger' };
   }
-  return { Icon: Bell, accent: '#D97706' };
+  return { Icon: AlertTriangle, tone: 'warning' };
 }
 
 function priorityStyle(priority: NotificationPriority, dark: boolean) {
@@ -139,8 +139,9 @@ export function PendingActionsPanel({
       ) : (
         <Stack spacing={0.75} sx={{ flex: 1, minHeight: 0, justifyContent: 'flex-start' }}>
           {preview.map((item) => {
-            const { Icon, accent } = itemIcon(item);
+            const { Icon, tone } = itemIcon(item);
             const badge = priorityStyle(item.priority, dark);
+            const warn = semanticSurface('warning', theme.palette.mode);
             return (
               <Box
                 key={item.notificationId}
@@ -154,18 +155,18 @@ export function PendingActionsPanel({
                   px: 0.75,
                   py: 0.6,
                   borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-                  border: `1px solid ${s.border}`,
-                  bgcolor: s.elevated,
+                  border: `1px solid ${warn.border}`,
+                  bgcolor: warn.bg,
                   textDecoration: 'none',
                   color: 'inherit',
                   transition: DASHBOARD_UX.transition,
                   '&:hover': {
-                    bgcolor: s.surface,
                     boxShadow: s.shadow,
+                    transform: 'translateY(-1px)',
                   },
                 }}
               >
-                <IconBadge accent={accent}>
+                <IconBadge tone={tone}>
                   <Icon />
                 </IconBadge>
                 <Box sx={{ minWidth: 0, flex: 1 }}>

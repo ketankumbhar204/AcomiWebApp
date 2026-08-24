@@ -3,6 +3,7 @@
  */
 import type { SxProps, Theme } from '@mui/material';
 import { DASHBOARD_UX } from '@/modules/dashboard/theme/dashboardUx';
+import { colors } from '@/shared/theme/colors';
 
 export const dashOutlinedButtonSx: SxProps<Theme> = {
   ...DASHBOARD_UX.button,
@@ -18,4 +19,10 @@ export const dashContainedButtonSx: SxProps<Theme> = {
   ...dashOutlinedButtonSx,
   minHeight: 40,
   height: 40,
+  '&.MuiButton-containedPrimary': {
+    bgcolor: colors.primary,
+    color: colors.white,
+    '&:hover': { bgcolor: colors.primaryHover },
+    '&:active': { bgcolor: colors.primaryActive },
+  },
 };

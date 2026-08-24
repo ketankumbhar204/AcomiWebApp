@@ -50,7 +50,7 @@ export function PendingActionsHeroCard({ spaceId, pendingCount }: PendingActions
       }}
     >
       <Box sx={{ position: 'relative', flexShrink: 0 }}>
-        <IconBadge accent="#D97706">
+        <IconBadge tone="warning">
           <Bell />
         </IconBadge>
         {pendingCount > 0 ? (

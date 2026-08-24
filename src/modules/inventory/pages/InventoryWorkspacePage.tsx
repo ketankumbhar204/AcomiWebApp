@@ -503,10 +503,11 @@ export function InventoryWorkspacePage() {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="info"
               label={t('inventory.kpi.items')}
               value={String(dashboard.dashboard?.totalItems ?? itemsQuery.items.length)}
               icon={
-                <IconBadge accent={colors.success}>
+                <IconBadge tone="info">
                   <Package />
                 </IconBadge>
               }
@@ -519,10 +520,11 @@ export function InventoryWorkspacePage() {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="warning"
               label={t('inventory.kpi.low')}
               value={String(dashboard.dashboard?.lowStockCount ?? 0)}
               icon={
-                <IconBadge accent="#F59E0B">
+                <IconBadge tone="warning">
                   <ArrowDownCircle />
                 </IconBadge>
               }
@@ -535,10 +537,11 @@ export function InventoryWorkspacePage() {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="danger"
               label={t('inventory.kpi.out')}
               value={String(dashboard.dashboard?.outOfStockCount ?? 0)}
               icon={
-                <IconBadge accent="#3B82F6">
+                <IconBadge tone="danger">
                   <BarChart3 />
                 </IconBadge>
               }
@@ -551,13 +554,14 @@ export function InventoryWorkspacePage() {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="purple"
               label={t('inventory.kpi.value')}
               value={formatCurrency(dashboard.dashboard?.inventoryValue, 'INR')}
               hint={t('inventory.kpi.suppliersCount', {
                 count: dashboard.dashboard?.supplierCount ?? suppliers.suppliers.length,
               })}
               icon={
-                <IconBadge accent="#7C3AED">
+                <IconBadge tone="purple">
                   <IndianRupee />
                 </IconBadge>
               }
@@ -620,7 +624,7 @@ export function InventoryWorkspacePage() {
                 minWidth: 0,
               }}
             >
-              <IconBadge accent="#F59E0B">
+              <IconBadge tone="warning">
                 <AlertTriangle />
               </IconBadge>
               <Typography
@@ -664,7 +668,7 @@ export function InventoryWorkspacePage() {
               boxShadow: s.shadow,
             }}
           >
-            <IconBadge accent="#F59E0B">
+            <IconBadge tone="warning">
               <AlertTriangle />
             </IconBadge>
             <Typography

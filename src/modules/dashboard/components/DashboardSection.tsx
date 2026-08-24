@@ -31,13 +31,23 @@ export function DashboardSection({
         mb: surface ? 1 : 0.75,
       }}
     >
-      <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>{title}</Typography>
-          {subtitle ? (
-            <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, mt: 0.15 }}>
-              {subtitle}
-            </Typography>
-          ) : null}
+      <Box
+        sx={{
+          minWidth: 0,
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 1,
+          flexWrap: 'wrap',
+        }}
+      >
+        <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
+          {title}
+        </Typography>
+        {subtitle ? (
+          <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted }}>
+            {subtitle}
+          </Typography>
+        ) : null}
       </Box>
       {action}
     </Box>

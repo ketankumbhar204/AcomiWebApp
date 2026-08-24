@@ -49,7 +49,7 @@ function BrandMark({ collapsed }: { collapsed: boolean }) {
           width: 32,
           height: 32,
           borderRadius: '10px',
-          bgcolor: colors.primaryDark,
+          bgcolor: colors.teal,
           color: '#fff',
           display: 'grid',
           placeItems: 'center',
@@ -65,7 +65,7 @@ function BrandMark({ collapsed }: { collapsed: boolean }) {
         <Typography
           sx={{
             ...DASHBOARD_UX.spaceName,
-            color: 'primary.dark',
+            color: colors.teal,
             letterSpacing: '-0.02em',
             whiteSpace: 'nowrap',
           }}
@@ -250,8 +250,8 @@ function SidebarBody({
                 width: 32,
                 height: 32,
                 borderRadius: '50%',
-                bgcolor: `${colors.primaryDark}18`,
-                color: colors.primaryDark,
+                bgcolor: `${colors.teal}18`,
+                color: colors.teal,
                 display: 'grid',
                 placeItems: 'center',
               }}

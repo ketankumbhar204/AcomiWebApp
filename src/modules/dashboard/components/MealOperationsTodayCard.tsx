@@ -9,6 +9,7 @@ import { formatMenuDateLabel } from '@/modules/meals/utils/mealDates';
 import { spaceMealHeadcountPath, spaceMealsPath } from '@/routes/paths';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
+import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
 import type { DailyMenuResponse, MealType } from '@/shared/types/meals';
 import { IconBadge } from './IconBadge';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
@@ -21,10 +22,10 @@ const ICONS: Record<MealType, LucideIcon> = {
   DINNER: Moon,
 };
 
-const ACCENTS: Record<MealType, string> = {
-  BREAKFAST: '#D97706',
-  LUNCH: colors.primaryDark,
-  DINNER: '#7C3AED',
+const MEAL_TONES: Record<MealType, SemanticTone> = {
+  BREAKFAST: 'peach',
+  LUNCH: 'success',
+  DINNER: 'purple',
 };
 
 function hasPlannedMenu(menu: DailyMenuResponse | undefined): boolean {
@@ -124,7 +125,8 @@ export function MealOperationsTodayCard({
           const menu = menus.menus.find((row) => row.mealType === mealType);
           const planned = hasPlannedMenu(menu);
           const Icon = ICONS[mealType];
-          const accent = ACCENTS[mealType];
+          const tone = MEAL_TONES[mealType];
+          const surface = semanticSurface(tone, theme.palette.mode);
           const isShared = planned && menu?.status === 'PUBLISHED';
           const count = headcountByType[mealType];
 
@@ -165,8 +167,8 @@ export function MealOperationsTodayCard({
                 minWidth: 0,
                 px: 1.1,
                 py: 1,
-                bgcolor: s.elevated,
-                border: `1px solid ${s.border}`,
+                bgcolor: surface.bg,
+                border: `1px solid ${surface.border}`,
                 borderRadius: `${DASHBOARD_UX.tileRadius}px`,
                 display: 'flex',
                 flexDirection: 'column',
@@ -185,7 +187,7 @@ export function MealOperationsTodayCard({
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.65, minWidth: 0 }}>
-                <IconBadge accent={accent}>
+                <IconBadge tone={tone}>
                   <Icon />
                 </IconBadge>
                 <Typography

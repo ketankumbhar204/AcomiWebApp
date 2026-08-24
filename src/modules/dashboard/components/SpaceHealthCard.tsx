@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import type { HealthBandId, SpaceHealthResult } from '@/spaceLifecycle';
 import { spaceSpaceHealthPath } from '@/routes/paths';
 import { colors } from '@/shared/theme/colors';
+import { healthTone } from '@/shared/theme/semantic';
 import { HealthScoreRing } from './HealthScoreRing';
 import { IconBadge } from './IconBadge';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
@@ -40,6 +41,7 @@ export function SpaceHealthCard({ spaceId, health, pendingCount }: SpaceHealthCa
   const score = available ? health.score : 0;
   const band = available ? health.band : 'healthy';
   const color = bandColor(band);
+  const tone = healthTone(available ? band : undefined);
 
   return (
     <Box
@@ -91,7 +93,7 @@ export function SpaceHealthCard({ spaceId, health, pendingCount }: SpaceHealthCa
             {t('dashboard.health.title')}
           </Typography>
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-            <IconBadge accent={color}>
+            <IconBadge tone={tone}>
               <Shield />
             </IconBadge>
             <ChevronRight size={14} color={s.textMuted} aria-hidden />

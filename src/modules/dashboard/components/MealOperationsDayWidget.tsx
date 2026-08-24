@@ -18,6 +18,7 @@ import {
 import { spaceMealsPath } from '@/routes/paths';
 import { PeriodDayNav } from '@/shared/components/PeriodDayNav';
 import { colors } from '@/shared/theme/colors';
+import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
 import type { DailyMenuResponse, MealType } from '@/shared/types/meals';
 import { IconBadge } from './IconBadge';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
@@ -30,10 +31,10 @@ const ICONS: Record<MealType, LucideIcon> = {
   DINNER: Moon,
 };
 
-const ACCENTS: Record<MealType, string> = {
-  BREAKFAST: '#D97706',
-  LUNCH: colors.primaryDark,
-  DINNER: '#7C3AED',
+const MEAL_TONES: Record<MealType, SemanticTone> = {
+  BREAKFAST: 'peach',
+  LUNCH: 'success',
+  DINNER: 'purple',
 };
 
 function hasPlannedMenu(menu: DailyMenuResponse | undefined): boolean {
@@ -158,7 +159,8 @@ export function MealOperationsDayWidget({ spaceId, enabled }: MealOperationsDayW
           const menu = menus.menus.find((row) => row.mealType === mealType);
           const planned = hasPlannedMenu(menu);
           const Icon = ICONS[mealType];
-          const accent = ACCENTS[mealType];
+          const tone = MEAL_TONES[mealType];
+          const surface = semanticSurface(tone, theme.palette.mode);
           let statusLabel = t('meals.status.empty', { defaultValue: 'Empty' });
           if (planned && menu?.status === 'PUBLISHED') {
             statusLabel = t('meals.status.PUBLISHED', { defaultValue: 'Shared' });
@@ -187,8 +189,8 @@ export function MealOperationsDayWidget({ spaceId, enabled }: MealOperationsDayW
                 maxHeight: DASHBOARD_UX.mealCardMaxHeight,
                 px: `${DASHBOARD_UX.metricPadding + 2}px`,
                 py: `${DASHBOARD_UX.metricPadding}px`,
-                bgcolor: s.elevated,
-                border: `1px solid ${s.border}`,
+                bgcolor: surface.bg,
+                border: `1px solid ${surface.border}`,
                 borderRadius: `${DASHBOARD_UX.tileRadius}px`,
                 display: 'flex',
                 flexDirection: 'column',
@@ -214,7 +216,7 @@ export function MealOperationsDayWidget({ spaceId, enabled }: MealOperationsDayW
                   minWidth: 0,
                 }}
               >
-                <IconBadge accent={accent}>
+                <IconBadge tone={tone}>
                   <Icon />
                 </IconBadge>
                 <Typography

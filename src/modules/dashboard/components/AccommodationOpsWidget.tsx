@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import type { DashboardAccommodationOperations } from '@/shared/types/dashboard';
 import { spaceBedInventoryPath, spaceOccupancyListPath, spacePaymentsPath } from '@/routes/paths';
-import { colors } from '@/shared/theme/colors';
 import { DashboardSection } from './DashboardSection';
 import { IconBadge } from './IconBadge';
 import { MetricRow } from './MetricRow';
@@ -36,9 +35,9 @@ export function AccommodationOpsWidget({
             id: 'occupied',
             label: t('dashboard.accommodationOperations.occupiedBeds'),
             value: operations.occupiedBeds,
-            accent: colors.primaryDark,
+            tone: 'success',
             icon: (
-              <IconBadge accent={colors.primaryDark}>
+              <IconBadge tone="success">
                 <Users />
               </IconBadge>
             ),
@@ -50,9 +49,9 @@ export function AccommodationOpsWidget({
             id: 'vacant',
             label: t('dashboard.accommodationOperations.vacantBeds'),
             value: operations.vacantBeds,
-            accent: '#6366F1',
+            tone: 'purple',
             icon: (
-              <IconBadge accent="#6366F1">
+              <IconBadge tone="purple">
                 <BedDouble />
               </IconBadge>
             ),
@@ -64,9 +63,9 @@ export function AccommodationOpsWidget({
             id: 'moveIns',
             label: t('dashboard.accommodationOperations.moveInsThisMonth'),
             value: operations.moveInsThisMonth,
-            accent: '#3B82F6',
+            tone: 'info',
             icon: (
-              <IconBadge accent="#3B82F6">
+              <IconBadge tone="info">
                 <UserPlus />
               </IconBadge>
             ),
@@ -78,9 +77,9 @@ export function AccommodationOpsWidget({
             id: 'pendingPay',
             label: t('dashboard.accommodationOperations.pendingPayments'),
             value: operations.pendingPaymentsCount,
-            accent: '#F59E0B',
+            tone: 'warning',
             icon: (
-              <IconBadge accent="#F59E0B">
+              <IconBadge tone="warning">
                 <IndianRupee />
               </IconBadge>
             ),

@@ -11,7 +11,7 @@ export function occupancyRatio(occupied: number, total: number): number {
 export function occupancyAccent(occupied: number, total: number): string {
   if (total <= 0) return occupancyColors.empty;
   const ratio = occupied / total;
-  if (ratio >= 1) return occupancyColors.full;
+  if (ratio >= 1) return occupancyColors.occupied;
   if (ratio >= 0.5) return occupancyColors.partial;
   if (occupied > 0) return occupancyColors.partial;
   return occupancyColors.vacant;

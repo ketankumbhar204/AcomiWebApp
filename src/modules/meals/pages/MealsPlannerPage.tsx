@@ -313,11 +313,12 @@ export function MealsPlannerPage() {
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, sm: 4 }}>
               <StatCard
+                tone="success"
                 label={t('meals.planning.eligible')}
                 value={eligibility.summary?.distinctEligibleMemberCount ?? '—'}
                 hint={t('meals.planning.membersShort')}
                 icon={
-                  <IconBadge accent={colors.success}>
+                  <IconBadge tone="success">
                     <Users />
                   </IconBadge>
                 }
@@ -325,11 +326,12 @@ export function MealsPlannerPage() {
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>
               <StatCard
+                tone="info"
                 label={t('meals.planning.publishedSlots')}
                 value={publishedSlots}
                 hint={t('meals.planning.filterShared')}
                 icon={
-                  <IconBadge accent="#2563EB">
+                  <IconBadge tone="info">
                     <CalendarDays />
                   </IconBadge>
                 }
@@ -337,11 +339,12 @@ export function MealsPlannerPage() {
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>
               <StatCard
+                tone="warning"
                 label={t('meals.planning.openPolls')}
                 value={openPollCount}
                 hint={t('meals.poll.open')}
                 icon={
-                  <IconBadge accent={colors.warning}>
+                  <IconBadge tone="warning">
                     <PieChart />
                   </IconBadge>
                 }

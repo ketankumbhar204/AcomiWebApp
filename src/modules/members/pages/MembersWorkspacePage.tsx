@@ -661,11 +661,12 @@ export function MembersWorkspacePage() {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="success"
               label={t('membership.kpi.total')}
               value={kpi.total}
               hint={t('membership.kpi.totalHint')}
               icon={
-                <IconBadge accent={colors.success}>
+                <IconBadge tone="success">
                   <Users />
                 </IconBadge>
               }
@@ -674,11 +675,12 @@ export function MembersWorkspacePage() {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="info"
               label={t('membership.kpi.active')}
               value={kpi.active}
               hint={t('membership.kpi.activeHint')}
               icon={
-                <IconBadge accent="#2563EB">
+                <IconBadge tone="info">
                   <UserCheck />
                 </IconBadge>
               }
@@ -687,11 +689,12 @@ export function MembersWorkspacePage() {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="warning"
               label={t('membership.kpi.pending')}
               value={kpi.pending}
               hint={t('membership.kpi.pendingHint')}
               icon={
-                <IconBadge accent={colors.warning}>
+                <IconBadge tone="warning">
                   <Mail />
                 </IconBadge>
               }
@@ -704,11 +707,12 @@ export function MembersWorkspacePage() {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="purple"
               label={t('membership.kpi.joinedThisMonth')}
               value={kpi.joinedThisMonth}
               hint={t('membership.kpi.joinedThisMonthHint')}
               icon={
-                <IconBadge accent="#7C3AED">
+                <IconBadge tone="purple">
                   <CalendarPlus />
                 </IconBadge>
               }

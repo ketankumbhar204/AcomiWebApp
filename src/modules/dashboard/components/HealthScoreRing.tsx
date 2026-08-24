@@ -1,6 +1,5 @@
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, useTheme } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { colors } from '@/shared/theme/colors';
 import { DASHBOARD_UX } from '../theme/dashboardUx';
 
 type HealthScoreRingProps = {
@@ -17,10 +16,12 @@ export function HealthScoreRing({
   size = 56,
   strokeWidth = 5,
 }: HealthScoreRingProps) {
+  const theme = useTheme();
   const clamped = Math.max(0, Math.min(100, Math.round(score)));
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const [offset, setOffset] = useState(circumference);
+  const track = theme.palette.mode === 'dark' ? '#334155' : '#E2E8F0';
 
   useEffect(() => {
     const id = requestAnimationFrame(() => {
@@ -36,7 +37,7 @@ export function HealthScoreRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={colors.border}
+          stroke={track}
           strokeWidth={strokeWidth}
           fill="none"
         />

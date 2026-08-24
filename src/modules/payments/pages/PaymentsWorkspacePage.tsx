@@ -647,11 +647,12 @@ function OwnerPaymentsWorkspace({
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="success"
               label={t('payments.kpi.collected')}
               value={formatCurrency(financial?.collected, financial?.currencyCode)}
               hint={formatMonthLabel(month)}
               icon={
-                <IconBadge accent={colors.success}>
+                <IconBadge tone="success">
                   <Inbox />
                 </IconBadge>
               }
@@ -660,6 +661,7 @@ function OwnerPaymentsWorkspace({
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="warning"
               label={t('payments.kpi.pending')}
               value={formatCurrency(financial?.pending, financial?.currencyCode)}
               hint={t('payments.kpi.pendingMembersHint', {
@@ -667,7 +669,7 @@ function OwnerPaymentsWorkspace({
                 defaultValue: '{{count}} members',
               })}
               icon={
-                <IconBadge accent="#F59E0B">
+                <IconBadge tone="warning">
                   <IndianRupee />
                 </IconBadge>
               }
@@ -676,11 +678,12 @@ function OwnerPaymentsWorkspace({
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="info"
               label={t('payments.kpi.underReview')}
               value={formatCurrency(financial?.underReview, financial?.currencyCode)}
               hint={t('payments.kpi.reviewCount', { count: counts?.pendingReview ?? 0 })}
               icon={
-                <IconBadge accent="#3B82F6">
+                <IconBadge tone="info">
                   <Clock3 />
                 </IconBadge>
               }
@@ -689,11 +692,12 @@ function OwnerPaymentsWorkspace({
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="accent"
               label={t('payments.kpi.expected')}
               value={formatCurrency(financial?.expectedCharges, financial?.currencyCode)}
               hint={t('payments.kpi.expectedHint', { defaultValue: 'This month' })}
               icon={
-                <IconBadge accent="#7C3AED">
+                <IconBadge tone="accent">
                   <CalendarDays />
                 </IconBadge>
               }

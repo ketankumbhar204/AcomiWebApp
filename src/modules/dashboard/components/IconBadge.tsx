@@ -1,16 +1,19 @@
 import { Box, useTheme } from '@mui/material';
 import type { ReactNode } from 'react';
+import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
 
 type IconBadgeProps = {
   children: ReactNode;
-  accent: string;
+  accent?: string;
+  tone?: SemanticTone;
 };
 
-/** Compact 28×28 pastel well, radius 6, icon 16. */
-export function IconBadge({ children, accent }: IconBadgeProps) {
+/** Compact pastel icon well — prefer `tone` so color meaning stays shared. */
+export function IconBadge({ children, accent, tone }: IconBadgeProps) {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const surface = tone ? semanticSurface(tone, theme.palette.mode) : null;
 
   return (
     <Box
@@ -18,8 +21,12 @@ export function IconBadge({ children, accent }: IconBadgeProps) {
         width: DASHBOARD_UX.iconWell,
         height: DASHBOARD_UX.iconWell,
         borderRadius: `${DASHBOARD_UX.iconWellRadius}px`,
-        bgcolor: theme.palette.mode === 'dark' ? s.elevated : `${accent}1A`,
-        color: accent,
+        bgcolor: surface
+          ? surface.iconBg
+          : theme.palette.mode === 'dark'
+            ? s.elevated
+            : `${accent ?? s.textMuted}1A`,
+        color: surface?.fg ?? accent ?? s.textMuted,
         display: 'grid',
         placeItems: 'center',
         flexShrink: 0,

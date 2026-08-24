@@ -501,11 +501,12 @@ export function ComplaintsWorkspacePage() {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="warning"
               label={t('complaints.kpi.open')}
               value={String(list.openCount)}
               onClick={() => setFilter('status', 'OPEN')}
               icon={
-                <IconBadge accent={colors.success}>
+                <IconBadge tone="warning">
                   <CircleDot />
                 </IconBadge>
               }
@@ -514,11 +515,12 @@ export function ComplaintsWorkspacePage() {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="info"
               label={t('complaints.kpi.inProgress')}
               value={String(list.inProgressCount)}
               onClick={() => setFilter('status', 'IN_PROGRESS')}
               icon={
-                <IconBadge accent="#F59E0B">
+                <IconBadge tone="info">
                   <Clock3 />
                 </IconBadge>
               }
@@ -527,11 +529,12 @@ export function ComplaintsWorkspacePage() {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="success"
               label={t('complaints.kpi.resolved')}
               value={String(list.resolvedCount)}
               onClick={() => setFilter('status', 'RESOLVED')}
               icon={
-                <IconBadge accent="#3B82F6">
+                <IconBadge tone="success">
                   <CheckCircle2 />
                 </IconBadge>
               }
@@ -540,11 +543,12 @@ export function ComplaintsWorkspacePage() {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <StatCard
               dense
+              tone="danger"
               label={t('complaints.kpi.highPriority')}
               value={String(urgentCount)}
               hint={t('complaints.kpi.total', { count: list.totalCount })}
               icon={
-                <IconBadge accent={colors.danger}>
+                <IconBadge tone="danger">
                   <TriangleAlert />
                 </IconBadge>
               }

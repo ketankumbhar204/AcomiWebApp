@@ -17,29 +17,32 @@ export const colors = {
   primaryActive: '#1AAE50',
   teal: '#128C7E',
   tealDark: '#075E54',
-  /** Alias of teal — existing call sites. */
-  primaryDark: '#128C7E',
+  /**
+   * Darker/alias primary for CTA fills & selected actions.
+   * Must stay on the WhatsApp green family — not teal chrome.
+   */
+  primaryDark: '#25D366',
 
-  // Surfaces
+  // Surfaces — cool page wash so pastel cards (not mint) carry meaning
   /** App / page background */
-  background: '#F3FAF6',
-  /** Subtle mint wells */
+  background: '#F5F7FA',
+  /** Subtle mint wells (brand selected / success only) */
   mintSubtle: '#EAF8F2',
   /** Secondary surface */
-  surfaceSecondary: '#EDF8F2',
+  surfaceSecondary: '#F8FAFC',
   /** Section background */
-  section: '#EAF7F0',
+  section: '#F1F5F9',
   /** Card / elevated card */
   surface: '#FFFFFF',
   white: '#FFFFFF',
   /** Hover surface */
-  hover: '#F0FAF4',
-  /** Selected surface */
+  hover: '#F8FAFC',
+  /** Selected surface — brand mint */
   selected: '#E2F7EC',
 
   // Borders / dividers
-  border: '#DCEFE3',
-  divider: '#E6F2EA',
+  border: '#E2E8F0',
+  divider: '#E8EEF2',
 
   // Semantic tints
   lightGreen: '#E8F8EF',
@@ -47,6 +50,10 @@ export const colors = {
   warningTint: '#FFF8E8',
   errorTint: '#FFF0F0',
   infoTint: '#EFF6FF',
+  purpleTint: '#F4F0FF',
+  pinkTint: '#FDF2F8',
+  purple: '#6D28D9',
+  pink: '#BE185D',
 
   // Text + status
   textPrimary: '#0F172A',
@@ -65,7 +72,7 @@ export const darkColors = {
   primaryActive: '#1AAE50',
   teal: '#2DD4BF',
   tealDark: '#115E59',
-  primaryDark: '#2DD4BF',
+  primaryDark: '#25D366',
   background: '#111827',
   mintSubtle: '#0B241C',
   surfaceSecondary: '#1A2332',
@@ -81,6 +88,10 @@ export const darkColors = {
   warningTint: 'rgba(217, 119, 6, 0.12)',
   errorTint: 'rgba(248, 113, 113, 0.12)',
   infoTint: 'rgba(147, 197, 253, 0.12)',
+  purpleTint: 'rgba(167, 139, 250, 0.16)',
+  pinkTint: 'rgba(244, 114, 182, 0.16)',
+  purple: '#C4B5FD',
+  pink: '#F9A8D4',
   textPrimary: '#F9FAFB',
   textSecondary: '#D1D5DB',
   muted: '#9CA3AF',
@@ -101,11 +112,12 @@ export const spaceTypePalette = {
   RENTAL: { accent: '#0284C7', tint: '#E8F4FF', selectedTint: '#D6ECFC' },
 } as const;
 
-/** Occupancy / accommodation status — keep statuses distinguishable. */
+/** Occupancy / accommodation status — occupied mint, vacant lavender. */
 export const occupancyColors = {
-  vacant: '#10B981',
+  vacant: '#7C3AED',
+  occupied: '#059669',
   partial: '#3B82F6',
-  full: '#F59E0B',
+  full: '#059669',
   empty: '#94A3B8',
   reserved: '#D97706',
 } as const;
@@ -121,5 +133,6 @@ export function acomiCssVars(c: AcomiColorTokens | typeof darkColors): Record<st
     '--acomi-page': c.background,
     '--acomi-selected': c.selected,
     '--acomi-surface': c.surface,
+    '--acomi-border': c.border,
   };
 }
