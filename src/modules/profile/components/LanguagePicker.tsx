@@ -14,9 +14,10 @@ import {
 
 type LanguagePickerProps = {
   value: AppLanguage;
+  hideLabel?: boolean;
 };
 
-export function LanguagePicker({ value }: LanguagePickerProps) {
+export function LanguagePicker({ value, hideLabel = false }: LanguagePickerProps) {
   const { t } = useTranslation();
 
   const handleChange = (event: SelectChangeEvent) => {
@@ -27,14 +28,17 @@ export function LanguagePicker({ value }: LanguagePickerProps) {
 
   return (
     <FormControl fullWidth size="small">
-      <InputLabel id="app-language-label">{t('settings.language.title')}</InputLabel>
+      {hideLabel ? null : (
+        <InputLabel id="app-language-label">{t('settings.language.title')}</InputLabel>
+      )}
       <Select
-        labelId="app-language-label"
+        labelId={hideLabel ? undefined : 'app-language-label'}
         id="app-language"
         value={value}
-        label={t('settings.language.title')}
+        label={hideLabel ? undefined : t('settings.language.title')}
         onChange={handleChange}
         aria-label={t('settings.language.select')}
+        displayEmpty={hideLabel}
       >
         {SUPPORTED_LANGUAGES.map((language) => (
           <MenuItem key={language} value={language}>

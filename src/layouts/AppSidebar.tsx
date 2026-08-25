@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { UserRound } from 'lucide-react';
+import { Home, UserRound } from 'lucide-react';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { APP_NAME } from '@/shared/constants/app';
 import { colors } from '@/shared/theme/colors';
@@ -28,6 +28,11 @@ type AppSidebarProps = {
   variant: 'permanent' | 'temporary';
   open: boolean;
   onClose?: () => void;
+  /**
+   * `hover` — icon rail that expands on hover (space shell).
+   * `pinned` — always-open labels, matching the account-level mock.
+   */
+  expandMode?: 'hover' | 'pinned';
 };
 
 function BrandMark({ collapsed }: { collapsed: boolean }) {
@@ -48,24 +53,21 @@ function BrandMark({ collapsed }: { collapsed: boolean }) {
         sx={{
           width: 32,
           height: 32,
-          borderRadius: '10px',
-          bgcolor: colors.teal,
+          borderRadius: '50%',
+          bgcolor: colors.primary,
           color: '#fff',
           display: 'grid',
           placeItems: 'center',
-          fontWeight: 800,
-          fontSize: '0.95rem',
-          letterSpacing: '-0.04em',
           flexShrink: 0,
         }}
       >
-        A
+        <Home size={16} strokeWidth={2.25} />
       </Box>
       {!collapsed ? (
         <Typography
           sx={{
             ...DASHBOARD_UX.spaceName,
-            color: colors.teal,
+            color: 'text.primary',
             letterSpacing: '-0.02em',
             whiteSpace: 'nowrap',
           }}
@@ -82,12 +84,15 @@ function SidebarBody({
   panel,
   footer,
   collapsed,
+  hoverExpand,
   onNavigate,
 }: {
   sections: AppNavSection[];
   panel?: React.ReactNode;
   footer?: React.ReactNode;
   collapsed: boolean;
+  /** Desktop hover-expand: labels appear on hover, so icon tooltips would steal the pointer. */
+  hoverExpand?: boolean;
   onNavigate?: () => void;
 }) {
   const theme = useTheme();
@@ -146,10 +151,13 @@ function SidebarBody({
                       borderRadius: 1.5,
                       mb: 0.2,
                       py: 0,
-                      minHeight: DASHBOARD_UX.navRowHeight,
+                      minHeight: collapsed ? DASHBOARD_UX.navRowHeight : 40,
                       px: collapsed ? 1 : 1.25,
                       justifyContent: collapsed ? 'center' : 'flex-start',
                       position: 'relative',
+                      '&:hover': {
+                        bgcolor: 'rgba(18, 140, 126, 0.08)',
+                      },
                       '&.active': {
                         bgcolor: 'rgba(18, 140, 126, 0.12)',
                         color: 'primary.dark',
@@ -165,6 +173,9 @@ function SidebarBody({
                         },
                         '& .MuiListItemIcon-root': { color: 'primary.dark' },
                         '& .MuiListItemText-primary': { ...DASHBOARD_UX.sidebarAccount },
+                      },
+                      '&.active:hover': {
+                        bgcolor: 'rgba(18, 140, 126, 0.18)',
                       },
                     }}
                   >
@@ -214,7 +225,7 @@ function SidebarBody({
                   </ListItemButton>
                 );
 
-                if (collapsed) {
+                if (collapsed && !hoverExpand) {
                   return (
                     <Tooltip key={item.id} title={item.label} placement="right">
                       <Box component="span" sx={{ display: 'block' }}>
@@ -274,8 +285,10 @@ export function AppSidebar({
   variant,
   open,
   onClose,
+  expandMode = 'hover',
 }: AppSidebarProps) {
   const theme = useTheme();
+  const pinned = expandMode === 'pinned';
   const isHoverExpand = useMediaQuery(theme.breakpoints.up('lg'), { noSsr: true });
   const [hovered, setHovered] = useState(false);
   const [tabletExpanded, setTabletExpanded] = useState(false);
@@ -285,6 +298,13 @@ export function AppSidebar({
       setTabletExpanded(false);
     }
   }, [isHoverExpand]);
+
+  const openHover = () => {
+    if (isHoverExpand) setHovered(true);
+  };
+  const closeHover = () => {
+    if (isHoverExpand) setHovered(false);
+  };
 
   if (variant === 'temporary') {
     return (
@@ -308,19 +328,21 @@ export function AppSidebar({
           panel={panel}
           footer={footer}
           collapsed={false}
+          hoverExpand={false}
           onNavigate={onClose}
         />
       </Drawer>
     );
   }
 
-  const expanded = isHoverExpand ? hovered : tabletExpanded;
+  const expanded = pinned ? true : isHoverExpand ? hovered : tabletExpanded;
   const paperWidth = expanded ? LAYOUT.sidebarWidth : LAYOUT.sidebarCollapsedWidth;
+  const inFlowWidth = pinned ? LAYOUT.sidebarWidth : LAYOUT.sidebarCollapsedWidth;
   const transition = `width ${LAYOUT.sidebarTransitionMs}ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow ${LAYOUT.sidebarTransitionMs}ms ease`;
 
   return (
     <>
-      {!isHoverExpand && tabletExpanded ? (
+      {!pinned && !isHoverExpand && tabletExpanded ? (
         <Box
           aria-hidden
           onClick={() => setTabletExpanded(false)}
@@ -336,28 +358,34 @@ export function AppSidebar({
       <Drawer
         variant="permanent"
         open
-        onMouseEnter={() => {
-          if (isHoverExpand) setHovered(true);
-        }}
-        onMouseLeave={() => {
-          if (isHoverExpand) setHovered(false);
-        }}
-        onFocus={() => {
-          if (isHoverExpand) setHovered(true);
-        }}
-        onBlur={(event) => {
-          if (isHoverExpand && !event.currentTarget.contains(event.relatedTarget as Node)) {
-            setHovered(false);
-          }
-        }}
+        onMouseEnter={pinned ? undefined : openHover}
+        onMouseLeave={pinned ? undefined : closeHover}
+        onFocus={pinned ? undefined : openHover}
+        onBlur={
+          pinned
+            ? undefined
+            : (event) => {
+                if (isHoverExpand && !event.currentTarget.contains(event.relatedTarget as Node)) {
+                  setHovered(false);
+                }
+              }
+        }
         onClick={() => {
-          if (!isHoverExpand && !tabletExpanded) {
+          if (!pinned && !isHoverExpand && !tabletExpanded) {
             setTabletExpanded(true);
           }
         }}
+        slotProps={{
+          paper: pinned
+            ? undefined
+            : {
+                onMouseEnter: openHover,
+                onMouseLeave: closeHover,
+              },
+        }}
         sx={{
           display: { xs: 'none', md: 'block' },
-          width: LAYOUT.sidebarCollapsedWidth,
+          width: inFlowWidth,
           flexShrink: 0,
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
@@ -365,15 +393,15 @@ export function AppSidebar({
             borderRight: 1,
             borderColor: 'divider',
             bgcolor: 'background.paper',
-            position: 'fixed',
+            position: pinned ? 'relative' : 'fixed',
             left: 0,
             top: 0,
             height: '100vh',
             maxHeight: '100vh',
             overflow: 'hidden',
-            transition,
-            boxShadow: expanded ? '8px 0 28px rgba(15, 23, 42, 0.10)' : 'none',
-            zIndex: (z) => z.zIndex.drawer + (expanded ? 2 : 0),
+            transition: pinned ? 'none' : transition,
+            boxShadow: !pinned && expanded ? '8px 0 28px rgba(15, 23, 42, 0.10)' : 'none',
+            zIndex: (z) => z.zIndex.drawer + (!pinned && expanded ? 2 : 0),
           },
         }}
       >
@@ -382,8 +410,9 @@ export function AppSidebar({
           panel={panel}
           footer={footer}
           collapsed={!expanded}
+          hoverExpand={!pinned && isHoverExpand}
           onNavigate={() => {
-            if (!isHoverExpand) setTabletExpanded(false);
+            if (!pinned && !isHoverExpand) setTabletExpanded(false);
           }}
         />
       </Drawer>

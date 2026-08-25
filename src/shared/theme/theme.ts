@@ -79,10 +79,16 @@ export function createAcomiTheme(mode: ThemeMode = 'light'): Theme {
     components: {
       MuiCssBaseline: {
         styleOverrides: {
-          html: acomiCssVars(c),
+          html: {
+            ...acomiCssVars(c),
+            fontSize: 16,
+          },
           body: {
             backgroundColor: c.background,
             color: c.textPrimary,
+            fontSize: DASHBOARD_UX.body.fontSize,
+            fontWeight: DASHBOARD_UX.body.fontWeight,
+            lineHeight: DASHBOARD_UX.body.lineHeight,
           },
         },
       },
@@ -163,8 +169,80 @@ export function createAcomiTheme(mode: ThemeMode = 'light'): Theme {
           },
         },
       },
+      MuiTab: {
+        styleOverrides: {
+          root: {
+            ...DASHBOARD_UX.button,
+            textTransform: 'none',
+            minHeight: 36,
+          },
+        },
+      },
+      MuiTableCell: {
+        styleOverrides: {
+          root: {
+            ...DASHBOARD_UX.body,
+          },
+          head: {
+            ...DASHBOARD_UX.caption,
+            fontWeight: 600,
+            textTransform: 'none',
+            letterSpacing: 0,
+          },
+        },
+      },
+      MuiMenuItem: {
+        styleOverrides: {
+          root: {
+            ...DASHBOARD_UX.body,
+            minHeight: 36,
+          },
+        },
+      },
+      MuiListItemText: {
+        styleOverrides: {
+          primary: {
+            ...DASHBOARD_UX.body,
+          },
+          secondary: {
+            ...DASHBOARD_UX.greetingSub,
+          },
+        },
+      },
+      MuiInputBase: {
+        styleOverrides: {
+          root: {
+            ...DASHBOARD_UX.inputText,
+          },
+          input: {
+            ...DASHBOARD_UX.inputText,
+          },
+        },
+      },
+      MuiInputLabel: {
+        styleOverrides: {
+          root: {
+            ...DASHBOARD_UX.inputLabel,
+          },
+        },
+      },
+      MuiFormControlLabel: {
+        styleOverrides: {
+          label: {
+            ...DASHBOARD_UX.body,
+          },
+        },
+      },
       MuiChip: {
         styleOverrides: {
+          root: {
+            ...DASHBOARD_UX.badge,
+            textTransform: 'none',
+          },
+          label: {
+            textTransform: 'none',
+            letterSpacing: 0,
+          },
           colorPrimary: {
             backgroundColor: c.lightGreen,
             color: c.tealDark,

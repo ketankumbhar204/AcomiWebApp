@@ -182,7 +182,7 @@ export function SpaceCardCompact({
             sx={{
               width: DASHBOARD_UX.iconWell,
               height: DASHBOARD_UX.iconWell,
-              borderRadius: `${DASHBOARD_UX.iconWellRadius}px`,
+              borderRadius: '50%',
               bgcolor: theme.palette.mode === 'dark' ? s.elevated : `${colors.primaryDark}14`,
               color: colors.primaryDark,
               display: 'grid',
@@ -240,7 +240,7 @@ export function SpaceCardCompact({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, pl: 0.25 }}>
           <MapPin size={12} color={s.textMuted} strokeWidth={1.75} aria-hidden />
           <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }} noWrap>
-            {space.address?.trim() || t('spaces.details.notProvided')}
+            {space.address?.trim() || '—'}
           </Typography>
         </Box>
 

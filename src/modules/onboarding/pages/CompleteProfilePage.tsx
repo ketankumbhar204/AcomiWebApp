@@ -1,25 +1,31 @@
 import {
   Alert,
+  Box,
   Button,
-  FormControl,
-  InputLabel,
+  InputAdornment,
   LinearProgress,
   MenuItem,
-  Select,
   Stack,
-  Step,
-  StepLabel,
-  Stepper,
   TextField,
   Typography,
   useTheme,
 } from '@mui/material';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowRight,
+  Calendar,
+  ChevronDown,
+  FileText,
+  Image as ImageIcon,
+  Mail,
+  MapPin,
+  Phone,
+  UserRound,
+} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
-import { AppLayout } from '@/layouts/AppLayout';
-import { useLogout } from '@/modules/auth/hooks/useLogout';
+import { OnboardingLayout } from '@/layouts/OnboardingLayout';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { useCompleteProfile } from '@/modules/onboarding/hooks/useCompleteProfile';
 import {
@@ -27,38 +33,438 @@ import {
   profileCompletionPercentage,
 } from '@/modules/onboarding/utils/profileCompletion';
 import { ContentCard } from '@/shared/components/ContentCard';
-import { FormSection } from '@/shared/components/FormSection';
-import { PageContainer } from '@/shared/components/PageContainer';
-import { PageHeader } from '@/shared/components/PageHeader';
 import { StickyFooter, StickyFooterClearance } from '@/shared/components/StickyFooter';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { ROUTES, spaceDashboardPath } from '@/routes/paths';
 import type { MemberGender } from '@/shared/types/auth';
+import type { MemberDocumentType } from '@/shared/types/member';
+import { normalizeIndianMobileDigits } from '@/shared/utils/indianMobile';
 import { useAuthStore } from '@/store/authStore';
 import { useSpaceStore } from '@/store/spaceStore';
+import dayjs from 'dayjs';
 
 const STEPS = ['personal', 'address', 'emergency', 'documents'] as const;
 const GENDERS: MemberGender[] = ['MALE', 'FEMALE', 'OTHER'];
+const DOCUMENT_TYPES: MemberDocumentType[] = [
+  'AADHAAR',
+  'PAN',
+  'PASSPORT',
+  'DRIVING_LICENSE',
+  'STUDENT_ID',
+  'OTHER',
+];
+const RELATIONS = ['Mother', 'Father', 'Spouse', 'Sibling', 'Guardian', 'Friend', 'Other'] as const;
+const PHOTO_MAX_BYTES = 2 * 1024 * 1024;
+
+function selectableGender(value: MemberGender | null | undefined): MemberGender | '' {
+  return value === 'MALE' || value === 'FEMALE' || value === 'OTHER' ? value : '';
+}
+
+/** Native date inputs need YYYY-MM-DD. */
+function toIsoDate(value: string | null | undefined): string {
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) return trimmed.slice(0, 10);
+  const dmy = trimmed.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
+  if (dmy) {
+    const parsed = dayjs(`${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`);
+    return parsed.isValid() ? parsed.format('YYYY-MM-DD') : '';
+  }
+  const parsed = dayjs(trimmed);
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD') : '';
+}
+
+const fieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '12px',
+    minHeight: 48,
+    bgcolor: 'background.paper',
+  },
+  '& .MuiSelect-select': {
+    display: 'flex',
+    alignItems: 'center',
+    minHeight: 48,
+    py: 0,
+  },
+} as const;
+
+function IconField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  icon,
+  required,
+  disabled,
+  type,
+  multiline,
+}: {
+  label: string;
+  value: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  icon: ReactNode;
+  required?: boolean;
+  disabled?: boolean;
+  type?: string;
+  multiline?: boolean;
+}) {
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
+
+  return (
+    <Box>
+      <Typography sx={{ ...DASHBOARD_UX.inputLabel, color: s.textSecondary, mb: 0.75 }}>
+        {label}
+        {required ? ' *' : ''}
+      </Typography>
+      <TextField
+        value={value}
+        onChange={onChange ? (event) => onChange(event.target.value) : undefined}
+        placeholder={placeholder}
+        required={required}
+        disabled={disabled}
+        type={type}
+        multiline={multiline}
+        minRows={multiline ? 2 : undefined}
+        fullWidth
+        hiddenLabel
+        sx={fieldSx}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start" sx={{ color: colors.primary }}>
+                {icon}
+              </InputAdornment>
+            ),
+          },
+        }}
+      />
+    </Box>
+  );
+}
+
+function DateOfBirthField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
+  const iso = toIsoDate(value);
+  const max = dayjs().format('YYYY-MM-DD');
+  const min = dayjs().subtract(120, 'year').format('YYYY-MM-DD');
+  const display = iso ? dayjs(iso).format('DD-MM-YYYY') : '';
+
+  return (
+    <Box>
+      <Typography sx={{ ...DASHBOARD_UX.inputLabel, color: s.textSecondary, mb: 0.75 }}>
+        {label}
+      </Typography>
+      <Box sx={{ position: 'relative' }}>
+        <TextField
+          value={display}
+          placeholder={placeholder}
+          fullWidth
+          hiddenLabel
+          sx={fieldSx}
+          slotProps={{
+            htmlInput: { readOnly: true, tabIndex: -1 },
+            input: {
+              startAdornment: (
+                <InputAdornment position="start" sx={{ color: colors.primary }}>
+                  <Calendar size={16} />
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
+        <Box
+          component="input"
+          type="date"
+          value={iso}
+          min={min}
+          max={max}
+          aria-label={label}
+          onChange={(event) => onChange(event.target.value)}
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            opacity: 0,
+            cursor: 'pointer',
+            width: '100%',
+            height: '100%',
+            border: 0,
+            zIndex: 1,
+          }}
+        />
+      </Box>
+    </Box>
+  );
+}
+
+function IconSelectField({
+  label,
+  placeholder,
+  value,
+  onChange,
+  options,
+  icon,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+  icon: ReactNode;
+}) {
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
+
+  return (
+    <Box>
+      <Typography sx={{ ...DASHBOARD_UX.inputLabel, color: s.textSecondary, mb: 0.75 }}>
+        {label}
+      </Typography>
+      <TextField
+        select
+        fullWidth
+        hiddenLabel
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        sx={fieldSx}
+        slotProps={{
+          select: {
+            displayEmpty: true,
+            renderValue: (selected) => {
+              const current = String(selected ?? '');
+              if (!current) {
+                return (
+                  <Typography component="span" sx={{ ...DASHBOARD_UX.inputText, color: s.textMuted }}>
+                    {placeholder}
+                  </Typography>
+                );
+              }
+              return options.find((option) => option.value === current)?.label ?? current;
+            },
+          },
+          input: {
+            startAdornment: (
+              <InputAdornment position="start" sx={{ color: colors.primary, pointerEvents: 'none' }}>
+                {icon}
+              </InputAdornment>
+            ),
+          },
+        }}
+      >
+        {options.map((option) => (
+          <MenuItem key={option.value} value={option.value}>
+            {option.label}
+          </MenuItem>
+        ))}
+      </TextField>
+    </Box>
+  );
+}
+
+function MobileWithCountryCodeField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  disabled = false,
+}: {
+  label: string;
+  value: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
+  const digits = normalizeIndianMobileDigits(value);
+
+  return (
+    <Box>
+      <Typography sx={{ ...DASHBOARD_UX.inputLabel, color: s.textSecondary, mb: 0.75 }}>
+        {label}
+      </Typography>
+      <TextField
+        value={digits}
+        onChange={onChange ? (event) => onChange(normalizeIndianMobileDigits(event.target.value)) : undefined}
+        placeholder={placeholder}
+        disabled={disabled}
+        fullWidth
+        hiddenLabel
+        sx={fieldSx}
+        slotProps={{
+          htmlInput: { inputMode: 'numeric', maxLength: 10, autoComplete: 'tel-national' },
+          input: {
+            startAdornment: (
+              <InputAdornment position="start" sx={{ mr: 0.75 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: colors.primary }}>
+                  <Phone size={16} />
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.25,
+                      px: 0.75,
+                      py: 0.25,
+                      borderRadius: '8px',
+                      bgcolor: s.elevated,
+                      border: `1px solid ${s.border}`,
+                      color: s.textPrimary,
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.875rem', lineHeight: 1.2 }}>
+                      +91
+                    </Typography>
+                    <ChevronDown size={14} />
+                  </Box>
+                </Box>
+              </InputAdornment>
+            ),
+          },
+        }}
+      />
+    </Box>
+  );
+}
+
+function ProfileStepper({
+  current,
+  labels,
+  onStepClick,
+}: {
+  current: number;
+  labels: string[];
+  onStepClick: (index: number) => void;
+}) {
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
+
+  return (
+    <Box
+      component="ol"
+      sx={{
+        listStyle: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        m: 0,
+        p: 0,
+        width: '100%',
+        overflowX: 'auto',
+      }}
+    >
+      {labels.map((label, index) => {
+        const active = index === current;
+        const completed = index < current;
+        const filled = active || completed;
+        return (
+          <Box
+            key={label}
+            component="li"
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              flex: index === labels.length - 1 ? '0 0 auto' : 1,
+              minWidth: 0,
+            }}
+          >
+            <Box
+              component="button"
+              type="button"
+              onClick={() => index <= current && onStepClick(index)}
+              disabled={index > current}
+              aria-current={active ? 'step' : undefined}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                border: 0,
+                bgcolor: 'transparent',
+                p: 0,
+                cursor: index <= current ? 'pointer' : 'default',
+                minWidth: 0,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  flexShrink: 0,
+                  display: 'grid',
+                  placeItems: 'center',
+                  bgcolor: filled ? colors.primary : s.elevated,
+                  color: filled ? '#fff' : s.textMuted,
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  border: filled ? 0 : `1px solid ${s.border}`,
+                }}
+              >
+                {index + 1}
+              </Box>
+              <Typography
+                noWrap
+                sx={{
+                  ...DASHBOARD_UX.body,
+                  fontWeight: filled ? 600 : 500,
+                  color: filled ? colors.primary : s.textMuted,
+                  textDecoration: active ? 'underline' : 'none',
+                  textUnderlineOffset: '4px',
+                  display: { xs: index === current ? 'block' : 'none', sm: 'block' },
+                }}
+              >
+                {label}
+              </Typography>
+            </Box>
+            {index < labels.length - 1 ? (
+              <Box
+                sx={{
+                  flex: 1,
+                  height: 2,
+                  mx: 1.5,
+                  minWidth: 16,
+                  bgcolor: index <= current ? colors.primary : s.border,
+                }}
+              />
+            ) : null}
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
 
 export function CompleteProfilePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const isEditMode = params.get('mode') === 'edit';
-  const logout = useLogout();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const user = useAuthStore((state) => state.user);
+  const userId = user?.id;
   const selectedSpaceId = useSpaceStore((state) => state.selectedSpaceId);
   const mySpaces = useSpaceStore((state) => state.mySpaces);
   const { completeProfile, isSubmitting, error, clearError } = useCompleteProfile();
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [fullName, setFullName] = useState(user?.fullName ?? '');
-  const [gender, setGender] = useState<MemberGender | ''>(user?.gender ?? '');
-  const [dateOfBirth, setDateOfBirth] = useState(user?.dateOfBirth ?? '');
+  const [gender, setGender] = useState<MemberGender | ''>(selectableGender(user?.gender));
+  const [dateOfBirth, setDateOfBirth] = useState(toIsoDate(user?.dateOfBirth));
   const [email, setEmail] = useState(user?.email ?? '');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(user?.profilePhotoUrl ?? '');
   const [permanentAddress, setPermanentAddress] = useState(user?.permanentAddress ?? '');
@@ -79,7 +485,22 @@ export function CompleteProfilePage() {
     document.title = `${t('profileCompletion.wizard.title')} · ${t('common.appName')}`;
   }, [t]);
 
+  useEffect(() => {
+    const current = useAuthStore.getState().user;
+    if (!current || current.id !== userId) return;
+    setFullName(current.fullName ?? '');
+    setGender(selectableGender(current.gender));
+    setDateOfBirth(toIsoDate(current.dateOfBirth));
+    setEmail(current.email ?? '');
+    setProfilePhotoUrl(current.profilePhotoUrl ?? '');
+    setPermanentAddress(current.permanentAddress ?? '');
+    setCity(current.city ?? '');
+    setStateName(current.state ?? '');
+    setPincode(current.pincode ?? '');
+  }, [userId]);
+
   const progress = useMemo(() => profileCompletionPercentage(user), [user]);
+  const stepLabels = STEPS.map((step) => t(`profileCompletion.wizard.sections.${step}`));
 
   const validateStep = () => {
     const step = STEPS[stepIndex];
@@ -124,7 +545,7 @@ export function CompleteProfilePage() {
     const ok = await completeProfile({
       fullName: fullName.trim(),
       gender: gender || null,
-      dateOfBirth: dateOfBirth.trim() || null,
+      dateOfBirth: toIsoDate(dateOfBirth) || null,
       email: email.trim() || null,
       profilePhotoUrl: profilePhotoUrl.trim() || null,
       permanentAddress: permanentAddress.trim(),
@@ -132,7 +553,7 @@ export function CompleteProfilePage() {
       state: stateName.trim(),
       pincode: pincode.trim(),
       emergencyContactName: emergencyContactName.trim() || null,
-      emergencyContactMobile: emergencyContactMobile.trim() || null,
+      emergencyContactMobile: normalizeIndianMobileDigits(emergencyContactMobile) || null,
       emergencyContactRelation: emergencyContactRelation.trim() || null,
       identityDocumentType: identityDocumentType || null,
       identityDocumentNumber: identityDocumentNumber.trim() || null,
@@ -145,9 +566,14 @@ export function CompleteProfilePage() {
 
     enqueueSnackbar(t('spaces.editSpace.successMessage'), { variant: 'success' });
 
+    if (isEditMode) {
+      navigate(ROUTES.profile, { replace: true });
+      return;
+    }
+
     const spaceId =
       selectedSpaceId ??
-      mySpaces.find((s) => s.membershipRole === 'TENANT' || s.membershipRole === 'CUSTOMER')
+      mySpaces.find((space) => space.membershipRole === 'TENANT' || space.membershipRole === 'CUSTOMER')
         ?.spaceId ??
       mySpaces[0]?.spaceId;
 
@@ -160,308 +586,401 @@ export function CompleteProfilePage() {
     }
   };
 
+  const onPickPhoto = (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > PHOTO_MAX_BYTES) {
+      setFieldError(t('profileCompletion.errors.photoTooLarge'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setProfilePhotoUrl(reader.result);
+        setFieldError(null);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const stepTitle = t(`profileCompletion.wizard.sections.${STEPS[stepIndex]}`);
 
   return (
-    <AppLayout
-      headerTitle={t('profileCompletion.wizard.title')}
-      headerActions={
-        <Button variant="outlined" onClick={() => void logout()} sx={dashOutlinedButtonSx}>
-          {t('common.logout')}
-        </Button>
-      }
-      contentDense
-      contentMaxWidth={880}
+    <OnboardingLayout
+      showUserName={false}
+      onCancel={isEditMode ? () => navigate(ROUTES.profile) : undefined}
+      cancelLabel={t('common.cancel')}
     >
-      <PageContainer gap={0}>
-        <Stack spacing={`${DASHBOARD_UX.sectionGap}px`} sx={{ width: '100%' }}>
-          <PageHeader
-            title={t('profileCompletion.gate.heading')}
-            description={
-              isEditMode
-                ? t('profileCompletion.gate.completeProfile')
-                : t('profileCompletion.gate.description')
-            }
-          />
+      <Box
+        sx={{
+          width: '100%',
+          maxWidth: 880,
+          mx: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: `${DASHBOARD_UX.sectionGap}px`,
+          pb: 1,
+        }}
+      >
+        <Box>
+          <Typography component="h1" sx={{ ...DASHBOARD_UX.pageTitle, color: s.textPrimary }}>
+            {t('profileCompletion.gate.heading')}
+          </Typography>
+          <Typography sx={{ ...DASHBOARD_UX.greetingSub, color: s.textSecondary, mt: 0.5 }}>
+            {isEditMode
+              ? t('profileCompletion.gate.completeProfile')
+              : t('profileCompletion.gate.description')}
+          </Typography>
+        </Box>
 
-          <ContentCard>
-            <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textSecondary, mb: 0.75 }}>
-              {t('profileCompletion.gate.progress', { percent: progress })}
-            </Typography>
-            <LinearProgress
-              variant="determinate"
-              value={progress}
-              aria-label={t('profileCompletion.gate.progress', { percent: progress })}
-              sx={{
-                height: 6,
-                borderRadius: 999,
-                bgcolor: s.elevated,
-                '& .MuiLinearProgress-bar': {
-                  borderRadius: 999,
-                  bgcolor: colors.primaryDark,
-                },
-              }}
-            />
-          </ContentCard>
-
-          <Stepper
-            activeStep={stepIndex}
-            alternativeLabel
+        <ContentCard>
+          <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mb: 1 }}>
+            {t('profileCompletion.gate.progress', { percent: progress })}
+          </Typography>
+          <LinearProgress
+            variant="determinate"
+            value={progress}
+            aria-label={t('profileCompletion.gate.progress', { percent: progress })}
             sx={{
-              display: { xs: 'none', md: 'flex' },
-              '& .MuiStepLabel-label': {
-                ...DASHBOARD_UX.body,
-                color: s.textMuted,
-                '&.Mui-active, &.Mui-completed': {
-                  ...DASHBOARD_UX.link,
-                  color: s.textPrimary,
-                },
-              },
-              '& .MuiStepIcon-root': {
-                color: s.border,
-                '&.Mui-active, &.Mui-completed': { color: colors.primaryDark },
+              height: 8,
+              borderRadius: 999,
+              bgcolor: s.elevated,
+              '& .MuiLinearProgress-bar': {
+                borderRadius: 999,
+                bgcolor: colors.primary,
               },
             }}
-          >
-            {STEPS.map((step) => (
-              <Step key={step}>
-                <StepLabel>{t(`profileCompletion.wizard.sections.${step}`)}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
+          />
+        </ContentCard>
 
-          <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }}>
-            {t('profileCompletion.wizard.stepProgress', {
-              current: stepIndex + 1,
-              total: STEPS.length,
-            })}
+        <ProfileStepper
+          current={stepIndex}
+          labels={stepLabels}
+          onStepClick={(index) => setStepIndex(index)}
+        />
+
+        <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }}>
+          {t('profileCompletion.wizard.stepProgress', {
+            current: stepIndex + 1,
+            total: STEPS.length,
+          })}
+        </Typography>
+
+        {(fieldError || error) && (
+          <Alert
+            severity="error"
+            onClose={() => {
+              setFieldError(null);
+              clearError();
+            }}
+          >
+            {fieldError || (error?.startsWith('profileCompletion.') ? t(error) : error)}
+          </Alert>
+        )}
+
+        <ContentCard>
+          <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary, mb: 2.5 }}>
+            {stepTitle}
           </Typography>
 
-          {(fieldError || error) && (
-            <Alert
-              severity="error"
-              onClose={() => {
-                setFieldError(null);
-                clearError();
-              }}
-            >
-              {fieldError || (error?.startsWith('profileCompletion.') ? t(error) : error)}
-            </Alert>
-          )}
-
-          <ContentCard>
-            {STEPS[stepIndex] === 'personal' ? (
-              <FormSection title={stepTitle}>
-                <TextField
-                  label={t('profileCompletion.fields.fullName')}
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder={t('profileCompletion.fields.fullNamePlaceholder')}
-                  required
-                  fullWidth
-                  size="small"
-                  sx={{ gridColumn: { md: '1 / -1' } }}
+          {STEPS[stepIndex] === 'personal' ? (
+            <Stack spacing={2.25}>
+              <IconField
+                label={t('profileCompletion.fields.fullName')}
+                value={fullName}
+                onChange={setFullName}
+                placeholder={t('profileCompletion.fields.fullNamePlaceholder')}
+                icon={<UserRound size={16} />}
+                required
+              />
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: 2,
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                }}
+              >
+                <IconSelectField
+                  label={t('membership.gender.label')}
+                  placeholder={t('profileCompletion.fields.selectGender')}
+                  value={gender}
+                  onChange={(value) => setGender(value as MemberGender | '')}
+                  options={GENDERS.map((g) => ({
+                    value: g,
+                    label: t(`membership.gender.${g.toLowerCase()}`),
+                  }))}
+                  icon={<UserRound size={16} />}
                 />
-                <FormControl fullWidth size="small">
-                  <InputLabel id="gender-label">{t('membership.gender.label')}</InputLabel>
-                  <Select
-                    labelId="gender-label"
-                    label={t('membership.gender.label')}
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value as MemberGender)}
-                  >
-                    {GENDERS.map((g) => (
-                      <MenuItem key={g} value={g}>
-                        {t(`membership.gender.${g.toLowerCase()}`)}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <TextField
+                <DateOfBirthField
                   label={t('profileCompletion.fields.dateOfBirth')}
-                  placeholder={t('profileCompletion.fields.dateOfBirthPlaceholder')}
                   value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
-                  fullWidth
-                  size="small"
+                  onChange={setDateOfBirth}
+                  placeholder={t('profileCompletion.fields.dateOfBirthMask')}
                 />
-                <TextField
+                <IconField
                   label={t('profileCompletion.fields.email')}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t('profileCompletion.fields.emailPlaceholder')}
-                  fullWidth
-                  size="small"
+                  onChange={setEmail}
+                  placeholder={t('profileCompletion.fields.emailEnter')}
+                  icon={<Mail size={16} />}
+                  type="email"
                 />
-                <TextField
+                <MobileWithCountryCodeField
                   label={t('profileCompletion.fields.mobileNumber')}
                   value={user?.mobileNumber ?? ''}
                   disabled
-                  fullWidth
-                  size="small"
                 />
-                <TextField
-                  label={t('profileCompletion.fields.profilePhoto')}
-                  value={profilePhotoUrl}
-                  onChange={(e) => setProfilePhotoUrl(e.target.value)}
-                  placeholder={t('profileCompletion.fields.profilePhotoPlaceholder')}
-                  fullWidth
-                  size="small"
-                  helperText={t('profileCompletion.wizard.uploadPhoto')}
-                  sx={{ gridColumn: { md: '1 / -1' } }}
-                />
-              </FormSection>
-            ) : null}
-
-            {STEPS[stepIndex] === 'address' ? (
-              <FormSection title={stepTitle}>
-                <TextField
-                  label={t('profileCompletion.fields.permanentAddress')}
-                  value={permanentAddress}
-                  onChange={(e) => setPermanentAddress(e.target.value)}
-                  placeholder={t('profileCompletion.fields.permanentAddressPlaceholder')}
-                  required
-                  fullWidth
-                  size="small"
-                  multiline
-                  minRows={2}
-                  sx={{ gridColumn: { md: '1 / -1' } }}
-                />
-                <TextField
-                  label={t('profileCompletion.fields.city')}
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder={t('profileCompletion.fields.cityPlaceholder')}
-                  required
-                  fullWidth
-                  size="small"
-                />
-                <TextField
-                  label={t('profileCompletion.fields.state')}
-                  value={stateName}
-                  onChange={(e) => setStateName(e.target.value)}
-                  placeholder={t('profileCompletion.fields.statePlaceholder')}
-                  required
-                  fullWidth
-                  size="small"
-                />
-                <TextField
-                  label={t('profileCompletion.fields.pincode')}
-                  value={pincode}
-                  onChange={(e) => setPincode(e.target.value)}
-                  placeholder={t('profileCompletion.fields.pincodePlaceholder')}
-                  required
-                  fullWidth
-                  size="small"
-                />
-              </FormSection>
-            ) : null}
-
-            {STEPS[stepIndex] === 'emergency' ? (
-              <FormSection title={stepTitle}>
-                <TextField
-                  label={t('profileCompletion.fields.guardianName')}
-                  value={emergencyContactName}
-                  onChange={(e) => setEmergencyContactName(e.target.value)}
-                  placeholder={t('profileCompletion.fields.guardianNamePlaceholder')}
-                  fullWidth
-                  size="small"
-                />
-                <TextField
-                  label={t('profileCompletion.fields.guardianMobile')}
-                  value={emergencyContactMobile}
-                  onChange={(e) => setEmergencyContactMobile(e.target.value)}
-                  placeholder={t('profileCompletion.fields.guardianMobilePlaceholder')}
-                  fullWidth
-                  size="small"
-                />
-                <TextField
-                  label={t('profileCompletion.fields.relationship')}
-                  value={emergencyContactRelation}
-                  onChange={(e) => setEmergencyContactRelation(e.target.value)}
-                  placeholder={t('profileCompletion.fields.relationshipPlaceholder')}
-                  fullWidth
-                  size="small"
-                  sx={{ gridColumn: { md: '1 / -1' } }}
-                />
-              </FormSection>
-            ) : null}
-
-            {STEPS[stepIndex] === 'documents' ? (
-              <Stack spacing={`${DASHBOARD_UX.cardGap}px`}>
-                <Alert
-                  severity="info"
+              </Box>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/jpeg,image/png"
+                hidden
+                onChange={(event) => {
+                  onPickPhoto(event.target.files?.[0]);
+                  event.target.value = '';
+                }}
+              />
+              <Box
+                component="button"
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.75,
+                  width: '100%',
+                  textAlign: 'left',
+                  border: `1px dashed ${s.border}`,
+                  borderRadius: '12px',
+                  bgcolor: s.surface,
+                  p: 2,
+                  minHeight: 88,
+                  cursor: 'pointer',
+                  '&:hover': { borderColor: colors.primary, bgcolor: colors.mintSubtle },
+                }}
+              >
+                <Box
                   sx={{
-                    borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-                    ...DASHBOARD_UX.body,
+                    width: 56,
+                    height: 56,
+                    borderRadius: '12px',
+                    bgcolor: colors.mintSubtle,
+                    color: colors.primary,
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                    overflow: 'hidden',
                   }}
                 >
-                  {t('profileCompletion.wizard.documentsOptional')}
-                </Alert>
-                <FormSection title={stepTitle}>
-                  <TextField
-                    label={t('membership.documents.type', { defaultValue: 'Document type' })}
-                    value={identityDocumentType}
-                    onChange={(e) => setIdentityDocumentType(e.target.value)}
-                    placeholder={t('profileCompletion.fields.documentTypePlaceholder')}
-                    fullWidth
-                    size="small"
-                  />
-                  <TextField
-                    label={t('profileCompletion.fields.documentNumber')}
-                    value={identityDocumentNumber}
-                    onChange={(e) => setIdentityDocumentNumber(e.target.value)}
-                    placeholder={t('profileCompletion.fields.documentNumberPlaceholder')}
-                    fullWidth
-                    size="small"
-                  />
-                  <TextField
-                    label={t('profileCompletion.fields.identityProof')}
-                    value={identityProofFileUrl}
-                    onChange={(e) => setIdentityProofFileUrl(e.target.value)}
-                    placeholder={t('profileCompletion.fields.identityProofPlaceholder')}
-                    fullWidth
-                    size="small"
-                  />
-                  <TextField
-                    label={t('profileCompletion.fields.addressProof')}
-                    value={addressProofFileUrl}
-                    onChange={(e) => setAddressProofFileUrl(e.target.value)}
-                    placeholder={t('profileCompletion.fields.addressProofPlaceholder')}
-                    fullWidth
-                    size="small"
-                  />
-                  <TextField
+                  {profilePhotoUrl ? (
+                    <Box
+                      component="img"
+                      src={profilePhotoUrl}
+                      alt=""
+                      sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <ImageIcon size={26} />
+                  )}
+                </Box>
+                <Box>
+                  <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+                    {profilePhotoUrl
+                      ? t('profileCompletion.wizard.replacePhoto')
+                      : t('profileCompletion.wizard.uploadPhoto')}
+                  </Typography>
+                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }}>
+                    {t('profileCompletion.fields.photoHint')}
+                  </Typography>
+                </Box>
+              </Box>
+            </Stack>
+          ) : null}
+
+          {STEPS[stepIndex] === 'address' ? (
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+              }}
+            >
+              <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
+                <IconField
+                  label={t('profileCompletion.fields.permanentAddress')}
+                  value={permanentAddress}
+                  onChange={setPermanentAddress}
+                  placeholder={t('profileCompletion.fields.permanentAddressPlaceholder')}
+                  icon={<MapPin size={16} />}
+                  required
+                  multiline
+                />
+              </Box>
+              <IconField
+                label={t('profileCompletion.fields.city')}
+                value={city}
+                onChange={setCity}
+                placeholder={t('profileCompletion.fields.cityPlaceholder')}
+                icon={<MapPin size={16} />}
+                required
+              />
+              <IconField
+                label={t('profileCompletion.fields.state')}
+                value={stateName}
+                onChange={setStateName}
+                placeholder={t('profileCompletion.fields.statePlaceholder')}
+                icon={<MapPin size={16} />}
+                required
+              />
+              <IconField
+                label={t('profileCompletion.fields.pincode')}
+                value={pincode}
+                onChange={setPincode}
+                placeholder={t('profileCompletion.fields.pincodePlaceholder')}
+                icon={<MapPin size={16} />}
+                required
+              />
+            </Box>
+          ) : null}
+
+          {STEPS[stepIndex] === 'emergency' ? (
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+              }}
+            >
+              <IconField
+                label={t('profileCompletion.fields.guardianName')}
+                value={emergencyContactName}
+                onChange={setEmergencyContactName}
+                placeholder={t('profileCompletion.fields.guardianNamePlaceholder')}
+                icon={<UserRound size={16} />}
+              />
+              <MobileWithCountryCodeField
+                label={t('profileCompletion.fields.guardianMobile')}
+                value={emergencyContactMobile}
+                onChange={setEmergencyContactMobile}
+                placeholder={t('profileCompletion.fields.guardianMobilePlaceholder')}
+              />
+              <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
+                <IconSelectField
+                  label={t('profileCompletion.fields.relationship')}
+                  placeholder={t('profileCompletion.fields.selectRelationship')}
+                  value={emergencyContactRelation}
+                  onChange={setEmergencyContactRelation}
+                  options={RELATIONS.map((relation) => ({
+                    value: relation,
+                    label: t(`profileCompletion.fields.relations.${relation}`),
+                  }))}
+                  icon={<UserRound size={16} />}
+                />
+              </Box>
+            </Box>
+          ) : null}
+
+          {STEPS[stepIndex] === 'documents' ? (
+            <Stack spacing={2}>
+              <Alert
+                severity="info"
+                sx={{
+                  borderRadius: `${DASHBOARD_UX.tileRadius}px`,
+                  ...DASHBOARD_UX.body,
+                }}
+              >
+                {t('profileCompletion.wizard.documentsOptional')}
+              </Alert>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: 2,
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                }}
+              >
+                <IconSelectField
+                  label={t('membership.documents.type', { defaultValue: 'Document type' })}
+                  placeholder={t('profileCompletion.fields.selectDocumentType')}
+                  value={identityDocumentType}
+                  onChange={setIdentityDocumentType}
+                  options={DOCUMENT_TYPES.map((type) => ({
+                    value: type,
+                    label: t(`membership.documents.types.${type}`),
+                  }))}
+                  icon={<FileText size={16} />}
+                />
+                <IconField
+                  label={t('profileCompletion.fields.documentNumber')}
+                  value={identityDocumentNumber}
+                  onChange={setIdentityDocumentNumber}
+                  placeholder={t('profileCompletion.fields.documentNumberPlaceholder')}
+                  icon={<FileText size={16} />}
+                />
+                <IconField
+                  label={t('profileCompletion.fields.identityProof')}
+                  value={identityProofFileUrl}
+                  onChange={setIdentityProofFileUrl}
+                  placeholder={t('profileCompletion.fields.identityProofPlaceholder')}
+                  icon={<FileText size={16} />}
+                />
+                <IconField
+                  label={t('profileCompletion.fields.addressProof')}
+                  value={addressProofFileUrl}
+                  onChange={setAddressProofFileUrl}
+                  placeholder={t('profileCompletion.fields.addressProofPlaceholder')}
+                  icon={<FileText size={16} />}
+                />
+                <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
+                  <IconField
                     label={t('profileCompletion.fields.additionalDocument')}
                     value={additionalDocumentFileUrl}
-                    onChange={(e) => setAdditionalDocumentFileUrl(e.target.value)}
+                    onChange={setAdditionalDocumentFileUrl}
                     placeholder={t('profileCompletion.fields.additionalDocumentPlaceholder')}
-                    fullWidth
-                    size="small"
-                    sx={{ gridColumn: { md: '1 / -1' } }}
+                    icon={<FileText size={16} />}
                   />
-                </FormSection>
-              </Stack>
-            ) : null}
-          </ContentCard>
-        </Stack>
-        <StickyFooterClearance height={{ xs: 96, md: 80 }} />
-      </PageContainer>
-
-      <StickyFooter pin="fixed">
-        <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end', width: '100%' }}>
-          {stepIndex > 0 ? (
-            <Button
-              variant="outlined"
-              onClick={() => setStepIndex((i) => i - 1)}
-              disabled={isSubmitting}
-              sx={dashOutlinedButtonSx}
-            >
-              {t('common.back')}
-            </Button>
+                </Box>
+              </Box>
+            </Stack>
           ) : null}
+        </ContentCard>
+        <StickyFooterClearance height={{ xs: 96, md: 80 }} />
+      </Box>
+
+      <StickyFooter pin="fixed" sx={{ left: 0 }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ justifyContent: 'space-between', width: '100%', alignItems: 'center' }}
+        >
+          <Stack direction="row" spacing={1}>
+            {isEditMode ? (
+              <Button
+                variant="outlined"
+                onClick={() => navigate(ROUTES.profile)}
+                disabled={isSubmitting}
+                sx={dashOutlinedButtonSx}
+              >
+                {t('common.cancel')}
+              </Button>
+            ) : null}
+            {stepIndex > 0 ? (
+              <Button
+                variant="outlined"
+                onClick={() => setStepIndex((i) => i - 1)}
+                disabled={isSubmitting}
+                sx={dashOutlinedButtonSx}
+              >
+                {t('common.back')}
+              </Button>
+            ) : null}
+          </Stack>
           {stepIndex < STEPS.length - 1 ? (
-            <Button variant="contained" onClick={handleNext} sx={dashContainedButtonSx}>
+            <Button
+              variant="contained"
+              onClick={handleNext}
+              endIcon={<ArrowRight size={16} />}
+              sx={dashContainedButtonSx}
+            >
               {t('common.continue')}
             </Button>
           ) : (
@@ -476,6 +995,6 @@ export function CompleteProfilePage() {
           )}
         </Stack>
       </StickyFooter>
-    </AppLayout>
+    </OnboardingLayout>
   );
 }

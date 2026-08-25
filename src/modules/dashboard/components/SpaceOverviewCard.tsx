@@ -8,6 +8,7 @@ import { spaceSpaceHealthPath } from '@/routes/paths';
 import { colors } from '@/shared/theme/colors';
 import { HealthScoreRing } from './HealthScoreRing';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
+import { isGenericUserName } from '@/modules/onboarding/utils/profileCompletion';
 
 function bandColor(band: HealthBandId): string {
   switch (band) {
@@ -32,6 +33,11 @@ function greetingKey(): 'greetingMorning' | 'greetingAfternoon' | 'greetingEveni
   return 'greetingEvening';
 }
 
+function greetingNameFromUser(fullName: string | null | undefined): string | null {
+  if (isGenericUserName(fullName)) return null;
+  return fullName?.trim().split(/\s+/)[0] ?? null;
+}
+
 type SpaceOverviewCardProps = {
   spaceId: string;
   spaceName: string;
@@ -40,6 +46,7 @@ type SpaceOverviewCardProps = {
   health: SpaceHealthResult | null;
   pendingCount: number;
   onRefresh: () => void;
+  userFullName?: string | null;
 };
 
 /**
@@ -53,6 +60,7 @@ export function SpaceOverviewCard({
   health,
   pendingCount,
   onRefresh,
+  userFullName,
 }: SpaceOverviewCardProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -64,6 +72,11 @@ export function SpaceOverviewCard({
   const color = bandColor(band);
 
   const contextLine = [spaceType, membershipRole].filter(Boolean).join(' · ');
+  const displayName = greetingNameFromUser(userFullName);
+  const greeting = t(`dashboard.owner.${greetingKey()}`);
+  const greetingLine = displayName
+    ? t('dashboard.owner.greetingWithName', { greeting, name: displayName })
+    : t('dashboard.owner.greetingPlain', { greeting });
 
   const goHealth = () => navigate(spaceSpaceHealthPath(spaceId));
 
@@ -72,7 +85,7 @@ export function SpaceOverviewCard({
       component="section"
       aria-label={t('dashboard.spaceOverview.title', { defaultValue: 'Space overview' })}
       sx={{
-        p: 1.5,
+        p: 1.25,
         borderRadius: `${DASHBOARD_UX.radius}px`,
         bgcolor: s.surface,
         boxShadow: s.shadow,
@@ -117,13 +130,12 @@ export function SpaceOverviewCard({
 
       <Typography
         sx={{
-          ...DASHBOARD_UX.spaceName,
+          ...DASHBOARD_UX.greeting,
           color: s.textPrimary,
         }}
         noWrap
       >
-        {t(`dashboard.owner.${greetingKey()}`)}
-        {t('dashboard.owner.greetingOwnerSuffix')}
+        {greetingLine}
       </Typography>
 
       <Box
@@ -172,7 +184,7 @@ export function SpaceOverviewCard({
           <HealthScoreRing
             score={available ? score : 0}
             color={available ? color : s.border}
-            size={Math.max(DASHBOARD_UX.healthRingSize, 58)}
+            size={DASHBOARD_UX.healthRingSize}
             strokeWidth={DASHBOARD_UX.healthRingStroke}
           />
           <Box sx={{ minWidth: 0, flex: 1 }}>

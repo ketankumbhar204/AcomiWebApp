@@ -5,21 +5,46 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { env } from '@/shared/config/env';
 import { ROUTES } from '@/routes/paths';
+import { maskIndianMobile, normalizeIndianMobileDigits } from '@/shared/utils/indianMobile';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
-import { useRegistrationDraftStore } from '@/store/registrationDraftStore';
+import { useRegistrationDraftStore, isRegistrationTokenValid } from '@/store/registrationDraftStore';
+import { authApi } from '../api/authApi';
 import { AuthCard } from '../components/AuthCard';
 import { AuthErrorBanner } from '../components/AuthErrorBanner';
 import { AuthHero } from '../components/AuthHero';
 import { OtpInput } from '../components/OtpInput';
 import { useCountdown } from '../hooks/useCountdown';
+import { useRegister, useLoginWithOtp } from '../hooks/usePasswordAuth';
 import { useSendOtp } from '../hooks/useSendOtp';
 import { useVerifyOtp } from '../hooks/useVerifyOtp';
 import { formatCountdown } from '../utils/otpAuthErrors';
+import type { OtpPurpose } from '@/shared/types/auth';
+import { DeleteAccountConfirmDialog } from '@/modules/legal/components/DeleteAccountConfirmDialog';
+import { useFinishAccountDeletion } from '@/modules/legal/hooks/useFinishAccountDeletion';
+import {
+  isVerificationTokenInvalidated,
+  mapAccountDeletionError,
+} from '@/modules/legal/utils/accountDeletion';
 
 type OtpLocationState = {
   mobileNumber?: string;
+  purpose?: OtpPurpose;
+  fromProfile?: boolean;
 };
+
+function fallbackRoute(purpose: OtpPurpose): string {
+  if (purpose === 'LOGIN') {
+    return ROUTES.login;
+  }
+  if (purpose === 'RESET_PASSWORD') {
+    return ROUTES.forgotPassword;
+  }
+  if (purpose === 'ACCOUNT_DELETION') {
+    return ROUTES.deleteAccount;
+  }
+  return ROUTES.register;
+}
 
 export function OtpPage() {
   const { t } = useTranslation();
@@ -29,17 +54,39 @@ export function OtpPage() {
   const s = dashSurfaces(theme.palette.mode);
   const state = (location.state as OtpLocationState | null) ?? null;
   const draftMobile = useRegistrationDraftStore((draft) => draft.mobileNumber);
+  const draftPurpose = useRegistrationDraftStore((draft) => draft.purpose);
+  const purpose: OtpPurpose = state?.purpose ?? draftPurpose ?? 'REGISTER';
   const mobileNumber = draftMobile ?? state?.mobileNumber ?? '';
   const otpSentAt = useRegistrationDraftStore((draft) => draft.otpSentAt);
   const expiresIn = useRegistrationDraftStore((draft) => draft.expiresIn);
   const resendAfter = useRegistrationDraftStore((draft) => draft.resendAfter);
+  const verificationToken = useRegistrationDraftStore((draft) => draft.verificationToken);
+  const tokenExpiresAt = useRegistrationDraftStore((draft) => draft.verificationTokenExpiresAt);
   const clearDraft = useRegistrationDraftStore((draft) => draft.clear);
+  const clearVerification = useRegistrationDraftStore((draft) => draft.clearVerification);
+  const finishAccountDeletion = useFinishAccountDeletion();
 
   const { verifyOtp, isLoading, error, clearError } = useVerifyOtp();
   const { sendOtp, isLoading: isResending } = useSendOtp();
+  const { register, isLoading: isRegistering, error: registerError, clearError: clearRegisterError } =
+    useRegister();
+  const { loginWithOtp, isLoading: isOtpLoggingIn, error: loginOtpError, clearError: clearLoginOtpError } =
+    useLoginWithOtp();
+  const fullName = useRegistrationDraftStore((draft) => draft.fullName);
+  const password = useRegistrationDraftStore((draft) => draft.password);
+  const confirmPassword = useRegistrationDraftStore((draft) => draft.confirmPassword);
   const [otp, setOtp] = useState('');
+  const [info, setInfo] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deletionConfirmed, setDeletionConfirmed] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const isComplete = otp.length === 6;
-  const busy = isLoading || isResending;
+  const tokenOk = isRegistrationTokenValid(verificationToken, tokenExpiresAt);
+  const deletionVerified = purpose === 'ACCOUNT_DELETION' && tokenOk;
+  const busy = isLoading || isResending || isRegistering || isOtpLoggingIn || deleting;
+  const bannerError = error || registerError || loginOtpError;
+  const canConfirmDelete = deletionConfirmed && tokenOk && Boolean(verificationToken) && !deleting;
 
   const otpDeadline = useMemo(
     () => (otpSentAt != null && expiresIn != null ? otpSentAt + expiresIn * 1000 : null),
@@ -57,29 +104,102 @@ export function OtpPage() {
   }, [t]);
 
   if (!mobileNumber) {
+    return <Navigate to={fallbackRoute(purpose)} replace />;
+  }
+  if (purpose === 'REGISTER' && (!fullName || !password || !confirmPassword)) {
     return <Navigate to={ROUTES.register} replace />;
   }
 
   const handleVerify = async (code = otp) => {
     clearError();
+    clearRegisterError();
+    clearLoginOtpError();
+    setInfo(null);
     if (code.length !== 6) {
       return;
     }
-    const result = await verifyOtp(mobileNumber, code);
-    if (result?.verified) {
-      navigate(ROUTES.registerPassword, { state: { mobileNumber } });
+    const result = await verifyOtp(mobileNumber, code, purpose);
+    if (!result?.verified) {
+      return;
+    }
+    if (purpose === 'LOGIN') {
+      await loginWithOtp(mobileNumber, result.verificationToken);
+      return;
+    }
+    if (purpose === 'RESET_PASSWORD') {
+      navigate(ROUTES.resetPassword, { state: { mobileNumber, purpose } });
+      return;
+    }
+    if (purpose === 'ACCOUNT_DELETION') {
+      setDeleteError(null);
+      setDeletionConfirmed(false);
+      setConfirmOpen(true);
+      return;
+    }
+    if (!fullName || !password || !confirmPassword) {
+      navigate(ROUTES.register, { replace: true });
+      return;
+    }
+    await register({
+      fullName,
+      mobileNumber,
+      password,
+      confirmPassword,
+      verificationToken: result.verificationToken,
+    });
+  };
+
+  const openDeletionConfirm = () => {
+    if (!deletionVerified || deleting) {
+      return;
+    }
+    setDeleteError(null);
+    setDeletionConfirmed(false);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!canConfirmDelete || !verificationToken) {
+      return;
+    }
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      await authApi.deleteAccountByOtp({
+        mobileNumber: normalizeIndianMobileDigits(mobileNumber),
+        verificationToken,
+      });
+      finishAccountDeletion();
+    } catch (err) {
+      setDeleteError(mapAccountDeletionError(err));
+      if (isVerificationTokenInvalidated(err)) {
+        clearVerification();
+      }
+    } finally {
+      setDeleting(false);
     }
   };
 
   const handleResend = async () => {
     clearError();
+    clearRegisterError();
+    clearLoginOtpError();
     setOtp('');
-    await sendOtp(mobileNumber);
+    const result = await sendOtp(mobileNumber, purpose);
+    if (result) {
+      setInfo(t('auth.otp.resent'));
+    }
   };
 
   const handleChangeNumber = () => {
     clearDraft();
-    navigate(ROUTES.register);
+    if (purpose === 'ACCOUNT_DELETION') {
+      navigate(ROUTES.deleteAccount, {
+        state: { fromProfile: Boolean(state?.fromProfile), mobileNumber },
+      });
+      return;
+    }
+    navigate(fallbackRoute(purpose));
   };
 
   const resendLabel =
@@ -94,10 +214,21 @@ export function OtpPage() {
           icon={ShieldCheck}
           eyebrow={t('auth.otp.eyebrow')}
           heading={t('auth.otp.heading')}
-          subheading={`${t('auth.otp.subheading')} +91 ${mobileNumber}`}
+          subheading={`${t('auth.otp.subheading')} ${maskIndianMobile(mobileNumber)}`}
         />
 
-        {error ? <AuthErrorBanner message={error} /> : null}
+        {bannerError ? <AuthErrorBanner message={bannerError} /> : null}
+        {info && !bannerError ? (
+          <Alert
+            severity="success"
+            sx={{
+              borderRadius: `${DASHBOARD_UX.tileRadius}px`,
+              ...DASHBOARD_UX.body,
+            }}
+          >
+            {info}
+          </Alert>
+        ) : null}
 
         <Box
           sx={{
@@ -112,11 +243,17 @@ export function OtpPage() {
           </Typography>
           <OtpInput
             value={otp}
-            disabled={busy}
+            disabled={busy || confirmOpen}
             onChange={(value) => {
               setOtp(value);
               if (error) {
                 clearError();
+              }
+              if (registerError) {
+                clearRegisterError();
+              }
+              if (info) {
+                setInfo(null);
               }
             }}
           />
@@ -153,8 +290,8 @@ export function OtpPage() {
             ...DASHBOARD_UX.link,
             color: 'primary.dark',
             alignSelf: 'flex-start',
-            pointerEvents: busy ? 'none' : 'auto',
-            opacity: busy ? 0.5 : 1,
+            pointerEvents: busy || confirmOpen ? 'none' : 'auto',
+            opacity: busy || confirmOpen ? 0.5 : 1,
             background: 'none',
             border: 0,
             cursor: 'pointer',
@@ -169,23 +306,27 @@ export function OtpPage() {
           type="button"
           variant="contained"
           color="primary"
-          disabled={!isComplete || busy}
+          disabled={deletionVerified ? busy : !isComplete || busy}
           fullWidth
-          startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
-          onClick={() => void handleVerify()}
+          startIcon={isLoading || isRegistering || isOtpLoggingIn ? <CircularProgress size={16} color="inherit" /> : undefined}
+          onClick={() => void (deletionVerified ? openDeletionConfirm() : handleVerify())}
           sx={{
             ...dashContainedButtonSx,
             '&:hover': { boxShadow: s.shadowHover },
           }}
         >
-          {isLoading ? t('common.pleaseWait') : t('auth.otp.verifyContinue')}
+          {isLoading || isRegistering || isOtpLoggingIn
+            ? t('common.pleaseWait')
+            : deletionVerified
+              ? t('legal.deleteAccount.continueDelete')
+              : t('auth.otp.verifyContinue')}
         </Button>
 
         <Button
           type="button"
           variant="outlined"
           color="primary"
-          disabled={busy || resendRemaining > 0}
+          disabled={busy || confirmOpen || resendRemaining > 0}
           fullWidth
           startIcon={isResending ? <CircularProgress size={16} color="inherit" /> : undefined}
           onClick={() => void handleResend()}
@@ -194,6 +335,22 @@ export function OtpPage() {
           {isResending ? t('common.pleaseWait') : resendLabel}
         </Button>
       </Box>
+      {purpose === 'ACCOUNT_DELETION' ? (
+        <DeleteAccountConfirmDialog
+          open={confirmOpen}
+          confirmed={deletionConfirmed}
+          deleting={deleting}
+          canDelete={canConfirmDelete}
+          error={deleteError}
+          onConfirmedChange={setDeletionConfirmed}
+          onCancel={() => {
+            if (!deleting) {
+              setConfirmOpen(false);
+            }
+          }}
+          onDelete={() => void handleConfirmDelete()}
+        />
+      ) : null}
     </AuthCard>
   );
 }

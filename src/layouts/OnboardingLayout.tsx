@@ -1,12 +1,11 @@
 import { AppBar, Box, Button, IconButton, Toolbar, Tooltip, Typography, useTheme } from '@mui/material';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, Home } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AuthBrandMark } from '@/modules/auth/components/AuthBrandMark';
 import { useLogout } from '@/modules/auth/hooks/useLogout';
 import { AUTH_UX, authSurfaces } from '@/modules/auth/theme/authUx';
 import { SkipLink, MAIN_CONTENT_ID } from '@/shared/components/SkipLink';
-import { useAuthSession } from '@/shared/hooks/useAuthSession';
+import { colors } from '@/shared/theme/colors';
 import { useAppStore } from '@/store/appStore';
 import { LAYOUT } from './layoutConstants';
 
@@ -28,14 +27,12 @@ export function OnboardingLayout({
   onCancel,
   cancelLabel,
   showLogout = true,
-  showUserName = true,
+  showUserName: _showUserName = true,
 }: OnboardingLayoutProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const a = authSurfaces(theme.palette.mode);
   const logout = useLogout();
-  const { user } = useAuthSession();
-  const displayName = user?.fullName?.trim() || user?.mobileNumber || '';
   const themeMode = useAppStore((state) => state.themeMode);
   const toggleThemeMode = useAppStore((state) => state.toggleThemeMode);
   const themeLabel =
@@ -43,7 +40,6 @@ export function OnboardingLayout({
       ? t('settings.profile.themeDark', { defaultValue: 'Switch to dark mode' })
       : t('settings.profile.themeLight', { defaultValue: 'Switch to light mode' });
   const cancelText = cancelLabel ?? t('common.cancel');
-  const showName = showUserName && !pageTitle && Boolean(displayName);
 
   return (
     <Box
@@ -80,29 +76,32 @@ export function OnboardingLayout({
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
-            <AuthBrandMark size={32} />
-            <Box sx={{ minWidth: 0 }}>
-              <Typography
-                sx={{
-                  ...AUTH_UX.brandName,
-                  fontSize: '1.125rem',
-                  fontWeight: 800,
-                  letterSpacing: '-0.03em',
-                  color: a.brand,
-                  lineHeight: 1.1,
-                }}
-              >
-                {t('common.appName')}
-              </Typography>
-              {showName ? (
-                <Typography
-                  noWrap
-                  sx={{ fontSize: '0.75rem', fontWeight: 500, color: a.textMuted, lineHeight: 1.25, mt: 0.15 }}
-                >
-                  {displayName}
-                </Typography>
-              ) : null}
+            <Box
+              aria-hidden
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                bgcolor: colors.primary,
+                color: '#fff',
+                display: 'grid',
+                placeItems: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Home size={16} strokeWidth={2.25} />
             </Box>
+            <Typography
+              sx={{
+                fontSize: '1.125rem',
+                fontWeight: 800,
+                letterSpacing: '-0.03em',
+                color: a.textPrimary,
+                lineHeight: 1.1,
+              }}
+            >
+              {t('common.appName')}
+            </Typography>
           </Box>
           {pageTitle ? (
             <Typography
@@ -148,7 +147,7 @@ export function OnboardingLayout({
                 {cancelText}
               </Button>
             ) : null}
-            {showLogout && !onCancel ? (
+            {showLogout ? (
               <Button
                 variant="outlined"
                 onClick={() => void logout()}

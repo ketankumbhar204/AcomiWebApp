@@ -37,6 +37,7 @@ export function ContentCard({ children, padded = true, onClick, selected = false
         boxShadow: s.shadow,
         p: padded ? `${DASHBOARD_UX.cardPadding}px` : 0,
         overflow: 'hidden',
+        position: 'relative',
         cursor: onClick ? 'pointer' : undefined,
         outline: selected ? `2px solid ${theme.palette.primary.main}` : undefined,
         outlineOffset: selected ? 1 : undefined,

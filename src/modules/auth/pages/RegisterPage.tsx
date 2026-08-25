@@ -4,7 +4,7 @@ import { UserRound } from 'lucide-react';
 import { useMemo } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/routes/paths';
 import { isValidIndianMobile } from '@/shared/utils/indianMobile';
 import { AUTH_UX, authContainedButtonSx, authSurfaces } from '../theme/authUx';
@@ -14,15 +14,18 @@ import { AuthHero } from '../components/AuthHero';
 import { MobileNumberInput } from '../components/MobileNumberInput';
 import { NameInput } from '../components/NameInput';
 import { PasswordInput } from '../components/PasswordInput';
-import { useRegister } from '../hooks/usePasswordAuth';
+import { useSendOtp } from '../hooks/useSendOtp';
 import { passwordsMatch, validatePassword } from '../passwordRules';
 import { createRegisterSchema, type RegisterFormValues } from '../schemas/loginSchema';
+import { useRegistrationDraftStore } from '@/store/registrationDraftStore';
 
 export function RegisterPage() {
   const { t } = useTranslation();
   const theme = useTheme();
   const a = authSurfaces(theme.palette.mode);
-  const { register, isLoading, error, clearError } = useRegister();
+  const navigate = useNavigate();
+  const { sendOtp, isLoading, error, clearError } = useSendOtp();
+  const setCredentials = useRegistrationDraftStore((state) => state.setCredentials);
 
   const schema = useMemo(
     () =>
@@ -67,12 +70,15 @@ export function RegisterPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     clearError();
-    await register({
+    setCredentials({
       fullName: values.fullName.trim(),
-      mobileNumber: values.mobileNumber,
       password: values.password,
       confirmPassword: values.confirmPassword,
     });
+    const result = await sendOtp(values.mobileNumber, 'REGISTER');
+    if (result) {
+      navigate(ROUTES.registerOtp, { state: { mobileNumber: values.mobileNumber } });
+    }
   });
 
   return (

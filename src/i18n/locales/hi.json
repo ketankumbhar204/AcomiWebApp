@@ -109,7 +109,9 @@
     "rooms": "कमरे",
     "meals": "भोजन",
     "payments": "भुगतान",
-    "complaints": "शिकायतें"
+    "complaints": "शिकायतें",
+    "notices": "सूचनाएँ",
+    "reports": "रिपोर्ट्स"
   },
   "auth": {
     "login": {
@@ -122,12 +124,12 @@
       "mobileInvalid": "एक वैध 10-अंकीय भारतीय मोबाइल नंबर दर्ज करें।"
     },
     "illustration": {
-      "headlineLead": "अपना PG, हॉस्टल या मेस चलाएँ",
+      "headlineLead": "अपना मेस, PG या हॉस्टल चलाएँ",
       "headlineEase": "आराम से।",
-      "headline": "अपना PG, हॉस्टल या मेस आराम से चलाएँ।",
+      "headline": "अपना मेस, PG या हॉस्टल आराम से चलाएँ।",
       "support": "संपत्ति और भोजन संचालन, भुगतान और अधिक के लिए एक सरल ऐप।",
       "propertiesTitle": "संपत्ति और कमरे प्रबंधित करें",
-      "propertiesBody": "PG, हॉस्टल और किराये",
+      "propertiesBody": "मेस, PG, हॉस्टल और किराये",
       "mealsTitle": "भोजन और संख्या सरल बनाएँ",
       "mealsBody": "मेन्यू, पोल और भोजन गणना",
       "paymentsTitle": "भुगतान और बकाया ट्रैक करें",
@@ -161,7 +163,7 @@
       "heading": "एक स्पेस चुनें",
       "subheading": "डैशबोर्ड, सदस्य, भोजन और अधिक देखने के लिए स्पेस खोलें।",
       "emptyTitle": "अभी कोई स्पेस नहीं",
-      "emptyDescription": "शुरू करने के लिए अपना पहला PG, Rental, Mess या Hostel स्पेस बनाएं।",
+      "emptyDescription": "शुरू करने के लिए अपना पहला Mess, PG, Hostel या Rental स्पेस बनाएं।",
       "createFab": "नया स्पेस बनाएं",
       "openProfile": "प्रोफ़ाइल और सेटिंग्स खोलें"
     },

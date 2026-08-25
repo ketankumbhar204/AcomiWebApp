@@ -1,11 +1,11 @@
 import { useCallback, useState } from 'react';
 import { authApi } from '../api/authApi';
 import { useRegistrationDraftStore } from '@/store/registrationDraftStore';
-import type { SendOtpResponse } from '@/shared/types/auth';
+import type { OtpPurpose, SendOtpResponse } from '@/shared/types/auth';
 import { mapOtpRequestError } from '../utils/otpAuthErrors';
 
 type UseSendOtpResult = {
-  sendOtp: (mobileNumber: string) => Promise<SendOtpResponse | null>;
+  sendOtp: (mobileNumber: string, purpose?: OtpPurpose) => Promise<SendOtpResponse | null>;
   isLoading: boolean;
   error: string | null;
   clearError: () => void;
@@ -18,23 +18,23 @@ export function useSendOtp(): UseSendOtpResult {
   const [error, setError] = useState<string | null>(null);
 
   const sendOtp = useCallback(
-    async (mobileNumber: string): Promise<SendOtpResponse | null> => {
+    async (mobileNumber: string, purpose: OtpPurpose = 'REGISTER'): Promise<SendOtpResponse | null> => {
       setIsLoading(true);
       setError(null);
       try {
         const result = await authApi.sendOtp({
           mobileNumber,
-          purpose: 'REGISTER',
+          purpose,
         });
-        const currentMobile = useRegistrationDraftStore.getState().mobileNumber;
-        if (currentMobile === mobileNumber) {
+        const current = useRegistrationDraftStore.getState();
+        if (current.mobileNumber === mobileNumber && current.purpose === purpose) {
           markResent(result.expiresIn, result.resendAfter);
         } else {
-          beginOtp(mobileNumber, result.expiresIn, result.resendAfter);
+          beginOtp(mobileNumber, result.expiresIn, result.resendAfter, purpose);
         }
         return result;
       } catch (err) {
-        setError(mapOtpRequestError(err));
+        setError(mapOtpRequestError(err, purpose));
         return null;
       } finally {
         setIsLoading(false);

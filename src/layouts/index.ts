@@ -1,5 +1,6 @@
 export { AppLayout } from './AppLayout';
 export { AccountLayout } from './AccountLayout';
+export { GlobalShellLayout } from './GlobalShellLayout';
 export { AuthLayout } from './AuthLayout';
 export { OnboardingLayout } from './OnboardingLayout';
 export { BlankLayout } from './BlankLayout';

@@ -2,22 +2,28 @@ import {
   Avatar,
   Box,
   Button,
-  Divider,
   LinearProgress,
   Stack,
   Typography,
   useTheme,
 } from '@mui/material';
 import {
+  Calendar,
+  FolderOpen,
+  Globe,
   Languages,
   LogOut,
+  Mail,
+  MapPin,
+  Shield,
   SquarePen,
+  Sun,
+  Trash2,
   UserRound,
 } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { AppLayout } from '@/layouts/AppLayout';
 import { useLogout } from '@/modules/auth/hooks/useLogout';
 import { LanguagePicker } from '@/modules/profile/components/LanguagePicker';
 import {
@@ -27,8 +33,6 @@ import {
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { ContentCard } from '@/shared/components/ContentCard';
 import { EmptyState } from '@/shared/components/EmptyState';
-import { FormSection } from '@/shared/components/FormSection';
-import { InfoRow } from '@/shared/components/InfoRow';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { StatusChip } from '@/shared/components/StatusChip';
@@ -39,6 +43,60 @@ import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dash
 import { useAuthStore } from '@/store/authStore';
 import { useSpaceStore } from '@/store/spaceStore';
 import { useAppStore } from '@/store/appStore';
+
+function CardWatermark({ children }: { children: ReactNode }) {
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        position: 'absolute',
+        right: 10,
+        bottom: 6,
+        opacity: 0.08,
+        pointerEvents: 'none',
+        lineHeight: 0,
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
+function ProfileField({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1.25,
+        py: 1.05,
+        borderBottom: `1px solid ${s.border}`,
+        '&:last-of-type': { borderBottom: 0 },
+      }}
+    >
+      <Box sx={{ color: s.textMuted, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+        {icon}
+      </Box>
+      <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, flex: 1, minWidth: 0 }}>
+        {label}
+      </Typography>
+      <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary, textAlign: 'right' }}>
+        {value}
+      </Typography>
+    </Box>
+  );
+}
 
 export function ProfilePage() {
   const { t, i18n } = useTranslation();
@@ -83,86 +141,98 @@ export function ProfilePage() {
   const profileStatusLabel = user?.profileStatus
     ? t(`settings.profile.profileStatus.${user.profileStatus}`)
     : null;
+  const genderLabel = user?.gender
+    ? t(`settings.profile.gender.${user.gender}`, { defaultValue: user.gender })
+    : '—';
+
+  const dashErrorButtonSx = {
+    ...dashOutlinedButtonSx,
+    color: colors.danger,
+    borderColor: `${colors.danger}99`,
+    '&:hover': {
+      borderColor: colors.danger,
+      bgcolor: `${colors.danger}0F`,
+    },
+  } as const;
 
   if (!user) {
     return (
-      <AppLayout headerTitle={t('navigation.profile')}>
-        <PageContainer gap={0}>
-          <EmptyState
-            icon={<UserRound size={28} />}
-            title={t('common.errors.authRequired', { defaultValue: 'Sign in required' })}
-            description={t('settings.profile.subheading')}
-          />
-        </PageContainer>
-      </AppLayout>
+      <PageContainer gap={0}>
+        <EmptyState
+          icon={<UserRound size={28} />}
+          title={t('common.errors.authRequired', { defaultValue: 'Sign in required' })}
+          description={t('settings.profile.subheading')}
+        />
+      </PageContainer>
     );
   }
 
   return (
-    <AppLayout
-      headerTitle={t('navigation.profile')}
-      headerSubtitle={user.fullName?.trim() || user.mobileNumber}
-      headerActions={
-        <Button variant="outlined" onClick={() => navigate(ROUTES.mySpaces)} sx={dashOutlinedButtonSx}>
-          {t('navigation.mySpaces')}
-        </Button>
-      }
-      contentDense
-    >
-      <PageContainer gap={0}>
-        <Stack spacing={`${DASHBOARD_UX.sectionGap}px`} sx={{ width: '100%' }}>
-          <PageHeader
-            title={t('settings.profile.heading')}
-            description={t('settings.profile.subheading')}
-          />
+    <PageContainer gap={0}>
+      <Stack spacing={`${DASHBOARD_UX.sectionGap}px`} sx={{ width: '100%' }}>
+        <PageHeader
+          title={t('settings.profile.heading')}
+          description={t('settings.profile.subheading')}
+        />
 
-          <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            spacing={`${DASHBOARD_UX.cardGap}px`}
-            sx={{ alignItems: { md: 'stretch' } }}
-          >
-            <ContentCard>
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gap: `${DASHBOARD_UX.cardGap}px`,
+            gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+            alignItems: 'stretch',
+          }}
+        >
+          <ContentCard>
+            <Stack spacing={2} sx={{ height: '100%' }}>
+              <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
                 <Avatar
                   src={user.profilePhotoUrl ?? undefined}
                   alt={user.fullName ?? user.mobileNumber}
-                  sx={{ width: 72, height: 72, borderRadius: `${DASHBOARD_UX.radius}px` }}
+                  sx={{
+                    width: 88,
+                    height: 88,
+                    bgcolor: colors.primary,
+                    color: '#fff',
+                  }}
                 >
-                  <UserRound size={28} />
+                  <UserRound size={36} />
                 </Avatar>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }} noWrap>
                     {user.fullName?.trim() || t('settings.profile.fullNameLabel')}
                   </Typography>
-                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
+                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mt: 0.25 }}>
                     {user.mobileNumber}
                   </Typography>
-                  <Stack direction="row" spacing={1} useFlexGap sx={{ mt: 1, flexWrap: 'wrap' }}>
+                  <Stack direction="row" spacing={0.75} useFlexGap sx={{ mt: 1, flexWrap: 'wrap' }}>
                     {currentSpace ? (
                       <StatusChip label={currentSpace.spaceName} tone="info" />
                     ) : null}
-                    {profileStatusLabel ? <StatusChip label={profileStatusLabel} /> : null}
+                    {profileStatusLabel ? (
+                      <StatusChip label={profileStatusLabel} tone="warning" />
+                    ) : null}
                     {mySpaces.length > 0 ? (
                       <StatusChip
                         label={t('settings.profile.spacesJoined', {
                           count: mySpaces.length,
                           defaultValue: '{{count}} spaces',
                         })}
-                        tone="neutral"
+                        tone="success"
                       />
                     ) : null}
                   </Stack>
                 </Box>
-                <Button
-                  variant="contained"
-                  startIcon={<SquarePen size={16} />}
-                  onClick={() => navigate(`${ROUTES.completeProfile}?mode=edit`)}
-                  sx={dashContainedButtonSx}
-                >
-                  {t('settings.profile.editProfile')}
-                </Button>
               </Stack>
-              <Box sx={{ mt: 2 }}>
+              <Button
+                variant="contained"
+                startIcon={<SquarePen size={16} />}
+                onClick={() => navigate(`${ROUTES.completeProfile}?mode=edit`)}
+                sx={{ ...dashContainedButtonSx, alignSelf: { xs: 'stretch', sm: 'flex-start' } }}
+              >
+                {t('settings.profile.editProfile')}
+              </Button>
+              <Box sx={{ mt: 'auto' }}>
                 <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.5 }}>
                   <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textSecondary }}>
                     {t('settings.profile.completionLabel', {
@@ -180,49 +250,76 @@ export function ProfilePage() {
                     defaultValue: 'Profile completion',
                   })}
                   sx={{
-                    height: 6,
+                    height: 8,
                     borderRadius: 999,
                     bgcolor: s.elevated,
                     '& .MuiLinearProgress-bar': {
                       borderRadius: 999,
-                      bgcolor: colors.primaryDark,
+                      bgcolor: colors.primary,
                     },
                   }}
                 />
               </Box>
-            </ContentCard>
+            </Stack>
+          </ContentCard>
 
-            <ContentCard>
-              <FormSection title={t('settings.profile.personalSection')}>
-                <Box sx={{ gridColumn: '1 / -1' }}>
-                  <InfoRow label={t('settings.profile.emailLabel')} value={user.email?.trim() || '—'} dense />
-                  <InfoRow label={t('settings.profile.genderLabel')} value={user.gender?.trim() || '—'} dense />
-                  <InfoRow
-                    label={t('settings.profile.dateOfBirthLabel')}
-                    value={user.dateOfBirth?.trim() || '—'}
-                    dense
-                  />
-                  <InfoRow
-                    label={t('settings.profile.permanentAddressLabel')}
-                    value={user.permanentAddress?.trim() || '—'}
-                    dense
-                  />
-                  <InfoRow label={t('settings.profile.cityLabel')} value={user.city?.trim() || '—'} dense />
-                  <InfoRow label={t('settings.profile.stateLabel')} value={user.state?.trim() || '—'} dense />
-                  <InfoRow
-                    label={t('settings.profile.pincodeLabel')}
-                    value={user.pincode?.trim() || '—'}
-                    dense
-                  />
-                </Box>
-              </FormSection>
-            </ContentCard>
-          </Stack>
+          <ContentCard>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
+              <UserRound size={18} color={s.textSecondary} />
+              <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+                {t('settings.profile.personalSection')}
+              </Typography>
+            </Stack>
+            <ProfileField
+              icon={<Mail size={15} />}
+              label={t('settings.profile.emailLabel')}
+              value={user.email?.trim() || '—'}
+            />
+            <ProfileField
+              icon={<UserRound size={15} />}
+              label={t('settings.profile.genderLabel')}
+              value={genderLabel}
+            />
+            <ProfileField
+              icon={<Calendar size={15} />}
+              label={t('settings.profile.dateOfBirthLabel')}
+              value={user.dateOfBirth?.trim() || '—'}
+            />
+            <ProfileField
+              icon={<MapPin size={15} />}
+              label={t('settings.profile.permanentAddressLabel')}
+              value={user.permanentAddress?.trim() || '—'}
+            />
+            <ProfileField
+              icon={<MapPin size={15} />}
+              label={t('settings.profile.cityLabel')}
+              value={user.city?.trim() || '—'}
+            />
+            <ProfileField
+              icon={<MapPin size={15} />}
+              label={t('settings.profile.stateLabel')}
+              value={user.state?.trim() || '—'}
+            />
+            <ProfileField
+              icon={<MapPin size={15} />}
+              label={t('settings.profile.pincodeLabel')}
+              value={user.pincode?.trim() || '—'}
+            />
+          </ContentCard>
+        </Box>
 
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={`${DASHBOARD_UX.cardGap}px`}>
+        <Box
+          sx={{
+            display: 'grid',
+            gap: `${DASHBOARD_UX.cardGap}px`,
+            gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
+            alignItems: 'stretch',
+          }}
+        >
+          <Box sx={{ position: 'relative', height: '100%', minHeight: 220, '& > .MuiPaper-root': { height: '100%' } }}>
             <ContentCard>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
-                <Languages size={18} color={s.textSecondary} />
+                <Globe size={18} color={s.textSecondary} />
                 <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
                   {t('settings.language.title')}
                 </Typography>
@@ -230,66 +327,114 @@ export function ProfilePage() {
               <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mb: 2 }}>
                 {t('settings.language.description')}
               </Typography>
-              <LanguagePicker value={currentLanguage} />
+              <LanguagePicker value={currentLanguage} hideLabel />
+              <CardWatermark>
+                <Languages size={88} />
+              </CardWatermark>
             </ContentCard>
+          </Box>
 
+          <Box sx={{ position: 'relative', height: '100%', minHeight: 220, '& > .MuiPaper-root': { height: '100%' } }}>
             <ContentCard>
-              <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary, mb: 1 }}>
-                {t('settings.profile.appearanceSection', { defaultValue: 'Appearance' })}
-              </Typography>
-              <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mb: 2 }}>
-                {t('settings.profile.themeSystemHint', {
-                  defaultValue: 'Use the header toggle to switch light and dark mode.',
-                })}
-              </Typography>
-              <Button variant="outlined" onClick={toggleThemeMode} sx={dashOutlinedButtonSx}>
-                {themeMode === 'light'
-                  ? t('settings.profile.themeDark', { defaultValue: 'Dark' })
-                  : t('settings.profile.themeLight', { defaultValue: 'Light' })}
-              </Button>
-              <Divider sx={{ my: 2, borderColor: s.border }} />
-              <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary, mb: 1 }}>
-                {t('settings.profile.documentsSection')}
-              </Typography>
-              <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mb: 1.5 }}>
-                {consumerSpace
-                  ? t('settings.profile.documentsDescription')
-                  : t('settings.profile.documentsNoSpace')}
-              </Typography>
-              <Button
-                variant="outlined"
-                startIcon={<SquarePen size={16} />}
-                onClick={() => navigate(`${ROUTES.completeProfile}?mode=edit`)}
-                sx={dashOutlinedButtonSx}
-              >
-                {t('settings.profile.editProfile')}
-              </Button>
+              <Stack spacing={2}>
+                <Box>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
+                    <Sun size={18} color={s.textSecondary} />
+                    <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+                      {t('settings.profile.appearanceSection', { defaultValue: 'Appearance' })}
+                    </Typography>
+                  </Stack>
+                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mb: 1.5 }}>
+                    {t('settings.profile.themeSystemHint', {
+                      defaultValue: 'Use the header toggle to switch light and dark mode.',
+                    })}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    startIcon={<Sun size={14} />}
+                    onClick={toggleThemeMode}
+                    sx={dashOutlinedButtonSx}
+                  >
+                    {themeMode === 'light'
+                      ? t('settings.profile.themeLight', { defaultValue: 'Light' })
+                      : t('settings.profile.themeDark', { defaultValue: 'Dark' })}
+                  </Button>
+                </Box>
+                <Box>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
+                    <FolderOpen size={18} color={s.textSecondary} />
+                    <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+                      {t('settings.profile.documentsSection')}
+                    </Typography>
+                  </Stack>
+                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mb: 1.5 }}>
+                    {consumerSpace
+                      ? t('settings.profile.documentsDescription')
+                      : t('settings.profile.documentsNoSpace')}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    startIcon={<SquarePen size={16} />}
+                    onClick={() => navigate(`${ROUTES.completeProfile}?mode=edit`)}
+                    sx={dashOutlinedButtonSx}
+                  >
+                    {t('settings.profile.editProfile')}
+                  </Button>
+                </Box>
+              </Stack>
+              <CardWatermark>
+                <FolderOpen size={88} />
+              </CardWatermark>
             </ContentCard>
+          </Box>
 
+          <Box sx={{ position: 'relative', height: '100%', minHeight: 220, '& > .MuiPaper-root': { height: '100%' } }}>
             <ContentCard>
-              <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary, mb: 1 }}>
-                {t('settings.profile.sessionTitle')}
-              </Typography>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
+                <Shield size={18} color={s.textSecondary} />
+                <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+                  {t('settings.profile.sessionTitle')}
+                </Typography>
+              </Stack>
               <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mb: 2 }}>
                 {t('settings.profile.sessionBody')}
               </Typography>
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<LogOut size={16} />}
-                onClick={() => {
-                  if (window.confirm(t('settings.profile.logoutMessage'))) {
-                    void logout();
-                  }
-                }}
-                sx={dashOutlinedButtonSx}
-              >
-                {t('settings.profile.logout')}
-              </Button>
+              <Stack spacing={1.25}>
+                <Button
+                  variant="outlined"
+                  startIcon={<LogOut size={16} />}
+                  onClick={() => {
+                    if (window.confirm(t('settings.profile.logoutMessage'))) {
+                      void logout();
+                    }
+                  }}
+                  sx={dashErrorButtonSx}
+                >
+                  {t('settings.profile.logout')}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<Trash2 size={16} />}
+                  onClick={() => {
+                    navigate(ROUTES.deleteAccount, {
+                      state: {
+                        fromProfile: true,
+                        mobileNumber: user.mobileNumber,
+                      },
+                    });
+                  }}
+                  sx={dashErrorButtonSx}
+                >
+                  {t('settings.profile.deleteAccount')}
+                </Button>
+              </Stack>
+              <CardWatermark>
+                <Shield size={88} />
+              </CardWatermark>
             </ContentCard>
-          </Stack>
-        </Stack>
-      </PageContainer>
-    </AppLayout>
+          </Box>
+        </Box>
+      </Stack>
+    </PageContainer>
   );
 }

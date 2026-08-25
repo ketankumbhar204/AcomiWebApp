@@ -47,35 +47,54 @@ export function SidePanel({
         sx={{
           p: `${DASHBOARD_UX.sectionPadding}px`,
           display: 'flex',
-          alignItems: 'flex-start',
+          flexDirection: 'column',
           gap: 1,
           flexShrink: 0,
         }}
       >
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }} noWrap>
-            {title}
-          </Typography>
-          {subtitle ? (
-            <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mt: 0.25 }} noWrap>
-              {subtitle}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 1,
+          }}
+        >
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }} noWrap>
+              {title}
             </Typography>
+            {subtitle ? (
+              <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mt: 0.25 }} noWrap>
+                {subtitle}
+              </Typography>
+            ) : null}
+          </Box>
+          {onClose ? (
+            <IconButton
+              size="small"
+              onClick={onClose}
+              aria-label="Close panel"
+              sx={{
+                width: DASHBOARD_UX.buttonHeight,
+                height: DASHBOARD_UX.buttonHeight,
+                borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
+              }}
+            >
+              <X size={16} />
+            </IconButton>
           ) : null}
         </Box>
-        {actions}
-        {onClose ? (
-          <IconButton
-            size="small"
-            onClick={onClose}
-            aria-label="Close panel"
+        {actions ? (
+          <Box
             sx={{
-              width: DASHBOARD_UX.buttonHeight,
-              height: DASHBOARD_UX.buttonHeight,
-              borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 1,
+              alignItems: 'center',
             }}
           >
-            <X size={16} />
-          </IconButton>
+            {actions}
+          </Box>
         ) : null}
       </Box>
       <Divider sx={{ borderColor: s.border, flexShrink: 0 }} />

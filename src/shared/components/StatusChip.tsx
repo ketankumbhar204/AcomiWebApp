@@ -35,7 +35,7 @@ export function StatusChip({ label, tone = 'default', size = 'small' }: StatusCh
         bgcolor: surface.bg,
         color: surface.fg,
         borderColor: surface.border,
-        '& .MuiChip-label': { px: 0.75, color: surface.fg },
+        '& .MuiChip-label': { px: 0.75, color: surface.fg, textTransform: 'none', letterSpacing: 0 },
       }}
     />
   );

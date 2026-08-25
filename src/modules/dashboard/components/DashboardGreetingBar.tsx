@@ -3,21 +3,30 @@ import { RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@mui/material/styles';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
+import { isGenericUserName } from '@/modules/onboarding/utils/profileCompletion';
 
 type DashboardGreetingBarProps = {
   spaceName: string;
   greetingKey: 'greetingMorning' | 'greetingAfternoon' | 'greetingEvening';
   onRefresh: () => void;
+  userFullName?: string | null;
 };
 
 export function DashboardGreetingBar({
   spaceName,
   greetingKey,
   onRefresh,
+  userFullName,
 }: DashboardGreetingBarProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const firstName =
+    !isGenericUserName(userFullName) ? userFullName?.trim().split(/\s+/)[0] ?? null : null;
+  const greeting = t(`dashboard.owner.${greetingKey}`);
+  const greetingLine = firstName
+    ? t('dashboard.owner.greetingWithName', { greeting, name: firstName })
+    : t('dashboard.owner.greetingPlain', { greeting });
 
   return (
     <Stack
@@ -37,8 +46,7 @@ export function DashboardGreetingBar({
             letterSpacing: '-0.015em',
           }}
         >
-          {t(`dashboard.owner.${greetingKey}`)}
-          {t('dashboard.owner.greetingOwnerSuffix', { defaultValue: ', Owner! 👋' })}
+          {greetingLine}
         </Typography>
         <Typography
           sx={{

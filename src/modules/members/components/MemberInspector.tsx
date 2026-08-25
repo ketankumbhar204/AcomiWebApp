@@ -125,34 +125,79 @@ export function MemberInspector({
         subtitle={member.mobileNumber}
         onClose={onClose}
         actions={
-          <Stack direction="row" spacing={0.5}>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
             {canInvite ? (
               <Button
+                variant="outlined"
                 size="small"
                 startIcon={<UserPlus size={14} />}
                 onClick={onInvite}
-                sx={dashOutlinedButtonSx}
+                sx={{
+                  ...dashOutlinedButtonSx,
+                  height: 32,
+                  minHeight: 32,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  borderColor: colors.primary,
+                  color: colors.primaryDark,
+                  bgcolor: s.surface,
+                  '&:hover': {
+                    borderColor: colors.primaryDark,
+                    bgcolor: s.hover,
+                  },
+                  '& .MuiButton-startIcon': { mr: 0.75 },
+                }}
               >
                 {t('membership.invite.headerAction')}
               </Button>
             ) : null}
             {canEdit ? (
               <Button
+                variant="outlined"
                 size="small"
                 startIcon={<Pencil size={14} />}
                 onClick={onEdit}
-                sx={dashOutlinedButtonSx}
+                sx={{
+                  ...dashOutlinedButtonSx,
+                  height: 32,
+                  minHeight: 32,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  borderColor: colors.primary,
+                  color: colors.primaryDark,
+                  bgcolor: s.surface,
+                  '&:hover': {
+                    borderColor: colors.primaryDark,
+                    bgcolor: s.hover,
+                  },
+                  '& .MuiButton-startIcon': { mr: 0.75 },
+                }}
               >
                 {t('membership.details.edit')}
               </Button>
             ) : null}
             {canRemove ? (
               <Button
+                variant="outlined"
                 size="small"
                 color="error"
                 startIcon={<Trash2 size={14} />}
                 onClick={() => setConfirmRemove(true)}
-                sx={dashOutlinedButtonSx}
+                sx={{
+                  ...dashOutlinedButtonSx,
+                  height: 32,
+                  minHeight: 32,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  borderColor: colors.danger,
+                  color: colors.danger,
+                  bgcolor: s.surface,
+                  '&:hover': {
+                    borderColor: colors.danger,
+                    bgcolor: s.errorTint,
+                  },
+                  '& .MuiButton-startIcon': { mr: 0.75 },
+                }}
               >
                 {t('membership.members.remove')}
               </Button>
@@ -178,7 +223,7 @@ export function MemberInspector({
                 {member.fullName}
               </Typography>
               <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', mt: 0.5 }}>
-                <StatusChip label={member.role} tone="info" />
+                <StatusChip label={t(`spaces.roles.${member.role}`)} tone="info" />
                 <StatusChip
                   label={t(getMemberStatusLabelKey(member.status))}
                   tone={memberStatusTone(member.status)}

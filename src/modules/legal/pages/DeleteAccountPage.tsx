@@ -2,8 +2,7 @@ import { Box, Button, Checkbox, CircularProgress, FormControlLabel, Link, Typogr
 import { Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link as RouterLink } from 'react-router-dom';
-import { ApiError } from '@/shared/api/errors';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/routes/paths';
 import { isValidIndianMobile, normalizeIndianMobileDigits } from '@/shared/utils/indianMobile';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
@@ -14,50 +13,71 @@ import { AuthHero } from '@/modules/auth/components/AuthHero';
 import { MobileNumberInput } from '@/modules/auth/components/MobileNumberInput';
 import { PasswordInput } from '@/modules/auth/components/PasswordInput';
 import { authApi } from '@/modules/auth/api/authApi';
+import { useSendOtp } from '@/modules/auth/hooks/useSendOtp';
 import { validatePassword } from '@/modules/auth/passwordRules';
+import { useAuthStore } from '@/store/authStore';
+import { useFinishAccountDeletion } from '@/modules/legal/hooks/useFinishAccountDeletion';
+import { mapAccountDeletionError } from '@/modules/legal/utils/accountDeletion';
 
-type Step = 'form' | 'done';
+type AuthMethod = 'password' | 'otp';
+
+type DeleteLocationState = {
+  fromProfile?: boolean;
+  mobileNumber?: string;
+};
 
 export function DeleteAccountPage() {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = (location.state as DeleteLocationState | null) ?? null;
+  const fromProfile = Boolean(locationState?.fromProfile);
+  const signedInUser = useAuthStore((state) => state.user);
+  const finishAccountDeletion = useFinishAccountDeletion();
 
-  const [step, setStep] = useState<Step>('form');
-  const [mobileNumber, setMobileNumber] = useState('');
+  const [authMethod, setAuthMethod] = useState<AuthMethod>('password');
+  const [mobileNumber, setMobileNumber] = useState(
+    locationState?.mobileNumber ?? signedInUser?.mobileNumber ?? '',
+  );
   const [password, setPassword] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const { sendOtp, isLoading: sendingOtp, error: otpSendError, clearError: clearOtpError } = useSendOtp();
 
   useEffect(() => {
     document.title = `${t('legal.deleteAccount.title')} · ${t('common.appName')}`;
   }, [t]);
 
-  const canDelete =
+  useEffect(() => {
+    const nextMobile = locationState?.mobileNumber ?? signedInUser?.mobileNumber ?? '';
+    if (nextMobile) {
+      setMobileNumber(nextMobile);
+    }
+  }, [locationState?.mobileNumber, signedInUser]);
+
+  const canDeletePassword =
     isValidIndianMobile(mobileNumber) &&
     validatePassword(password) == null &&
     confirmed &&
     !deleting;
+  const canSendOtp =
+    isValidIndianMobile(mobileNumber) && confirmed && !sendingOtp && !deleting;
+  const lockRegisteredMobile = fromProfile || Boolean(signedInUser);
 
-  const mapError = (err: unknown): string => {
-    if (err instanceof ApiError) {
-      if (err.isNetworkError || err.status === 0) {
-        return t('common.errors.network');
-      }
-      if (err.status === 401) {
-        return t('common.errors.invalidCredentials');
-      }
-      if (err.status >= 500) {
-        return t('common.errors.server');
-      }
-      return err.message || t('common.errors.generic');
+  const switchAuthMethod = (next: AuthMethod) => {
+    if (next === authMethod) {
+      return;
     }
-    return t('common.errors.generic');
+    setAuthMethod(next);
+    setError(null);
+    clearOtpError();
   };
 
-  const handleDelete = async () => {
-    if (!canDelete) {
+  const handleDeletePassword = async () => {
+    if (!canDeletePassword) {
       return;
     }
     setError(null);
@@ -67,11 +87,36 @@ export function DeleteAccountPage() {
         mobileNumber: normalizeIndianMobileDigits(mobileNumber),
         password,
       });
-      setStep('done');
+      finishAccountDeletion();
     } catch (err) {
-      setError(mapError(err));
+      setError(mapAccountDeletionError(err));
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!canSendOtp) {
+      if (!isValidIndianMobile(mobileNumber)) {
+        setError(
+          mobileNumber.trim()
+            ? t('auth.login.mobileInvalid')
+            : t('auth.login.mobileRequired'),
+        );
+      }
+      return;
+    }
+    setError(null);
+    clearOtpError();
+    const result = await sendOtp(normalizeIndianMobileDigits(mobileNumber), 'ACCOUNT_DELETION');
+    if (result) {
+      navigate(ROUTES.deleteAccountOtp, {
+        state: {
+          mobileNumber: normalizeIndianMobileDigits(mobileNumber),
+          purpose: 'ACCOUNT_DELETION',
+          fromProfile,
+        },
+      });
     }
   };
 
@@ -85,81 +130,103 @@ export function DeleteAccountPage() {
           subheading={t('legal.deleteAccount.subheading')}
         />
 
-        {error ? <AuthErrorBanner message={error} /> : null}
+        {error || otpSendError ? <AuthErrorBanner message={error || otpSendError || ''} /> : null}
 
-        {step !== 'done' ? (
-          <>
-            <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted }}>
-              {t('legal.deleteAccount.whatIsDeleted')}
-            </Typography>
-            <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted }}>
-              {t('legal.deleteAccount.whatIsRetained')}
-            </Typography>
-          </>
-        ) : null}
+        <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted }}>
+          {t('legal.deleteAccount.whatIsDeleted')}
+        </Typography>
+        <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted }}>
+          {t('legal.deleteAccount.whatIsRetained')}
+        </Typography>
 
-        {step === 'form' ? (
-          <>
-            <MobileNumberInput
-              value={mobileNumber}
-              onChange={(value) => {
-                setMobileNumber(value);
-                if (error) setError(null);
-              }}
-              disabled={deleting}
-              autoFocus
-            />
-            <PasswordInput
-              label={t('auth.login.passwordLabel')}
-              value={password}
-              onChange={(value) => {
-                setPassword(value);
-                if (error) setError(null);
-              }}
-              disabled={deleting}
-              placeholder={t('auth.login.passwordPlaceholder')}
-              onSubmit={() => {
-                if (canDelete) {
-                  void handleDelete();
-                }
-              }}
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={confirmed}
-                  onChange={(event) => setConfirmed(event.target.checked)}
-                  disabled={deleting}
-                />
-              }
-              label={t('legal.deleteAccount.confirmLabel')}
-            />
-            <Button
-              variant="contained"
-              color="error"
-              disabled={!canDelete}
-              fullWidth
-              onClick={() => void handleDelete()}
-              startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : undefined}
-              sx={dashContainedButtonSx}
-            >
-              {deleting ? t('common.pleaseWait') : t('legal.deleteAccount.submit')}
-            </Button>
-          </>
+        <MobileNumberInput
+          value={mobileNumber}
+          onChange={(value) => {
+            setMobileNumber(value);
+            if (error) setError(null);
+          }}
+          disabled={deleting || sendingOtp || lockRegisteredMobile}
+          autoFocus={!lockRegisteredMobile}
+        />
+        {authMethod === 'password' ? (
+          <PasswordInput
+            label={t('auth.login.passwordLabel')}
+            value={password}
+            onChange={(value) => {
+              setPassword(value);
+              if (error) setError(null);
+            }}
+            disabled={deleting}
+            placeholder={t('auth.login.passwordPlaceholder')}
+          />
         ) : null}
-
-        {step === 'done' ? (
-          <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted }}>
-            {t('legal.deleteAccount.success')}
-          </Typography>
-        ) : null}
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={confirmed}
+              onChange={(event) => setConfirmed(event.target.checked)}
+              disabled={deleting || sendingOtp}
+            />
+          }
+          label={t('legal.deleteAccount.confirmLabel')}
+        />
+        {authMethod === 'otp' ? (
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={!canSendOtp}
+            fullWidth
+            onClick={() => void handleSendOtp()}
+            startIcon={sendingOtp ? <CircularProgress size={16} color="inherit" /> : undefined}
+            sx={dashContainedButtonSx}
+          >
+            {sendingOtp ? t('common.pleaseWait') : t('legal.deleteAccount.sendOtp')}
+          </Button>
+        ) : (
+          <Button
+            variant="contained"
+            color="error"
+            disabled={!canDeletePassword}
+            fullWidth
+            onClick={() => void handleDeletePassword()}
+            startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : undefined}
+            sx={dashContainedButtonSx}
+          >
+            {deleting ? t('common.pleaseWait') : t('legal.deleteAccount.submit')}
+          </Button>
+        )}
+        <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted, textAlign: 'center' }}>
+          <Link
+            component="button"
+            type="button"
+            underline="hover"
+            disabled={deleting || sendingOtp}
+            onClick={() => switchAuthMethod(authMethod === 'otp' ? 'password' : 'otp')}
+            sx={{
+              ...DASHBOARD_UX.smallCaption,
+              color: s.textSecondary,
+              background: 'none',
+              border: 0,
+              p: 0,
+              cursor: deleting || sendingOtp ? 'default' : 'pointer',
+            }}
+          >
+            {authMethod === 'otp'
+              ? t('legal.deleteAccount.usePassword')
+              : t('legal.deleteAccount.otpInstead')}
+          </Link>
+        </Typography>
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
           <Link component={RouterLink} to={ROUTES.privacy} underline="hover">
             {t('legal.privacy.linkLabel')}
           </Link>
-          <Link component={RouterLink} to={ROUTES.login} underline="hover">
-            {t('legal.deleteAccount.backToSignIn')}
+          <Link
+            component={RouterLink}
+            to={!fromProfile ? ROUTES.login : ROUTES.profile}
+            underline="hover"
+          >
+            {!fromProfile ? t('legal.deleteAccount.backToSignIn') : t('navigation.profile')}
           </Link>
         </Box>
       </Box>

@@ -99,9 +99,11 @@ apiClient.interceptors.response.use(
       const requestUrl = error.config?.url ?? '';
       const isPublicAuth =
         requestUrl.includes('/auth/login') ||
+        requestUrl.includes('/auth/login-with-otp') ||
         requestUrl.includes('/auth/register') ||
         requestUrl.includes('/auth/send-otp') ||
         requestUrl.includes('/auth/verify-otp') ||
+        requestUrl.includes('/auth/reset-password') ||
         requestUrl.includes('/auth/account-deletion');
 
       tokenPort.setToken(null);
@@ -112,10 +114,15 @@ apiClient.interceptors.response.use(
           path !== '/login' &&
           path !== '/register' &&
           path !== '/register/otp' &&
+          path !== '/login/otp' &&
+          path !== '/forgot-password' &&
+          path !== '/forgot-password/otp' &&
+          path !== '/reset-password' &&
           path !== '/register/password' &&
           path !== '/otp' &&
           path !== '/unauthorized' &&
           path !== '/delete-account' &&
+          path !== '/delete-account/otp' &&
           path !== '/privacy'
         ) {
           window.location.assign('/unauthorized');

@@ -67,6 +67,10 @@ import {
   usePendingInvitations,
 } from '../hooks/useMembers';
 import {
+  getMemberStatusLabelKey,
+  memberStatusTone,
+} from '../utils/memberStatus';
+import {
   MEMBER_STATUSES,
   countMemberListFilters,
   defaultMemberListFilters,
@@ -368,7 +372,7 @@ export function MembersWorkspacePage() {
     {
       id: 'role',
       header: t('membership.workspace.columns.role'),
-      accessor: (row) => <StatusChip label={row.role} tone="info" />,
+      accessor: (row) => <StatusChip label={t(`spaces.roles.${row.role}`)} tone="info" />,
     },
     {
       id: 'joined',
@@ -380,7 +384,10 @@ export function MembersWorkspacePage() {
       id: 'status',
       header: t('membership.workspace.columns.status'),
       accessor: (row) => (
-        <StatusChip label={row.status} tone={row.status === 'ACTIVE' ? 'success' : 'warning'} />
+        <StatusChip
+          label={t(getMemberStatusLabelKey(row.status))}
+          tone={memberStatusTone(row.status)}
+        />
       ),
     },
     {
@@ -418,7 +425,7 @@ export function MembersWorkspacePage() {
     {
       id: 'role',
       header: t('membership.workspace.columns.role'),
-      accessor: (row) => <StatusChip label={row.role} tone="info" />,
+      accessor: (row) => <StatusChip label={t(`spaces.roles.${row.role}`)} tone="info" />,
     },
     {
       id: 'invitedBy',
@@ -463,13 +470,15 @@ export function MembersWorkspacePage() {
             }));
           }}
           renderValue={(selected) =>
-            selected.length === 0 ? t('membership.workspace.allRoles') : selected.join(', ')
+            selected.length === 0
+              ? t('membership.workspace.allRoles')
+              : selected.map((role) => t(`spaces.roles.${role}`)).join(', ')
           }
         >
           {rolesForSpace(spaceType).map((role) => (
             <MenuItem key={role} value={role}>
               <Checkbox checked={filters.roles.includes(role)} size="small" />
-              {role}
+              <ListItemText primary={t(`spaces.roles.${role}`)} />
             </MenuItem>
           ))}
         </Select>
@@ -494,13 +503,13 @@ export function MembersWorkspacePage() {
           renderValue={(selected) =>
             selected.length === 0
               ? t('membership.workspace.allStatuses')
-              : selected.join(', ')
+              : selected.map((status) => t(getMemberStatusLabelKey(status))).join(', ')
           }
         >
           {MEMBER_STATUSES.map((status) => (
             <MenuItem key={status} value={status}>
               <Checkbox checked={filters.statuses.includes(status)} size="small" />
-              {status}
+              <ListItemText primary={t(getMemberStatusLabelKey(status))} />
             </MenuItem>
           ))}
         </Select>

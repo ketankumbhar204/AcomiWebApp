@@ -32,6 +32,7 @@ import {
 import { isAccommodationApplicable } from '@/shared/utils/spacePermissions';
 import { canManageNotifications } from '@/shared/utils/spaceOperator';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { useAuthStore } from '@/store/authStore';
 import { useSpaceStore } from '@/store/spaceStore';
 import { useSpaceHealth, useSpaceLifecycle } from '@/spaceLifecycle';
 
@@ -49,6 +50,7 @@ export function DashboardPage() {
   const { spaceId = '' } = useParams<{ spaceId: string }>();
   const selectSpace = useSpaceStore((state) => state.selectSpace);
   const mySpaces = useSpaceStore((state) => state.mySpaces);
+  const userFullName = useAuthStore((state) => state.user?.fullName);
   const permissions = useSpacePermissions(spaceId);
   const space = permissions.space;
   const spaceType = space?.spaceType;
@@ -201,6 +203,7 @@ export function DashboardPage() {
                     health={health}
                     pendingCount={pendingCount}
                     onRefresh={handleRefresh}
+                    userFullName={userFullName}
                   />
                 ) : null}
                 {showMealDay ? (

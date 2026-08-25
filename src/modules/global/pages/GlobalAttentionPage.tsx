@@ -9,7 +9,6 @@ import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { AppLayout } from '@/layouts/AppLayout';
 import { useGlobalDashboard } from '@/modules/global/hooks/useGlobalDashboard';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { ContentCard } from '@/shared/components/ContentCard';
@@ -23,7 +22,7 @@ import type { GlobalAttentionItem, GlobalAttentionSpace } from '@/shared/types/d
 import { navigateFromNotificationType } from '@/shared/utils/notificationDeepLinks';
 import { canManageNotifications } from '@/shared/utils/spaceOperator';
 import { findMySpaceEntry, resolveSpacePermissions } from '@/shared/utils/spacePermissions';
-import { ROUTES, spacePendingActionsPath } from '@/routes/paths';
+import { spacePendingActionsPath } from '@/routes/paths';
 import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { useSpaceStore } from '@/store/spaceStore';
 
@@ -76,16 +75,7 @@ export function GlobalAttentionPage() {
   };
 
   return (
-    <AppLayout
-      headerTitle={t('spaces.globalDashboard.attentionListTitle')}
-      headerActions={
-        <Button variant="outlined" onClick={() => navigate(ROUTES.mySpaces)} sx={dashOutlinedButtonSx}>
-          {t('navigation.mySpaces')}
-        </Button>
-      }
-      contentDense
-    >
-      <PageContainer gap={0}>
+    <PageContainer gap={0}>
         <Stack spacing={`${DASHBOARD_UX.sectionGap}px`} sx={{ width: '100%' }}>
           <PageHeader
             title={t('spaces.globalDashboard.needsAttention')}
@@ -189,6 +179,5 @@ export function GlobalAttentionPage() {
           )}
         </Stack>
       </PageContainer>
-    </AppLayout>
   );
 }

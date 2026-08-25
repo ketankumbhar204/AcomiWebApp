@@ -4,6 +4,7 @@ import { AuthLayoutOutlet } from './AuthLayoutOutlet';
 import { GuestRoute, ProtectedRoute } from './ProtectedRoute';
 import { SpaceBootstrapOutlet } from '@/modules/dashboard/layouts/SpaceBootstrapOutlet';
 import { SpaceShellLayout } from '@/modules/dashboard/layouts/SpaceShellLayout';
+import { GlobalShellLayout } from '@/layouts/GlobalShellLayout';
 import { AccommodationPermissionGate } from '@/modules/accommodation/components/AccommodationPermissionGate';
 import { MealsPermissionGate } from '@/modules/meals/components/MealsPermissionGate';
 import { PaymentsPermissionGate } from '@/modules/payments/components/PaymentsPermissionGate';
@@ -53,6 +54,15 @@ const LoginPage = lazyPage(() =>
 );
 const RegisterPage = lazyPage(() =>
   import('@/modules/auth/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })),
+);
+const OtpPage = lazyPage(() =>
+  import('@/modules/auth/pages/OtpPage').then((m) => ({ default: m.OtpPage })),
+);
+const ForgotPasswordPage = lazyPage(() =>
+  import('@/modules/auth/pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })),
+);
+const ResetPasswordPage = lazyPage(() =>
+  import('@/modules/auth/pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })),
 );
 const UnauthorizedPage = lazyPage(() =>
   import('@/modules/auth/pages/UnauthorizedPage').then((m) => ({ default: m.UnauthorizedPage })),
@@ -148,6 +158,36 @@ const GlobalAttentionPage = lazyPage(() =>
 const GlobalActivityPage = lazyPage(() =>
   import('@/modules/global/pages/GlobalActivityPage').then((m) => ({
     default: m.GlobalActivityPage,
+  })),
+);
+const GlobalMembersPage = lazyPage(() =>
+  import('@/modules/global/pages/GlobalMembersPage').then((m) => ({
+    default: m.GlobalMembersPage,
+  })),
+);
+const GlobalMealsPage = lazyPage(() =>
+  import('@/modules/global/pages/GlobalMealsPage').then((m) => ({
+    default: m.GlobalMealsPage,
+  })),
+);
+const GlobalPaymentsPage = lazyPage(() =>
+  import('@/modules/global/pages/GlobalPaymentsPage').then((m) => ({
+    default: m.GlobalPaymentsPage,
+  })),
+);
+const GlobalComplaintsPage = lazyPage(() =>
+  import('@/modules/global/pages/GlobalComplaintsPage').then((m) => ({
+    default: m.GlobalComplaintsPage,
+  })),
+);
+const GlobalNoticesPage = lazyPage(() =>
+  import('@/modules/global/pages/GlobalNoticesPage').then((m) => ({
+    default: m.GlobalNoticesPage,
+  })),
+);
+const GlobalReportsPage = lazyPage(() =>
+  import('@/modules/global/pages/GlobalReportsPage').then((m) => ({
+    default: m.GlobalReportsPage,
   })),
 );
 const NotificationsPage = lazyPage(() =>
@@ -268,6 +308,38 @@ export const appRoutes = [
                 ),
               },
               {
+                path: ROUTES.loginOtp,
+                element: (
+                  <L>
+                    <OtpPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.forgotPassword,
+                element: (
+                  <L>
+                    <ForgotPasswordPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.forgotPasswordOtp,
+                element: (
+                  <L>
+                    <OtpPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.resetPassword,
+                element: (
+                  <L>
+                    <ResetPasswordPage />
+                  </L>
+                ),
+              },
+              {
                 path: ROUTES.register,
                 element: (
                   <L>
@@ -275,10 +347,14 @@ export const appRoutes = [
                   </L>
                 ),
               },
-              /* OTP register paths remain reserved for future OTP authentication. */
+              /* OTP verification after Create Account. Password login is unchanged. */
               {
                 path: ROUTES.registerOtp,
-                element: <Navigate to={ROUTES.register} replace />,
+                element: (
+                  <L>
+                    <OtpPage />
+                  </L>
+                ),
               },
               {
                 path: ROUTES.registerPassword,
@@ -340,14 +416,6 @@ export const appRoutes = [
                 ),
               },
               {
-                path: ROUTES.mySpaces,
-                element: (
-                  <L>
-                    <MySpacesPage />
-                  </L>
-                ),
-              },
-              {
                 path: ROUTES.completeProfile,
                 element: (
                   <L>
@@ -356,28 +424,89 @@ export const appRoutes = [
                 ),
               },
               {
-                path: ROUTES.profile,
-                element: (
-                  <L>
-                    <ProfilePage />
-                  </L>
-                ),
-              },
-              {
-                path: ROUTES.globalAttention,
-                element: (
-                  <L>
-                    <GlobalAttentionPage />
-                  </L>
-                ),
-              },
-              {
-                path: ROUTES.globalActivity,
-                element: (
-                  <L>
-                    <GlobalActivityPage />
-                  </L>
-                ),
+                element: <GlobalShellLayout />,
+                children: [
+                  {
+                    path: ROUTES.mySpaces,
+                    element: (
+                      <L>
+                        <MySpacesPage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.profile,
+                    element: (
+                      <L>
+                        <ProfilePage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.globalAttention,
+                    element: (
+                      <L>
+                        <GlobalAttentionPage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.globalActivity,
+                    element: (
+                      <L>
+                        <GlobalActivityPage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.globalMembers,
+                    element: (
+                      <L>
+                        <GlobalMembersPage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.globalMeals,
+                    element: (
+                      <L>
+                        <GlobalMealsPage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.globalPayments,
+                    element: (
+                      <L>
+                        <GlobalPaymentsPage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.globalComplaints,
+                    element: (
+                      <L>
+                        <GlobalComplaintsPage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.globalNotices,
+                    element: (
+                      <L>
+                        <GlobalNoticesPage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.globalReports,
+                    element: (
+                      <L>
+                        <GlobalReportsPage />
+                      </L>
+                    ),
+                  },
+                ],
               },
               {
                 path: '/spaces/:spaceId',
@@ -716,6 +845,14 @@ export const appRoutes = [
             element: (
               <L>
                 <DeleteAccountPage />
+              </L>
+            ),
+          },
+          {
+            path: ROUTES.deleteAccountOtp,
+            element: (
+              <L>
+                <OtpPage />
               </L>
             ),
           },

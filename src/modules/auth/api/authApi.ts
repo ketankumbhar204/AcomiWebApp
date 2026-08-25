@@ -6,7 +6,9 @@ import type {
   CompleteUserProfileRequest,
   LoginRequest,
   PasswordAccountDeletionRequest,
+  OtpVerifiedActionRequest,
   RegisterRequest,
+  ResetPasswordRequest,
   SendOtpRequest,
   SendOtpResponse,
   UpdateUserRequest,
@@ -117,7 +119,34 @@ export const authApi = {
     await unwrapVoidResponse(apiClient.delete('/auth/me'));
   },
 
-  deleteAccountByOtp: async (payload: VerifyOtpRequest): Promise<void> => {
+  loginWithOtp: async (payload: OtpVerifiedActionRequest): Promise<AuthTokenResponse> => {
+    if (env.isDevelopment) {
+      console.log(`${LOG_TAG} loginWithOtp → mobile:`, payload.mobileNumber);
+    }
+    const result = await unwrapApiResponse(
+      apiClient.post<ApiResponse<AuthTokenResponse>>('/auth/login-with-otp', payload),
+    );
+    if (env.isDevelopment) {
+      console.log(`${LOG_TAG} loginWithOtp ← userId:`, result.user.id);
+    }
+    return result;
+  },
+
+  resetPassword: async (payload: ResetPasswordRequest): Promise<void> => {
+    if (env.isDevelopment) {
+      console.log(`${LOG_TAG} resetPassword → mobile:`, payload.mobileNumber);
+    }
+    await unwrapVoidResponse(
+      apiClient.post<ApiResponse<void>>('/auth/reset-password', {
+        mobileNumber: payload.mobileNumber,
+        verificationToken: payload.verificationToken,
+        password: payload.password,
+        confirmPassword: payload.confirmPassword,
+      }),
+    );
+  },
+
+  deleteAccountByOtp: async (payload: OtpVerifiedActionRequest): Promise<void> => {
     await unwrapVoidResponse(
       apiClient.post('/auth/account-deletion', payload),
     );

@@ -22,7 +22,7 @@ import type { SpaceType } from '@/shared/types/space';
 import type { AmenityCode } from '@/modules/onboarding/utils/amenities';
 import { colors, spaceTypePalette } from '@/shared/theme/colors';
 
-export const SPACE_TYPE_ORDER: SpaceType[] = ['PG', 'MESS', 'HOSTEL', 'CO_LIVING', 'RENTAL'];
+export const SPACE_TYPE_ORDER: SpaceType[] = ['MESS', 'PG', 'HOSTEL', 'CO_LIVING', 'RENTAL'];
 
 export type SpaceTypeVisual = {
   icon: ComponentType<LucideProps>;

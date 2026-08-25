@@ -34,7 +34,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
-import { AccountLayout } from '@/layouts/AccountLayout';
 import { IconBadge } from '@/modules/dashboard/components/IconBadge';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import {
@@ -62,8 +61,7 @@ import { useAuthSession } from '@/shared/hooks/useAuthSession';
 import { useSpaceStore } from '@/store/spaceStore';
 
 const PAGE_SIZE = 9;
-const KPI_HEIGHT = DASHBOARD_UX.paymentCardHeight;
-const KPI_MAX_WIDTH = SPACE_CARD_COMPACT_WIDTH.max;
+const KPI_HEIGHT = 108;
 
 type SpaceFilter = 'all' | 'attention' | 'owner' | 'member';
 type SpaceSort = 'nameAsc' | 'nameDesc' | 'type' | 'role' | 'attention';
@@ -164,8 +162,8 @@ export function MySpacesPage() {
   );
 
   const isSearching = Boolean(debounced);
-  const showGlobalOverview = hasOperatorSpace && !isSearching;
-  const globalDashboard = useGlobalDashboard(hasOperatorSpace);
+  const showGlobalOverview = !isSearching && (spaces.length > 0 || storeSpaces.length > 0);
+  const globalDashboard = useGlobalDashboard(showGlobalOverview);
   const consumerAttention = useConsumerSpacesAttention(
     storeSpaces.length > 0 ? storeSpaces : spaces,
     hasConsumerSpace && !isSearching,
@@ -286,9 +284,9 @@ export function MySpacesPage() {
 
   const kpiSx = {
     height: KPI_HEIGHT,
-    maxHeight: KPI_HEIGHT,
-    minHeight: DASHBOARD_UX.paymentCardMinHeight,
-    maxWidth: KPI_MAX_WIDTH,
+    maxHeight: 'none',
+    minHeight: KPI_HEIGHT,
+    flex: '1 1 280px',
     width: '100%',
     p: `${DASHBOARD_UX.metricPadding}px`,
     borderRadius: `${DASHBOARD_UX.radius}px`,
@@ -308,8 +306,7 @@ export function MySpacesPage() {
   const isEmptyCatalog = !debounced && filter === 'all' && spaces.length === 0;
 
   return (
-    <AccountLayout contentMaxWidth={false} contentDense>
-      <PageContainer gap={0}>
+    <PageContainer gap={0}>
         <Stack
           spacing={`${DASHBOARD_UX.sectionGap}px`}
           sx={{ width: '100%', maxWidth: DASHBOARD_UX.contentMaxWidth, mx: 'auto' }}
@@ -364,8 +361,8 @@ export function MySpacesPage() {
           {showGlobalOverview ? (
             <Box
               sx={{
-                display: 'flex',
-                flexWrap: 'wrap',
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
                 gap: `${DASHBOARD_UX.cardGap}px`,
                 alignItems: 'stretch',
               }}
@@ -502,7 +499,6 @@ export function MySpacesPage() {
               placeholder={t('spaces.mySpaces.searchPlaceholder')}
               sx={{
                 flex: '1 1 240px',
-                maxWidth: 420,
                 minWidth: 200,
                 '& .MuiOutlinedInput-root': {
                   minHeight: DASHBOARD_UX.buttonHeight,
@@ -629,9 +625,9 @@ export function MySpacesPage() {
                   p: 0,
                   color: s.textMuted,
                   '&.Mui-selected': {
-                    bgcolor: `${colors.primaryDark}14`,
-                    color: colors.primaryDark,
-                    borderColor: `${colors.primaryDark}55`,
+                    bgcolor: `${colors.primary} !important`,
+                    color: '#fff',
+                    borderColor: colors.primary,
                   },
                 },
               }}
@@ -779,6 +775,5 @@ export function MySpacesPage() {
           )}
         </Stack>
       </PageContainer>
-    </AccountLayout>
   );
 }

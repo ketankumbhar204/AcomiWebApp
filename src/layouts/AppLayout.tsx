@@ -30,6 +30,8 @@ type AppLayoutProps = {
    * pages can fill height and own their own column scrolling.
    */
   lockContentScroll?: boolean;
+  /** Account shell uses a pinned open sidebar; space shell keeps hover-expand. */
+  sidebarExpandMode?: 'hover' | 'pinned';
 };
 
 /**
@@ -50,6 +52,7 @@ export function AppLayout({
   contentMaxWidth,
   contentDense = false,
   lockContentScroll = false,
+  sidebarExpandMode = 'hover',
 }: AppLayoutProps) {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
@@ -77,6 +80,7 @@ export function AppLayout({
           sections={navSections}
           panel={sidebarPanel}
           footer={sidebarFooter}
+          expandMode={sidebarExpandMode}
         />
       ) : (
         <AppSidebar
@@ -86,6 +90,7 @@ export function AppLayout({
           sections={navSections}
           panel={sidebarPanel}
           footer={sidebarFooter}
+          expandMode={sidebarExpandMode}
         />
       )}
 

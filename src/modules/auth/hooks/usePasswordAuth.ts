@@ -40,6 +40,86 @@ export function useLogin(): UseLoginResult {
   return { login, isLoading, error, clearError: () => setError(null) };
 }
 
+type UseLoginWithOtpResult = {
+  loginWithOtp: (mobileNumber: string, verificationToken: string) => Promise<boolean>;
+  isLoading: boolean;
+  error: string | null;
+  clearError: () => void;
+};
+
+export function useLoginWithOtp(): UseLoginWithOtpResult {
+  const { t } = useTranslation();
+  const setSession = useAuthStore((state) => state.setSession);
+  const clearDraft = useRegistrationDraftStore((state) => state.clear);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loginWithOtp = useCallback(
+    async (mobileNumber: string, verificationToken: string): Promise<boolean> => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const result = await authApi.loginWithOtp({ mobileNumber, verificationToken });
+        clearDraft();
+        setSession(result.user, result.accessToken);
+        return true;
+      } catch (err) {
+        setError(mapPasswordAuthError(err, t, 'login'));
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [clearDraft, setSession, t],
+  );
+
+  return { loginWithOtp, isLoading, error, clearError: () => setError(null) };
+}
+
+type UseResetPasswordResult = {
+  resetPassword: (payload: {
+    mobileNumber: string;
+    verificationToken: string;
+    password: string;
+    confirmPassword: string;
+  }) => Promise<boolean>;
+  isLoading: boolean;
+  error: string | null;
+  clearError: () => void;
+};
+
+export function useResetPassword(): UseResetPasswordResult {
+  const { t } = useTranslation();
+  const clearDraft = useRegistrationDraftStore((state) => state.clear);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const resetPassword = useCallback(
+    async (payload: {
+      mobileNumber: string;
+      verificationToken: string;
+      password: string;
+      confirmPassword: string;
+    }): Promise<boolean> => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await authApi.resetPassword(payload);
+        clearDraft();
+        return true;
+      } catch (err) {
+        setError(mapPasswordAuthError(err, t, 'register'));
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [clearDraft, t],
+  );
+
+  return { resetPassword, isLoading, error, clearError: () => setError(null) };
+}
+
 type UseRegisterResult = {
   register: (payload: {
     fullName: string;

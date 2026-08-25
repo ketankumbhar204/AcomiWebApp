@@ -351,8 +351,11 @@ export function DataTable<T extends { id: string }>({
                       sx={{
                         width: column.width,
                         height: TABLE_HEADER_HEIGHT,
-                        ...DASHBOARD_UX.link,
+                        ...DASHBOARD_UX.caption,
+                        fontWeight: 600,
                         color: s.textMuted,
+                        textTransform: 'none',
+                        letterSpacing: 0,
                       }}
                     >
                       {column.sortable && onSortChange ? (
