@@ -10,6 +10,8 @@ export const ROUTES = {
   forgotPasswordOtp: '/forgot-password/otp',
   resetPassword: '/reset-password',
   deleteAccountOtp: '/delete-account/otp',
+  changeMobile: '/change-mobile',
+  changeMobileOtp: '/change-mobile/otp',
   registerPassword: '/register/password',
   otp: '/otp',
   unauthorized: '/unauthorized',

@@ -1,4 +1,5 @@
 import {
+  Alert,
   Avatar,
   Box,
   Button,
@@ -16,14 +17,15 @@ import {
   Mail,
   MapPin,
   Shield,
+  Smartphone,
   SquarePen,
   Sun,
   Trash2,
   UserRound,
 } from 'lucide-react';
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useLogout } from '@/modules/auth/hooks/useLogout';
 import { LanguagePicker } from '@/modules/profile/components/LanguagePicker';
 import {
@@ -101,6 +103,7 @@ function ProfileField({
 export function ProfilePage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const logout = useLogout();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
@@ -110,6 +113,9 @@ export function ProfilePage() {
   const selectedSpaceId = useSpaceStore((state) => state.selectedSpaceId);
   const themeMode = useAppStore((state) => state.themeMode);
   const toggleThemeMode = useAppStore((state) => state.toggleThemeMode);
+  const [mobileChanged, setMobileChanged] = useState(
+    Boolean((location.state as { mobileChanged?: boolean } | null)?.mobileChanged),
+  );
 
   useEffect(() => {
     document.title = `${t('navigation.profile')} · ${t('common.appName')}`;
@@ -118,6 +124,13 @@ export function ProfilePage() {
   useEffect(() => {
     void refreshUser();
   }, [refreshUser]);
+
+  useEffect(() => {
+    if ((location.state as { mobileChanged?: boolean } | null)?.mobileChanged) {
+      setMobileChanged(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.pathname, location.state, navigate]);
 
   const currentSpace = useMemo(() => {
     if (selectedSpaceId) {
@@ -175,6 +188,19 @@ export function ProfilePage() {
           description={t('settings.profile.subheading')}
         />
 
+        {mobileChanged ? (
+          <Alert
+            severity="success"
+            onClose={() => setMobileChanged(false)}
+            sx={{
+              borderRadius: `${DASHBOARD_UX.tileRadius}px`,
+              ...DASHBOARD_UX.body,
+            }}
+          >
+            {t('auth.changeMobile.success')}
+          </Alert>
+        ) : null}
+
         <Box
           sx={{
             display: 'grid',
@@ -205,6 +231,22 @@ export function ProfilePage() {
                   <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mt: 0.25 }}>
                     {user.mobileNumber}
                   </Typography>
+                  <Button
+                    variant="text"
+                    size="small"
+                    startIcon={<Smartphone size={14} />}
+                    onClick={() => navigate(ROUTES.changeMobile)}
+                    sx={{
+                      mt: 0.5,
+                      px: 0,
+                      minWidth: 0,
+                      color: colors.primary,
+                      justifyContent: 'flex-start',
+                      ...DASHBOARD_UX.smallCaption,
+                    }}
+                  >
+                    {t('settings.profile.changeMobile')}
+                  </Button>
                   <Stack direction="row" spacing={0.75} useFlexGap sx={{ mt: 1, flexWrap: 'wrap' }}>
                     {currentSpace ? (
                       <StatusChip label={currentSpace.spaceName} tone="info" />

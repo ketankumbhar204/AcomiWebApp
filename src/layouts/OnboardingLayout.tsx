@@ -1,9 +1,11 @@
 import { AppBar, Box, Button, IconButton, Toolbar, Tooltip, Typography, useTheme } from '@mui/material';
-import { Moon, Sun, Home } from 'lucide-react';
+import { Moon, Sun, Home, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useLogout } from '@/modules/auth/hooks/useLogout';
 import { AUTH_UX, authSurfaces } from '@/modules/auth/theme/authUx';
+import { ROUTES } from '@/routes/paths';
 import { SkipLink, MAIN_CONTENT_ID } from '@/shared/components/SkipLink';
 import { colors } from '@/shared/theme/colors';
 import { useAppStore } from '@/store/appStore';
@@ -18,6 +20,8 @@ type OnboardingLayoutProps = {
   cancelLabel?: string;
   showLogout?: boolean;
   showUserName?: boolean;
+  /** Adds a profile shortcut, for hub pages that sit outside the app shell. */
+  showProfile?: boolean;
 };
 
 /** Full-viewport onboarding chrome: brand header only, no app sidebar. */
@@ -28,10 +32,12 @@ export function OnboardingLayout({
   cancelLabel,
   showLogout = true,
   showUserName: _showUserName = true,
+  showProfile = false,
 }: OnboardingLayoutProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const a = authSurfaces(theme.palette.mode);
+  const navigate = useNavigate();
   const logout = useLogout();
   const themeMode = useAppStore((state) => state.themeMode);
   const toggleThemeMode = useAppStore((state) => state.toggleThemeMode);
@@ -40,6 +46,22 @@ export function OnboardingLayout({
       ? t('settings.profile.themeDark', { defaultValue: 'Switch to dark mode' })
       : t('settings.profile.themeLight', { defaultValue: 'Switch to light mode' });
   const cancelText = cancelLabel ?? t('common.cancel');
+  const headerButtonSx = {
+    ...AUTH_UX.button,
+    minHeight: 36,
+    height: 36,
+    px: 2.25,
+    borderRadius: 999,
+    color: a.brand,
+    borderColor: a.brand,
+    bgcolor: a.surface,
+    boxShadow: 'none',
+    '&:hover': {
+      borderColor: a.brandHover,
+      bgcolor: a.brandSoft,
+      boxShadow: 'none',
+    },
+  } as const;
 
   return (
     <Box
@@ -124,50 +146,22 @@ export function OnboardingLayout({
           )}
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, minWidth: 0 }}>
             {onCancel ? (
-              <Button
-                variant="outlined"
-                onClick={onCancel}
-                sx={{
-                  ...AUTH_UX.button,
-                  minHeight: 36,
-                  height: 36,
-                  px: 2.25,
-                  borderRadius: 999,
-                  color: a.brand,
-                  borderColor: a.brand,
-                  bgcolor: a.surface,
-                  boxShadow: 'none',
-                  '&:hover': {
-                    borderColor: a.brandHover,
-                    bgcolor: a.brandSoft,
-                    boxShadow: 'none',
-                  },
-                }}
-              >
+              <Button variant="outlined" onClick={onCancel} sx={headerButtonSx}>
                 {cancelText}
               </Button>
             ) : null}
-            {showLogout ? (
+            {showProfile ? (
               <Button
                 variant="outlined"
-                onClick={() => void logout()}
-                sx={{
-                  ...AUTH_UX.button,
-                  minHeight: 36,
-                  height: 36,
-                  px: 2.25,
-                  borderRadius: 999,
-                  color: a.brand,
-                  borderColor: a.brand,
-                  bgcolor: a.surface,
-                  boxShadow: 'none',
-                  '&:hover': {
-                    borderColor: a.brandHover,
-                    bgcolor: a.brandSoft,
-                    boxShadow: 'none',
-                  },
-                }}
+                startIcon={<UserRound size={14} />}
+                onClick={() => navigate(ROUTES.profile)}
+                sx={headerButtonSx}
               >
+                {t('navigation.profile')}
+              </Button>
+            ) : null}
+            {showLogout ? (
+              <Button variant="outlined" onClick={() => void logout()} sx={headerButtonSx}>
                 {t('common.logout')}
               </Button>
             ) : null}

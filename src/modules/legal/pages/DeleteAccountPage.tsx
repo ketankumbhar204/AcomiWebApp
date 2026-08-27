@@ -13,7 +13,9 @@ import { AuthHero } from '@/modules/auth/components/AuthHero';
 import { MobileNumberInput } from '@/modules/auth/components/MobileNumberInput';
 import { PasswordInput } from '@/modules/auth/components/PasswordInput';
 import { authApi } from '@/modules/auth/api/authApi';
+import { useOtpCooldown } from '@/modules/auth/hooks/useOtpCooldown';
 import { useSendOtp } from '@/modules/auth/hooks/useSendOtp';
+import { formatCountdown } from '@/modules/auth/utils/otpAuthErrors';
 import { validatePassword } from '@/modules/auth/passwordRules';
 import { useAuthStore } from '@/store/authStore';
 import { useFinishAccountDeletion } from '@/modules/legal/hooks/useFinishAccountDeletion';
@@ -63,8 +65,9 @@ export function DeleteAccountPage() {
     validatePassword(password) == null &&
     confirmed &&
     !deleting;
+  const otpCooldown = useOtpCooldown(mobileNumber, 'ACCOUNT_DELETION');
   const canSendOtp =
-    isValidIndianMobile(mobileNumber) && confirmed && !sendingOtp && !deleting;
+    isValidIndianMobile(mobileNumber) && confirmed && !sendingOtp && !deleting && otpCooldown === 0;
   const lockRegisteredMobile = fromProfile || Boolean(signedInUser);
 
   const switchAuthMethod = (next: AuthMethod) => {
@@ -180,7 +183,11 @@ export function DeleteAccountPage() {
             startIcon={sendingOtp ? <CircularProgress size={16} color="inherit" /> : undefined}
             sx={dashContainedButtonSx}
           >
-            {sendingOtp ? t('common.pleaseWait') : t('legal.deleteAccount.sendOtp')}
+            {sendingOtp
+              ? t('common.pleaseWait')
+              : otpCooldown > 0
+                ? t('auth.otp.sendOtpIn', { time: formatCountdown(otpCooldown) })
+                : t('legal.deleteAccount.sendOtp')}
           </Button>
         ) : (
           <Button

@@ -52,7 +52,7 @@ export function OnboardingChoicePage() {
   ];
 
   return (
-    <OnboardingLayout>
+    <OnboardingLayout showProfile>
       <Box
         sx={{
           maxWidth: 1240,

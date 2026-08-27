@@ -11,7 +11,9 @@ import { AuthCard } from '../components/AuthCard';
 import { AuthErrorBanner } from '../components/AuthErrorBanner';
 import { AuthHero } from '../components/AuthHero';
 import { MobileNumberInput } from '../components/MobileNumberInput';
+import { useOtpCooldown } from '../hooks/useOtpCooldown';
 import { useSendOtp } from '../hooks/useSendOtp';
+import { formatCountdown } from '../utils/otpAuthErrors';
 
 export function ForgotPasswordPage() {
   const { t } = useTranslation();
@@ -25,7 +27,8 @@ export function ForgotPasswordPage() {
     document.title = `${t('auth.forgotPassword.heading')} · ${t('common.appName')}`;
   }, [t]);
 
-  const canSubmit = isValidIndianMobile(mobileNumber) && !isLoading;
+  const cooldown = useOtpCooldown(mobileNumber, 'RESET_PASSWORD');
+  const canSubmit = isValidIndianMobile(mobileNumber) && !isLoading && cooldown === 0;
 
   const handleSubmit = async () => {
     clearError();
@@ -70,7 +73,11 @@ export function ForgotPasswordPage() {
           startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
           sx={{ ...dashContainedButtonSx, '&:hover': { boxShadow: s.shadowHover } }}
         >
-          {isLoading ? t('common.pleaseWait') : t('auth.forgotPassword.submit')}
+          {isLoading
+            ? t('common.pleaseWait')
+            : cooldown > 0
+              ? t('auth.otp.sendOtpIn', { time: formatCountdown(cooldown) })
+              : t('auth.forgotPassword.submit')}
         </Button>
         <Link component={RouterLink} to={ROUTES.login} underline="hover">
           {t('auth.forgotPassword.backToSignIn')}

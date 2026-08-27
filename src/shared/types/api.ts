@@ -32,7 +32,7 @@ export interface ApiErrorBody {
   message?: string;
   error?: string;
   errorCode?: string;
-  data?: Record<string, string> | null;
+  data?: Record<string, string | number> | null;
   status?: number;
   timestamp?: string;
   path?: string;

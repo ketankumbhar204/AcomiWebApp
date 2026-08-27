@@ -29,6 +29,7 @@ const routes = read('src/app/router/routes.tsx');
 const paths = read('src/routes/paths.ts');
 const types = read('src/shared/types/auth.ts');
 const profilePage = read('src/modules/profile/pages/ProfilePage.tsx');
+const completeProfilePage = read('src/modules/onboarding/pages/CompleteProfilePage.tsx');
 const deleteAccountPage = read('src/modules/legal/pages/DeleteAccountPage.tsx');
 const privacyPage = read('src/modules/legal/pages/PrivacyPolicyPage.tsx');
 
@@ -37,6 +38,8 @@ assert(paths.includes("loginOtp: '/login/otp'"), 'login OTP route is missing');
 assert(paths.includes("forgotPassword: '/forgot-password'"), 'forgot-password route is missing');
 assert(paths.includes("resetPassword: '/reset-password'"), 'reset-password route is missing');
 assert(paths.includes("deleteAccount: '/delete-account'"), 'delete-account route is missing');
+assert(paths.includes("changeMobile: '/change-mobile'"), 'change-mobile route is missing');
+assert(paths.includes("changeMobileOtp: '/change-mobile/otp'"), 'change-mobile OTP route is missing');
 assert(loginPage.includes('useLogin'), 'login page must keep password login');
 assert(loginPage.includes("'LOGIN'"), 'login OTP must use LOGIN purpose');
 assert(loginPage.includes('useSendOtp'), 'login OTP mode must send OTP');
@@ -58,6 +61,17 @@ assert(deleteAccountPage.includes('deleteAccountByPassword'), 'delete-account mu
 assert(deleteAccountPage.includes('ACCOUNT_DELETION'), 'delete-account OTP purpose missing');
 assert(otpPage.includes('ACCOUNT_DELETION'), 'OTP page must handle account deletion');
 assert(otpPage.includes('deleteAccountByOtp'), 'OTP page must submit deletion after verify');
+assert(types.includes("'CHANGE_MOBILE'"), 'CHANGE_MOBILE purpose missing');
+assert(authApi.includes("'/auth/change-mobile'"), 'change-mobile endpoint missing');
+assert(otpPage.includes('CHANGE_MOBILE'), 'OTP page must handle change mobile');
+assert(otpPage.includes('authApi.changeMobile'), 'OTP page must confirm change-mobile after verify');
+assert(otpPage.includes('ROUTES.profile'), 'change-mobile success must return to profile');
+assert(routes.includes('ROUTES.changeMobile'), 'change-mobile route is not wired');
+assert(routes.includes('ROUTES.changeMobileOtp'), 'change-mobile OTP route is not wired');
+assert(profilePage.includes('ROUTES.changeMobile'), 'profile page must expose change mobile');
+assert(completeProfilePage.includes('ROUTES.changeMobile'), 'edit profile must expose change mobile');
+assert(en.auth.changeMobile.heading.toLowerCase().includes('mobile'), 'change-mobile copy missing');
+assert(!otpPage.includes('localStorage'), 'OTP page must not store OTP in localStorage');
 assert(otpPage.includes('DeleteAccountConfirmDialog'), 'OTP page must confirm deletion in a modal');
 assert(!otpPage.includes('otpVerified: true'), 'OTP page must not return to delete-account after verify');
 assert(profilePage.includes('ROUTES.deleteAccount'), 'profile page must expose delete account');
@@ -69,5 +83,25 @@ assert(!otpPage.includes('111111'), 'OTP page must not hardcode OTP');
 assert(privacyPage.length > 0, 'privacy page is missing');
 assert(routes.includes('ROUTES.loginOtp'), 'login OTP route is not wired');
 assert(en.auth.login.modeOtp.toLowerCase().includes('otp'), 'login OTP toggle copy missing');
+
+const changeMobilePage = read('src/modules/auth/pages/ChangeMobilePage.tsx');
+const otpCooldown = read('src/modules/auth/hooks/useOtpCooldown.ts');
+const apiErrors = read('src/shared/api/errors.ts');
+
+assert(apiErrors.includes('retryAfterSeconds'), 'API errors must carry the server retry-after');
+assert(sendOtp.includes('noteCooldown'), 'send OTP must record the resend cooldown');
+assert(sendOtp.includes('err.retryAfterSeconds'), 'send OTP must record the server cooldown on 429');
+assert(otpCooldown.includes('cooldownUntil'), 'OTP cooldown hook must read the shared deadline');
+assert(en.auth.otp.sendOtpIn.includes('{{time}}'), 'send OTP countdown copy missing');
+for (const [name, page] of [
+  ['login', loginPage],
+  ['register', registerPage],
+  ['forgot password', forgotPage],
+  ['delete account', deleteAccountPage],
+  ['change mobile', changeMobilePage],
+  ['OTP', otpPage],
+]) {
+  assert(page.includes('useOtpCooldown'), `${name} page must show an OTP send countdown`);
+}
 
 console.log('Password login and OTP auth contract checks passed.');

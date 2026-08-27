@@ -14,7 +14,9 @@ import { AuthHero } from '../components/AuthHero';
 import { MobileNumberInput } from '../components/MobileNumberInput';
 import { NameInput } from '../components/NameInput';
 import { PasswordInput } from '../components/PasswordInput';
+import { useOtpCooldown } from '../hooks/useOtpCooldown';
 import { useSendOtp } from '../hooks/useSendOtp';
+import { formatCountdown } from '../utils/otpAuthErrors';
 import { passwordsMatch, validatePassword } from '../passwordRules';
 import { createRegisterSchema, type RegisterFormValues } from '../schemas/loginSchema';
 import { useRegistrationDraftStore } from '@/store/registrationDraftStore';
@@ -61,12 +63,14 @@ export function RegisterPage() {
   const mobileNumber = useWatch({ control, name: 'mobileNumber' }) ?? '';
   const password = useWatch({ control, name: 'password' }) ?? '';
   const confirmPassword = useWatch({ control, name: 'confirmPassword' }) ?? '';
+  const cooldown = useOtpCooldown(mobileNumber, 'REGISTER');
   const canSubmit =
     fullName.trim().length > 0 &&
     isValidIndianMobile(mobileNumber) &&
     validatePassword(password) == null &&
     passwordsMatch(password, confirmPassword) &&
-    !isLoading;
+    !isLoading &&
+    cooldown === 0;
 
   const onSubmit = handleSubmit(async (values) => {
     clearError();
@@ -195,7 +199,11 @@ export function RegisterPage() {
             ...authContainedButtonSx(a.cta, a.ctaHover),
           }}
         >
-          {isLoading ? t('common.pleaseWait') : t('auth.register.submit')}
+          {isLoading
+            ? t('common.pleaseWait')
+            : cooldown > 0
+              ? t('auth.otp.sendOtpIn', { time: formatCountdown(cooldown) })
+              : t('auth.register.submit')}
         </Button>
 
         <Typography sx={{ ...AUTH_UX.helper, color: a.textMuted, textAlign: 'center' }}>

@@ -15,9 +15,11 @@ import { AuthHero } from '../components/AuthHero';
 import { MobileNumberInput } from '../components/MobileNumberInput';
 import { PasswordInput } from '../components/PasswordInput';
 import { useLogin } from '../hooks/usePasswordAuth';
+import { useOtpCooldown } from '../hooks/useOtpCooldown';
 import { useSendOtp } from '../hooks/useSendOtp';
 import { createLoginSchema, type LoginFormValues } from '../schemas/loginSchema';
 import { validatePassword } from '../passwordRules';
+import { formatCountdown } from '../utils/otpAuthErrors';
 
 export function LoginPage() {
   const { t } = useTranslation();
@@ -57,11 +59,12 @@ export function LoginPage() {
   const [authMethod, setAuthMethod] = useState<'password' | 'otp'>('password');
   const mobileNumber = useWatch({ control, name: 'mobileNumber' }) ?? '';
   const password = useWatch({ control, name: 'password' }) ?? '';
+  const otpCooldown = useOtpCooldown(mobileNumber, 'LOGIN');
   const busy = isLoading || isSendingOtp;
   const bannerError = error || otpError;
   const canSubmitPassword =
     isValidIndianMobile(mobileNumber) && validatePassword(password) == null && !busy;
-  const canSendOtp = isValidIndianMobile(mobileNumber) && !busy;
+  const canSendOtp = isValidIndianMobile(mobileNumber) && !busy && otpCooldown === 0;
 
   const submitPassword = handleSubmit(async (values) => {
     clearError();
@@ -187,7 +190,9 @@ export function LoginPage() {
           {authMethod === 'otp'
             ? isSendingOtp
               ? t('common.pleaseWait')
-              : t('auth.login.sendOtp')
+              : otpCooldown > 0
+                ? t('auth.otp.sendOtpIn', { time: formatCountdown(otpCooldown) })
+                : t('auth.login.sendOtp')
             : isLoading
               ? t('common.pleaseWait')
               : t('auth.login.submit')}

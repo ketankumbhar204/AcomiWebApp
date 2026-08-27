@@ -58,6 +58,9 @@ const RegisterPage = lazyPage(() =>
 const OtpPage = lazyPage(() =>
   import('@/modules/auth/pages/OtpPage').then((m) => ({ default: m.OtpPage })),
 );
+const ChangeMobilePage = lazyPage(() =>
+  import('@/modules/auth/pages/ChangeMobilePage').then((m) => ({ default: m.ChangeMobilePage })),
+);
 const ForgotPasswordPage = lazyPage(() =>
   import('@/modules/auth/pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })),
 );
@@ -371,6 +374,27 @@ export const appRoutes = [
       {
         element: <ProtectedRoute />,
         children: [
+          {
+            element: <AuthLayoutOutlet />,
+            children: [
+              {
+                path: ROUTES.changeMobile,
+                element: (
+                  <L>
+                    <ChangeMobilePage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.changeMobileOtp,
+                element: (
+                  <L>
+                    <OtpPage />
+                  </L>
+                ),
+              },
+            ],
+          },
           {
             element: <SpaceBootstrapOutlet />,
             children: [

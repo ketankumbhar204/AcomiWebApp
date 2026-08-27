@@ -4,6 +4,7 @@ import {
   Button,
   InputAdornment,
   LinearProgress,
+  Link,
   MenuItem,
   Stack,
   TextField,
@@ -23,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { OnboardingLayout } from '@/layouts/OnboardingLayout';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
@@ -69,8 +70,13 @@ function toIsoDate(value: string | null | undefined): string {
   if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) return trimmed.slice(0, 10);
   const dmy = trimmed.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
   if (dmy) {
-    const parsed = dayjs(`${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`);
-    return parsed.isValid() ? parsed.format('YYYY-MM-DD') : '';
+    const day = dmy[1];
+    const month = dmy[2];
+    const year = dmy[3];
+    if (day && month && year) {
+      const parsed = dayjs(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+      return parsed.isValid() ? parsed.format('YYYY-MM-DD') : '';
+    }
   }
   const parsed = dayjs(trimmed);
   return parsed.isValid() ? parsed.format('YYYY-MM-DD') : '';
@@ -724,11 +730,21 @@ export function CompleteProfilePage() {
                   icon={<Mail size={16} />}
                   type="email"
                 />
-                <MobileWithCountryCodeField
-                  label={t('profileCompletion.fields.mobileNumber')}
-                  value={user?.mobileNumber ?? ''}
-                  disabled
-                />
+                <Box>
+                  <MobileWithCountryCodeField
+                    label={t('profileCompletion.fields.mobileNumber')}
+                    value={user?.mobileNumber ?? ''}
+                    disabled
+                  />
+                  <Link
+                    component={RouterLink}
+                    to={ROUTES.changeMobile}
+                    underline="hover"
+                    sx={{ ...DASHBOARD_UX.smallCaption, display: 'inline-block', mt: 0.75 }}
+                  >
+                    {t('settings.profile.changeMobile')}
+                  </Link>
+                </Box>
               </Box>
               <input
                 ref={photoInputRef}

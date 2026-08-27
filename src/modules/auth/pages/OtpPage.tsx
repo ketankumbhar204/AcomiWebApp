@@ -8,6 +8,7 @@ import { ROUTES } from '@/routes/paths';
 import { maskIndianMobile, normalizeIndianMobileDigits } from '@/shared/utils/indianMobile';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { useAuthStore } from '@/store/authStore';
 import { useRegistrationDraftStore, isRegistrationTokenValid } from '@/store/registrationDraftStore';
 import { authApi } from '../api/authApi';
 import { AuthCard } from '../components/AuthCard';
@@ -15,17 +16,18 @@ import { AuthErrorBanner } from '../components/AuthErrorBanner';
 import { AuthHero } from '../components/AuthHero';
 import { OtpInput } from '../components/OtpInput';
 import { useCountdown } from '../hooks/useCountdown';
+import { useOtpCooldown } from '../hooks/useOtpCooldown';
 import { useRegister, useLoginWithOtp } from '../hooks/usePasswordAuth';
 import { useSendOtp } from '../hooks/useSendOtp';
 import { useVerifyOtp } from '../hooks/useVerifyOtp';
-import { formatCountdown } from '../utils/otpAuthErrors';
-import type { OtpPurpose } from '@/shared/types/auth';
-import { DeleteAccountConfirmDialog } from '@/modules/legal/components/DeleteAccountConfirmDialog';
-import { useFinishAccountDeletion } from '@/modules/legal/hooks/useFinishAccountDeletion';
 import {
   isVerificationTokenInvalidated,
   mapAccountDeletionError,
 } from '@/modules/legal/utils/accountDeletion';
+import { formatCountdown, mapRegistrationTokenError } from '../utils/otpAuthErrors';
+import type { OtpPurpose } from '@/shared/types/auth';
+import { DeleteAccountConfirmDialog } from '@/modules/legal/components/DeleteAccountConfirmDialog';
+import { useFinishAccountDeletion } from '@/modules/legal/hooks/useFinishAccountDeletion';
 
 type OtpLocationState = {
   mobileNumber?: string;
@@ -43,6 +45,9 @@ function fallbackRoute(purpose: OtpPurpose): string {
   if (purpose === 'ACCOUNT_DELETION') {
     return ROUTES.deleteAccount;
   }
+  if (purpose === 'CHANGE_MOBILE') {
+    return ROUTES.changeMobile;
+  }
   return ROUTES.register;
 }
 
@@ -59,12 +64,12 @@ export function OtpPage() {
   const mobileNumber = draftMobile ?? state?.mobileNumber ?? '';
   const otpSentAt = useRegistrationDraftStore((draft) => draft.otpSentAt);
   const expiresIn = useRegistrationDraftStore((draft) => draft.expiresIn);
-  const resendAfter = useRegistrationDraftStore((draft) => draft.resendAfter);
   const verificationToken = useRegistrationDraftStore((draft) => draft.verificationToken);
   const tokenExpiresAt = useRegistrationDraftStore((draft) => draft.verificationTokenExpiresAt);
   const clearDraft = useRegistrationDraftStore((draft) => draft.clear);
   const clearVerification = useRegistrationDraftStore((draft) => draft.clearVerification);
   const finishAccountDeletion = useFinishAccountDeletion();
+  const setSession = useAuthStore((state) => state.setSession);
 
   const { verifyOtp, isLoading, error, clearError } = useVerifyOtp();
   const { sendOtp, isLoading: isResending } = useSendOtp();
@@ -80,24 +85,22 @@ export function OtpPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deletionConfirmed, setDeletionConfirmed] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [changingMobile, setChangingMobile] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [changeError, setChangeError] = useState<string | null>(null);
   const isComplete = otp.length === 6;
   const tokenOk = isRegistrationTokenValid(verificationToken, tokenExpiresAt);
   const deletionVerified = purpose === 'ACCOUNT_DELETION' && tokenOk;
-  const busy = isLoading || isResending || isRegistering || isOtpLoggingIn || deleting;
-  const bannerError = error || registerError || loginOtpError;
+  const busy = isLoading || isResending || isRegistering || isOtpLoggingIn || deleting || changingMobile;
+  const bannerError = error || registerError || loginOtpError || changeError;
   const canConfirmDelete = deletionConfirmed && tokenOk && Boolean(verificationToken) && !deleting;
 
   const otpDeadline = useMemo(
     () => (otpSentAt != null && expiresIn != null ? otpSentAt + expiresIn * 1000 : null),
     [expiresIn, otpSentAt],
   );
-  const resendDeadline = useMemo(
-    () => (otpSentAt != null && resendAfter != null ? otpSentAt + resendAfter * 1000 : null),
-    [otpSentAt, resendAfter],
-  );
   const otpRemaining = useCountdown(otpDeadline);
-  const resendRemaining = useCountdown(resendDeadline);
+  const resendRemaining = useOtpCooldown(mobileNumber, purpose);
 
   useEffect(() => {
     document.title = `${t('navigation.verifyOtp')} · ${t('common.appName')}`;
@@ -115,6 +118,7 @@ export function OtpPage() {
     clearRegisterError();
     clearLoginOtpError();
     setInfo(null);
+    setChangeError(null);
     if (code.length !== 6) {
       return;
     }
@@ -134,6 +138,27 @@ export function OtpPage() {
       setDeleteError(null);
       setDeletionConfirmed(false);
       setConfirmOpen(true);
+      return;
+    }
+    if (purpose === 'CHANGE_MOBILE') {
+      setChangingMobile(true);
+      setChangeError(null);
+      try {
+        const changed = await authApi.changeMobile({
+          mobileNumber: normalizeIndianMobileDigits(mobileNumber),
+          verificationToken: result.verificationToken,
+        });
+        clearDraft();
+        setSession(changed.user, changed.accessToken);
+        navigate(ROUTES.profile, { replace: true, state: { mobileChanged: true } });
+      } catch (err) {
+        setChangeError(mapRegistrationTokenError(err));
+        if (isVerificationTokenInvalidated(err)) {
+          clearVerification();
+        }
+      } finally {
+        setChangingMobile(false);
+      }
       return;
     }
     if (!fullName || !password || !confirmPassword) {
@@ -184,6 +209,7 @@ export function OtpPage() {
     clearError();
     clearRegisterError();
     clearLoginOtpError();
+    setChangeError(null);
     setOtp('');
     const result = await sendOtp(mobileNumber, purpose);
     if (result) {
@@ -197,6 +223,10 @@ export function OtpPage() {
       navigate(ROUTES.deleteAccount, {
         state: { fromProfile: Boolean(state?.fromProfile), mobileNumber },
       });
+      return;
+    }
+    if (purpose === 'CHANGE_MOBILE') {
+      navigate(ROUTES.changeMobile);
       return;
     }
     navigate(fallbackRoute(purpose));

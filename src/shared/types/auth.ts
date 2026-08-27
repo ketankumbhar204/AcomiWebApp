@@ -39,7 +39,7 @@ export interface UserResponse {
   kycStatus?: KycStatus | null;
 }
 
-export type OtpPurpose = 'REGISTER' | 'LOGIN' | 'RESET_PASSWORD' | 'ACCOUNT_DELETION';
+export type OtpPurpose = 'REGISTER' | 'LOGIN' | 'RESET_PASSWORD' | 'ACCOUNT_DELETION' | 'CHANGE_MOBILE';
 
 export interface SendOtpRequest {
   mobileNumber: string;
