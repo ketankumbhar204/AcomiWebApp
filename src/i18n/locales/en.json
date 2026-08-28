@@ -232,39 +232,56 @@
       "title": "Privacy Policy",
       "heading": "ACOMI Privacy Policy",
       "linkLabel": "Privacy Policy",
-      "lastUpdated": "Last updated: 16 August 2026. Operator legal name, registered address, and privacy contact email: [TO BE PROVIDED].",
+      "lastUpdated": "Last updated: 28 August 2026",
+      "intro": "This Privacy Policy explains how ACOMI handles information when you use the ACOMI mobile application, website, and related services.",
       "sections": {
-        "intro": {
-          "title": "Who we are",
-          "body": "ACOMI is a property operations product for messes, PGs, hostels, co-living, and rentals. This policy describes how the ACOMI mobile app and website (app.acomi.in) handle information. The legal entity that operates ACOMI is [TO BE PROVIDED]."
+        "about": {
+          "title": "1. About ACOMI",
+          "body": "ACOMI is a property and operations management application designed to help users manage spaces such as PGs, hostels, messes, co-living spaces, and rental properties.\n\nThis Privacy Policy applies to information processed through the ACOMI application and website."
         },
-        "account": {
-          "title": "Account creation",
-          "body": "You create an account with an Indian mobile number and a password. ACOMI stores only a password hash, never the password itself. The same mobile number can register again after account deletion."
-        },
-        "dataWeCollect": {
-          "title": "Information we collect",
-          "body": "Account and profile: mobile number, name, optional email, gender, date of birth, address, profile photo, and identity/address documents you upload.\n\nOperations you run in ACOMI: spaces, buildings, rooms, beds, members, occupancy, meals, payments (including payment proofs you upload), complaints, invitations, and notifications.\n\nWe do not collect precise device location, contacts, or SMS content. We do not currently use third-party analytics or crash-reporting SDKs in the app or website."
+        "informationWeCollect": {
+          "title": "2. Information We Collect",
+          "body": "Depending on the features you use, ACOMI may collect and process the following information:\n\nAccount information\n\nWhen you create an ACOMI account, we may collect:\n\n• Mobile number\n• Name\n• Password credentials in protected form\n• Other profile information that you choose to provide\n\nPasswords are stored in protected/hashed form and are not stored as plain-text passwords.\n\nProperty and operational information\n\nIf you use ACOMI to manage a property or space, information may include:\n\n• Property or space details\n• Building, room and bed information\n• Occupancy information\n• Member or tenant information\n• Meal and menu information\n• Payment records\n• Complaints\n• Invitations and related operational information\n\nThe information stored depends on the features you use.\n\nDocuments and images\n\nWhere the application provides functionality for uploading images or documents, you may provide information such as:\n\n• Profile photographs\n• Property-related images\n• Payment proofs\n• Other documents or images submitted through the application\n\nPlease do not upload information that is not required for the relevant purpose."
         },
         "howWeUse": {
-          "title": "How we use information",
-          "body": "We use this information to authenticate you, operate your properties, show dashboards, process occupancy and meal workflows, record payment proofs, and handle complaints. ACOMI is not a payment gateway; payment records are operational ledgers and proofs, not card processing."
+          "title": "3. How We Use Information",
+          "body": "ACOMI uses information to provide and operate its services, including to:\n\n• Create and authenticate user accounts\n• Provide access to the features of the application\n• Manage properties and spaces\n• Manage members and occupancy\n• Manage meals and menus\n• Maintain payment and operational records\n• Handle complaints and operational requests\n• Provide notifications and other service-related communications\n• Maintain and improve the reliability and security of the service\n\nWe use information for the purposes for which it was provided and for operating the ACOMI service."
         },
         "sharing": {
-          "title": "Sharing",
-          "body": "People you add to a space (owners, managers, tenants, customers, staff) can see operational information for that space according to their role. We do not sell personal information. Hosting and API infrastructure is used to run the service. Specific subprocessors are [TO BE PROVIDED] if applicable."
+          "title": "4. Sharing of Information",
+          "body": "ACOMI does not sell your personal information.\n\nInformation may be made available to other users of a property or space where this is necessary for the operation of that space and permitted by the relevant functionality and user roles.\n\nFor example, information associated with a property may be accessible to authorized owners, managers, staff, tenants, or other participants depending on their role and the features being used.\n\nInformation may also be processed by service providers or infrastructure used to operate ACOMI where necessary to provide the service.\n\nWe do not claim that information is shared with a particular third party unless that third-party service is actually used by ACOMI."
         },
-        "retention": {
-          "title": "Retention",
-          "body": "Account profile data is kept while the account is active. After you delete your account, personal login data is removed or anonymized. Shared property records may remain because they belong to the business/space, not only to one login. A specific numeric retention period is [TO BE PROVIDED] if you require one for legal reasons."
+        "dataSecurity": {
+          "title": "5. Data Security",
+          "body": "ACOMI takes reasonable measures to protect information against unauthorized access, loss, misuse, or disclosure.\n\nAuthentication credentials are handled using protected mechanisms, and communications with ACOMI services are intended to use secure network connections where supported.\n\nHowever, no internet-based service can guarantee absolute security."
         },
-        "deletion": {
-          "title": "Account and data deletion",
-          "body": "You can delete your account in the ACOMI app (Profile → Delete account) or on this website at /delete-account. Deletion removes your login and personal account information, removes your space memberships, and anonymizes your personal details on linked member records. Spaces, occupancy, meals, payments, and complaints are kept as business records, without your identifiable profile. You can register again later with the same mobile number."
+        "dataRetention": {
+          "title": "6. Data Retention",
+          "body": "ACOMI retains information for as long as reasonably necessary to provide the services and operate the associated account, property, or business functions.\n\nCertain operational information may need to remain associated with a property or space even when an individual user's account is deleted, where that information is necessary for the continued operation or record-keeping of the property or service.\n\nWe do not state a specific retention period where one has not been formally defined."
+        },
+        "accountDeletion": {
+          "title": "7. Account Deletion",
+          "body": "You may request deletion of your ACOMI account through the account deletion functionality provided by ACOMI.\n\nWhen an account deletion request is completed, ACOMI will delete or otherwise remove personal account information associated with the account, subject to information that may need to be retained for legitimate operational, security, legal, or other permitted purposes.\n\nInformation belonging to a shared property or space may not be deleted simply because one user's account is deleted. Such information may continue to be required for the operation and records of that property or space.\n\nWhere applicable, personal information associated with shared records may be removed or anonymized rather than deleting the underlying operational record."
+        },
+        "yourChoices": {
+          "title": "8. Your Choices",
+          "body": "You can:\n\n• Access and update information through the available ACOMI functionality.\n• Choose what information to provide where the relevant feature is optional.\n• Request deletion of your account using the available account deletion process.\n• Contact ACOMI regarding questions or requests concerning your personal information."
+        },
+        "childrensPrivacy": {
+          "title": "9. Children's Privacy",
+          "body": "ACOMI is intended for use by individuals who can legally use the service.\n\nACOMI is not specifically directed toward children.\n\nWe do not knowingly request children to provide personal information for purposes unrelated to the service."
+        },
+        "thirdPartyServices": {
+          "title": "10. Third-Party Services",
+          "body": "ACOMI may rely on third-party infrastructure or services to operate certain parts of the application.\n\nWhere third-party services process information on behalf of ACOMI, their processing may be subject to their respective terms and privacy policies.\n\nThe specific third-party services used by ACOMI may change over time."
+        },
+        "changes": {
+          "title": "11. Changes to This Privacy Policy",
+          "body": "We may update this Privacy Policy from time to time to reflect changes to the ACOMI service, data practices, or applicable requirements.\n\nWhen the policy is updated, the revised version will be published on this page with an updated effective date."
         },
         "contact": {
-          "title": "Contact",
-          "body": "Privacy questions: [TO BE PROVIDED]. This page will be updated when the operator contact details are confirmed."
+          "title": "12. Contact",
+          "body": "If you have questions or concerns about this Privacy Policy or how ACOMI handles information, you can contact us through the contact mechanism provided on the ACOMI website or application."
         }
       }
     }
