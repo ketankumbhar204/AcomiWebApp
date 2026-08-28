@@ -12,6 +12,10 @@ import { useSnackbar } from 'notistack';
 import { useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
+import {
+  AdminLeadListHeader,
+  AdminLeadListRow,
+} from '@/modules/admin/components/AdminLeadListColumns';
 import { formatPropertyRegistrationSource } from '@/modules/admin/utils/adminLabels';
 import {
   adminListFilterLabel,
@@ -123,20 +127,7 @@ export function AdminPropertyListPage() {
           <Typography color="text.secondary">No property leads found.</Typography>
         ) : (
           <Stack spacing={1.5}>
-            <Stack
-              direction="row"
-              sx={{
-                px: 2,
-                py: 1,
-                display: { xs: 'none', sm: 'flex' },
-                color: 'text.secondary',
-                typography: 'caption',
-                fontWeight: 600,
-              }}>
-              <Box sx={{ flex: 1 }}>Property</Box>
-              <Box sx={{ width: 72, textAlign: 'center' }}>Test</Box>
-              <Box sx={{ width: 120, textAlign: 'right' }}>Actions</Box>
-            </Stack>
+            <AdminLeadListHeader entityLabel="Property" />
             {leads.map((item) => (
               <Box
                 key={item.id}
@@ -146,32 +137,32 @@ export function AdminPropertyListPage() {
                   borderColor: 'divider',
                   borderRadius: 2,
                 }}>
-                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Box
-                    component={RouterLink}
-                    to={adminPropertyDetailPath(item.id)}
-                    sx={{
-                      flex: 1,
-                      textDecoration: 'none',
-                      color: 'inherit',
-                      '&:hover': { opacity: 0.85 },
-                    }}>
-                    <Typography sx={{ fontWeight: 700 }}>{item.propertyName}</Typography>
+                <AdminLeadListRow
+                  entity={
+                    <Box
+                      component={RouterLink}
+                      to={adminPropertyDetailPath(item.id)}
+                      sx={{
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        '&:hover': { opacity: 0.85 },
+                      }}>
+                      <Typography sx={{ fontWeight: 700 }}>{item.propertyName}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {item.propertyType} · {item.ownerName} · {item.mobileNumber}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {item.city}, {item.state} · {item.reference}
+                      </Typography>
+                    </Box>
+                  }
+                  source={<Chip size="small" label={formatPropertyRegistrationSource(item.source)} />}
+                  testLead={
                     <Typography variant="body2" color="text.secondary">
-                      {item.propertyType} · {item.ownerName} · {item.mobileNumber}
+                      {item.testLead ? 'Yes' : 'No'}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {item.city}, {item.state} · {item.reference}
-                    </Typography>
-                  </Box>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ width: 72, textAlign: 'center', alignSelf: 'center' }}>
-                    {item.testLead ? 'Yes' : 'No'}
-                  </Typography>
-                  <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start', ml: 1, width: 120, justifyContent: 'flex-end' }}>
-                    <Chip size="small" label={formatPropertyRegistrationSource(item.source)} />
+                  }
+                  actions={
                     <Button
                       size="small"
                       color="error"
@@ -179,8 +170,8 @@ export function AdminPropertyListPage() {
                       onClick={() => setDeleteTarget(item)}>
                       Delete
                     </Button>
-                  </Stack>
-                </Stack>
+                  }
+                />
               </Box>
             ))}
           </Stack>
