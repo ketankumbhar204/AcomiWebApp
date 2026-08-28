@@ -1,0 +1,249 @@
+import {
+
+  Box,
+
+  Button,
+
+  Chip,
+
+  CircularProgress,
+
+  Stack,
+
+  Typography,
+
+} from '@mui/material';
+
+import { useSnackbar } from 'notistack';
+
+import { useEffect, useState } from 'react';
+
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
+
+import { adminApi } from '@/modules/admin/api/adminApi';
+
+import { formatMessRegistrationSource } from '@/modules/admin/utils/adminLabels';
+
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+
+import { ROUTES } from '@/routes/paths';
+
+import type { MessRegistrationDetail } from '@/shared/types/admin';
+
+
+
+export function AdminMessDetailPage() {
+
+  const { id = '' } = useParams();
+
+  const navigate = useNavigate();
+
+  const { enqueueSnackbar } = useSnackbar();
+
+  const [detail, setDetail] = useState<MessRegistrationDetail | null>(null);
+
+  const [loading, setLoading] = useState(true);
+
+  const [error, setError] = useState<string | null>(null);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const [deleting, setDeleting] = useState(false);
+
+
+
+  useEffect(() => {
+
+    let active = true;
+
+    void adminApi
+
+      .getMessRegistration(id)
+
+      .then((data) => {
+
+        if (active) setDetail(data);
+
+      })
+
+      .catch(() => {
+
+        if (active) setError('Could not load mess registration.');
+
+      })
+
+      .finally(() => {
+
+        if (active) setLoading(false);
+
+      });
+
+    return () => {
+
+      active = false;
+
+    };
+
+  }, [id]);
+
+
+
+  async function handleDeleteConfirm() {
+
+    setDeleting(true);
+
+    try {
+
+      await adminApi.deleteMessRegistration(id);
+
+      enqueueSnackbar('Mess lead deleted.', { variant: 'success' });
+
+      navigate(ROUTES.adminMess);
+
+    } catch {
+
+      enqueueSnackbar('Could not delete mess lead.', { variant: 'error' });
+
+    } finally {
+
+      setDeleting(false);
+
+      setDeleteOpen(false);
+
+    }
+
+  }
+
+
+
+  if (loading) {
+
+    return (
+
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+
+        <CircularProgress />
+
+      </Box>
+
+    );
+
+  }
+
+
+
+  if (error || !detail) {
+
+    return (
+
+      <Box>
+
+        <Typography color="error">{error ?? 'Not found'}</Typography>
+
+        <Button component={RouterLink} to={ROUTES.adminMess} sx={{ mt: 2 }}>
+
+          Back to list
+
+        </Button>
+
+      </Box>
+
+    );
+
+  }
+
+
+
+  return (
+
+    <Box>
+
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 2 }}>
+
+        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+
+          {detail.messName}
+
+        </Typography>
+
+        <Chip size="small" label={formatMessRegistrationSource(detail.source)} />
+
+      </Stack>
+
+      <Stack spacing={1} sx={{ mb: 3 }}>
+
+        <Typography><strong>Reference:</strong> {detail.reference}</Typography>
+
+        <Typography><strong>Owner:</strong> {detail.ownerName}</Typography>
+
+        <Typography><strong>Mobile:</strong> {detail.mobileNumber}</Typography>
+
+        <Typography><strong>Status:</strong> {detail.status}</Typography>
+
+        <Typography><strong>Test lead:</strong> {detail.testLead ? 'Yes' : 'No'}</Typography>
+
+        <Typography><strong>Address:</strong> {detail.addressLine}, {detail.city}, {detail.state} {detail.pincode}</Typography>
+
+        <Typography><strong>Monthly price:</strong> ₹{detail.monthlyPrice}</Typography>
+
+        <Typography><strong>Meal price:</strong> ₹{detail.mealPrice}</Typography>
+
+        {detail.claimedAt ? (
+
+          <Typography><strong>Claimed:</strong> {new Date(detail.claimedAt).toLocaleString()}</Typography>
+
+        ) : null}
+
+        {detail.description ? (
+
+          <Typography><strong>Description:</strong> {detail.description}</Typography>
+
+        ) : null}
+
+      </Stack>
+
+      <Stack direction="row" spacing={1}>
+
+        <Button component={RouterLink} to={ROUTES.adminMess}>
+
+          Back to list
+
+        </Button>
+
+        <Button color="error" variant="outlined" onClick={() => setDeleteOpen(true)}>
+
+          Delete
+
+        </Button>
+
+      </Stack>
+
+      <ConfirmDialog
+
+        open={deleteOpen}
+
+        title="Delete this mess lead?"
+
+        description={`${detail.messName}\n\nThis action will remove the registration from the Admin lead list.`}
+
+        confirmLabel="Delete"
+
+        cancelLabel="Cancel"
+
+        destructive
+
+        confirming={deleting}
+
+        onConfirm={() => void handleDeleteConfirm()}
+
+        onClose={() => setDeleteOpen(false)}
+
+      />
+
+    </Box>
+
+  );
+
+}
+
+

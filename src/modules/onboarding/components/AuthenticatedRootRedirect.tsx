@@ -6,15 +6,23 @@ import {
   ROUTES,
   spaceDashboardPath,
 } from '@/routes/paths';
+import { isPlatformAdmin, useAdminStore } from '@/store/adminStore';
+import { useAuthStore } from '@/store/authStore';
 import { useSpaceStore } from '@/store/spaceStore';
 
 /** Redirect `/` using the same startup resolution as mobile. */
 export function AuthenticatedRootRedirect() {
+  const user = useAuthStore((state) => state.user);
+  const adminMode = useAdminStore((state) => state.adminMode);
   const selectSpace = useSpaceStore((state) => state.selectSpace);
   const [target, setTarget] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    if (isPlatformAdmin(user?.systemRole) && adminMode) {
+      return;
+    }
+
     let active = true;
     void (async () => {
       try {
@@ -42,7 +50,11 @@ export function AuthenticatedRootRedirect() {
     return () => {
       active = false;
     };
-  }, [selectSpace]);
+  }, [adminMode, selectSpace, user?.systemRole]);
+
+  if (isPlatformAdmin(user?.systemRole) && adminMode) {
+    return <Navigate to={ROUTES.adminDashboard} replace />;
+  }
 
   if (failed) {
     return <Navigate to={ROUTES.onboarding} replace />;

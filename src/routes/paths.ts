@@ -35,6 +35,12 @@ export const ROUTES = {
   globalNotices: '/global/notices',
   globalReports: '/global/reports',
   spaces: '/spaces',
+  adminLogin: '/admin/login',
+  adminDashboard: '/admin',
+  adminProperties: '/admin/properties',
+  adminAddProperty: '/admin/properties/new',
+  adminMess: '/admin/mess',
+  adminAddMess: '/admin/mess/new',
 } as const;
 
 export function spaceDashboardPath(spaceId: string): string {
@@ -259,6 +265,44 @@ export function spaceInventoryPath(
   if (params?.categoryId) search.set('categoryId', params.categoryId);
   const qs = search.toString();
   return qs ? `${base}?${qs}` : base;
+}
+
+export function adminPropertyDetailPath(id: string): string {
+  return `/admin/properties/${id}`;
+}
+
+export function adminPropertiesPath(params?: {
+  tab?: 'leads' | 'active';
+  source?: 'PUBLIC_WEBSITE' | 'ADMIN';
+}): string {
+  const search = new URLSearchParams();
+  if (params?.tab) search.set('tab', params.tab);
+  if (params?.source) search.set('source', params.source);
+  const qs = search.toString();
+  return qs ? `${ROUTES.adminProperties}?${qs}` : ROUTES.adminProperties;
+}
+
+export function adminAddPropertyPath(): string {
+  return ROUTES.adminAddProperty;
+}
+
+export function adminMessDetailPath(id: string): string {
+  return `/admin/mess/${id}`;
+}
+
+export function adminMessPath(params?: {
+  tab?: 'leads' | 'active';
+  source?: 'PUBLIC_WEBSITE' | 'ADMIN';
+}): string {
+  const search = new URLSearchParams();
+  if (params?.tab) search.set('tab', params.tab);
+  if (params?.source) search.set('source', params.source);
+  const qs = search.toString();
+  return qs ? `${ROUTES.adminMess}?${qs}` : ROUTES.adminMess;
+}
+
+export function adminAddMessPath(): string {
+  return ROUTES.adminAddMess;
 }
 
 export type AppRoutePath = (typeof ROUTES)[keyof typeof ROUTES];

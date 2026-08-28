@@ -4,6 +4,7 @@ import { authApi } from '@/modules/auth/api/authApi';
 import { STORAGE_KEYS } from '@/shared/constants/storageKeys';
 import type { AuthSessionState, UserResponse, UUID } from '@/shared/types/auth';
 import { readStorage, removeStorage, writeStorage } from '@/shared/utils/storage';
+import { syncAdminModeForUser, useAdminStore } from './adminStore';
 
 function readStoredUser(): UserResponse | null {
   const raw = readStorage(STORAGE_KEYS.authUser);
@@ -44,6 +45,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
   setSession: (user, accessToken) => {
     writeStorage(STORAGE_KEYS.authToken, accessToken);
     persistUser(user);
+    syncAdminModeForUser(user.systemRole);
     set({
       accessToken,
       user,
@@ -82,6 +84,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
   clearSession: () => {
     removeStorage(STORAGE_KEYS.authToken);
     removeStorage(STORAGE_KEYS.authUser);
+    useAdminStore.getState().setAdminMode(false);
     set({
       accessToken: null,
       user: null,
@@ -114,6 +117,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         storedUser && storedUser.id === user.id ? { ...storedUser, ...user } : user;
 
       persistUser(merged);
+      syncAdminModeForUser(merged.systemRole);
       set({
         isBootstrapping: false,
         isAuthenticated: true,

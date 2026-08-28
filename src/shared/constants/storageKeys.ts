@@ -8,4 +8,5 @@ export const STORAGE_KEYS = {
   sidebarCollapsed: 'acomi.ui.sidebarCollapsed',
   /** Aligns with mobile `@acomi/language`. */
   appLanguage: 'acomi.ui.language',
+  adminMode: 'acomi.admin.mode',
 } as const;

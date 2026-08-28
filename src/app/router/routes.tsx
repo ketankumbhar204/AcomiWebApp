@@ -2,6 +2,7 @@ import { lazy, Suspense, type ComponentType, type ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { AuthLayoutOutlet } from './AuthLayoutOutlet';
 import { GuestRoute, ProtectedRoute } from './ProtectedRoute';
+import { AdminRoute } from '@/modules/admin/components/AdminRoute';
 import { SpaceBootstrapOutlet } from '@/modules/dashboard/layouts/SpaceBootstrapOutlet';
 import { SpaceShellLayout } from '@/modules/dashboard/layouts/SpaceShellLayout';
 import { GlobalShellLayout } from '@/layouts/GlobalShellLayout';
@@ -292,6 +293,31 @@ const InventoryWorkspacePage = lazyPage(() =>
   })),
 );
 
+const AdminDashboardPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })),
+);
+const AdminPropertyListPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminPropertyListPage').then((m) => ({ default: m.AdminPropertyListPage })),
+);
+const AdminPropertyDetailPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminPropertyDetailPage').then((m) => ({ default: m.AdminPropertyDetailPage })),
+);
+const AdminAddPropertyPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminAddPropertyPage').then((m) => ({ default: m.AdminAddPropertyPage })),
+);
+const AdminMessListPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminMessListPage').then((m) => ({ default: m.AdminMessListPage })),
+);
+const AdminMessDetailPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminMessDetailPage').then((m) => ({ default: m.AdminMessDetailPage })),
+);
+const AdminAddMessPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminAddMessPage').then((m) => ({ default: m.AdminAddMessPage })),
+);
+const AdminLayout = lazyPage(() =>
+  import('@/modules/admin/layouts/AdminLayout').then((m) => ({ default: m.AdminLayout })),
+);
+
 export const appRoutes = [
   {
     errorElement: <RouteErrorPage />,
@@ -366,6 +392,80 @@ export const appRoutes = [
               {
                 path: ROUTES.otp,
                 element: <Navigate to={ROUTES.register} replace />,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        path: ROUTES.adminLogin,
+        element: <Navigate to={ROUTES.login} replace />,
+      },
+      {
+        element: <AdminRoute />,
+        children: [
+          {
+            element: (
+              <L>
+                <AdminLayout />
+              </L>
+            ),
+            children: [
+              {
+                path: ROUTES.adminDashboard,
+                element: (
+                  <L>
+                    <AdminDashboardPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.adminProperties,
+                element: (
+                  <L>
+                    <AdminPropertyListPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.adminAddProperty,
+                element: (
+                  <L>
+                    <AdminAddPropertyPage />
+                  </L>
+                ),
+              },
+              {
+                path: `${ROUTES.adminProperties}/:id`,
+                element: (
+                  <L>
+                    <AdminPropertyDetailPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.adminMess,
+                element: (
+                  <L>
+                    <AdminMessListPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.adminAddMess,
+                element: (
+                  <L>
+                    <AdminAddMessPage />
+                  </L>
+                ),
+              },
+              {
+                path: `${ROUTES.adminMess}/:id`,
+                element: (
+                  <L>
+                    <AdminMessDetailPage />
+                  </L>
+                ),
               },
             ],
           },

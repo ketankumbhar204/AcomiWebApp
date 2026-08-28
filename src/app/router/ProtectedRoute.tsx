@@ -2,6 +2,8 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/routes/paths';
 import { LoadingFallback } from '@/shared/components/LoadingBoundary';
 import { useAuthSession } from '@/shared/hooks/useAuthSession';
+import { authenticatedEntryPath } from '@/shared/utils/authenticatedEntryPath';
+import { useAdminStore } from '@/store/adminStore';
 
 type ProtectedRouteProps = {
   redirectTo?: string;
@@ -25,14 +27,20 @@ export function ProtectedRoute({ redirectTo = ROUTES.login }: ProtectedRouteProp
 
 /** Redirects authenticated users away from login/register. */
 export function GuestRoute({ redirectTo = ROUTES.root }: { redirectTo?: string }) {
-  const { isAuthenticated, isBootstrapping } = useAuthSession();
+  const { isAuthenticated, isBootstrapping, user } = useAuthSession();
+  const adminMode = useAdminStore((state) => state.adminMode);
 
   if (isBootstrapping) {
     return <LoadingFallback />;
   }
 
   if (isAuthenticated) {
-    return <Navigate to={redirectTo} replace />;
+    return (
+      <Navigate
+        to={authenticatedEntryPath(user, adminMode) || redirectTo}
+        replace
+      />
+    );
   }
 
   return <Outlet />;

@@ -37,6 +37,7 @@ export interface UserResponse {
   profileCompletionPercentage?: number | null;
   documentsUploaded?: number | null;
   kycStatus?: KycStatus | null;
+  systemRole?: 'USER' | 'ADMIN' | null;
 }
 
 export type OtpPurpose = 'REGISTER' | 'LOGIN' | 'RESET_PASSWORD' | 'ACCOUNT_DELETION' | 'CHANGE_MOBILE';
