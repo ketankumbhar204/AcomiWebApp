@@ -56,7 +56,7 @@ import {
   spaceMembersPath,
 } from '@/routes/paths';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { MemberFormDrawer } from '../components/MemberFormDrawer';
 import { InviteMemberDialog } from '../components/InviteMemberDialog';
 import { MemberInspector } from '../components/MemberInspector';
@@ -87,7 +87,7 @@ type MemberRow = MemberResponse & { id: string };
 type InviteRow = PendingInvitationResponse & { id: string };
 
 const filterControlSx = {
-  minWidth: 120,
+  ...dashFilterControlSx,
   '& .MuiInputBase-root': {
     minHeight: DASHBOARD_UX.buttonHeight,
     height: DASHBOARD_UX.buttonHeight,
@@ -515,7 +515,7 @@ export function MembersWorkspacePage() {
         </Select>
       </FormControl>
 
-      <FormControl size="small" sx={{ ...filterControlSx, minWidth: 150 }}>
+      <FormControl size="small" sx={filterControlSx}>
         <InputLabel id="member-sort">{t('membership.workspace.sort')}</InputLabel>
         <Select
           labelId="member-sort"

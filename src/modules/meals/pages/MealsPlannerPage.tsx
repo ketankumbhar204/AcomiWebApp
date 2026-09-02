@@ -363,7 +363,7 @@ export function MealsPlannerPage() {
               alignItems: 'start',
               gridTemplateColumns: {
                 xs: '1fr',
-                lg: canManage ? 'minmax(0, 3fr) minmax(260px, 1fr)' : '1fr',
+                lg: canManage ? 'minmax(0, 3fr) minmax(0, 1fr)' : '1fr',
               },
             }}
           >

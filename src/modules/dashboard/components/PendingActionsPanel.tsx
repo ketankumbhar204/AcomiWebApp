@@ -104,9 +104,9 @@ export function PendingActionsPanel({
         p: 1.5,
         display: 'flex',
         flexDirection: 'column',
-        height: DASHBOARD_UX.summaryCardHeight,
-        minHeight: DASHBOARD_UX.summaryCardMinHeight,
-        maxHeight: DASHBOARD_UX.summaryCardMaxHeight,
+        height: { xs: 'auto', md: DASHBOARD_UX.summaryCardHeight },
+        minHeight: { xs: 0, md: DASHBOARD_UX.summaryCardMinHeight },
+        maxHeight: { xs: 'none', md: DASHBOARD_UX.summaryCardMaxHeight },
         minWidth: 0,
         boxSizing: 'border-box',
         flex: sticky ? 1 : undefined,
@@ -151,6 +151,7 @@ export function PendingActionsPanel({
                   display: 'flex',
                   gap: 1,
                   alignItems: 'center',
+                  minWidth: 0,
                   minHeight: 52,
                   px: 0.75,
                   py: 0.6,
@@ -172,7 +173,12 @@ export function PendingActionsPanel({
                 <Box sx={{ minWidth: 0, flex: 1 }}>
                   <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                     <Typography
-                      sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary, flex: 1 }}
+                      sx={{
+                        ...DASHBOARD_UX.cardTitle,
+                        color: s.textPrimary,
+                        flex: 1,
+                        minWidth: 0,
+                      }}
                       noWrap
                     >
                       {item.title}

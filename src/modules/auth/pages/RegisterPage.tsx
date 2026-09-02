@@ -6,7 +6,6 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/routes/paths';
-import { isValidIndianMobile } from '@/shared/utils/indianMobile';
 import { AUTH_UX, authContainedButtonSx, authSurfaces } from '../theme/authUx';
 import { AuthCard } from '../components/AuthCard';
 import { AuthErrorBanner } from '../components/AuthErrorBanner';
@@ -17,7 +16,6 @@ import { PasswordInput } from '../components/PasswordInput';
 import { useOtpCooldown } from '../hooks/useOtpCooldown';
 import { useSendOtp } from '../hooks/useSendOtp';
 import { formatCountdown } from '../utils/otpAuthErrors';
-import { passwordsMatch, validatePassword } from '../passwordRules';
 import { createRegisterSchema, type RegisterFormValues } from '../schemas/loginSchema';
 import { useRegistrationDraftStore } from '@/store/registrationDraftStore';
 
@@ -47,6 +45,8 @@ export function RegisterPage() {
   const {
     control,
     handleSubmit,
+    trigger,
+    getValues,
     formState: { errors },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(schema),
@@ -56,21 +56,12 @@ export function RegisterPage() {
       password: '',
       confirmPassword: '',
     },
-    mode: 'onSubmit',
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
   });
 
-  const fullName = useWatch({ control, name: 'fullName' }) ?? '';
   const mobileNumber = useWatch({ control, name: 'mobileNumber' }) ?? '';
-  const password = useWatch({ control, name: 'password' }) ?? '';
-  const confirmPassword = useWatch({ control, name: 'confirmPassword' }) ?? '';
   const cooldown = useOtpCooldown(mobileNumber, 'REGISTER');
-  const canSubmit =
-    fullName.trim().length > 0 &&
-    isValidIndianMobile(mobileNumber) &&
-    validatePassword(password) == null &&
-    passwordsMatch(password, confirmPassword) &&
-    !isLoading &&
-    cooldown === 0;
 
   const onSubmit = handleSubmit(async (values) => {
     clearError();
@@ -151,6 +142,9 @@ export function RegisterPage() {
               value={field.value}
               onChange={(value) => {
                 field.onChange(value);
+                if (getValues('confirmPassword')) {
+                  void trigger('confirmPassword');
+                }
                 if (error) {
                   clearError();
                 }
@@ -191,7 +185,7 @@ export function RegisterPage() {
           type="submit"
           variant="contained"
           disableElevation
-          disabled={!canSubmit}
+          disabled={isLoading || cooldown > 0}
           fullWidth
           startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
           sx={{

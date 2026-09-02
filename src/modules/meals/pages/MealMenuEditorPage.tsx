@@ -37,7 +37,7 @@ import { SearchToolbar } from '@/shared/components/SearchToolbar';
 import { StatusChip, type StatusChipTone } from '@/shared/components/StatusChip';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { formatCurrency } from '@/shared/utils/dashboardFinancial';
 import { ROUTES, spaceMealsLibraryPath, spaceMealsPath, spaceMealsSharePath } from '@/routes/paths';
 import type {
@@ -210,7 +210,7 @@ function InlineCreateFoodItemRow({
         slotProps={{ select: { native: true } }}
         value={categoryId}
         onChange={(e) => setCategoryId(e.target.value)}
-        sx={{ minWidth: 140 }}
+        sx={{ ...dashFilterControlSx, minWidth: { xs: 0, sm: 140 } }}
       >
         <option value="">{t('meals.library.category')}</option>
         {categories.map((c) => (
@@ -225,7 +225,7 @@ function InlineCreateFoodItemRow({
         slotProps={{ select: { native: true } }}
         value={foodType}
         onChange={(e) => setFoodType(e.target.value as FoodType)}
-        sx={{ minWidth: 110 }}
+        sx={{ ...dashFilterControlSx, minWidth: { xs: 0, sm: 110 } }}
       >
         {(['VEG', 'NON_VEG', 'EGG'] as FoodType[]).map((ft) => (
           <option key={ft} value={ft}>

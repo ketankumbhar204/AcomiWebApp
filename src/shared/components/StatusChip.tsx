@@ -30,12 +30,20 @@ export function StatusChip({ label, tone = 'default', size = 'small' }: StatusCh
       variant="outlined"
       sx={{
         height: size === 'small' ? 22 : 28,
+        maxWidth: '100%',
         borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
         ...DASHBOARD_UX.badge,
         bgcolor: surface.bg,
         color: surface.fg,
         borderColor: surface.border,
-        '& .MuiChip-label': { px: 0.75, color: surface.fg, textTransform: 'none', letterSpacing: 0 },
+        '& .MuiChip-label': {
+          px: 0.75,
+          color: surface.fg,
+          textTransform: 'none',
+          letterSpacing: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        },
       }}
     />
   );

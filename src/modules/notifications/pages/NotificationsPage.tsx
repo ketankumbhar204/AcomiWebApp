@@ -276,7 +276,14 @@ export function NotificationsPage() {
             flexWrap: 'wrap',
           }}
         >
-          <Box sx={{ flex: '1 1 220px', maxWidth: 360, minWidth: 180 }}>
+          <Box
+            sx={{
+              flex: { xs: '1 1 100%', sm: '1 1 220px' },
+              maxWidth: { xs: '100%', sm: 360 },
+              minWidth: { xs: 0, sm: 180 },
+              width: { xs: '100%', sm: 'auto' },
+            }}
+          >
             <SearchToolbar
               value={search}
               onChange={setSearch}
@@ -337,7 +344,7 @@ export function NotificationsPage() {
               display: 'grid',
               gap: `${DASHBOARD_UX.cardGap}px`,
               gridTemplateColumns: showDesktopPanel
-                ? 'minmax(0, 1.85fr) minmax(300px, 0.95fr)'
+                ? 'minmax(0, 1.85fr) minmax(0, 0.95fr)'
                 : '1fr',
               alignItems: 'start',
             }}
@@ -375,7 +382,7 @@ export function NotificationsPage() {
               display: 'grid',
               gap: `${DASHBOARD_UX.cardGap}px`,
               gridTemplateColumns: showDesktopPanel
-                ? 'minmax(0, 1.85fr) minmax(300px, 0.95fr)'
+                ? 'minmax(0, 1.85fr) minmax(0, 0.95fr)'
                 : '1fr',
               alignItems: 'start',
             }}

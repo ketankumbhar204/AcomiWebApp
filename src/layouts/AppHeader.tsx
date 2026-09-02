@@ -49,8 +49,10 @@ export function AppHeader({
         sx={{
           minHeight: `${LAYOUT.headerHeight}px !important`,
           height: LAYOUT.headerHeight,
-          gap: 2,
-          px: { xs: 1.5, md: 2 },
+          width: '100%',
+          minWidth: 0,
+          gap: { xs: 1, md: 2 },
+          px: { xs: 1, sm: 1.5, md: 2 },
         }}
       >
         <IconButton
@@ -65,16 +67,14 @@ export function AppHeader({
         {leading ? (
           <Box
             sx={{
-              flexShrink: 0,
+              flex: 1,
               minWidth: 0,
-              maxWidth: { xs: '55%', sm: 360, md: 420 },
+              maxWidth: { md: 420 },
             }}
           >
             {leading}
           </Box>
-        ) : null}
-
-        {!leading && (title || subtitle) ? (
+        ) : title || subtitle ? (
           <Box sx={{ flex: 1, minWidth: 0 }}>
             {title ? (
               <Typography sx={{ ...DASHBOARD_UX.spaceName, color: s.textPrimary }} noWrap>
@@ -91,7 +91,15 @@ export function AppHeader({
           <Box sx={{ flex: 1, minWidth: 0 }} />
         )}
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: { xs: 0.5, md: 1 },
+            flexShrink: 0,
+            minWidth: 0,
+          }}
+        >
           {actions}
           <Tooltip title={themeLabel}>
             <IconButton onClick={toggleThemeMode} aria-label={themeLabel}>

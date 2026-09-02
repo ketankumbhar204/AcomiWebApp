@@ -690,7 +690,7 @@ export function OccupancyWizardPage() {
           sx={{
             display: 'grid',
             gap: `${DASHBOARD_UX.cardGap}px`,
-            gridTemplateColumns: { xs: '1fr', md: '1fr 280px' },
+            gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) minmax(0, 280px)' },
             minHeight: 420,
           }}
         >
@@ -700,6 +700,8 @@ export function OccupancyWizardPage() {
               alternativeLabel
               sx={{
                 mb: 3,
+                overflowX: 'auto',
+                maxWidth: '100%',
                 '& .MuiStepLabel-label': {
                   ...DASHBOARD_UX.body,
                   color: s.textMuted,

@@ -90,9 +90,9 @@ export function SpaceOverviewCard({
         bgcolor: s.surface,
         boxShadow: s.shadow,
         border: `1px solid ${s.border}`,
-        height: DASHBOARD_UX.summaryCardHeight,
-        minHeight: DASHBOARD_UX.summaryCardMinHeight,
-        maxHeight: DASHBOARD_UX.summaryCardMaxHeight,
+        height: { xs: 'auto', md: DASHBOARD_UX.summaryCardHeight },
+        minHeight: { xs: 0, md: DASHBOARD_UX.summaryCardMinHeight },
+        maxHeight: { xs: 'none', md: DASHBOARD_UX.summaryCardMaxHeight },
         display: 'flex',
         flexDirection: 'column',
         gap: 0.65,
@@ -105,7 +105,7 @@ export function SpaceOverviewCard({
           sx={{
             ...DASHBOARD_UX.spaceName,
             color: s.textPrimary,
-            whiteSpace: 'nowrap',
+            whiteSpace: { xs: 'normal', md: 'nowrap' },
             overflow: 'hidden',
             textOverflow: 'ellipsis',
           }}
@@ -132,8 +132,8 @@ export function SpaceOverviewCard({
         sx={{
           ...DASHBOARD_UX.greeting,
           color: s.textPrimary,
+          whiteSpace: { xs: 'normal', md: 'nowrap' },
         }}
-        noWrap
       >
         {greetingLine}
       </Typography>
@@ -141,7 +141,8 @@ export function SpaceOverviewCard({
       <Box
         sx={{
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
           gap: 1.1,
           minWidth: 0,
           flex: 1,
@@ -215,6 +216,7 @@ export function SpaceOverviewCard({
           aria-label={t('common.refresh')}
           sx={{
             flexShrink: 0,
+            alignSelf: { xs: 'stretch', sm: 'center' },
             height: DASHBOARD_UX.buttonHeight,
             minHeight: DASHBOARD_UX.buttonHeight,
             px: 1.25,

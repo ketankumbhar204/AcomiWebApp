@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type { FoodCategoryResponse, FoodItemResponse, FoodType } from '@/shared/types/meals';
 import { useMealMutations } from '../hooks/useMeals';
 import {
@@ -540,7 +540,7 @@ function InlineCreateItemRowWithFoodType({
         size="small"
         value={categoryId}
         onChange={(e) => setCategoryId(e.target.value)}
-        sx={{ minWidth: 140 }}
+        sx={{ ...dashFilterControlSx, minWidth: { xs: 0, sm: 140 } }}
         slotProps={{ select: { native: true } }}
       >
         <option value="">{t('meals.library.category')}</option>
@@ -555,7 +555,7 @@ function InlineCreateItemRowWithFoodType({
         size="small"
         value={foodType}
         onChange={(e) => setFoodType(e.target.value as FoodType)}
-        sx={{ minWidth: 110 }}
+        sx={{ ...dashFilterControlSx, minWidth: { xs: 0, sm: 110 } }}
         slotProps={{ select: { native: true } }}
       >
         {(['VEG', 'NON_VEG', 'EGG'] as FoodType[]).map((ft) => (

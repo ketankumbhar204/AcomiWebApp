@@ -121,7 +121,10 @@ export function FinancialSummaryWidget({
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+            gridTemplateColumns: {
+              xs: '1fr 1fr',
+              md: 'repeat(4, minmax(0, 1fr))',
+            },
             gap: `${DASHBOARD_UX.cardGap}px`,
             width: '100%',
           }}

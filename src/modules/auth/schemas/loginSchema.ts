@@ -100,3 +100,27 @@ export function createRegisterSchema(messages: {
 }
 
 export type RegisterFormValues = z.infer<ReturnType<typeof createRegisterSchema>>;
+
+export function createResetPasswordSchema(messages: {
+  passwordRequired: string;
+  passwordTooShort: string;
+  passwordTooLong: string;
+  confirmRequired: string;
+  passwordMismatch: string;
+}) {
+  return z
+    .object({
+      password: z
+        .string()
+        .min(1, messages.passwordRequired)
+        .min(PASSWORD_MIN_LENGTH, messages.passwordTooShort)
+        .max(PASSWORD_MAX_LENGTH, messages.passwordTooLong),
+      confirmPassword: z.string().min(1, messages.confirmRequired),
+    })
+    .refine((values) => values.password === values.confirmPassword, {
+      message: messages.passwordMismatch,
+      path: ['confirmPassword'],
+    });
+}
+
+export type ResetPasswordFormValues = z.infer<ReturnType<typeof createResetPasswordSchema>>;

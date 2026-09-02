@@ -14,6 +14,8 @@ export function PageContainer({ children, gap = 2.5 }: PageContainerProps) {
         flexDirection: 'column',
         gap,
         width: '100%',
+        minWidth: 0,
+        maxWidth: '100%',
       }}
     >
       {children}

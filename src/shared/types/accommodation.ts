@@ -201,6 +201,8 @@ export type BedListItemResponse = {
   label: string;
   status: AccommodationStatus;
   active?: boolean;
+  defaultRent?: number | null;
+  defaultDeposit?: number | null;
 };
 
 export type BedSpaceListItemResponse = {
@@ -300,6 +302,8 @@ export type CreateBedRequest = {
   name: string;
   bedNumber: string;
   status?: AccommodationStatus;
+  defaultRent?: number | null;
+  defaultDeposit?: number | null;
 };
 
 export type UpdateBedRequest = CreateBedRequest & {
@@ -334,11 +338,63 @@ export type AccommodationSetupRequest = {
   building: { name: string; code?: string | null };
   floors?: PgHostelSetupConfig;
   units?: UnitSetupConfig;
+  structure?: SetupStructureInput | null;
+};
+
+export type SetupStructureInput = {
+  floors?: SetupFloorNodeInput[];
+  units?: SetupUnitNodeInput[];
+};
+
+export type SetupFloorNodeInput = {
+  name?: string;
+  number?: number;
+  units?: SetupUnitNodeInput[];
+  rooms?: SetupRoomNodeInput[];
+};
+
+export type SetupUnitNodeInput = {
+  name?: string;
+  number?: string;
+  rooms?: SetupRoomNodeInput[];
+};
+
+export type SetupRoomNodeInput = {
+  name?: string;
+  number?: string;
+  capacity?: number;
+  beds?: SetupBedNodeInput[];
+};
+
+export type SetupBedNodeInput = {
+  name?: string;
+  number: string;
+  defaultRent?: number | null;
+  defaultDeposit?: number | null;
+};
+
+export type BuildingAvailabilityResponse = {
+  nameAvailable: boolean;
+  message?: string | null;
+};
+
+export type AccommodationSetupSampleNode = {
+  type: string;
+  label: string;
+  number: string;
+  children?: AccommodationSetupSampleNode[];
+};
+
+export type AccommodationSetupTotals = {
+  floors: number;
+  units: number;
+  rooms: number;
+  beds: number;
 };
 
 export type AccommodationSetupPreviewResponse = {
-  totals: { floors: number; units: number; rooms: number; beds: number };
-  sample?: unknown[];
+  totals: AccommodationSetupTotals;
+  sample?: AccommodationSetupSampleNode[];
   warnings?: string[];
 };
 

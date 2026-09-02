@@ -312,7 +312,7 @@ export function DataTable<T extends { id: string }>({
             })}
           </Box>
         ) : (
-          <TableContainer>
+          <TableContainer sx={{ overflowX: 'auto', maxWidth: '100%' }}>
             <Table
               size="small"
               sx={{

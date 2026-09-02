@@ -319,7 +319,7 @@ export function MealComboFormDrawer({
               </Typography>
 
               <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 1 }}>
-                <FormControl size="small" sx={{ minWidth: 140, flex: '1 1 140px' }}>
+                <FormControl size="small" sx={{ minWidth: { xs: 0, sm: 140 }, flex: '1 1 140px' }}>
                   <InputLabel id="combo-item-category">
                     {t('meals.library.category')}
                   </InputLabel>

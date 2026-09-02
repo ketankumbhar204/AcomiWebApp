@@ -41,7 +41,18 @@ export function PageHeader({ title, description, breadcrumbs, actions }: PageHea
           ) : null}
         </Box>
         {actions ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>{actions}</Box>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              flexWrap: 'wrap',
+              minWidth: 0,
+              width: { xs: '100%', sm: 'auto' },
+            }}
+          >
+            {actions}
+          </Box>
         ) : null}
       </Box>
     </Box>

@@ -48,7 +48,7 @@ export const DASH_DARK = {
   errorTint: 'rgba(248, 113, 113, 0.12)',
 } as const;
 
-/** Frozen canvas for identical layout + scale-down on narrow screens. */
+/** Unused — previously the ScaleShell frozen-canvas width. Kept so imports compile. */
 export const DASHBOARD_CANVAS_MIN_WIDTH = 1280;
 
 export const DASHBOARD_UX = {

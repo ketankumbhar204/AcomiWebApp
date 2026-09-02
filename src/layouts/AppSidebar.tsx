@@ -316,7 +316,8 @@ export function AppSidebar({
         sx={{
           display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': {
-            width: LAYOUT.sidebarWidth,
+            width: `min(90vw, ${LAYOUT.sidebarWidth}px)`,
+            maxWidth: LAYOUT.sidebarWidth,
             boxSizing: 'border-box',
             height: '100%',
             overflow: 'hidden',
@@ -396,8 +397,8 @@ export function AppSidebar({
             position: pinned ? 'relative' : 'fixed',
             left: 0,
             top: 0,
-            height: '100vh',
-            maxHeight: '100vh',
+            height: '100dvh',
+            maxHeight: '100dvh',
             overflow: 'hidden',
             transition: pinned ? 'none' : transition,
             boxShadow: !pinned && expanded ? '8px 0 28px rgba(15, 23, 42, 0.10)' : 'none',

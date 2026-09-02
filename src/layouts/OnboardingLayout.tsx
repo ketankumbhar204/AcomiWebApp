@@ -71,7 +71,6 @@ export function OnboardingLayout({
         flexDirection: 'column',
         bgcolor: a.pageBg,
         color: a.textPrimary,
-        overflowX: 'hidden',
         overflowY: 'auto',
       }}
     >
@@ -89,15 +88,16 @@ export function OnboardingLayout({
         <Toolbar
           sx={{
             minHeight: `${LAYOUT.headerHeight}px !important`,
-            height: LAYOUT.headerHeight,
+            height: { xs: 'auto', md: LAYOUT.headerHeight },
+            py: { xs: 1, md: 0 },
             px: { xs: 2, md: 3.5 },
             gap: 1.5,
-            display: 'grid',
-            gridTemplateColumns: pageTitle ? '1fr auto 1fr' : 'auto 1fr auto',
+            display: 'flex',
+            flexWrap: 'wrap',
             alignItems: 'center',
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0, flex: '1 1 auto' }}>
             <Box
               aria-hidden
               sx={{
@@ -130,6 +130,7 @@ export function OnboardingLayout({
               component="h1"
               noWrap
               sx={{
+                display: { xs: 'none', sm: 'block' },
                 justifySelf: 'center',
                 fontSize: { xs: '0.95rem', sm: '1.05rem' },
                 fontWeight: 700,
@@ -137,14 +138,24 @@ export function OnboardingLayout({
                 color: a.textPrimary,
                 lineHeight: 1.2,
                 px: 1,
+                minWidth: 0,
+                flex: '0 1 auto',
               }}
             >
               {pageTitle}
             </Typography>
-          ) : (
-            <Box />
-          )}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, minWidth: 0 }}>
+          ) : null}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: 1,
+              minWidth: 0,
+              flexWrap: 'wrap',
+              ml: 'auto',
+            }}
+          >
             {onCancel ? (
               <Button variant="outlined" onClick={onCancel} sx={headerButtonSx}>
                 {cancelText}

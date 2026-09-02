@@ -42,7 +42,7 @@ import { AppDrawer } from '@/shared/components/AppDrawer';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { formatCurrency } from '@/shared/utils/dashboardFinancial';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { spaceInventoryPath } from '@/routes/paths';
 import type {
   InventoryItem,
@@ -86,7 +86,7 @@ const STOCK_FILTERS: InventoryItemListFilter[] = [
 ];
 
 const filterControlSx = {
-  minWidth: 128,
+  ...dashFilterControlSx,
   '& .MuiInputBase-root': {
     minHeight: DASHBOARD_UX.buttonHeight,
     height: DASHBOARD_UX.buttonHeight,
@@ -405,7 +405,7 @@ export function InventoryWorkspacePage() {
           ))}
         </Select>
       </FormControl>
-      <FormControl size="small" sx={{ ...filterControlSx, minWidth: 140 }}>
+      <FormControl size="small" sx={filterControlSx}>
         <InputLabel id="inventory-category">{t('inventory.form.category')}</InputLabel>
         <Select
           labelId="inventory-category"
@@ -575,7 +575,7 @@ export function InventoryWorkspacePage() {
             gap: `${DASHBOARD_UX.cardGap}px`,
             gridTemplateColumns:
               !isLgDown && tab === 'catalog'
-                ? 'minmax(0, 1.85fr) minmax(300px, 0.95fr)'
+                ? 'minmax(0, 1.85fr) minmax(0, 0.95fr)'
                 : '1fr',
             alignItems: 'end',
           }}
@@ -697,7 +697,7 @@ export function InventoryWorkspacePage() {
               gap: `${DASHBOARD_UX.cardGap}px`,
               gridTemplateColumns: isLgDown
                 ? '1fr'
-                : 'minmax(0, 1.85fr) minmax(300px, 0.95fr)',
+                : 'minmax(0, 1.85fr) minmax(0, 0.95fr)',
               alignItems: 'start',
             }}
           >
@@ -838,8 +838,9 @@ export function InventoryWorkspacePage() {
                 />
                 <TextField
                   size="small"
+                  fullWidth
                   sx={{
-                    minWidth: 160,
+                    ...dashFilterControlSx,
                     '& .MuiInputBase-root': {
                       minHeight: DASHBOARD_UX.buttonHeight,
                       borderRadius: `${DASHBOARD_UX.buttonRadius}px`,

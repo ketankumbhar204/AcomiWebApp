@@ -41,6 +41,8 @@ export const ROUTES = {
   adminAddProperty: '/admin/properties/new',
   adminMess: '/admin/mess',
   adminAddMess: '/admin/mess/new',
+  adminRegisteredUsers: '/admin/registered-users',
+  adminSavedAddresses: '/admin/saved-addresses',
 } as const;
 
 export function spaceDashboardPath(spaceId: string): string {

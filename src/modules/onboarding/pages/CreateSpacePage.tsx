@@ -223,7 +223,7 @@ export function CreateSpacePage() {
           flex: 1,
           minHeight: 0,
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: 'minmax(240px, 0.28fr) minmax(0, 1fr)' },
+          gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 240px) minmax(0, 1fr)' },
           gap: { xs: 2, md: 3 },
           alignItems: 'stretch',
         }}

@@ -2,6 +2,7 @@ import apiClient from '@/shared/api/client';
 import { unwrapApiResponse, unwrapVoidResponse } from '@/shared/api/apiRequest';
 import type { ApiResponse, PagedResponse } from '@/shared/types/api';
 import type {
+  BuildingAvailabilityResponse,
   AccommodationSetupPreviewResponse,
   AccommodationSetupRequest,
   AccommodationSetupResultResponse,
@@ -312,6 +313,14 @@ export const accommodationApi = {
       apiClient.post<ApiResponse<AccommodationSetupPreviewResponse>>(
         `/spaces/${spaceId}/accommodation/setup/preview`,
         body,
+      ),
+    ),
+
+  checkBuildingAvailability: (spaceId: string, name: string) =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<BuildingAvailabilityResponse>>(
+        `/spaces/${spaceId}/accommodation/setup/building-check`,
+        { name },
       ),
     ),
 

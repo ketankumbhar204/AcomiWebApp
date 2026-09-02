@@ -171,7 +171,9 @@ export function MealSlotCard({
             alignItems: 'center',
             flexWrap: 'wrap',
             justifyContent: { xs: 'flex-start', sm: 'flex-end' },
-            flexShrink: 0,
+            flexShrink: 1,
+            minWidth: 0,
+            width: { xs: '100%', sm: 'auto' },
           }}
         >
           {!planned ? (

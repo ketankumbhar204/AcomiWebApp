@@ -19,6 +19,7 @@ type EntityOccupancyCardProps = {
   occupancyLabel?: string;
   /** Tighter padding — used for full-width corridor floor rows */
   dense?: boolean;
+  footer?: ReactNode;
 };
 
 /**
@@ -37,6 +38,7 @@ export function EntityOccupancyCard({
   menu,
   occupancyLabel,
   dense = false,
+  footer,
 }: EntityOccupancyCardProps) {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
@@ -151,6 +153,7 @@ export function EntityOccupancyCard({
             },
           }}
         />
+        {footer}
       </Stack>
     </Box>
   );

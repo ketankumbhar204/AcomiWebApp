@@ -80,9 +80,9 @@ export function MealOperationsTodayCard({
         bgcolor: s.surface,
         boxShadow: s.shadow,
         border: `1px solid ${s.border}`,
-        height: DASHBOARD_UX.summaryCardHeight,
-        minHeight: DASHBOARD_UX.summaryCardMinHeight,
-        maxHeight: DASHBOARD_UX.summaryCardMaxHeight,
+        height: { xs: 'auto', md: DASHBOARD_UX.summaryCardHeight },
+        minHeight: { xs: 0, md: DASHBOARD_UX.summaryCardMinHeight },
+        maxHeight: { xs: 'none', md: DASHBOARD_UX.summaryCardMaxHeight },
         display: 'flex',
         flexDirection: 'column',
         gap: 1,
@@ -115,7 +115,10 @@ export function MealOperationsTodayCard({
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: 'repeat(3, minmax(0, 1fr))',
+          },
           gap: `${DASHBOARD_UX.cardGap}px`,
           flex: 1,
           minHeight: 0,

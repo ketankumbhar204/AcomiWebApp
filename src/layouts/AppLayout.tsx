@@ -65,8 +65,8 @@ export function AppLayout({
     <Box
       sx={{
         display: 'flex',
-        height: '100vh',
-        maxHeight: '100vh',
+        height: '100dvh',
+        maxHeight: '100dvh',
         overflow: 'hidden',
         bgcolor: 'background.default',
         color: 'text.primary',
@@ -146,7 +146,6 @@ export function AppLayout({
               {content}
             </ContentLayout>
           ) : (
-            // Dashboard owns its own ScaleShell — avoid double-wrapping.
             content
           )}
         </Box>

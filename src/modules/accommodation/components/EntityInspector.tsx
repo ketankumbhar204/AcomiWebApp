@@ -436,6 +436,16 @@ export function EntityInspector({
                 icon: <Building2 size={16} />,
               },
               {
+                label: t('accommodation.fields.defaultRent'),
+                value: b?.defaultRent,
+                icon: <Wallet size={16} />,
+              },
+              {
+                label: t('accommodation.fields.defaultDeposit'),
+                value: b?.defaultDeposit,
+                icon: <Wallet size={16} />,
+              },
+              {
                 label: t('occupancy.section.moveInDate'),
                 value: occ?.moveInDate ?? occ?.actualMoveInAt,
                 icon: <CalendarDays size={16} />,

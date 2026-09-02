@@ -129,7 +129,9 @@ export function AccountLayout({
           sx={{
             minHeight: `${LAYOUT.headerHeight}px !important`,
             height: LAYOUT.headerHeight,
-            gap: 2,
+            width: '100%',
+            minWidth: 0,
+            gap: { xs: 1, md: 2 },
             px: { xs: 1.5, md: 3 },
           }}
         >
@@ -168,6 +170,7 @@ export function AccountLayout({
                 ...DASHBOARD_UX.spaceName,
                 color: s.textPrimary,
                 letterSpacing: '-0.01em',
+                display: { xs: 'none', sm: 'block' },
               }}
             >
               {APP_NAME}

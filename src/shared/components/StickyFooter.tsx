@@ -78,6 +78,7 @@ export function StickyFooter({ children, pin = 'sticky', sx }: StickyFooterProps
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-end',
+          flexWrap: 'wrap',
           gap: 1.25,
           px: { xs: 2, md: `${DASHBOARD_UX.pagePadding}px` },
           py: 1.25,

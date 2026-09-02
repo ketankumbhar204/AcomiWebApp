@@ -4,6 +4,7 @@ import {
   Building2,
   ClipboardList,
   FileBarChart,
+  LogOut,
   Megaphone,
   UserRound,
   Users,
@@ -206,7 +207,7 @@ export function GlobalShellLayout() {
         color="primary"
         startIcon={<UserRound size={14} />}
         onClick={() => navigate(ROUTES.profile)}
-        sx={{ ...dashOutlinedButtonSx, display: { xs: 'none', sm: 'inline-flex' } }}
+        sx={{ ...dashOutlinedButtonSx, display: { xs: 'none', md: 'inline-flex' } }}
       >
         {t('navigation.profile')}
       </Button>
@@ -231,17 +232,35 @@ export function GlobalShellLayout() {
       headerTitle={isMySpaces || isProfile ? undefined : pageTitle}
       headerActions={headerActions}
       sidebarFooter={
-        displayName ? (
-          <Typography
+        <Box>
+          {displayName ? (
+            <Typography
+              sx={{
+                ...DASHBOARD_UX.sidebarAccount,
+                color: 'text.primary',
+                px: 0.5,
+              }}
+            >
+              {displayName}
+            </Typography>
+          ) : null}
+          <Button
+            fullWidth
+            variant="text"
+            color="primary"
+            startIcon={<LogOut size={16} />}
+            onClick={() => void logout()}
             sx={{
-              ...DASHBOARD_UX.sidebarAccount,
-              color: 'text.primary',
-              px: 0.5,
+              display: { xs: 'inline-flex', md: 'none' },
+              mt: 1,
+              justifyContent: 'flex-start',
+              ...DASHBOARD_UX.button,
+              textTransform: 'none',
             }}
           >
-            {displayName}
-          </Typography>
-        ) : null
+            {t('common.logout')}
+          </Button>
+        </Box>
       }
     >
       <Outlet />

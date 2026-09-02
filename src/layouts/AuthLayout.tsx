@@ -64,7 +64,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           display: 'grid',
           gridTemplateColumns: {
             xs: '1fr',
-            md: 'minmax(360px, 1.08fr) minmax(400px, 0.92fr)',
+            md: 'minmax(0, 1.08fr) minmax(0, 0.92fr)',
           },
         }}
       >

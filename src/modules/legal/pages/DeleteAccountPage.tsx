@@ -16,7 +16,7 @@ import { authApi } from '@/modules/auth/api/authApi';
 import { useOtpCooldown } from '@/modules/auth/hooks/useOtpCooldown';
 import { useSendOtp } from '@/modules/auth/hooks/useSendOtp';
 import { formatCountdown } from '@/modules/auth/utils/otpAuthErrors';
-import { validatePassword } from '@/modules/auth/passwordRules';
+import { loginPasswordError } from '@/modules/auth/passwordMessages';
 import { useAuthStore } from '@/store/authStore';
 import { useFinishAccountDeletion } from '@/modules/legal/hooks/useFinishAccountDeletion';
 import { mapAccountDeletionError } from '@/modules/legal/utils/accountDeletion';
@@ -44,6 +44,7 @@ export function DeleteAccountPage() {
     locationState?.mobileNumber ?? signedInUser?.mobileNumber ?? '',
   );
   const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -60,11 +61,7 @@ export function DeleteAccountPage() {
     }
   }, [locationState?.mobileNumber, signedInUser]);
 
-  const canDeletePassword =
-    isValidIndianMobile(mobileNumber) &&
-    validatePassword(password) == null &&
-    confirmed &&
-    !deleting;
+  const canDeletePassword = isValidIndianMobile(mobileNumber) && confirmed && !deleting;
   const otpCooldown = useOtpCooldown(mobileNumber, 'ACCOUNT_DELETION');
   const canSendOtp =
     isValidIndianMobile(mobileNumber) && confirmed && !sendingOtp && !deleting && otpCooldown === 0;
@@ -76,11 +73,14 @@ export function DeleteAccountPage() {
     }
     setAuthMethod(next);
     setError(null);
+    setPasswordError(null);
     clearOtpError();
   };
 
   const handleDeletePassword = async () => {
-    if (!canDeletePassword) {
+    const nextPasswordError = loginPasswordError(t, password);
+    setPasswordError(nextPasswordError);
+    if (!confirmed || !isValidIndianMobile(mobileNumber) || nextPasswordError) {
       return;
     }
     setError(null);
@@ -157,10 +157,18 @@ export function DeleteAccountPage() {
             value={password}
             onChange={(value) => {
               setPassword(value);
+              if (passwordError) {
+                setPasswordError(loginPasswordError(t, value));
+              }
               if (error) setError(null);
             }}
+            onBlur={() => {
+              setPasswordError(loginPasswordError(t, password));
+            }}
+            error={passwordError}
             disabled={deleting}
             placeholder={t('auth.login.passwordPlaceholder')}
+            onSubmit={() => void handleDeletePassword()}
           />
         ) : null}
         <FormControlLabel

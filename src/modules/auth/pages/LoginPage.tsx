@@ -18,7 +18,6 @@ import { useLogin } from '../hooks/usePasswordAuth';
 import { useOtpCooldown } from '../hooks/useOtpCooldown';
 import { useSendOtp } from '../hooks/useSendOtp';
 import { createLoginSchema, type LoginFormValues } from '../schemas/loginSchema';
-import { validatePassword } from '../passwordRules';
 import { formatCountdown } from '../utils/otpAuthErrors';
 
 export function LoginPage() {
@@ -53,17 +52,15 @@ export function LoginPage() {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(schema),
     defaultValues: { mobileNumber: '', password: '' },
-    mode: 'onSubmit',
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
   });
 
   const [authMethod, setAuthMethod] = useState<'password' | 'otp'>('password');
   const mobileNumber = useWatch({ control, name: 'mobileNumber' }) ?? '';
-  const password = useWatch({ control, name: 'password' }) ?? '';
   const otpCooldown = useOtpCooldown(mobileNumber, 'LOGIN');
   const busy = isLoading || isSendingOtp;
   const bannerError = error || otpError;
-  const canSubmitPassword =
-    isValidIndianMobile(mobileNumber) && validatePassword(password) == null && !busy;
   const canSendOtp = isValidIndianMobile(mobileNumber) && !busy && otpCooldown === 0;
 
   const submitPassword = handleSubmit(async (values) => {
@@ -174,7 +171,7 @@ export function LoginPage() {
           type="submit"
           variant="contained"
           color="primary"
-          disabled={authMethod === 'otp' ? !canSendOtp : !canSubmitPassword}
+          disabled={authMethod === 'otp' ? !canSendOtp : busy}
           fullWidth
           startIcon={
             (authMethod === 'otp' ? isSendingOtp : isLoading) ? (

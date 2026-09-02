@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import { AdminPropertyTypePicker } from '@/modules/admin/components/AdminPropertyTypePicker';
 import { AdminRegistrationFormLayout } from '@/modules/admin/components/AdminRegistrationFormLayout';
+import { AdminSavedAddressPicker } from '@/modules/admin/components/AdminSavedAddressPicker';
 import { AdminTestLeadOption } from '@/modules/admin/components/AdminTestLeadOption';
 import { ROUTES } from '@/routes/paths';
 import { ContentCard } from '@/shared/components/ContentCard';
@@ -35,6 +36,7 @@ export function AdminAddPropertyPage() {
   const [propertyName, setPropertyName] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
+  const [alternateMobileNumber, setAlternateMobileNumber] = useState('');
   const [addressLine, setAddressLine] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
@@ -51,6 +53,18 @@ export function AdminAddPropertyPage() {
 
     if (mobileNumber.trim() && !isValidIndianMobile(mobileNumber)) {
       setError('Enter a valid 10-digit mobile number, or leave it blank.');
+      return;
+    }
+    if (alternateMobileNumber.trim() && !isValidIndianMobile(alternateMobileNumber)) {
+      setError('Enter a valid 10-digit alternate mobile number, or leave it blank.');
+      return;
+    }
+    if (
+      mobileNumber.trim() &&
+      alternateMobileNumber.trim() &&
+      normalizeIndianMobileDigits(mobileNumber) === normalizeIndianMobileDigits(alternateMobileNumber)
+    ) {
+      setError('Alternate mobile number must be different from the primary mobile number.');
       return;
     }
     if (pincode.trim() && !isValidPincode(pincode.trim())) {
@@ -74,6 +88,7 @@ export function AdminAddPropertyPage() {
     const name = optionalText(propertyName);
     const owner = optionalText(ownerName);
     const mobile = optionalText(mobileNumber);
+    const alternateMobile = optionalText(alternateMobileNumber);
     const address = optionalText(addressLine);
     const cityValue = optionalText(city);
     const stateValue = optionalText(state);
@@ -82,6 +97,7 @@ export function AdminAddPropertyPage() {
     if (name) payload.propertyName = name;
     if (owner) payload.ownerName = owner;
     if (mobile) payload.mobileNumber = mobile;
+    if (alternateMobile) payload.alternateMobileNumber = alternateMobile;
     if (address) payload.addressLine = address;
     if (cityValue) payload.city = cityValue;
     if (stateValue) payload.state = stateValue;
@@ -165,10 +181,30 @@ export function AdminAddPropertyPage() {
             }}
           />
           <TextField
-            label="Mobile number"
+            label="Primary mobile number"
             value={mobileNumber}
             onChange={(e) => setMobileNumber(normalizeIndianMobileDigits(e.target.value))}
             placeholder="10-digit number"
+            fullWidth
+            size="small"
+            sx={fieldSx}
+            slotProps={{
+              htmlInput: { maxLength: 10, inputMode: 'numeric' },
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Phone size={16} />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <TextField
+            label="Alternate mobile number"
+            value={alternateMobileNumber}
+            onChange={(e) => setAlternateMobileNumber(normalizeIndianMobileDigits(e.target.value))}
+            placeholder="Optional 10-digit number"
+            helperText="Optional secondary contact. Leave blank if unknown."
             fullWidth
             size="small"
             sx={fieldSx}
@@ -189,8 +225,18 @@ export function AdminAddPropertyPage() {
       <ContentCard>
         <FormSection
           title="Location"
-          description="Address and map link help staff verify the property."
+          description="Reuse a recent address or enter a new one. The same address can be used by multiple properties."
         >
+          <AdminSavedAddressPicker
+            value={{ addressLine, city, state, pincode, mapUrl }}
+            onChange={(next) => {
+              setAddressLine(next.addressLine);
+              setCity(next.city);
+              setState(next.state);
+              setPincode(next.pincode);
+              setMapUrl(next.mapUrl);
+            }}
+          />
           <TextField
             label="Address line"
             value={addressLine}

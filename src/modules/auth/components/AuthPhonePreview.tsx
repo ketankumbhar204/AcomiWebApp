@@ -31,7 +31,7 @@ export function AuthPhonePreview() {
     <Box
       aria-hidden
       sx={{
-        display: { xs: 'none', md: 'block' },
+        display: { xs: 'none', lg: 'block' },
         position: 'absolute',
         left: { md: '38%', lg: '41%', xl: '42%' },
         top: { md: '44%', lg: '46%' },

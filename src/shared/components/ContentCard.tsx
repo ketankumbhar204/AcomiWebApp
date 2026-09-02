@@ -31,6 +31,9 @@ export function ContentCard({ children, padded = true, onClick, selected = false
           : undefined
       }
       sx={{
+        width: '100%',
+        minWidth: 0,
+        maxWidth: '100%',
         borderRadius: `${DASHBOARD_UX.radius}px`,
         border: `1px solid ${s.border}`,
         bgcolor: s.surface,

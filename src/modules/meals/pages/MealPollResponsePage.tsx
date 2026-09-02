@@ -879,7 +879,7 @@ export function MealPollResponsePage() {
           alignItems: 'center',
           gridTemplateColumns: {
             xs: '1fr',
-            md: 'minmax(0, 1fr) auto auto',
+            lg: 'minmax(0, 1fr) auto auto',
           },
         }}
       >
@@ -909,7 +909,7 @@ export function MealPollResponsePage() {
                 <Box
                   key={row.mealType}
                   sx={{
-                    minWidth: 128,
+                    minWidth: 0,
                     maxWidth: 220,
                     px: 1.15,
                     py: 0.85,
@@ -1168,7 +1168,7 @@ export function MealPollResponsePage() {
               alignItems: 'start',
               gridTemplateColumns: {
                 xs: '1fr',
-                md: 'minmax(0, 1fr) minmax(300px, 340px)',
+                lg: 'minmax(0, 1fr) minmax(0, 340px)',
               },
             }}
           >
@@ -1306,7 +1306,7 @@ export function MealPollResponsePage() {
                                   gridTemplateColumns: {
                                     xs: '1fr',
                                     sm: 'repeat(2, minmax(0, 1fr))',
-                                    md: 'repeat(3, minmax(0, 1fr))',
+                                    lg: 'repeat(3, minmax(0, 1fr))',
                                   },
                                 }}
                               >
@@ -1361,7 +1361,7 @@ export function MealPollResponsePage() {
                                     gridTemplateColumns: {
                                       xs: '1fr',
                                       sm: 'repeat(2, minmax(0, 1fr))',
-                                      md: 'repeat(3, minmax(0, 1fr))',
+                                      lg: 'repeat(3, minmax(0, 1fr))',
                                     },
                                   }}
                                 >
@@ -1391,7 +1391,8 @@ export function MealPollResponsePage() {
                                 key={option.id}
                                 sx={{
                                   flex: '1 1 200px',
-                                  minWidth: { xs: '100%', sm: 200 },
+                                  minWidth: { xs: 0, sm: 0 },
+                                  width: { xs: '100%', sm: 'auto' },
                                   maxWidth: { xs: '100%', sm: 280 },
                                 }}
                               >

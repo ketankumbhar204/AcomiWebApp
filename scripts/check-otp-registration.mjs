@@ -83,6 +83,24 @@ assert(!otpPage.includes('111111'), 'OTP page must not hardcode OTP');
 assert(privacyPage.length > 0, 'privacy page is missing');
 assert(routes.includes('ROUTES.loginOtp'), 'login OTP route is not wired');
 assert(en.auth.login.modeOtp.toLowerCase().includes('otp'), 'login OTP toggle copy missing');
+assert(en.auth.password.show.toLowerCase().includes('show'), 'show-password copy missing');
+assert(en.auth.password.hide.toLowerCase().includes('hide'), 'hide-password copy missing');
+assert(en.auth.register.passwordMismatch.toLowerCase().includes('match'), 'password mismatch copy missing');
+
+const passwordInput = read('src/modules/auth/components/PasswordInput.tsx');
+assert(passwordInput.includes('EyeOff'), 'password input must toggle visibility');
+assert(passwordInput.includes("auth.password.show"), 'password input must label show');
+assert(passwordInput.includes("auth.password.hide"), 'password input must label hide');
+assert(loginPage.includes("mode: 'onTouched'"), 'login must validate on blur/submit so errors can show');
+assert(!loginPage.includes('canSubmitPassword'), 'login must not disable submit until password is valid');
+assert(registerPage.includes("mode: 'onTouched'"), 'register must validate on blur/submit so errors can show');
+assert(!registerPage.includes('disabled={!canSubmit}'), 'register must not hide password errors behind a disabled button');
+assert(passwordPage.includes("mode: 'onTouched'"), 'register password must validate on blur/submit so errors can show');
+assert(resetPage.includes('createResetPasswordSchema'), 'reset password must validate format and mismatch');
+assert(resetPage.includes('errors.password'), 'reset password must show password field errors');
+assert(resetPage.includes('errors.confirmPassword'), 'reset password must show confirm field errors');
+assert(deleteAccountPage.includes('loginPasswordError'), 'delete account must show password field errors');
+assert(deleteAccountPage.includes('passwordError'), 'delete account must render password field errors');
 
 const changeMobilePage = read('src/modules/auth/pages/ChangeMobilePage.tsx');
 const otpCooldown = read('src/modules/auth/hooks/useOtpCooldown.ts');

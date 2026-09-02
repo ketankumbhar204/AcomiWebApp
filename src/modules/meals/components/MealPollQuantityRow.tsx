@@ -140,6 +140,8 @@ export function MealPollQuantityRow({
               minWidth: 0,
               flex: 1,
               lineHeight: 1.25,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
             }}
             noWrap
           >
@@ -161,6 +163,10 @@ export function MealPollQuantityRow({
                     color: s.textSecondary,
                     fontWeight: 600,
                     whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    minWidth: 0,
+                    display: 'block',
                   }}
                 >
                   {t('meals.poll.priceEach', {
@@ -176,6 +182,10 @@ export function MealPollQuantityRow({
                       color: colors.success,
                       fontWeight: 700,
                       whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      minWidth: 0,
+                      display: 'block',
                     }}
                   >
                     {t('meals.poll.priceTimesQty', {

@@ -14,7 +14,6 @@ import { usePendingActions } from '../hooks/usePendingActions';
 import { useSpaceDashboard } from '../hooks/useSpaceDashboard';
 import { useSpaceLifecycleSignals } from '../hooks/useSpaceLifecycleSignals';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
-import { ScaleShell } from '@/layouts/ScaleShell';
 import { todayIsoDate } from '@/modules/meals/utils/mealDates';
 import { ContentCard } from '@/shared/components/ContentCard';
 import { ErrorState } from '@/shared/components/ErrorState';
@@ -188,9 +187,14 @@ export function DashboardPage() {
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: '0.85fr 1.35fr 0.85fr',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: '1fr 1fr',
+                    lg: '0.85fr 1.35fr 0.85fr',
+                  },
                   gap: `${DASHBOARD_UX.cardGap}px`,
                   width: '100%',
+                  minWidth: 0,
                   alignItems: 'stretch',
                 }}
               >
@@ -220,9 +224,9 @@ export function DashboardPage() {
                       bgcolor: s.surface,
                       boxShadow: s.shadow,
                       border: `1px solid ${s.border}`,
-                      height: DASHBOARD_UX.summaryCardHeight,
-                      minHeight: DASHBOARD_UX.summaryCardMinHeight,
-                      maxHeight: DASHBOARD_UX.summaryCardMaxHeight,
+                      height: { xs: 'auto', md: DASHBOARD_UX.summaryCardHeight },
+                      minHeight: { xs: 0, md: DASHBOARD_UX.summaryCardMinHeight },
+                      maxHeight: { xs: 'none', md: DASHBOARD_UX.summaryCardMaxHeight },
                       display: 'flex',
                       alignItems: 'center',
                       boxSizing: 'border-box',
@@ -262,12 +266,16 @@ export function DashboardPage() {
                 <Box
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns:
-                      accommodationApplicable && dashboard.accommodationOperations
-                        ? '1fr 1fr'
-                        : '1fr',
+                    gridTemplateColumns: {
+                      xs: '1fr',
+                      md:
+                        accommodationApplicable && dashboard.accommodationOperations
+                          ? '1fr 1fr'
+                          : '1fr',
+                    },
                     gap: `${DASHBOARD_UX.cardGap}px`,
                     width: '100%',
+                    minWidth: 0,
                     alignItems: 'stretch',
                   }}
                 >
@@ -401,16 +409,17 @@ export function DashboardPage() {
   return (
     <Box
       sx={{
-        px: { xs: 2, md: isOperator ? `${DASHBOARD_UX.pagePadding}px` : 3 },
+        px: { xs: 1.5, sm: 2, md: isOperator ? `${DASHBOARD_UX.pagePadding}px` : 3 },
         py: { xs: 2, md: isOperator ? `${DASHBOARD_UX.pagePadding}px` : 3 },
         minHeight: `calc(100vh - ${DASHBOARD_UX.headerHeight}px)`,
         bgcolor: s.pageBg,
         width: '100%',
+        minWidth: 0,
         boxSizing: 'border-box',
       }}
     >
-      {/* ScaleShell is for owner ops canvas; consumers need natural scroll to match mock. */}
-      {isOperator ? <ScaleShell>{pageBody}</ScaleShell> : pageBody}
+      {/* Operator and consumer dashboards both reflow; no scaled canvas. */}
+      {pageBody}
     </Box>
   );
 }

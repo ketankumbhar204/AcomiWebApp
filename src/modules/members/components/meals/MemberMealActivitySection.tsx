@@ -701,8 +701,16 @@ export function MemberMealActivitySection({
         >
           <Box
             sx={{
+              overflowX: 'auto',
+              maxWidth: '100%',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            <Box sx={{ minWidth: 392 }}>
+          <Box
+            sx={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(7, 1fr)',
+              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
               gap: 0.5,
               mb: 0.75,
             }}
@@ -725,7 +733,7 @@ export function MemberMealActivitySection({
               key={`week-${weekIndex}`}
               sx={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(7, 1fr)',
+                gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
                 gap: 0.5,
                 mb: 0.5,
               }}
@@ -788,6 +796,8 @@ export function MemberMealActivitySection({
               })}
             </Box>
           ))}
+            </Box>
+          </Box>
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mt: 1 }}>
             {(
               [
@@ -1028,7 +1038,7 @@ export function MemberMealActivitySection({
           display: 'grid',
           gap: `${DASHBOARD_UX.cardGap}px`,
           gridTemplateColumns: showDesktopPanel
-            ? 'minmax(0, 1.85fr) minmax(300px, 0.95fr)'
+            ? 'minmax(0, 1.85fr) minmax(0, 0.95fr)'
             : '1fr',
           alignItems: 'start',
         }}

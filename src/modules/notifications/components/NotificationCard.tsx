@@ -40,8 +40,9 @@ export function NotificationCard({
         alignItems: 'center',
         gap: 1.25,
         width: '100%',
+        minWidth: 0,
         minHeight: 72,
-        maxHeight: 84,
+        maxHeight: { xs: 'none', sm: 84 },
         px: `${DASHBOARD_UX.metricPadding}px`,
         py: 1.25,
         textAlign: 'left',
@@ -121,8 +122,10 @@ export function NotificationCard({
                 color: s.textSecondary,
                 flex: 1,
                 minWidth: 0,
+                whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
               }}
-              noWrap
             >
               {notification.message}
             </Typography>

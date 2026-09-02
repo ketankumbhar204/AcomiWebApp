@@ -14,11 +14,14 @@ body,
   height: auto;
 }
 
-html {
-  overflow-x: hidden;
-}
-
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
 }

@@ -40,7 +40,7 @@ import { PeriodMonthNav } from '@/shared/components/PeriodMonthNav';
 import { StatCard } from '@/shared/components/StatCard';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashContainedButtonSx, dashFilterControlSx } from '@/shared/theme/dashButtonSx';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import {
   canManagePayments,
@@ -74,7 +74,7 @@ import { TenantPaymentsPage } from './TenantPaymentsPage';
 type OwnerTab = 'members' | 'review' | 'history';
 
 const filterControlSx = {
-  minWidth: 140,
+  ...dashFilterControlSx,
   '& .MuiInputBase-root': {
     minHeight: DASHBOARD_UX.buttonHeight,
     height: DASHBOARD_UX.buttonHeight,
@@ -528,7 +528,7 @@ function OwnerPaymentsWorkspace({
 
   const queueFilter =
     !memberScoped && tab === 'review' ? (
-      <FormControl size="small" sx={{ ...filterControlSx, minWidth: 160 }}>
+      <FormControl size="small" sx={filterControlSx}>
         <InputLabel id="payments-review-queue">{t('payments.review.queue')}</InputLabel>
         <Select
           labelId="payments-review-queue"
@@ -551,7 +551,7 @@ function OwnerPaymentsWorkspace({
         </Select>
       </FormControl>
     ) : !memberScoped && tab === 'history' ? (
-      <FormControl size="small" sx={{ ...filterControlSx, minWidth: 160 }}>
+      <FormControl size="small" sx={filterControlSx}>
         <InputLabel id="payments-history-queue">{t('payments.history.queue')}</InputLabel>
         <Select
           labelId="payments-history-queue"
@@ -748,7 +748,7 @@ function OwnerPaymentsWorkspace({
             gap: `${DASHBOARD_UX.cardGap}px`,
             gridTemplateColumns: isLgDown
               ? '1fr'
-              : 'minmax(0, 1.85fr) minmax(300px, 0.95fr)',
+              : 'minmax(0, 1.85fr) minmax(0, 0.95fr)',
             alignItems: 'start',
           }}
         >

@@ -62,7 +62,7 @@ export function ConfirmDialog({
           </DialogContentText>
         </DialogContent>
       ) : null}
-      <DialogActions sx={{ px: 2.5, pb: 2, gap: 1 }}>
+      <DialogActions sx={{ px: 2.5, pb: 2, gap: 1, flexWrap: 'wrap' }}>
         <Button onClick={onClose} disabled={confirming} sx={dashOutlinedButtonSx}>
           {cancelLabel}
         </Button>

@@ -247,7 +247,7 @@ export function ConfigureLibraryExtrasDrawer({
                 placeholder={t('meals.library.searchExtrasPlaceholder')}
                 sx={{ flex: '1 1 160px' }}
               />
-              <FormControl size="small" sx={{ minWidth: 140, flex: '1 1 140px' }}>
+              <FormControl size="small" sx={{ minWidth: { xs: 0, sm: 140 }, flex: '1 1 140px' }}>
                 <InputLabel>{t('meals.library.category')}</InputLabel>
                 <Select
                   label={t('meals.library.category')}

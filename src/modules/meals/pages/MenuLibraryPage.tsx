@@ -48,7 +48,7 @@ import { PageHeader } from '@/shared/components/PageHeader';
 import { Pagination } from '@/shared/components/Pagination';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { spaceMealsPath } from '@/routes/paths';
 import type {
@@ -81,7 +81,7 @@ const PAGE_SIZE = 10;
 const FOOD_TYPES: FoodType[] = ['VEG', 'NON_VEG', 'EGG'];
 
 const filterControlSx = {
-  minWidth: 140,
+  ...dashFilterControlSx,
   '& .MuiInputBase-root': {
     minHeight: DASHBOARD_UX.buttonHeight,
     height: DASHBOARD_UX.buttonHeight,

@@ -301,7 +301,7 @@ export function InlineCreateItemRow({
         label={t('meals.library.category')}
         value={categoryId}
         onChange={(e) => setCategoryId(e.target.value)}
-        sx={{ minWidth: 140, flex: '1 1 120px' }}
+        sx={{ minWidth: { xs: 0, sm: 140 }, flex: '1 1 120px' }}
       >
         {categories.map((c) => (
           <MenuItem key={c.categoryId} value={c.categoryId}>

@@ -290,7 +290,10 @@ export function AccommodationLifecycleActions({
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${Math.min(cells.length || 1, 4)}, minmax(0, 1fr))`,
+            gridTemplateColumns: {
+              xs: 'repeat(2, minmax(0, 1fr))',
+              sm: `repeat(${Math.min(cells.length || 1, 4)}, minmax(0, 1fr))`,
+            },
             gap: 1,
           }}
         >

@@ -339,7 +339,7 @@ export function SpaceDetailsPage() {
               gap: `${DASHBOARD_UX.sectionGap}px`,
               gridTemplateColumns: {
                 xs: '1fr',
-                md: 'minmax(200px, 240px) 1fr',
+                md: 'minmax(0, 240px) minmax(0, 1fr)',
               },
               alignItems: 'center',
             }}

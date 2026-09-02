@@ -22,7 +22,7 @@ import { AppDrawer } from '@/shared/components/AppDrawer';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { PeriodMonthNav } from '@/shared/components/PeriodMonthNav';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
-import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashContainedButtonSx, dashFilterControlSx } from '@/shared/theme/dashButtonSx';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import {
   currentMonthKey,
@@ -194,7 +194,7 @@ export function TenantPaymentsPage() {
             gap: `${DASHBOARD_UX.cardGap}px`,
             gridTemplateColumns: isLgDown
               ? '1fr'
-              : 'minmax(0, 1.85fr) minmax(300px, 0.95fr)',
+              : 'minmax(0, 1.85fr) minmax(0, 0.95fr)',
             alignItems: 'start',
           }}
         >
@@ -204,7 +204,7 @@ export function TenantPaymentsPage() {
             loading={list.loading}
             emptyTitle={t('payments.tenant.empty')}
             toolbarFilters={
-              <FormControl size="small" sx={{ minWidth: 160 }}>
+              <FormControl size="small" sx={dashFilterControlSx}>
                 <InputLabel>{t('paymentCollection.fields.status')}</InputLabel>
                 <Select
                   label={t('paymentCollection.fields.status')}

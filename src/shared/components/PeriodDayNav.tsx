@@ -83,9 +83,11 @@ export function PeriodDayNav({
   return (
     <Box
       sx={{
-        display: 'inline-flex',
+        display: 'flex',
         alignItems: 'center',
         gap: 0.5,
+        minWidth: 0,
+        maxWidth: '100%',
         ...sx,
       }}
     >
@@ -115,12 +117,14 @@ export function PeriodDayNav({
         }
         sx={{
           position: 'relative',
-          display: 'inline-flex',
+          display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: 0.75,
           px: size === 'compact' ? 1 : 1.25,
-          minWidth: size === 'compact' ? 148 : 176,
+          flex: 1,
+          minWidth: 0,
+          maxWidth: '100%',
           ...controlSx,
           border: `1px solid ${s.border}`,
           cursor: pickerEnabled ? 'pointer' : 'default',
@@ -137,6 +141,8 @@ export function PeriodDayNav({
             fontWeight: 600,
             color: s.textPrimary,
             lineHeight: 1.2,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}
         >

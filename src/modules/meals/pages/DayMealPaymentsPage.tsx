@@ -42,7 +42,7 @@ import { SidePanel } from '@/shared/components/SidePanel';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { StickyFooter, StickyFooterClearance } from '@/shared/components/StickyFooter';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { memberApi } from '@/modules/members/api/memberApi';
 import {
   EMPTY_PAYMENT_PROOF,
@@ -718,7 +718,7 @@ function TenantDayMealPayments({ spaceId }: { spaceId: string }) {
             display: 'grid',
             gap: `${DASHBOARD_UX.cardGap}px`,
             gridTemplateColumns: showDesktopPanel
-              ? 'minmax(0, 1.85fr) minmax(300px, 0.95fr)'
+              ? 'minmax(0, 1.85fr) minmax(0, 0.95fr)'
               : '1fr',
             alignItems: 'start',
           }}
@@ -739,7 +739,7 @@ function TenantDayMealPayments({ spaceId }: { spaceId: string }) {
                 onPageChange={setPage}
                 zeroBasedPage
                 toolbarFilters={
-                  <FormControl size="small" sx={{ minWidth: 160 }}>
+                  <FormControl size="small" sx={dashFilterControlSx}>
                     <InputLabel id="section-label">
                       {t('common.filter', { defaultValue: 'Filter' })}
                     </InputLabel>

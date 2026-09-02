@@ -118,7 +118,13 @@ export function PastelQuickActions({
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${Math.min(actions.length, 3)}, minmax(0, 1fr))`,
+          gridTemplateColumns: {
+            xs:
+              actions.length > 2
+                ? 'repeat(2, minmax(0, 1fr))'
+                : `repeat(${Math.max(actions.length, 1)}, minmax(0, 1fr))`,
+            sm: `repeat(${Math.min(actions.length, 3)}, minmax(0, 1fr))`,
+          },
           gap: 1,
         }}
       >

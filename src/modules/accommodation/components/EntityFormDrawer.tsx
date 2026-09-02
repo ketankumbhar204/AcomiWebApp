@@ -221,6 +221,8 @@ function EntityFormBody({
               name: name.trim(),
               bedNumber: bedNumber.trim() || name.trim(),
               status,
+              defaultRent: defaultRent ? Number(defaultRent) : null,
+              defaultDeposit: defaultDeposit ? Number(defaultDeposit) : null,
             },
           });
         }
@@ -487,26 +489,22 @@ function EntityFormBody({
                   ))}
                 </Select>
               </FormControl>
-              {mode.kind === 'edit' ? (
-                <>
-                  <TextField
-                    label={t('accommodation.fields.defaultRent')}
-                    value={defaultRent}
-                    onChange={(e) => setDefaultRent(e.target.value)}
-                    placeholder="e.g. 4500"
-                    type="number"
-                    fullWidth
-                  />
-                  <TextField
-                    label={t('accommodation.fields.defaultDeposit')}
-                    value={defaultDeposit}
-                    onChange={(e) => setDefaultDeposit(e.target.value)}
-                    placeholder="e.g. 9000"
-                    type="number"
-                    fullWidth
-                  />
-                </>
-              ) : null}
+              <TextField
+                label={t('accommodation.fields.defaultRent')}
+                value={defaultRent}
+                onChange={(e) => setDefaultRent(e.target.value)}
+                placeholder="e.g. 4500"
+                type="number"
+                fullWidth
+              />
+              <TextField
+                label={t('accommodation.fields.defaultDeposit')}
+                value={defaultDeposit}
+                onChange={(e) => setDefaultDeposit(e.target.value)}
+                placeholder="e.g. 9000"
+                type="number"
+                fullWidth
+              />
             </>
           ) : null}
 

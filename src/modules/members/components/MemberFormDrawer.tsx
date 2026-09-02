@@ -693,13 +693,14 @@ function MemberFormBody({
               <Box
                 sx={{
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: { xs: 'flex-start', sm: 'center' },
                   justifyContent: 'space-between',
+                  flexWrap: 'wrap',
                   gap: 2,
                   pt: showMealBilling ? 0.5 : 0,
                 }}
               >
-                <Box>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
                   <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
                     {t('meals.mealAccess.label')}
                   </Typography>

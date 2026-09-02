@@ -45,7 +45,7 @@ import { PageHeader } from '@/shared/components/PageHeader';
 import { StatusChip, type StatusChipTone } from '@/shared/components/StatusChip';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import {
   ROUTES,
   spaceBedInventoryPath,
@@ -107,7 +107,7 @@ function pageCopy(status: string, t: (key: string, opts?: Record<string, unknown
 }
 
 const filterFieldSx = {
-  minWidth: 148,
+  ...dashFilterControlSx,
   '& .MuiOutlinedInput-root': {
     minHeight: DASHBOARD_UX.buttonHeight,
     height: DASHBOARD_UX.buttonHeight,
@@ -482,7 +482,7 @@ export function BedInventoryPage() {
             value={status}
             onChange={(e) => setStatus(e.target.value)}
             sx={{
-              minWidth: 180,
+              ...dashFilterControlSx,
               '& .MuiOutlinedInput-root': {
                 minHeight: DASHBOARD_UX.buttonHeight,
                 height: DASHBOARD_UX.buttonHeight,

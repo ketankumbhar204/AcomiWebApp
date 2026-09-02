@@ -387,12 +387,12 @@ export function AccommodationWorkspacePage() {
                 gridTemplateColumns: isMdDown
                   ? '1fr'
                   : isLgDown
-                    ? 'minmax(240px, 1fr) minmax(0, 1fr)'
+                    ? 'minmax(0, 1fr) minmax(0, 1fr)'
                     : 'repeat(3, minmax(0, 1fr))',
               }}
             >
               {isMdDown ? (
-                <Stack direction="row" spacing={1}>
+                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
                   <Button
                     size="small"
                     startIcon={<Settings2 size={14} />}

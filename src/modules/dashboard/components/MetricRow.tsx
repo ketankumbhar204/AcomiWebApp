@@ -44,7 +44,10 @@ export function MetricRow({
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+        gridTemplateColumns: {
+          xs: 'repeat(2, minmax(0, 1fr))',
+          md: `repeat(${columns}, minmax(0, 1fr))`,
+        },
         gap: '1px',
         width: '100%',
         bgcolor: s.border,
@@ -79,8 +82,8 @@ export function MetricRow({
             aria-label={item.onClick ? `${item.label}: ${String(item.value)}` : undefined}
             sx={{
               minWidth: 0,
-              minHeight,
-              maxHeight,
+              minHeight: { xs: 64, md: minHeight },
+              maxHeight: { xs: 'none', md: maxHeight },
               px: `${DASHBOARD_UX.metricPadding}px`,
               py: `${DASHBOARD_UX.metricPadding}px`,
               boxSizing: 'border-box',

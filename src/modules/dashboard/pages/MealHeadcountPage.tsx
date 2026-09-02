@@ -683,7 +683,7 @@ export function MealHeadcountPage() {
             <Box
               sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 280px' },
+                gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) minmax(0, 280px)' },
                 gap: `${DASHBOARD_UX.sectionGap}px`,
                 alignItems: 'start',
               }}

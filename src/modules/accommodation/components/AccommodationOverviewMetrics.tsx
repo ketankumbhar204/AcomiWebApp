@@ -25,7 +25,10 @@ export function AccommodationOverviewMetrics({ items }: AccommodationOverviewMet
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+        gridTemplateColumns: {
+          xs: 'repeat(2, minmax(0, 1fr))',
+          sm: 'repeat(3, minmax(0, 1fr))',
+        },
         gap: 0.75,
         p: 1.25,
         pb: 1,
@@ -120,7 +123,10 @@ export function WorkspaceSummaryStrip({ title, items }: WorkspaceSummaryStripPro
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${Math.min(items.length, 5)}, minmax(0, 1fr))`,
+          gridTemplateColumns: {
+            xs: 'repeat(2, minmax(0, 1fr))',
+            sm: `repeat(${Math.min(items.length, 5)}, minmax(0, 1fr))`,
+          },
           gap: 1,
         }}
       >

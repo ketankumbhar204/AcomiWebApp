@@ -119,7 +119,7 @@ export function CustomerSubscriptionPlansPage() {
             sx={{
               display: 'grid',
               gap: `${DASHBOARD_UX.cardGap}px`,
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' },
             }}
           >
             {activePlans.map((plan) => (

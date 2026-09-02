@@ -2,7 +2,7 @@ import { Box, Button, CircularProgress, Typography, useTheme } from '@mui/materi
 import { zodResolver } from '@hookform/resolvers/zod';
 import { UserRound } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/routes/paths';
@@ -18,7 +18,6 @@ import { AuthHero } from '../components/AuthHero';
 import { NameInput } from '../components/NameInput';
 import { PasswordInput } from '../components/PasswordInput';
 import { useRegister } from '../hooks/usePasswordAuth';
-import { passwordsMatch, validatePassword } from '../passwordRules';
 import {
   createRegisterPasswordSchema,
   type RegisterPasswordFormValues,
@@ -60,6 +59,8 @@ export function RegisterPasswordPage() {
   const {
     control,
     handleSubmit,
+    trigger,
+    getValues,
     formState: { errors },
   } = useForm<RegisterPasswordFormValues>({
     resolver: zodResolver(schema),
@@ -68,18 +69,9 @@ export function RegisterPasswordPage() {
       password: '',
       confirmPassword: '',
     },
-    mode: 'onSubmit',
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
   });
-
-  const fullName = useWatch({ control, name: 'fullName' }) ?? '';
-  const password = useWatch({ control, name: 'password' }) ?? '';
-  const confirmPassword = useWatch({ control, name: 'confirmPassword' }) ?? '';
-  const canSubmit =
-    fullName.trim().length > 0 &&
-    validatePassword(password) == null &&
-    passwordsMatch(password, confirmPassword) &&
-    tokenValid &&
-    !isLoading;
 
   useEffect(() => {
     document.title = `${t('navigation.createPassword')} · ${t('common.appName')}`;
@@ -159,6 +151,9 @@ export function RegisterPasswordPage() {
               value={field.value}
               onChange={(value) => {
                 field.onChange(value);
+                if (getValues('confirmPassword')) {
+                  void trigger('confirmPassword');
+                }
                 if (error) {
                   clearError();
                 }
@@ -199,7 +194,7 @@ export function RegisterPasswordPage() {
           type="submit"
           variant="contained"
           color="primary"
-          disabled={!canSubmit}
+          disabled={isLoading}
           fullWidth
           startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
           sx={{

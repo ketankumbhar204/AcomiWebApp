@@ -58,7 +58,6 @@ export function PasswordInput({
           borderRadius: `${AUTH_UX.fieldRadius}px`,
           border: `1px solid ${error ? a.danger : a.border}`,
           bgcolor: a.surface,
-          overflow: 'hidden',
           minHeight: AUTH_UX.fieldHeight,
           transition: 'border-color 150ms ease, box-shadow 150ms ease',
           '&:focus-within': {
@@ -76,30 +75,32 @@ export function PasswordInput({
           disabled={disabled}
           autoComplete={autoComplete}
           placeholder={placeholder}
-          fullWidth
           inputProps={{ 'aria-invalid': Boolean(error), 'aria-label': label }}
+          endAdornment={
+            <IconButton
+              type="button"
+              size="small"
+              onClick={() => setVisible((current) => !current)}
+              disabled={disabled}
+              aria-label={visible ? t('auth.password.hide') : t('auth.password.show')}
+              sx={{
+                mr: 0.25,
+                color: a.brand,
+                '&:hover': { color: a.brandHover, bgcolor: 'transparent' },
+              }}
+            >
+              {visible ? <EyeOff size={18} strokeWidth={2.2} /> : <Eye size={18} strokeWidth={2.2} />}
+            </IconButton>
+          }
           sx={{
+            flex: 1,
+            minWidth: 0,
             px: 1.5,
             ...AUTH_UX.input,
             color: a.textPrimary,
             '& input::placeholder': { color: a.textMuted, opacity: 1 },
           }}
         />
-        <IconButton
-          type="button"
-          size="small"
-          onClick={() => setVisible((current) => !current)}
-          disabled={disabled}
-          aria-label={visible ? t('auth.password.hide') : t('auth.password.show')}
-          sx={{
-            alignSelf: 'center',
-            mr: 0.5,
-            color: a.textMuted,
-            '&:hover': { color: a.brand, bgcolor: 'transparent' },
-          }}
-        >
-          {visible ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
-        </IconButton>
       </Box>
       {error ? (
         <FormHelperText error sx={{ mx: 0, mt: 0.5, ...AUTH_UX.helper }}>

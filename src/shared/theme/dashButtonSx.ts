@@ -26,3 +26,10 @@ export const dashContainedButtonSx: SxProps<Theme> = {
     '&:active': { bgcolor: colors.primaryActive },
   },
 };
+
+/** Filter/select controls that wrap to full width on phones. */
+export const dashFilterControlSx = {
+  minWidth: { xs: 0, sm: 140 },
+  width: { xs: '100%', sm: 'auto' },
+  flex: { xs: '1 1 100%', sm: '0 1 auto' },
+} as const;

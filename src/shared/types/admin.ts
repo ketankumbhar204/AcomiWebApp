@@ -26,6 +26,7 @@ export interface AdminDashboardSummary {
   claimedMessLeads: number;
   activePropertySpaces: number;
   activeMessSpaces: number;
+  registeredUsersCount?: number;
 }
 
 export interface AdminActiveSpace {
@@ -47,6 +48,7 @@ export interface PropertyRegistrationListItem {
   propertyName: string;
   ownerName: string;
   mobileNumber: string;
+  alternateMobileNumber?: string | null;
   city: string;
   state: string;
   pincode: string;
@@ -77,6 +79,7 @@ export interface MessRegistrationListItem {
   messName: string;
   ownerName: string;
   mobileNumber: string;
+  alternateMobileNumber?: string | null;
   city: string;
   state: string;
   pincode: string;
@@ -106,6 +109,7 @@ export interface AdminCreatePropertyRegistrationRequest {
   ownerName?: string;
   description?: string;
   mobileNumber?: string;
+  alternateMobileNumber?: string | null;
   addressLine?: string;
   city?: string;
   state?: string;
@@ -116,11 +120,18 @@ export interface AdminCreatePropertyRegistrationRequest {
   testLead?: boolean;
 }
 
+export interface AdminUpdateRegistrationContactRequest {
+  ownerName?: string;
+  mobileNumber?: string;
+  alternateMobileNumber?: string | null;
+}
+
 export interface AdminCreateMessRegistrationRequest {
   messName?: string;
   ownerName?: string;
   description?: string;
   mobileNumber?: string;
+  alternateMobileNumber?: string | null;
   addressLine?: string;
   city?: string;
   state?: string;
@@ -146,5 +157,50 @@ export interface MessRegistrationResponse {
   source: RegistrationSource;
 }
 
-export type AdminPropertyRegistrationPage = PagedResponse<PropertyRegistrationListItem>;
-export type AdminMessRegistrationPage = PagedResponse<MessRegistrationListItem>;
+export type AdminUserSelectedRole = 'NOT_SELECTED' | 'OWNER' | 'MEMBER' | 'OWNER_AND_MEMBER';
+
+export type AdminUserOnboardingStatus = 'INCOMPLETE' | 'COMPLETE';
+
+export interface AdminRegisteredUserSpace {
+  id: string;
+  name: string;
+  type: SpaceType;
+  membershipRole: string;
+}
+
+export interface AdminRegisteredUser {
+  id: string;
+  fullName?: string | null;
+  mobileNumber: string;
+  mobileVerified: boolean;
+  mobileVerifiedAt?: string | null;
+  registeredAt: string;
+  selectedRole: AdminUserSelectedRole;
+  onboardingStatus: AdminUserOnboardingStatus;
+  profileCompleted: boolean;
+  spaces: AdminRegisteredUserSpace[];
+}
+
+export type AdminRegisteredUserPage = PagedResponse<AdminRegisteredUser>;
+
+export interface SavedAddress {
+  id: string;
+  addressLine: string;
+  city: string;
+  state: string;
+  pincode: string;
+  mapUrl?: string | null;
+  usageCount: number;
+  lastUsedAt?: string | null;
+  createdAt: string;
+}
+
+export interface SavedAddressRequest {
+  addressLine: string;
+  city: string;
+  state: string;
+  pincode: string;
+  mapUrl?: string;
+}
+
+export type SavedAddressPage = PagedResponse<SavedAddress>;

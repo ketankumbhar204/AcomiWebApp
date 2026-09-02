@@ -172,8 +172,12 @@ export function DashboardQuickActions({
           display: 'grid',
           gridTemplateColumns:
             layout === 'row'
-              ? `repeat(${Math.min(Math.max(cols, 4), 6)}, minmax(0, 1fr))`
-              : 'repeat(2, minmax(0, 1fr))',
+              ? {
+                  xs: '1fr 1fr',
+                  sm: 'repeat(3, minmax(0, 1fr))',
+                  md: `repeat(${Math.min(Math.max(cols, 4), 6)}, minmax(0, 1fr))`,
+                }
+              : { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
           gap: `${DASHBOARD_UX.cardGap}px`,
           width: '100%',
         }}

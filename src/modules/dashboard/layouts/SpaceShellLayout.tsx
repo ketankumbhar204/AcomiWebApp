@@ -5,6 +5,7 @@ import {
   ClipboardList,
   Clock3,
   LayoutDashboard,
+  LogOut,
   Package,
   TriangleAlert,
   Users,
@@ -123,7 +124,27 @@ export function SpaceShellLayout() {
         icon: <Bell size={16} />,
       });
 
-      return [{ id: 'space', items: consumerItems }];
+      return [
+        { id: 'space', items: consumerItems },
+        {
+          id: 'account',
+          label: t('settings.profile.eyebrow', { defaultValue: 'Account' }),
+          items: [
+            {
+              id: 'my-spaces',
+              label: t('navigation.mySpaces'),
+              to: ROUTES.mySpaces,
+              icon: <Building2 size={16} />,
+            },
+            {
+              id: 'profile',
+              label: t('navigation.profile'),
+              to: ROUTES.profile,
+              icon: <UserRound size={16} />,
+            },
+          ],
+        },
+      ];
     }
 
     const items: AppNavSection['items'] = [
@@ -240,6 +261,12 @@ export function SpaceShellLayout() {
         label: t('settings.profile.eyebrow', { defaultValue: 'Account' }),
         items: [
           {
+            id: 'my-spaces',
+            label: t('navigation.mySpaces'),
+            to: ROUTES.mySpaces,
+            icon: <Building2 size={16} />,
+          },
+          {
             id: 'profile',
             label: t('navigation.profile'),
             to: ROUTES.profile,
@@ -301,44 +328,79 @@ export function SpaceShellLayout() {
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 2,
-            flexWrap: 'wrap',
+            gap: { xs: 0.75, md: 2 },
+            flexWrap: 'nowrap',
             justifyContent: 'flex-end',
             '& .MuiButton-root': {
-              height: DASHBOARD_UX.buttonHeight,
+              minHeight: { xs: 40, md: DASHBOARD_UX.buttonHeight },
+              height: { xs: 40, md: DASHBOARD_UX.buttonHeight },
               px: `${DASHBOARD_UX.buttonPx}px`,
               ...DASHBOARD_UX.button,
               borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
               textTransform: 'none',
+              whiteSpace: 'nowrap',
             },
           }}
         >
           {spaceId ? <NotificationBellButton spaceId={spaceId} /> : null}
-          <Button variant="outlined" color="primary" onClick={() => navigate(ROUTES.mySpaces)}>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => navigate(ROUTES.mySpaces)}
+            sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+          >
             {t('navigation.mySpaces')}
           </Button>
-          <Button variant="outlined" color="primary" onClick={() => navigate(ROUTES.profile)}>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => navigate(ROUTES.profile)}
+            sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+          >
             {t('navigation.profile')}
           </Button>
-          <Button variant="outlined" color="primary" onClick={() => void logout()}>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => void logout()}
+            sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+          >
             {t('common.logout')}
           </Button>
         </Box>
       }
       sidebarFooter={
-        consumerChrome ? (
-          <CustomerSidebarProfile displayName={displayName} role={role} />
-        ) : (
-          <Typography
+        <Box>
+          {consumerChrome ? (
+            <CustomerSidebarProfile displayName={displayName} role={role} />
+          ) : (
+            <Typography
+              sx={{
+                ...DASHBOARD_UX.sidebarAccount,
+                color: 'text.primary',
+                px: 0.5,
+              }}
+            >
+              {displayName}
+            </Typography>
+          )}
+          <Button
+            fullWidth
+            variant="text"
+            color="primary"
+            startIcon={<LogOut size={16} />}
+            onClick={() => void logout()}
             sx={{
-              ...DASHBOARD_UX.sidebarAccount,
-              color: 'text.primary',
-              px: 0.5,
+              display: { xs: 'inline-flex', md: 'none' },
+              mt: 1,
+              justifyContent: 'flex-start',
+              ...DASHBOARD_UX.button,
+              textTransform: 'none',
             }}
           >
-            {displayName}
-          </Typography>
-        )
+            {t('common.logout')}
+          </Button>
+        </Box>
       }
     >
       <Outlet />

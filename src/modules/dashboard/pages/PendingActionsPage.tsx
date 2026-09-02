@@ -34,6 +34,7 @@ import { StatusChip, type StatusChipTone } from '@/shared/components/StatusChip'
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import type { NotificationPriority, SpaceNotification } from '@/shared/types/dashboard';
 import { colors } from '@/shared/theme/colors';
+import { dashFilterControlSx } from '@/shared/theme/dashButtonSx';
 import { extractIsoDateFromText } from '@/shared/utils/extractIsoDateFromText';
 import { navigateFromNotificationType } from '@/shared/utils/notificationDeepLinks';
 import {
@@ -56,7 +57,7 @@ const PAGE_SIZE = 25;
 const PRIORITIES: NotificationPriority[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 
 const filterControlSx = {
-  minWidth: 128,
+  ...dashFilterControlSx,
   '& .MuiInputBase-root': {
     minHeight: DASHBOARD_UX.buttonHeight,
     height: DASHBOARD_UX.buttonHeight,
@@ -342,7 +343,7 @@ export function PendingActionsPage() {
           </MenuItem>
         </Select>
       </FormControl>
-      <FormControl size="small" sx={{ ...filterControlSx, minWidth: 150 }}>
+      <FormControl size="small" sx={filterControlSx}>
         <InputLabel id="pending-group">
           {t('dashboard.pendingActions.filters.group', { defaultValue: 'Group' })}
         </InputLabel>

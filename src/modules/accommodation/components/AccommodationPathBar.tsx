@@ -195,6 +195,9 @@ export function AccommodationPathBar({
                   ...(isLast ? DASHBOARD_UX.link : DASHBOARD_UX.breadcrumb),
                   color: 'inherit',
                   whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: { xs: 140, sm: 'none' },
                 }}
               >
                 {crumb.label}

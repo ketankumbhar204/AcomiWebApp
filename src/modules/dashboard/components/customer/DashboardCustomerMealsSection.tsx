@@ -843,9 +843,9 @@ export function DashboardCustomerMealsSection({
                 onClick={() => openPoll()}
                 sx={{
                   ...dashContainedButtonSx,
-                  alignSelf: 'flex-start',
-                  width: 'auto',
-                  minWidth: 180,
+                  alignSelf: { xs: 'stretch', sm: 'flex-start' },
+                  width: { xs: '100%', sm: 'auto' },
+                  minWidth: { xs: 0, sm: 180 },
                   minHeight: '32px !important',
                   height: '32px !important',
                   py: 0,

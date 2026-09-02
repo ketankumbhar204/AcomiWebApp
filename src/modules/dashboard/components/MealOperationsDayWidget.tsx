@@ -151,7 +151,10 @@ export function MealOperationsDayWidget({ spaceId, enabled }: MealOperationsDayW
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: 'repeat(3, minmax(0, 1fr))',
+          },
           gap: `${DASHBOARD_UX.cardGap}px`,
         }}
       >

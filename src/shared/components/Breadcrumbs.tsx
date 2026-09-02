@@ -24,7 +24,14 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
     <MuiBreadcrumbs
       separator={<ChevronRight size={DASHBOARD_UX.iconSize} />}
       aria-label="Breadcrumb"
-      sx={{ mb: 1.25, '& .MuiBreadcrumbs-separator': { mx: 0.5, color: s.textMuted } }}
+      sx={{
+        mb: 1.25,
+        maxWidth: '100%',
+        minWidth: 0,
+        '& .MuiBreadcrumbs-ol': { flexWrap: 'wrap', rowGap: 0.5 },
+        '& .MuiBreadcrumbs-separator': { mx: 0.5, color: s.textMuted },
+        '& .MuiBreadcrumbs-li': { minWidth: 0 },
+      }}
     >
       {items.map((item, index) => {
         const isLast = index === items.length - 1;

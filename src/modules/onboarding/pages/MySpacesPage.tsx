@@ -498,8 +498,9 @@ export function MySpacesPage() {
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t('spaces.mySpaces.searchPlaceholder')}
               sx={{
-                flex: '1 1 240px',
-                minWidth: 200,
+                flex: { xs: '1 1 100%', sm: '1 1 240px' },
+                minWidth: { xs: 0, sm: 200 },
+                width: { xs: '100%', sm: 'auto' },
                 '& .MuiOutlinedInput-root': {
                   minHeight: DASHBOARD_UX.buttonHeight,
                   height: DASHBOARD_UX.buttonHeight,

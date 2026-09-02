@@ -17,7 +17,7 @@ import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { StatusChip } from '@/shared/components/StatusChip';
-import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { spaceMealsPath } from '@/routes/paths';
 import type {
@@ -163,7 +163,7 @@ export function MealParticipationPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <FormControl size="small" sx={{ minWidth: 180 }}>
+            <FormControl size="small" sx={dashFilterControlSx}>
               <InputLabel>{t('meals.participation.status')}</InputLabel>
               <Select
                 label={t('meals.participation.status')}

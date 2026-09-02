@@ -28,7 +28,7 @@ import { PageHeader } from '@/shared/components/PageHeader';
 import { SidePanel } from '@/shared/components/SidePanel';
 import { StatusChip, type StatusChipTone } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type { MealHeadcountMember, MealPollPaymentStatus, MealType } from '@/shared/types/meals';
 import { spacePaymentsPath } from '@/routes/paths';
 import { mealsApi } from '../api/mealsApi';
@@ -80,7 +80,7 @@ function paymentStatusLabel(
 }
 
 const filterControlSx = {
-  minWidth: 140,
+  ...dashFilterControlSx,
   '& .MuiInputBase-root': {
     minHeight: DASHBOARD_UX.buttonHeight,
     height: DASHBOARD_UX.buttonHeight,
@@ -520,7 +520,6 @@ export function OwnerDayMealReview({ spaceId }: { spaceId: string }) {
         slotProps={{ inputLabel: { shrink: true } }}
         sx={{
           ...filterControlSx,
-          minWidth: 160,
           '& .MuiInputBase-root': {
             ...filterControlSx['& .MuiInputBase-root'],
             bgcolor: s.surface,
@@ -614,7 +613,7 @@ export function OwnerDayMealReview({ spaceId }: { spaceId: string }) {
             display: 'grid',
             gap: `${DASHBOARD_UX.cardGap}px`,
             gridTemplateColumns: showDesktopPanel
-              ? 'minmax(0, 1.85fr) minmax(300px, 0.95fr)'
+              ? 'minmax(0, 1.85fr) minmax(0, 0.95fr)'
               : '1fr',
             alignItems: 'start',
           }}

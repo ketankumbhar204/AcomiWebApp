@@ -1,7 +1,6 @@
 import { Box } from '@mui/material';
 import type { ReactNode } from 'react';
 import { LAYOUT } from './layoutConstants';
-import { ScaleShell } from './ScaleShell';
 
 type ContentLayoutProps = {
   children: ReactNode;
@@ -20,13 +19,15 @@ export function ContentLayout({
     <Box
       sx={{
         width: '100%',
-        maxWidth: maxWidth === false ? 'none' : maxWidth,
+        maxWidth: maxWidth === false ? '100%' : `min(100%, ${maxWidth}px)`,
+        minWidth: 0,
+        boxSizing: 'border-box',
         mx: 'auto',
-        px: { xs: 1.5, md: 3 },
+        px: { xs: 1.5, sm: 2, md: 3 },
         py: { xs: dense ? 1.5 : 2, md: dense ? 1.75 : 3 },
       }}
     >
-      <ScaleShell>{children}</ScaleShell>
+      {children}
     </Box>
   );
 }

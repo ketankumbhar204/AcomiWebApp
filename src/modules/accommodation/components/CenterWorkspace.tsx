@@ -10,19 +10,23 @@ import {
 import { Plus } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSnackbar } from 'notistack';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { getErrorMessage } from '@/shared/api/errors';
 import type { TreeSelection } from './HierarchyTree';
 import { BulkCreateDialog } from './BulkCreateDialog';
+import { BedCardPricingFields } from './BedCardPricingFields';
 import { EntityOccupancyCard } from './EntityOccupancyCard';
 import { EntityActionsMenu } from './EntityActionsMenu';
 import { WorkspaceSummaryStrip } from './AccommodationOverviewMetrics';
 import type { AccommodationUiProfile } from '../utils/accommodationProfile';
 import {
+  useAccommodationMutations,
   useBeds,
   useBuildingSummary,
   useFloors,
@@ -31,6 +35,8 @@ import {
   useUnits,
   useUnitsByFloor,
 } from '../hooks/useAccommodation';
+import { commitBedPricingField } from '../utils/commitBedPricing';
+import type { PricingField } from '../setup-preview/setupPricingAutofill';
 import { LayoutIllustration } from '../illustrations/LayoutIllustration';
 import {
   getBedIllustration,
@@ -157,6 +163,8 @@ export function CenterWorkspace({
   const { t } = useTranslation();
   const theme = useTheme();
   const surfaces = dashSurfaces(theme.palette.mode);
+  const { enqueueSnackbar } = useSnackbar();
+  const mutations = useAccommodationMutations(spaceId);
   const [bulkOpen, setBulkOpen] = useState(false);
   const buildingId = selection && 'buildingId' in selection ? selection.buildingId : undefined;
   const floorId = selection && 'floorId' in selection ? selection.floorId : undefined;
@@ -1067,6 +1075,18 @@ export function CenterWorkspace({
       roomMeta?.availableBeds ?? beds.beds.filter((b) => b.status === 'AVAILABLE').length;
     const bedOcc = Math.max(0, bedTotal - bedAvail);
 
+    const saveBedPricing = async (bedId: string, field: PricingField, value: number | null) => {
+      if (!roomId) {
+        return;
+      }
+      try {
+        await commitBedPricingField({ spaceId, roomId, bedId, field, value });
+        await mutations.invalidate();
+      } catch (error) {
+        enqueueSnackbar(getErrorMessage(error, t('common.errors.generic')), { variant: 'error' });
+      }
+    };
+
     const bedRows = beds.beds.map((bed) => ({ ...bed, id: bed.bedId }));
     const columns: DataTableColumn<(typeof bedRows)[number]>[] = [
       {
@@ -1079,6 +1099,16 @@ export function CenterWorkspace({
         id: 'status',
         header: t('accommodation.fields.status'),
         accessor: (row) => <StatusChip label={t(`accommodation.status.${row.status}`)} />,
+      },
+      {
+        id: 'rent',
+        header: t('accommodation.setup.fields.rent'),
+        accessor: (row) => (row.defaultRent != null ? `₹${row.defaultRent}` : '—'),
+      },
+      {
+        id: 'deposit',
+        header: t('accommodation.setup.fields.deposit'),
+        accessor: (row) => (row.defaultDeposit != null ? `₹${row.defaultDeposit}` : '—'),
       },
       {
         id: 'actions',
@@ -1134,6 +1164,14 @@ export function CenterWorkspace({
                             <LayoutIllustration src={getBedIllustration(bed.status)} size="bed" alt="" />
                           }
                           trailing={<StatusChip label={t(`accommodation.status.${bed.status}`)} />}
+                          footer={
+                            <BedCardPricingFields
+                              rent={bed.defaultRent}
+                              deposit={bed.defaultDeposit}
+                              disabled={!canManage || bed.active === false}
+                              onCommit={(field, value) => saveBedPricing(bed.bedId, field, value)}
+                            />
+                          }
                           menu={entityMenu(
                             {
                               type: 'bed',

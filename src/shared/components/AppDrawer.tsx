@@ -25,7 +25,7 @@ export function AppDrawer({
       slotProps={{
         paper: {
           sx: {
-            width: { xs: '100%', sm: width },
+            width: typeof width === 'number' ? `min(100%, ${width}px)` : width,
             maxWidth: '100%',
           },
         },

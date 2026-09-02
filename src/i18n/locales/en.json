@@ -1597,7 +1597,7 @@
       },
       "subtitle": "Create floors, rooms, and beds in a few steps.",
       "preview": "Preview",
-      "previewHint": "Review totals before creating the layout.",
+      "previewHint": "Review totals and the generated structure before creating the layout.",
       "execute": "Create layout",
       "steps": {
         "layout": "Layout",
@@ -1612,8 +1612,29 @@
         "roomsPerFloor": "Rooms per floor",
         "bedsPerRoom": "Beds per room",
         "unitCount": "Number of units",
-        "roomsPerUnit": "Rooms per unit"
-      }
+        "roomsPerUnit": "Rooms per unit",
+        "rent": "Rent",
+        "deposit": "Deposit",
+        "rentInr": "Rent (₹)",
+        "depositInr": "Deposit (₹)"
+      },
+      "optional": "Optional",
+      "creatingLayout": "Creating layout...",
+      "viewOptions": "View options",
+      "viewAllLevels": "All levels",
+      "viewFloors": "Floors",
+      "viewRooms": "Rooms",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "enterRent": "Enter rent",
+      "enterDeposit": "Enter deposit",
+      "bedLabel": "Bed {{label}}",
+      "deleteBed": "Delete bed",
+      "floorCountLine": "{{rooms}} rooms · {{beds}} beds",
+      "floorCountLineWithUnits": "{{units}} units · {{rooms}} rooms · {{beds}} beds",
+      "unitCountLine": "{{rooms}} rooms · {{beds}} beds",
+      "roomCountLine": "{{count}} beds",
+      "buildingNameTaken": "An active building with this name already exists in this space."
     },
     "overview": {
       "title": "Building Overview",

@@ -92,6 +92,45 @@ export function createAcomiTheme(mode: ThemeMode = 'light'): Theme {
           },
         },
       },
+      MuiTabs: {
+        defaultProps: {
+          variant: 'scrollable',
+          allowScrollButtonsMobile: true,
+          scrollButtons: 'auto',
+        },
+      },
+      MuiDialog: {
+        defaultProps: {
+          fullWidth: true,
+        },
+        styleOverrides: {
+          paper: ({ theme }) => ({
+            [theme.breakpoints.down('sm')]: {
+              margin: 16,
+              width: 'calc(100% - 32px)',
+              maxWidth: 'calc(100% - 32px)',
+              maxHeight: 'calc(100dvh - 32px)',
+            },
+          }),
+        },
+      },
+      MuiDialogContent: {
+        styleOverrides: {
+          root: ({ theme }) => ({
+            [theme.breakpoints.down('sm')]: {
+              overflowY: 'auto',
+            },
+          }),
+        },
+      },
+      MuiDialogActions: {
+        styleOverrides: {
+          root: {
+            flexWrap: 'wrap',
+            gap: 8,
+          },
+        },
+      },
       MuiButton: {
         defaultProps: {
           disableElevation: true,
@@ -171,11 +210,16 @@ export function createAcomiTheme(mode: ThemeMode = 'light'): Theme {
       },
       MuiTab: {
         styleOverrides: {
-          root: {
+          root: ({ theme }) => ({
             ...DASHBOARD_UX.button,
             textTransform: 'none',
             minHeight: 36,
-          },
+            [theme.breakpoints.down('sm')]: {
+              minWidth: 72,
+              paddingLeft: 12,
+              paddingRight: 12,
+            },
+          }),
         },
       },
       MuiTableCell: {

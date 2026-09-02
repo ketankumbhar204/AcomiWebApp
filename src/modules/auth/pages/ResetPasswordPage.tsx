@@ -1,6 +1,8 @@
 import { Box, Button, CircularProgress, Link, useTheme } from '@mui/material';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { KeyRound } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, Navigate } from 'react-router-dom';
 import { ROUTES } from '@/routes/paths';
@@ -12,7 +14,10 @@ import { AuthErrorBanner } from '../components/AuthErrorBanner';
 import { AuthHero } from '../components/AuthHero';
 import { PasswordInput } from '../components/PasswordInput';
 import { useResetPassword } from '../hooks/usePasswordAuth';
-import { passwordsMatch, validatePassword } from '../passwordRules';
+import {
+  createResetPasswordSchema,
+  type ResetPasswordFormValues,
+} from '../schemas/loginSchema';
 
 export function ResetPasswordPage() {
   const { t } = useTranslation();
@@ -22,9 +27,35 @@ export function ResetPasswordPage() {
   const mobileNumber = useRegistrationDraftStore((state) => state.mobileNumber);
   const verificationToken = useRegistrationDraftStore((state) => state.verificationToken);
   const tokenExpiresAt = useRegistrationDraftStore((state) => state.verificationTokenExpiresAt);
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [resetComplete, setResetComplete] = useState(false);
+
+  const schema = useMemo(
+    () =>
+      createResetPasswordSchema({
+        passwordRequired: t('auth.register.passwordRequired'),
+        passwordTooShort: t('auth.register.passwordTooShort'),
+        passwordTooLong: t('auth.register.passwordTooLong'),
+        confirmRequired: t('auth.register.confirmPasswordRequired'),
+        passwordMismatch: t('auth.register.passwordMismatch'),
+      }),
+    [t],
+  );
+
+  const {
+    control,
+    handleSubmit,
+    trigger,
+    getValues,
+    formState: { errors },
+  } = useForm<ResetPasswordFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      password: '',
+      confirmPassword: '',
+    },
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
+  });
 
   useEffect(() => {
     document.title = `${t('auth.forgotPassword.newPasswordHeading')} · ${t('common.appName')}`;
@@ -39,30 +70,30 @@ export function ResetPasswordPage() {
     return <Navigate to={ROUTES.forgotPassword} replace />;
   }
 
-  const canSubmit =
-    validatePassword(password) == null &&
-    passwordsMatch(password, confirmPassword) &&
-    !isLoading;
-
-  const handleSubmit = async () => {
-    if (!canSubmit || !verificationToken) {
+  const onSubmit = handleSubmit(async (values) => {
+    if (!verificationToken) {
       return;
     }
     clearError();
     const ok = await resetPassword({
       mobileNumber,
       verificationToken,
-      password,
-      confirmPassword,
+      password: values.password,
+      confirmPassword: values.confirmPassword,
     });
     if (ok) {
       setResetComplete(true);
     }
-  };
+  });
 
   return (
     <AuthCard>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: `${DASHBOARD_UX.internalGap + 4}px` }}>
+      <Box
+        component="form"
+        onSubmit={onSubmit}
+        noValidate
+        sx={{ display: 'flex', flexDirection: 'column', gap: `${DASHBOARD_UX.internalGap + 4}px` }}
+      >
         <AuthHero
           icon={KeyRound}
           eyebrow={t('auth.forgotPassword.eyebrow')}
@@ -70,26 +101,58 @@ export function ResetPasswordPage() {
           subheading={t('auth.forgotPassword.newPasswordSubheading')}
         />
         {error ? <AuthErrorBanner message={error} /> : null}
-        <PasswordInput
-          label={t('auth.register.passwordLabel')}
-          value={password}
-          onChange={setPassword}
-          disabled={isLoading}
-          placeholder={t('auth.register.passwordPlaceholder')}
+        <Controller
+          name="password"
+          control={control}
+          render={({ field }) => (
+            <PasswordInput
+              label={t('auth.register.passwordLabel')}
+              value={field.value}
+              onChange={(value) => {
+                field.onChange(value);
+                if (getValues('confirmPassword')) {
+                  void trigger('confirmPassword');
+                }
+                if (error) {
+                  clearError();
+                }
+              }}
+              onBlur={field.onBlur}
+              error={errors.password?.message}
+              disabled={isLoading}
+              autoComplete="new-password"
+              placeholder={t('auth.register.passwordPlaceholder')}
+            />
+          )}
         />
-        <PasswordInput
-          label={t('auth.register.confirmPasswordLabel')}
-          value={confirmPassword}
-          onChange={setConfirmPassword}
-          disabled={isLoading}
-          placeholder={t('auth.register.confirmPasswordPlaceholder')}
+        <Controller
+          name="confirmPassword"
+          control={control}
+          render={({ field }) => (
+            <PasswordInput
+              label={t('auth.register.confirmPasswordLabel')}
+              value={field.value}
+              onChange={(value) => {
+                field.onChange(value);
+                if (error) {
+                  clearError();
+                }
+              }}
+              onBlur={field.onBlur}
+              error={errors.confirmPassword?.message}
+              disabled={isLoading}
+              autoComplete="new-password"
+              placeholder={t('auth.register.confirmPasswordPlaceholder')}
+              onSubmit={() => void onSubmit()}
+            />
+          )}
         />
         <Button
+          type="submit"
           variant="contained"
           color="primary"
-          disabled={!canSubmit}
+          disabled={isLoading}
           fullWidth
-          onClick={() => void handleSubmit()}
           startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
           sx={{ ...dashContainedButtonSx, '&:hover': { boxShadow: s.shadowHover } }}
         >

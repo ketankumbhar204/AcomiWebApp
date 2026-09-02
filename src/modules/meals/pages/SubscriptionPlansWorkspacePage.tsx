@@ -811,7 +811,7 @@ export function SubscriptionPlansWorkspacePage() {
                 gap: `${DASHBOARD_UX.cardGap}px`,
                 gridTemplateColumns: {
                   xs: '1fr',
-                  lg: selectedPlan && !isLgDown ? '1fr 360px' : '1fr',
+                  lg: selectedPlan && !isLgDown ? 'minmax(0, 1fr) minmax(0, 360px)' : '1fr',
                 },
               }}
             >
@@ -856,7 +856,7 @@ export function SubscriptionPlansWorkspacePage() {
               gap: `${DASHBOARD_UX.cardGap}px`,
               gridTemplateColumns: {
                 xs: '1fr',
-                lg: selectedRequest && !isLgDown ? '1fr 380px' : '1fr',
+                lg: selectedRequest && !isLgDown ? 'minmax(0, 1fr) minmax(0, 380px)' : '1fr',
               },
             }}
           >

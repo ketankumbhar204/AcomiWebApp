@@ -37,7 +37,7 @@ import { ErrorState } from '@/shared/components/ErrorState';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashContainedButtonSx, dashFilterControlSx } from '@/shared/theme/dashButtonSx';
 import { spaceComplaintsPath } from '@/routes/paths';
 import type {
   ComplaintCategory,
@@ -74,8 +74,7 @@ const STATUSES: ComplaintStatus[] = [
 const PRIORITIES: ComplaintPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 
 const filterControlSx = {
-  minWidth: 128,
-  flexShrink: 0,
+  ...dashFilterControlSx,
   '& .MuiInputBase-root': {
     minHeight: DASHBOARD_UX.buttonHeight,
     height: DASHBOARD_UX.buttonHeight,
@@ -396,7 +395,7 @@ export function ComplaintsWorkspacePage() {
           ))}
         </Select>
       </FormControl>
-      <FormControl size="small" sx={{ ...filterControlSx, minWidth: 140 }}>
+      <FormControl size="small" sx={filterControlSx}>
         <InputLabel id="complaints-category">{t('complaints.fields.category')}</InputLabel>
         <Select
           labelId="complaints-category"
@@ -562,7 +561,7 @@ export function ComplaintsWorkspacePage() {
             gap: `${DASHBOARD_UX.cardGap}px`,
             gridTemplateColumns: isLgDown
               ? '1fr'
-              : 'minmax(0, 1.85fr) minmax(300px, 0.95fr)',
+              : 'minmax(0, 1.85fr) minmax(0, 0.95fr)',
             alignItems: 'start',
           }}
         >

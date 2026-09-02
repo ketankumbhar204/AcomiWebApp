@@ -314,6 +314,16 @@ const AdminMessDetailPage = lazyPage(() =>
 const AdminAddMessPage = lazyPage(() =>
   import('@/modules/admin/pages/AdminAddMessPage').then((m) => ({ default: m.AdminAddMessPage })),
 );
+const AdminRegisteredUsersPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminRegisteredUsersPage').then((m) => ({
+    default: m.AdminRegisteredUsersPage,
+  })),
+);
+const AdminSavedAddressesPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminSavedAddressesPage').then((m) => ({
+    default: m.AdminSavedAddressesPage,
+  })),
+);
 const AdminLayout = lazyPage(() =>
   import('@/modules/admin/layouts/AdminLayout').then((m) => ({ default: m.AdminLayout })),
 );
@@ -416,6 +426,22 @@ export const appRoutes = [
                 element: (
                   <L>
                     <AdminDashboardPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.adminRegisteredUsers,
+                element: (
+                  <L>
+                    <AdminRegisteredUsersPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.adminSavedAddresses,
+                element: (
+                  <L>
+                    <AdminSavedAddressesPage />
                   </L>
                 ),
               },
