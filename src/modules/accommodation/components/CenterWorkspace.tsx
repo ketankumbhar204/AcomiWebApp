@@ -20,7 +20,8 @@ import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dash
 import { getErrorMessage } from '@/shared/api/errors';
 import type { TreeSelection } from './HierarchyTree';
 import { BulkCreateDialog } from './BulkCreateDialog';
-import { BedCardPricingFields } from './BedCardPricingFields';
+import { BedCardPricingFields, BedPricingField } from './BedCardPricingFields';
+import { formatBedDisplayLabel } from '../utils/formatBedDisplayLabel';
 import { EntityOccupancyCard } from './EntityOccupancyCard';
 import { EntityActionsMenu } from './EntityActionsMenu';
 import { WorkspaceSummaryStrip } from './AccommodationOverviewMetrics';
@@ -1092,7 +1093,7 @@ export function CenterWorkspace({
       {
         id: 'label',
         header: t('accommodation.beds.title'),
-        accessor: (row) => row.label,
+        accessor: (row) => formatBedDisplayLabel(row.label, t),
         primary: true,
       },
       {
@@ -1103,12 +1104,28 @@ export function CenterWorkspace({
       {
         id: 'rent',
         header: t('accommodation.setup.fields.rent'),
-        accessor: (row) => (row.defaultRent != null ? `₹${row.defaultRent}` : '—'),
+        accessor: (row) => (
+          <BedPricingField
+            field="defaultRent"
+            value={row.defaultRent}
+            hideLabel
+            disabled={!canManage || row.active === false}
+            onCommit={(field, value) => saveBedPricing(row.bedId, field, value)}
+          />
+        ),
       },
       {
         id: 'deposit',
         header: t('accommodation.setup.fields.deposit'),
-        accessor: (row) => (row.defaultDeposit != null ? `₹${row.defaultDeposit}` : '—'),
+        accessor: (row) => (
+          <BedPricingField
+            field="defaultDeposit"
+            value={row.defaultDeposit}
+            hideLabel
+            disabled={!canManage || row.active === false}
+            onCommit={(field, value) => saveBedPricing(row.bedId, field, value)}
+          />
+        ),
       },
       {
         id: 'actions',
@@ -1125,7 +1142,7 @@ export function CenterWorkspace({
               floorId: 'floorId' in selection ? selection.floorId : undefined,
               unitId: 'unitId' in selection ? selection.unitId : undefined,
             },
-            row.label,
+            formatBedDisplayLabel(row.label, t),
             { isInactive: row.active === false, status: row.status },
           ),
       },
@@ -1155,7 +1172,7 @@ export function CenterWorkspace({
                     return (
                       <Grid key={bed.bedId} size={childCol}>
                         <EntityOccupancyCard
-                          title={bed.label}
+                          title={formatBedDisplayLabel(bed.label, t)}
                           occupied={isOcc ? 1 : 0}
                           total={1}
                           occupancyLabel={t(`accommodation.status.${bed.status}`)}
@@ -1187,7 +1204,7 @@ export function CenterWorkspace({
                                   ? selection.unitId
                                   : undefined,
                             },
-                            bed.label,
+                            formatBedDisplayLabel(bed.label, t),
                             { isInactive: bed.active === false, status: bed.status },
                           )}
                           onClick={() =>

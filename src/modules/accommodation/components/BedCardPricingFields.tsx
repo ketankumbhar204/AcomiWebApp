@@ -11,6 +11,14 @@ type BedCardPricingFieldsProps = {
   onCommit: (field: PricingField, value: number | null) => Promise<void> | void;
 };
 
+type BedPricingFieldProps = {
+  field: PricingField;
+  value?: number | null;
+  disabled?: boolean;
+  hideLabel?: boolean;
+  onCommit: (field: PricingField, value: number | null) => Promise<void> | void;
+};
+
 function moneyText(value: number | null | undefined): string {
   return value == null ? '' : String(value);
 }
@@ -73,10 +81,63 @@ export function BedCardPricingFields({
   );
 }
 
+/** Single rent or deposit input for table cells — same commit path as card fields. */
+export function BedPricingField({
+  field,
+  value,
+  disabled = false,
+  hideLabel = false,
+  onCommit,
+}: BedPricingFieldProps) {
+  const { t } = useTranslation();
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
+  const [edit, setEdit] = useState<string | null>(null);
+  const text = edit ?? moneyText(value);
+  const label =
+    field === 'defaultRent'
+      ? t('accommodation.setup.fields.rent')
+      : t('accommodation.setup.fields.deposit');
+  const placeholder =
+    field === 'defaultRent'
+      ? t('accommodation.setup.enterRent')
+      : t('accommodation.setup.enterDeposit');
+
+  async function commit(raw: string) {
+    const parsed = parseOptionalMoney(raw);
+    const existing = value ?? null;
+    setEdit(null);
+    if (parsed === existing) {
+      return;
+    }
+    await onCommit(field, parsed);
+  }
+
+  return (
+    <Box
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+      sx={{ minWidth: 108, maxWidth: 160 }}
+    >
+      <MoneyField
+        label={label}
+        value={text}
+        disabled={disabled}
+        hideLabel={hideLabel}
+        placeholder={placeholder}
+        onChangeText={setEdit}
+        onBlur={() => void commit(text)}
+        mutedColor={s.textSecondary}
+      />
+    </Box>
+  );
+}
+
 function MoneyField({
   label,
   value,
   disabled,
+  hideLabel = false,
   placeholder,
   onChangeText,
   onBlur,
@@ -85,6 +146,7 @@ function MoneyField({
   label: string;
   value: string;
   disabled: boolean;
+  hideLabel?: boolean;
   placeholder: string;
   onChangeText: (value: string) => void;
   onBlur: () => void;
@@ -92,7 +154,9 @@ function MoneyField({
 }) {
   return (
     <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Typography sx={{ ...DASHBOARD_UX.caption, color: mutedColor, mb: 0.25 }}>{label}</Typography>
+      {hideLabel ? null : (
+        <Typography sx={{ ...DASHBOARD_UX.caption, color: mutedColor, mb: 0.25 }}>{label}</Typography>
+      )}
       <TextField
         size="small"
         type="number"
