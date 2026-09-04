@@ -213,7 +213,7 @@ export function DuplicateEntityDialog({
                 label={t('accommodation.duplicate.building.targetName')}
                 value={targetName}
                 onChange={(e) => setTargetName(e.target.value)}
-                placeholder="e.g. Building 1 (Copy)"
+                placeholder={t('accommodation.duplicate.building.namePlaceholder')}
                 error={Boolean(fieldError && !targetName.trim())}
               />
               <TextField
@@ -243,7 +243,7 @@ export function DuplicateEntityDialog({
                 label={t('accommodation.fields.name')}
                 value={floorName}
                 onChange={(e) => setFloorName(e.target.value)}
-                placeholder="e.g. First Floor"
+                placeholder={t('accommodation.duplicate.floor.namePlaceholder')}
               />
               <Box
                 sx={{

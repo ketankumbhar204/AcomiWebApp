@@ -1,4 +1,5 @@
 import { Box, Pagination as MuiPagination, Typography, useTheme } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 
 type PaginationProps = {
@@ -17,6 +18,7 @@ export function Pagination({
   onPageChange,
   zeroBased = false,
 }: PaginationProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const totalPages = Math.max(1, Math.ceil(totalItems / Math.max(pageSize, 1)));
@@ -36,7 +38,9 @@ export function Pagination({
       }}
     >
       <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
-        {totalItems === 0 ? 'No results' : `Showing ${from}–${to} of ${totalItems}`}
+        {totalItems === 0
+          ? t('common.noResults')
+          : t('common.showingRange', { from, to, total: totalItems })}
       </Typography>
       <MuiPagination
         color="primary"

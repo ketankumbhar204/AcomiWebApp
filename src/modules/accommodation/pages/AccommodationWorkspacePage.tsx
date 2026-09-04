@@ -76,7 +76,7 @@ export function AccommodationWorkspacePage() {
   const [childrenDrawerOpen, setChildrenDrawerOpen] = useState(false);
 
   useEffect(() => {
-    document.title = `${t('navigation.accommodation')} · ${t('common.appName')}`;
+    document.title = `${t('navigation.rooms')} · ${t('common.appName')}`;
   }, [t]);
 
   useEffect(() => {
@@ -282,11 +282,11 @@ export function AccommodationWorkspacePage() {
     <PageContainer gap={0}>
       <Stack spacing={`${DASHBOARD_UX.sectionGap}px`} sx={{ width: '100%' }}>
         <PageHeader
-          title={t('navigation.accommodation')}
+          title={t('navigation.rooms')}
           description={t('accommodation.workspace.description')}
           breadcrumbs={[
             { label: permissions.space?.spaceName ?? t('navigation.space') },
-            { label: t('navigation.accommodation') },
+            { label: t('navigation.rooms') },
           ]}
           actions={
             <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'center' }}>

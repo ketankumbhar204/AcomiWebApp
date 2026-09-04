@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n';
 import { adminMessPath, adminPropertiesPath } from '@/routes/paths';
 import type { RegistrationSource } from '@/shared/types/admin';
 
@@ -27,13 +28,13 @@ export function parseAdminListSearchParams(searchParams: URLSearchParams): Admin
 
 export function adminListFilterLabel(filter: AdminListFilter): string | null {
   if (filter.tab === 'active') {
-    return 'Active spaces';
+    return i18n.t('admin.filters.activeSpaces');
   }
   if (filter.source === 'PUBLIC_WEBSITE') {
-    return 'Website registrations';
+    return i18n.t('admin.filters.websiteRegistrations');
   }
   if (filter.source === 'ADMIN') {
-    return 'Added by admin';
+    return i18n.t('admin.filters.addedByAdmin');
   }
-  return 'Open leads';
+  return i18n.t('admin.filters.openLeads');
 }

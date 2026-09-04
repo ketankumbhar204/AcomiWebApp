@@ -1,6 +1,7 @@
 import { Box, IconButton, InputAdornment, TextField, useTheme } from '@mui/material';
 import { Search, X } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 
 type SearchToolbarProps = {
@@ -14,12 +15,14 @@ type SearchToolbarProps = {
 export function SearchToolbar({
   value,
   onChange,
-  placeholder = 'Search…',
+  placeholder,
   actions,
   inputId,
 }: SearchToolbarProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const resolvedPlaceholder = placeholder ?? t('common.searchPlaceholder');
 
   return (
     <Box
@@ -37,7 +40,7 @@ export function SearchToolbar({
         size="small"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         sx={{
           width: '100%',
           minWidth: 0,
@@ -59,7 +62,11 @@ export function SearchToolbar({
             ),
             endAdornment: value ? (
               <InputAdornment position="end">
-                <IconButton size="small" aria-label="Clear search" onClick={() => onChange('')}>
+                <IconButton
+                  size="small"
+                  aria-label={t('common.clearSearch')}
+                  onClick={() => onChange('')}
+                >
                   <X size={DASHBOARD_UX.iconSize} />
                 </IconButton>
               </InputAdornment>

@@ -1,5 +1,6 @@
 import { Box, Checkbox, FormControlLabel, Typography, useTheme } from '@mui/material';
 import { FlaskConical } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, DASH_LIGHT, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
 
@@ -9,6 +10,7 @@ type AdminTestLeadOptionProps = {
 };
 
 export function AdminTestLeadOption({ checked, onChange }: AdminTestLeadOptionProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const isDark = theme.palette.mode === 'dark';
@@ -53,14 +55,13 @@ export function AdminTestLeadOption({ checked, onChange }: AdminTestLeadOptionPr
           }
           label={
             <Typography sx={{ ...DASHBOARD_UX.cardTitle, fontSize: '0.9375rem' }}>
-              Test lead
+              {t('admin.testLead.title')}
             </Typography>
           }
           sx={{ alignItems: 'flex-start', ml: 0 }}
         />
         <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, ml: 4, mt: -0.5 }}>
-          Mark this registration as a test entry. It appears in the lead list with a Test indicator
-          and can still be deleted like any other lead.
+          {t('admin.testLead.description')}
         </Typography>
       </Box>
     </Box>

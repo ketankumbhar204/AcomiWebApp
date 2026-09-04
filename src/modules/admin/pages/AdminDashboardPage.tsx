@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import { Building2, ChefHat, MapPin, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import { adminListPath } from '@/modules/admin/utils/adminListFilters';
@@ -40,6 +41,7 @@ function StatCard({ label, value, to }: { label: string; value: number; to: stri
 }
 
 export function AdminDashboardPage() {
+  const { t } = useTranslation();
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -67,16 +69,16 @@ export function AdminDashboardPage() {
   return (
     <Box>
       <Typography variant="h4" sx={{ fontWeight: 700, mb: 3 }}>
-        Dashboard
+        {t('admin.dashboard.title')}
       </Typography>
 
       <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, mb: 1.5 }}>
-        Registration
+        {t('admin.dashboard.sectionRegistration')}
       </Typography>
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
-            label="Registered Users"
+            label={t('admin.dashboard.stats.registeredUsers')}
             value={summary.registeredUsersCount ?? 0}
             to={ROUTES.adminRegisteredUsers}
           />
@@ -84,61 +86,61 @@ export function AdminDashboardPage() {
       </Grid>
 
       <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, mb: 1.5 }}>
-        Leads & spaces
+        {t('admin.dashboard.sectionLeadsSpaces')}
       </Typography>
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid size={{ xs: 6, sm: 4, md: 3 }}>
           <StatCard
-            label="Property leads"
+            label={t('admin.dashboard.stats.propertyLeads')}
             value={summary.propertyRegistrationCount}
             to={adminListPath('properties', { tab: 'leads' })}
           />
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 3 }}>
           <StatCard
-            label="Mess leads"
+            label={t('admin.dashboard.stats.messLeads')}
             value={summary.messRegistrationCount}
             to={adminListPath('mess', { tab: 'leads' })}
           />
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 3 }}>
           <StatCard
-            label="Website property"
+            label={t('admin.dashboard.stats.websiteProperty')}
             value={summary.websitePropertyLeads}
             to={adminListPath('properties', { tab: 'leads', source: 'PUBLIC_WEBSITE' })}
           />
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 3 }}>
           <StatCard
-            label="Website mess"
+            label={t('admin.dashboard.stats.websiteMess')}
             value={summary.websiteMessLeads}
             to={adminListPath('mess', { tab: 'leads', source: 'PUBLIC_WEBSITE' })}
           />
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 3 }}>
           <StatCard
-            label="Admin property"
+            label={t('admin.dashboard.stats.adminProperty')}
             value={summary.adminPropertyLeads}
             to={adminListPath('properties', { tab: 'leads', source: 'ADMIN' })}
           />
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 3 }}>
           <StatCard
-            label="Admin mess"
+            label={t('admin.dashboard.stats.adminMess')}
             value={summary.adminMessLeads}
             to={adminListPath('mess', { tab: 'leads', source: 'ADMIN' })}
           />
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 3 }}>
           <StatCard
-            label="Active properties"
+            label={t('admin.dashboard.stats.activeProperties')}
             value={summary.activePropertySpaces}
             to={adminListPath('properties', { tab: 'active' })}
           />
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 3 }}>
           <StatCard
-            label="Active messes"
+            label={t('admin.dashboard.stats.activeMesses')}
             value={summary.activeMessSpaces}
             to={adminListPath('mess', { tab: 'active' })}
           />
@@ -151,9 +153,9 @@ export function AdminDashboardPage() {
               <CardContent sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                 <Users size={28} />
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="h6">Registered Users</Typography>
+                  <Typography variant="h6">{t('admin.dashboard.nav.registeredUsersTitle')}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Phone-verified accounts, including incomplete onboarding
+                    {t('admin.dashboard.nav.registeredUsersHint')}
                   </Typography>
                 </Box>
               </CardContent>
@@ -166,9 +168,9 @@ export function AdminDashboardPage() {
               <CardContent sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                 <Building2 size={28} />
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="h6">Properties</Typography>
+                  <Typography variant="h6">{t('admin.dashboard.nav.propertiesTitle')}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Leads, active spaces, add property
+                    {t('admin.dashboard.nav.propertiesHint')}
                   </Typography>
                 </Box>
               </CardContent>
@@ -181,9 +183,9 @@ export function AdminDashboardPage() {
               <CardContent sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                 <ChefHat size={28} />
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="h6">Mess</Typography>
+                  <Typography variant="h6">{t('admin.dashboard.nav.messTitle')}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Leads, active messes, add mess
+                    {t('admin.dashboard.nav.messHint')}
                   </Typography>
                 </Box>
               </CardContent>
@@ -196,9 +198,9 @@ export function AdminDashboardPage() {
               <CardContent sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                 <MapPin size={28} />
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="h6">Saved Addresses</Typography>
+                  <Typography variant="h6">{t('admin.dashboard.nav.savedAddressesTitle')}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Reuse recent locations for new properties and messes
+                    {t('admin.dashboard.nav.savedAddressesHint')}
                   </Typography>
                 </Box>
               </CardContent>

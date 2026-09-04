@@ -9,11 +9,16 @@ import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { ROUTES } from '@/routes/paths';
 
-function resolveMessage(error: unknown): { title: string; detail: string; status?: number } {
+function resolveMessage(
+  error: unknown,
+  t: (key: string) => string,
+): { title: string; detail: string; status?: number } {
   if (isRouteErrorResponse(error)) {
     return {
-      title: error.status === 404 ? 'Page not found' : 'Something went wrong',
-      detail: error.statusText || (typeof error.data === 'string' ? error.data : 'Please try again.'),
+      title: error.status === 404 ? t('common.pageNotFound') : t('common.errors.generic'),
+      detail:
+        error.statusText ||
+        (typeof error.data === 'string' ? error.data : t('common.pleaseTryAgain')),
       status: error.status,
     };
   }
@@ -23,15 +28,13 @@ function resolveMessage(error: unknown): { title: string; detail: string; status
       /Loading chunk/i.test(error.message) ||
       /Importing a module script failed/i.test(error.message);
     return {
-      title: isChunk ? 'Update required' : 'Something went wrong',
-      detail: isChunk
-        ? 'A newer version of the app is available, or a page failed to load. Reload to continue.'
-        : error.message || 'An unexpected error occurred.',
+      title: isChunk ? t('common.updateRequired') : t('common.errors.generic'),
+      detail: isChunk ? t('common.updateRequiredDetail') : t('common.unexpectedError'),
     };
   }
   return {
-    title: 'Something went wrong',
-    detail: 'An unexpected error occurred.',
+    title: t('common.errors.generic'),
+    detail: t('common.unexpectedError'),
   };
 }
 
@@ -45,7 +48,7 @@ export function RouteErrorPage() {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
-  const { title, detail, status } = resolveMessage(error);
+  const { title, detail, status } = resolveMessage(error, t);
 
   const handleReload = () => {
     window.location.reload();
@@ -84,10 +87,10 @@ export function RouteErrorPage() {
               </Typography>
             ) : null}
             <Typography component="h1" sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
-              {t('common.errors.routeTitle', { defaultValue: title })}
+              {title}
             </Typography>
             <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mt: 0.75 }}>
-              {t('common.errors.routeDetail', { defaultValue: detail })}
+              {detail}
             </Typography>
           </Box>
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
@@ -97,7 +100,7 @@ export function RouteErrorPage() {
               onClick={handleReload}
               sx={dashContainedButtonSx}
             >
-              {t('common.reload', { defaultValue: 'Reload' })}
+              {t('common.reload')}
             </Button>
             <Button
               variant="outlined"
@@ -105,7 +108,7 @@ export function RouteErrorPage() {
               onClick={handleHome}
               sx={dashOutlinedButtonSx}
             >
-              {t('navigation.home', { defaultValue: 'Home' })}
+              {t('common.home')}
             </Button>
           </Stack>
         </Stack>

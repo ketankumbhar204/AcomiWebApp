@@ -1,15 +1,18 @@
 import { Box, CircularProgress } from '@mui/material';
 import { Suspense, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type LoadingFallbackProps = {
   fullScreen?: boolean;
 };
 
 export function LoadingFallback({ fullScreen = true }: LoadingFallbackProps) {
+  const { t } = useTranslation();
+
   return (
     <Box
       role="status"
-      aria-label="Loading"
+      aria-label={t('common.loading')}
       sx={{
         display: 'flex',
         alignItems: 'center',

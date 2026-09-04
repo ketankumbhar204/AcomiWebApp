@@ -1,5 +1,6 @@
 import { Box, Typography, useTheme } from '@mui/material';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
 import { SearchToolbar } from './SearchToolbar';
@@ -25,6 +26,7 @@ export function TableToolbar({
   actions,
   filters,
 }: TableToolbarProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
 
@@ -99,7 +101,7 @@ export function TableToolbar({
           }}
         >
           <Typography sx={{ ...DASHBOARD_UX.link, color: colors.primaryDark }}>
-            {selectedCount} selected
+            {t('common.selectedCount', { count: selectedCount })}
           </Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>{bulkActions}</Box>
         </Box>

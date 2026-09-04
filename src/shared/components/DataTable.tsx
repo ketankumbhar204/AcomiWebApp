@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { Columns3 } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
 import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
@@ -97,8 +98,8 @@ export function DataTable<T extends { id: string }>({
   columns,
   rows,
   loading = false,
-  emptyTitle = 'No results',
-  emptyDescription = 'Try adjusting search or filters.',
+  emptyTitle,
+  emptyDescription,
   getRowId = (row) => row.id,
   searchValue,
   onSearchChange,
@@ -121,8 +122,11 @@ export function DataTable<T extends { id: string }>({
   banner,
   onRowClick,
 }: DataTableProps<T>) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const resolvedEmptyTitle = emptyTitle ?? t('common.noResults');
+  const resolvedEmptyDescription = emptyDescription ?? t('common.adjustSearchOrFilters');
   const isNarrow = useMediaQuery(theme.breakpoints.down('md'));
   const [columnMenuAnchor, setColumnMenuAnchor] = useState<null | HTMLElement>(null);
   const [hiddenColumnIds, setHiddenColumnIds] = useState<string[]>([]);
@@ -182,7 +186,7 @@ export function DataTable<T extends { id: string }>({
         onClick={(event) => setColumnMenuAnchor(event.currentTarget)}
         sx={dashOutlinedButtonSx}
       >
-        Columns
+        {t('common.columns')}
       </Button>
       <Menu
         anchorEl={columnMenuAnchor}
@@ -237,7 +241,7 @@ export function DataTable<T extends { id: string }>({
         {loading ? (
           <LoadingState />
         ) : rows.length === 0 ? (
-          <EmptyState title={emptyTitle} description={emptyDescription} />
+          <EmptyState title={resolvedEmptyTitle} description={resolvedEmptyDescription} />
         ) : isNarrow ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, p: 1.5 }}>
             {rows.map((row) => {
@@ -249,7 +253,7 @@ export function DataTable<T extends { id: string }>({
                   onClick={() => onRowClick?.(row)}
                   role={onRowClick ? 'button' : undefined}
                   tabIndex={onRowClick ? 0 : undefined}
-                  aria-label={onRowClick ? `Open row ${id}` : undefined}
+                  aria-label={onRowClick ? t('common.openRow', { id }) : undefined}
                   onKeyDown={
                     onRowClick
                       ? (event) => {
@@ -339,7 +343,7 @@ export function DataTable<T extends { id: string }>({
                         indeterminate={someSelected && !allVisibleSelected}
                         checked={allVisibleSelected}
                         onChange={toggleAll}
-                        slotProps={{ input: { 'aria-label': 'Select all rows' } }}
+                        slotProps={{ input: { 'aria-label': t('common.selectAllRows') } }}
                       />
                     </TableCell>
                   ) : null}

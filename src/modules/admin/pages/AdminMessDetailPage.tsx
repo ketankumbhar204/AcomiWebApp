@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import { AdminRegistrationContactEditor } from '@/modules/admin/components/AdminRegistrationContactEditor';
@@ -20,6 +21,7 @@ import type {
 } from '@/shared/types/admin';
 
 export function AdminMessDetailPage() {
+  const { t } = useTranslation();
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
@@ -39,7 +41,7 @@ export function AdminMessDetailPage() {
         if (active) setDetail(data);
       })
       .catch(() => {
-        if (active) setError('Could not load mess registration.');
+        if (active) setError(t('admin.mess.loadFailed'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -47,16 +49,16 @@ export function AdminMessDetailPage() {
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, t]);
 
   async function handleDeleteConfirm() {
     setDeleting(true);
     try {
       await adminApi.deleteMessRegistration(id);
-      enqueueSnackbar('Mess lead deleted.', { variant: 'success' });
+      enqueueSnackbar(t('admin.mess.deleted'), { variant: 'success' });
       navigate(ROUTES.adminMess);
     } catch {
-      enqueueSnackbar('Could not delete mess lead.', { variant: 'error' });
+      enqueueSnackbar(t('admin.mess.deleteFailed'), { variant: 'error' });
     } finally {
       setDeleting(false);
       setDeleteOpen(false);
@@ -69,9 +71,9 @@ export function AdminMessDetailPage() {
       const updated = await adminApi.updateMessRegistrationContact(id, payload);
       setDetail(updated);
       setEditingContact(false);
-      enqueueSnackbar('Owner contact updated.', { variant: 'success' });
+      enqueueSnackbar(t('admin.mess.contactUpdated'), { variant: 'success' });
     } catch {
-      enqueueSnackbar('Could not update owner contact.', { variant: 'error' });
+      enqueueSnackbar(t('admin.mess.contactUpdateFailed'), { variant: 'error' });
     } finally {
       setSavingContact(false);
     }
@@ -88,9 +90,9 @@ export function AdminMessDetailPage() {
   if (error || !detail) {
     return (
       <Box>
-        <Typography color="error">{error ?? 'Not found'}</Typography>
+        <Typography color="error">{error ?? t('admin.common.notFound')}</Typography>
         <Button component={RouterLink} to={ROUTES.adminMess} sx={{ mt: 2 }}>
-          Back to list
+          {t('admin.common.backToList')}
         </Button>
       </Box>
     );
@@ -105,7 +107,7 @@ export function AdminMessDetailPage() {
         <Chip size="small" label={formatMessRegistrationSource(detail.source)} />
       </Stack>
       <Stack spacing={1} sx={{ mb: 3 }}>
-        <Typography><strong>Reference:</strong> {detail.reference}</Typography>
+        <Typography><strong>{t('admin.common.reference')}:</strong> {detail.reference}</Typography>
         {editingContact ? (
           <AdminRegistrationContactEditor
             ownerName={detail.ownerName}
@@ -117,46 +119,46 @@ export function AdminMessDetailPage() {
           />
         ) : (
           <>
-            <Typography><strong>Owner:</strong> {detail.ownerName}</Typography>
-            <Typography><strong>Mobile:</strong> {detail.mobileNumber}</Typography>
+            <Typography><strong>{t('admin.common.owner')}:</strong> {detail.ownerName}</Typography>
+            <Typography><strong>{t('admin.common.mobile')}:</strong> {detail.mobileNumber}</Typography>
             {detail.alternateMobileNumber ? (
-              <Typography><strong>Alternate mobile:</strong> {detail.alternateMobileNumber}</Typography>
+              <Typography><strong>{t('admin.common.alternateMobile')}:</strong> {detail.alternateMobileNumber}</Typography>
             ) : null}
             <Box>
               <Button size="small" onClick={() => setEditingContact(true)}>
-                Edit contact
+                {t('admin.common.editContact')}
               </Button>
             </Box>
           </>
         )}
-        <Typography><strong>Status:</strong> {detail.status}</Typography>
-        <Typography><strong>Test lead:</strong> {detail.testLead ? 'Yes' : 'No'}</Typography>
+        <Typography><strong>{t('admin.common.status')}:</strong> {detail.status}</Typography>
+        <Typography><strong>{t('admin.common.testLead')}:</strong> {detail.testLead ? t('admin.common.yes') : t('admin.common.no')}</Typography>
         <Typography>
-          <strong>Address:</strong> {detail.addressLine}, {detail.city}, {detail.state} {detail.pincode}
+          <strong>{t('admin.common.address')}:</strong> {detail.addressLine}, {detail.city}, {detail.state} {detail.pincode}
         </Typography>
-        <Typography><strong>Monthly price:</strong> ₹{detail.monthlyPrice}</Typography>
-        <Typography><strong>Meal price:</strong> ₹{detail.mealPrice}</Typography>
+        <Typography><strong>{t('admin.mess.monthlyPrice')}:</strong> ₹{detail.monthlyPrice}</Typography>
+        <Typography><strong>{t('admin.mess.mealPrice')}:</strong> ₹{detail.mealPrice}</Typography>
         {detail.claimedAt ? (
-          <Typography><strong>Claimed:</strong> {new Date(detail.claimedAt).toLocaleString()}</Typography>
+          <Typography><strong>{t('admin.common.claimed')}:</strong> {new Date(detail.claimedAt).toLocaleString()}</Typography>
         ) : null}
         {detail.description ? (
-          <Typography><strong>Description:</strong> {detail.description}</Typography>
+          <Typography><strong>{t('admin.common.description')}:</strong> {detail.description}</Typography>
         ) : null}
       </Stack>
       <Stack direction="row" spacing={1}>
         <Button component={RouterLink} to={ROUTES.adminMess}>
-          Back to list
+          {t('admin.common.backToList')}
         </Button>
         <Button color="error" variant="outlined" onClick={() => setDeleteOpen(true)}>
-          Delete
+          {t('admin.common.delete')}
         </Button>
       </Stack>
       <ConfirmDialog
         open={deleteOpen}
-        title="Delete this mess lead?"
-        description={`${detail.messName}\n\nThis action will remove the registration from the Admin lead list.`}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        title={t('admin.mess.deleteTitle')}
+        description={t('admin.mess.deleteMessage', { name: detail.messName })}
+        confirmLabel={t('admin.common.delete')}
+        cancelLabel={t('admin.common.cancel')}
         destructive
         confirming={deleting}
         onConfirm={() => void handleDeleteConfirm()}

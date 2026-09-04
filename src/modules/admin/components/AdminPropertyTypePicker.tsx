@@ -1,5 +1,6 @@
 import { Box, Typography, useTheme } from '@mui/material';
 import { Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { SPACE_TYPE_VISUAL } from '@/modules/onboarding/components/createSpace/createSpaceVisuals';
 import { colors } from '@/shared/theme/colors';
@@ -7,26 +8,13 @@ import type { SpaceType } from '@/shared/types/space';
 
 const PROPERTY_TYPES: Exclude<SpaceType, 'MESS'>[] = ['PG', 'HOSTEL', 'CO_LIVING', 'RENTAL'];
 
-const PROPERTY_TYPE_LABEL: Record<Exclude<SpaceType, 'MESS'>, string> = {
-  PG: 'PG',
-  HOSTEL: 'Hostel',
-  CO_LIVING: 'Co-living',
-  RENTAL: 'Rental',
-};
-
-const PROPERTY_TYPE_HINT: Record<Exclude<SpaceType, 'MESS'>, string> = {
-  PG: 'Paying guest accommodation',
-  HOSTEL: 'Shared hostel property',
-  CO_LIVING: 'Co-living space',
-  RENTAL: 'Rental property',
-};
-
 type AdminPropertyTypePickerProps = {
   value: Exclude<SpaceType, 'MESS'>;
   onChange: (type: Exclude<SpaceType, 'MESS'>) => void;
 };
 
 export function AdminPropertyTypePicker({ value, onChange }: AdminPropertyTypePickerProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const isDark = theme.palette.mode === 'dark';
@@ -34,7 +22,7 @@ export function AdminPropertyTypePicker({ value, onChange }: AdminPropertyTypePi
   return (
     <Box
       role="radiogroup"
-      aria-label="Property type"
+      aria-label={t('admin.propertyType.ariaLabel')}
       sx={{
         display: 'grid',
         gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, minmax(0, 1fr))' },
@@ -116,10 +104,10 @@ export function AdminPropertyTypePicker({ value, onChange }: AdminPropertyTypePi
               <Icon size={18} />
             </Box>
             <Typography sx={{ ...DASHBOARD_UX.cardTitle, fontSize: '0.9375rem' }}>
-              {PROPERTY_TYPE_LABEL[type]}
+              {t(`admin.propertyType.${type}.label`)}
             </Typography>
             <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, fontSize: '0.8125rem' }}>
-              {PROPERTY_TYPE_HINT[type]}
+              {t(`admin.propertyType.${type}.hint`)}
             </Typography>
           </Box>
         );

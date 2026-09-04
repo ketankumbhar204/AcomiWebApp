@@ -272,7 +272,7 @@ export function QuickSetupWizardPage() {
           title={t('accommodation.setup.title')}
           description={t('accommodation.setup.subtitle')}
           breadcrumbs={[
-            { label: t('navigation.accommodation'), to: spaceAccommodationPath(spaceId) },
+            { label: t('navigation.rooms'), to: spaceAccommodationPath(spaceId) },
             { label: t('accommodation.setup.title') },
           ]}
         />

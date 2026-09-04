@@ -1,6 +1,7 @@
 import { Box, Divider, IconButton, Typography, useTheme } from '@mui/material';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 
 type SidePanelProps = {
@@ -24,6 +25,7 @@ export function SidePanel({
   footer,
   framed = false,
 }: SidePanelProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
 
@@ -73,7 +75,7 @@ export function SidePanel({
             <IconButton
               size="small"
               onClick={onClose}
-              aria-label="Close panel"
+              aria-label={t('common.closePanel')}
               sx={{
                 width: DASHBOARD_UX.buttonHeight,
                 height: DASHBOARD_UX.buttonHeight,

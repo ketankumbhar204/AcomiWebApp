@@ -1,6 +1,7 @@
 import { InputAdornment, TextField } from '@mui/material';
 import { ChefHat, IndianRupee, MapPin, Phone, User } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import { AdminRegistrationFormLayout } from '@/modules/admin/components/AdminRegistrationFormLayout';
@@ -29,6 +30,7 @@ function optionalText(value: string): string | undefined {
 const fieldSx = { '& .MuiInputBase-root': { bgcolor: 'background.paper' } };
 
 export function AdminAddMessPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [messName, setMessName] = useState('');
   const [ownerName, setOwnerName] = useState('');
@@ -50,11 +52,11 @@ export function AdminAddMessPage() {
     setError(null);
 
     if (mobileNumber.trim() && !isValidIndianMobile(mobileNumber)) {
-      setError('Enter a valid 10-digit mobile number, or leave it blank.');
+      setError(t('admin.mess.errors.mobile'));
       return;
     }
     if (alternateMobileNumber.trim() && !isValidIndianMobile(alternateMobileNumber)) {
-      setError('Enter a valid 10-digit alternate mobile number, or leave it blank.');
+      setError(t('admin.mess.errors.alternateMobile'));
       return;
     }
     if (
@@ -62,15 +64,15 @@ export function AdminAddMessPage() {
       alternateMobileNumber.trim() &&
       normalizeIndianMobileDigits(mobileNumber) === normalizeIndianMobileDigits(alternateMobileNumber)
     ) {
-      setError('Alternate mobile number must be different from the primary mobile number.');
+      setError(t('admin.mess.errors.alternateDifferent'));
       return;
     }
     if (pincode.trim() && !isValidPincode(pincode.trim())) {
-      setError('Enter a valid 6-digit pincode, or leave it blank.');
+      setError(t('admin.mess.errors.pincode'));
       return;
     }
     if (mapUrl.trim() && !isValidMapUrl(mapUrl)) {
-      setError('Map link must start with http:// or https://');
+      setError(t('admin.mess.errors.mapUrl'));
       return;
     }
 
@@ -78,7 +80,7 @@ export function AdminAddMessPage() {
     if (monthlyPrice.trim()) {
       monthly = Number(monthlyPrice);
       if (!Number.isFinite(monthly) || monthly < 0) {
-        setError('Enter a valid monthly price, or leave it blank.');
+        setError(t('admin.mess.errors.monthlyPrice'));
         return;
       }
     }
@@ -86,7 +88,7 @@ export function AdminAddMessPage() {
     if (mealPrice.trim()) {
       meal = Number(mealPrice);
       if (!Number.isFinite(meal) || meal < 0) {
-        setError('Enter a valid meal price, or leave it blank.');
+        setError(t('admin.mess.errors.mealPrice'));
         return;
       }
     }
@@ -119,7 +121,7 @@ export function AdminAddMessPage() {
       await adminApi.createMessRegistration(payload);
       navigate(ROUTES.adminMess);
     } catch {
-      setError('Could not save mess registration.');
+      setError(t('admin.mess.saveFailed'));
     } finally {
       setLoading(false);
     }
@@ -127,28 +129,28 @@ export function AdminAddMessPage() {
 
   return (
     <AdminRegistrationFormLayout
-      title="Add mess lead"
-      description="Create a mess registration for the admin lead list. Vendors can claim it later via the public website."
+      title={t('admin.mess.addHeading')}
+      description={t('admin.mess.addSubheading')}
       breadcrumbs={[
-        { label: 'Mess', to: ROUTES.adminMess },
-        { label: 'Add mess' },
+        { label: t('admin.nav.mess'), to: ROUTES.adminMess },
+        { label: t('admin.nav.addMess') },
       ]}
       cancelTo={ROUTES.adminMess}
-      submitLabel="Save mess lead"
+      submitLabel={t('admin.mess.save')}
       loading={loading}
       error={error}
       onSubmit={(e) => void handleSubmit(e)}
     >
       <ContentCard>
         <FormSection
-          title="Mess details"
-          description="Name shown in the lead list and used when matching owner claims."
+          title={t('admin.mess.detailsTitle')}
+          description={t('admin.mess.detailsHint')}
         >
           <TextField
-            label="Mess name"
+            label={t('admin.mess.name')}
             value={messName}
             onChange={(e) => setMessName(e.target.value)}
-            placeholder="e.g. Sunrise Mess"
+            placeholder={t('admin.mess.namePlaceholder')}
             fullWidth
             size="small"
             sx={{ ...fieldSx, gridColumn: { md: '1 / -1' } }}
@@ -167,11 +169,11 @@ export function AdminAddMessPage() {
 
       <ContentCard>
         <FormSection
-          title="Owner contact"
-          description="Contact details for follow-up. Leave blank if unknown."
+          title={t('admin.common.ownerContact')}
+          description={t('admin.common.ownerContactHint')}
         >
           <TextField
-            label="Owner name"
+            label={t('admin.common.ownerName')}
             value={ownerName}
             onChange={(e) => setOwnerName(e.target.value)}
             fullWidth
@@ -188,10 +190,10 @@ export function AdminAddMessPage() {
             }}
           />
           <TextField
-            label="Primary mobile number"
+            label={t('admin.common.primaryMobile')}
             value={mobileNumber}
             onChange={(e) => setMobileNumber(normalizeIndianMobileDigits(e.target.value))}
-            placeholder="10-digit number"
+            placeholder={t('admin.common.primaryMobilePlaceholder')}
             fullWidth
             size="small"
             sx={fieldSx}
@@ -207,11 +209,11 @@ export function AdminAddMessPage() {
             }}
           />
           <TextField
-            label="Alternate mobile number"
+            label={t('admin.common.alternateMobileLabel')}
             value={alternateMobileNumber}
             onChange={(e) => setAlternateMobileNumber(normalizeIndianMobileDigits(e.target.value))}
-            placeholder="Optional 10-digit number"
-            helperText="Optional secondary contact. Leave blank if unknown."
+            placeholder={t('admin.common.alternateMobilePlaceholder')}
+            helperText={t('admin.common.alternateMobileHint')}
             fullWidth
             size="small"
             sx={fieldSx}
@@ -231,8 +233,8 @@ export function AdminAddMessPage() {
 
       <ContentCard>
         <FormSection
-          title="Location"
-          description="Reuse a recent address or enter a new one. The same address can be used by multiple messes."
+          title={t('admin.common.location')}
+          description={t('admin.common.locationHintMess')}
         >
           <AdminSavedAddressPicker
             value={{ addressLine, city, state, pincode, mapUrl }}
@@ -245,7 +247,7 @@ export function AdminAddMessPage() {
             }}
           />
           <TextField
-            label="Address line"
+            label={t('admin.common.addressLine')}
             value={addressLine}
             onChange={(e) => setAddressLine(e.target.value)}
             fullWidth
@@ -261,10 +263,10 @@ export function AdminAddMessPage() {
               },
             }}
           />
-          <TextField label="City" value={city} onChange={(e) => setCity(e.target.value)} fullWidth size="small" sx={fieldSx} />
-          <TextField label="State" value={state} onChange={(e) => setState(e.target.value)} fullWidth size="small" sx={fieldSx} />
+          <TextField label={t('admin.common.city')} value={city} onChange={(e) => setCity(e.target.value)} fullWidth size="small" sx={fieldSx} />
+          <TextField label={t('admin.common.state')} value={state} onChange={(e) => setState(e.target.value)} fullWidth size="small" sx={fieldSx} />
           <TextField
-            label="Pincode"
+            label={t('admin.common.pincode')}
             value={pincode}
             onChange={(e) => setPincode(e.target.value)}
             fullWidth
@@ -273,10 +275,10 @@ export function AdminAddMessPage() {
             slotProps={{ htmlInput: { maxLength: 6, inputMode: 'numeric' } }}
           />
           <TextField
-            label="Google Maps link"
+            label={t('admin.common.mapLink')}
             value={mapUrl}
             onChange={(e) => setMapUrl(e.target.value)}
-            placeholder="https://maps.google.com/..."
+            placeholder={t('admin.common.mapLinkPlaceholder')}
             fullWidth
             size="small"
             sx={{ ...fieldSx, gridColumn: { md: '1 / -1' } }}
@@ -285,9 +287,9 @@ export function AdminAddMessPage() {
       </ContentCard>
 
       <ContentCard>
-        <FormSection title="Pricing & options" description="Optional pricing and lead metadata.">
+        <FormSection title={t('admin.common.pricingOptions')} description={t('admin.common.pricingOptionsHint')}>
           <TextField
-            label="Monthly price (₹)"
+            label={t('admin.mess.monthlyPriceLabel')}
             value={monthlyPrice}
             onChange={(e) => setMonthlyPrice(e.target.value)}
             fullWidth
@@ -305,7 +307,7 @@ export function AdminAddMessPage() {
             }}
           />
           <TextField
-            label="Meal / tiffin price (₹)"
+            label={t('admin.mess.mealPriceLabel')}
             value={mealPrice}
             onChange={(e) => setMealPrice(e.target.value)}
             fullWidth

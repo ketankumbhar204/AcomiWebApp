@@ -175,7 +175,7 @@ export function SpaceShellLayout() {
     if (permissions.canViewAccommodation) {
       items.push({
         id: 'accommodation',
-        label: t('navigation.accommodation'),
+        label: t('navigation.rooms'),
         to: spaceAccommodationPath(spaceId),
         icon: <Building2 size={16} />,
       });

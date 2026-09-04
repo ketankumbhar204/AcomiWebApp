@@ -2,7 +2,9 @@ import { AppBar, Box, IconButton, Toolbar, Tooltip, Typography, useTheme } from 
 import { Menu, Moon, Sun } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SUPPORTED_LANGUAGES, type AppLanguage } from '@/i18n';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { LanguagePicker } from '@/modules/profile/components/LanguagePicker';
 import { useAppStore } from '@/store/appStore';
 import { LAYOUT } from './layoutConstants';
 
@@ -15,6 +17,11 @@ type AppHeaderProps = {
   onMenuClick?: () => void;
 };
 
+function resolveAppLanguage(raw: string | undefined): AppLanguage {
+  const code = (raw?.split('-')[0] ?? 'en') as AppLanguage;
+  return (SUPPORTED_LANGUAGES as readonly string[]).includes(code) ? code : 'en';
+}
+
 export function AppHeader({
   leading,
   title,
@@ -22,11 +29,12 @@ export function AppHeader({
   actions,
   onMenuClick,
 }: AppHeaderProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const themeMode = useAppStore((state) => state.themeMode);
   const toggleThemeMode = useAppStore((state) => state.toggleThemeMode);
+  const currentLanguage = resolveAppLanguage(i18n.language);
   const themeLabel =
     themeMode === 'light'
       ? t('settings.profile.themeDark', { defaultValue: 'Switch to dark mode' })
@@ -101,6 +109,7 @@ export function AppHeader({
           }}
         >
           {actions}
+          <LanguagePicker value={currentLanguage} compact />
           <Tooltip title={themeLabel}>
             <IconButton onClick={toggleThemeMode} aria-label={themeLabel}>
               {themeMode === 'light' ? (

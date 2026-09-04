@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import { formatAdminDate } from '@/modules/admin/utils/adminLabels';
@@ -29,6 +30,7 @@ function isValidMapUrl(value: string): boolean {
 }
 
 export function AdminSavedAddressesPage() {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -62,11 +64,11 @@ export function AdminSavedAddressesPage() {
       setAddresses(page.content);
       setError(null);
     } catch {
-      setError('Unable to load saved addresses. Please try again.');
+      setError(t('admin.addresses.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,7 +85,7 @@ export function AdminSavedAddressesPage() {
         }
       })
       .catch(() => {
-        if (!cancelled) setError('Unable to load saved addresses. Please try again.');
+        if (!cancelled) setError(t('admin.addresses.loadFailed'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -91,7 +93,7 @@ export function AdminSavedAddressesPage() {
     return () => {
       cancelled = true;
     };
-  }, [debounced]);
+  }, [debounced, t]);
 
   function openEdit(address: SavedAddress) {
     setEditTarget(address);
@@ -107,15 +109,15 @@ export function AdminSavedAddressesPage() {
   async function handleSave() {
     if (!editTarget) return;
     if (!form.addressLine.trim() || !form.city.trim() || !form.state.trim()) {
-      enqueueSnackbar('Address, city, and state are required.', { variant: 'error' });
+      enqueueSnackbar(t('admin.addresses.requiredFields'), { variant: 'error' });
       return;
     }
     if (!isValidPincode(form.pincode.trim())) {
-      enqueueSnackbar('Enter a valid 6-digit pincode.', { variant: 'error' });
+      enqueueSnackbar(t('admin.addresses.invalidPincode'), { variant: 'error' });
       return;
     }
     if (form.mapUrl.trim() && !isValidMapUrl(form.mapUrl)) {
-      enqueueSnackbar('Map link must start with http:// or https://', { variant: 'error' });
+      enqueueSnackbar(t('admin.addresses.invalidMapUrl'), { variant: 'error' });
       return;
     }
     setSaving(true);
@@ -127,11 +129,11 @@ export function AdminSavedAddressesPage() {
         pincode: form.pincode.trim(),
         mapUrl: form.mapUrl.trim() || undefined,
       });
-      enqueueSnackbar('Saved address updated.', { variant: 'success' });
+      enqueueSnackbar(t('admin.addresses.updated'), { variant: 'success' });
       setEditTarget(null);
       await load(debounced);
     } catch {
-      enqueueSnackbar('Could not update saved address.', { variant: 'error' });
+      enqueueSnackbar(t('admin.addresses.updateFailed'), { variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -143,10 +145,10 @@ export function AdminSavedAddressesPage() {
     try {
       await adminApi.deleteSavedAddress(deleteTarget.id);
       setAddresses((prev) => prev.filter((item) => item.id !== deleteTarget.id));
-      enqueueSnackbar('Saved address removed.', { variant: 'success' });
+      enqueueSnackbar(t('admin.addresses.removed'), { variant: 'success' });
       setDeleteTarget(null);
     } catch {
-      enqueueSnackbar('Could not remove saved address.', { variant: 'error' });
+      enqueueSnackbar(t('admin.addresses.removeFailed'), { variant: 'error' });
     } finally {
       setDeleting(false);
     }
@@ -155,15 +157,15 @@ export function AdminSavedAddressesPage() {
   return (
     <Box>
       <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-        Saved addresses
+        {t('admin.addresses.title')}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Recently used locations for property and mess leads. Multiple properties can share one address.
+        {t('admin.addresses.hint')}
       </Typography>
       <TextField
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search address, city, state, or pincode"
+        placeholder={t('admin.addresses.searchPlaceholder')}
         fullWidth
         size="small"
         sx={{ mb: 2, maxWidth: 480 }}
@@ -175,7 +177,7 @@ export function AdminSavedAddressesPage() {
       ) : error ? (
         <Typography color="error">{error}</Typography>
       ) : addresses.length === 0 ? (
-        <Typography color="text.secondary">No saved addresses yet. Create a property lead with an address to start the list.</Typography>
+        <Typography color="text.secondary">{t('admin.addresses.empty')}</Typography>
       ) : (
         <Stack spacing={1.5}>
           {addresses.map((address) => (
@@ -190,15 +192,20 @@ export function AdminSavedAddressesPage() {
                 {address.city}, {address.state} - {address.pincode}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Used {address.usageCount} {address.usageCount === 1 ? 'time' : 'times'} · Last used{' '}
-                {formatAdminDate(address.lastUsedAt ?? address.createdAt)}
+                {t('admin.addresses.usedLine', {
+                  used: t(
+                    address.usageCount === 1 ? 'admin.addresses.usedOnce' : 'admin.addresses.usedMany',
+                    { count: address.usageCount },
+                  ),
+                  date: formatAdminDate(address.lastUsedAt ?? address.createdAt),
+                })}
               </Typography>
               <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                 <Button size="small" onClick={() => openEdit(address)}>
-                  Edit
+                  {t('admin.common.edit')}
                 </Button>
                 <Button size="small" color="error" onClick={() => setDeleteTarget(address)}>
-                  Remove
+                  {t('admin.common.remove')}
                 </Button>
               </Stack>
             </Box>
@@ -206,14 +213,14 @@ export function AdminSavedAddressesPage() {
         </Stack>
       )}
       <Button component={RouterLink} to={ROUTES.adminDashboard} sx={{ mt: 3 }}>
-        Back to dashboard
+        {t('admin.addresses.backToDashboard')}
       </Button>
 
       <Dialog open={editTarget != null} onClose={() => setEditTarget(null)} fullWidth maxWidth="sm">
-        <DialogTitle>Edit saved address</DialogTitle>
+        <DialogTitle>{t('admin.addresses.editTitle')}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           <TextField
-            label="Address"
+            label={t('admin.common.address')}
             value={form.addressLine}
             onChange={(e) => setForm((prev) => ({ ...prev, addressLine: e.target.value }))}
             fullWidth
@@ -221,21 +228,21 @@ export function AdminSavedAddressesPage() {
             sx={{ mt: 1 }}
           />
           <TextField
-            label="City"
+            label={t('admin.common.city')}
             value={form.city}
             onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value }))}
             fullWidth
             size="small"
           />
           <TextField
-            label="State"
+            label={t('admin.common.state')}
             value={form.state}
             onChange={(e) => setForm((prev) => ({ ...prev, state: e.target.value }))}
             fullWidth
             size="small"
           />
           <TextField
-            label="Pincode"
+            label={t('admin.common.pincode')}
             value={form.pincode}
             onChange={(e) => setForm((prev) => ({ ...prev, pincode: e.target.value }))}
             fullWidth
@@ -243,7 +250,7 @@ export function AdminSavedAddressesPage() {
             slotProps={{ htmlInput: { maxLength: 6, inputMode: 'numeric' } }}
           />
           <TextField
-            label="Google Maps link"
+            label={t('admin.common.mapLink')}
             value={form.mapUrl}
             onChange={(e) => setForm((prev) => ({ ...prev, mapUrl: e.target.value }))}
             fullWidth
@@ -252,24 +259,27 @@ export function AdminSavedAddressesPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditTarget(null)} disabled={saving}>
-            Cancel
+            {t('admin.common.cancel')}
           </Button>
           <Button onClick={() => void handleSave()} disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('admin.common.saving') : t('admin.common.save')}
           </Button>
         </DialogActions>
       </Dialog>
 
       <ConfirmDialog
         open={deleteTarget != null}
-        title="Remove this saved address?"
+        title={t('admin.addresses.removeTitle')}
         description={
           deleteTarget
-            ? `${deleteTarget.addressLine}, ${deleteTarget.city}. Existing property leads keep their address.`
+            ? t('admin.addresses.removeMessage', {
+                address: deleteTarget.addressLine,
+                city: deleteTarget.city,
+              })
             : undefined
         }
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
+        confirmLabel={t('admin.common.remove')}
+        cancelLabel={t('admin.common.cancel')}
         destructive
         confirming={deleting}
         onConfirm={() => void handleDelete()}

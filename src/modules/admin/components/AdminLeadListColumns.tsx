@@ -1,5 +1,6 @@
 import { Box, Stack } from '@mui/material';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const headerSx = {
   px: 2,
@@ -20,12 +21,13 @@ type AdminLeadListHeaderProps = {
 };
 
 export function AdminLeadListHeader({ entityLabel }: AdminLeadListHeaderProps) {
+  const { t } = useTranslation();
   return (
     <Stack direction="row" sx={headerSx}>
       <Box sx={entityColumnSx}>{entityLabel}</Box>
-      <Box sx={sourceColumnSx}>Source</Box>
-      <Box sx={testLeadColumnSx}>Test lead</Box>
-      <Box sx={actionsColumnSx}>Actions</Box>
+      <Box sx={sourceColumnSx}>{t('admin.common.source')}</Box>
+      <Box sx={testLeadColumnSx}>{t('admin.common.testLead')}</Box>
+      <Box sx={actionsColumnSx}>{t('admin.common.actions')}</Box>
     </Stack>
   );
 }

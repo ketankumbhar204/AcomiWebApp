@@ -347,7 +347,7 @@ function EntityFormBody({
                 label={t('accommodation.fields.name')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Ground Floor"
+                placeholder={t('accommodation.floors.namePlaceholder')}
                 fullWidth
               />
               <TextField
@@ -368,7 +368,7 @@ function EntityFormBody({
                 label={t('accommodation.fields.name')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Flat 2A"
+                placeholder={t('accommodation.units.namePlaceholder')}
                 required
                 fullWidth
               />
@@ -376,7 +376,7 @@ function EntityFormBody({
                 label={t('accommodation.units.unitNumber')}
                 value={unitNumber}
                 onChange={(e) => setUnitNumber(e.target.value)}
-                placeholder="e.g. 2A"
+                placeholder={t('accommodation.units.unitNumberPlaceholder')}
                 fullWidth
               />
               <FormControl fullWidth>
@@ -422,7 +422,7 @@ function EntityFormBody({
                 label={t('accommodation.fields.name')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Room 101"
+                placeholder={t('accommodation.rooms.namePlaceholder')}
                 required
                 fullWidth
               />
@@ -464,7 +464,7 @@ function EntityFormBody({
                 label={t('accommodation.fields.name')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Bed A"
+                placeholder={t('accommodation.beds.namePlaceholder')}
                 required
                 fullWidth
               />

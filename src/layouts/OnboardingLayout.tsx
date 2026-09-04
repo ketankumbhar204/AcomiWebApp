@@ -3,13 +3,20 @@ import { Moon, Sun, Home, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { SUPPORTED_LANGUAGES, type AppLanguage } from '@/i18n';
 import { useLogout } from '@/modules/auth/hooks/useLogout';
 import { AUTH_UX, authSurfaces } from '@/modules/auth/theme/authUx';
+import { LanguagePicker } from '@/modules/profile/components/LanguagePicker';
 import { ROUTES } from '@/routes/paths';
 import { SkipLink, MAIN_CONTENT_ID } from '@/shared/components/SkipLink';
 import { colors } from '@/shared/theme/colors';
 import { useAppStore } from '@/store/appStore';
 import { LAYOUT } from './layoutConstants';
+
+function resolveAppLanguage(raw: string | undefined): AppLanguage {
+  const code = (raw?.split('-')[0] ?? 'en') as AppLanguage;
+  return (SUPPORTED_LANGUAGES as readonly string[]).includes(code) ? code : 'en';
+}
 
 type OnboardingLayoutProps = {
   children: ReactNode;
@@ -34,13 +41,14 @@ export function OnboardingLayout({
   showUserName: _showUserName = true,
   showProfile = false,
 }: OnboardingLayoutProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = useTheme();
   const a = authSurfaces(theme.palette.mode);
   const navigate = useNavigate();
   const logout = useLogout();
   const themeMode = useAppStore((state) => state.themeMode);
   const toggleThemeMode = useAppStore((state) => state.toggleThemeMode);
+  const currentLanguage = resolveAppLanguage(i18n.language);
   const themeLabel =
     themeMode === 'light'
       ? t('settings.profile.themeDark', { defaultValue: 'Switch to dark mode' })
@@ -176,6 +184,7 @@ export function OnboardingLayout({
                 {t('common.logout')}
               </Button>
             ) : null}
+            <LanguagePicker value={currentLanguage} compact />
             <Tooltip title={themeLabel}>
               <IconButton
                 onClick={toggleThemeMode}

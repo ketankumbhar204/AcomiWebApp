@@ -678,7 +678,7 @@ export function OccupancyWizardPage() {
                 ]
               : [
                   {
-                    label: t('navigation.accommodation'),
+                    label: t('navigation.rooms'),
                     to: spaceAccommodationPath(spaceId),
                   },
                 ]),

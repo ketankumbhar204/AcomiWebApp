@@ -7,6 +7,7 @@ import {
   DialogTitle,
   useTheme,
 } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 
@@ -26,14 +27,17 @@ export function ConfirmDialog({
   open,
   title,
   description,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   confirming = false,
   destructive = false,
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
+  const resolvedConfirm = confirmLabel ?? t('common.confirm');
+  const resolvedCancel = cancelLabel ?? t('common.cancel');
   const s = dashSurfaces(theme.palette.mode);
 
   return (
@@ -64,7 +68,7 @@ export function ConfirmDialog({
       ) : null}
       <DialogActions sx={{ px: 2.5, pb: 2, gap: 1, flexWrap: 'wrap' }}>
         <Button onClick={onClose} disabled={confirming} sx={dashOutlinedButtonSx}>
-          {cancelLabel}
+          {resolvedCancel}
         </Button>
         <Button
           variant="contained"
@@ -73,7 +77,7 @@ export function ConfirmDialog({
           disabled={confirming}
           sx={dashContainedButtonSx}
         >
-          {confirmLabel}
+          {resolvedConfirm}
         </Button>
       </DialogActions>
     </Dialog>

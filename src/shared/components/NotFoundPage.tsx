@@ -1,4 +1,5 @@
 import { Box, Button, Typography, useTheme } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { BlankLayout } from '@/layouts/BlankLayout';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
@@ -7,6 +8,7 @@ import { ROUTES } from '@/routes/paths';
 
 /** System 404 page — not a business module. */
 export function NotFoundPage() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
 
@@ -27,7 +29,7 @@ export function NotFoundPage() {
           404
         </Typography>
         <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
-          Page not found
+          {t('common.pageNotFound')}
         </Typography>
         <Button
           component={RouterLink}
@@ -36,7 +38,7 @@ export function NotFoundPage() {
           color="primary"
           sx={{ ...dashContainedButtonSx, height: DASHBOARD_UX.buttonHeight }}
         >
-          Go home
+          {t('common.goHome')}
         </Button>
       </Box>
     </BlankLayout>

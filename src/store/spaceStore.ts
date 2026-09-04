@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { i18n } from '@/i18n';
 import { mySpacesApi } from '@/shared/api/mySpacesApi';
 import type { MySpaceResponse } from '@/shared/types/space';
 import { STORAGE_KEYS } from '@/shared/constants/storageKeys';
@@ -57,7 +58,10 @@ export const useSpaceStore = create<SpaceStoreState>((set, get) => ({
       });
       return spaces;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load spaces';
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : i18n.t('spaces.errors.loadSpaces');
       set({
         loading: false,
         error: message,
@@ -107,7 +111,10 @@ export const useSpaceStore = create<SpaceStoreState>((set, get) => ({
       }
       return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to deactivate space';
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : i18n.t('spaces.errors.deactivate');
       set({ loading: false, error: message });
       return false;
     }

@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import { MapPin, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import type { SavedAddress } from '@/shared/types/admin';
 
@@ -28,6 +29,7 @@ function optionLabel(address: SavedAddress): string {
 }
 
 export function AdminSavedAddressPicker({ value, onChange }: AdminSavedAddressPickerProps) {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
   const [debounced, setDebounced] = useState('');
   const [options, setOptions] = useState<SavedAddress[]>([]);
@@ -53,7 +55,7 @@ export function AdminSavedAddressPicker({ value, onChange }: AdminSavedAddressPi
       .catch(() => {
         if (!cancelled) {
           setOptions([]);
-          setError('Unable to load saved addresses. Please try again.');
+          setError(t('admin.addressPicker.loadFailed'));
         }
       })
       .finally(() => {
@@ -62,7 +64,7 @@ export function AdminSavedAddressPicker({ value, onChange }: AdminSavedAddressPi
     return () => {
       cancelled = true;
     };
-  }, [debounced]);
+  }, [debounced, t]);
 
   const selectedOption = useMemo(
     () => options.find((item) => item.id === selected?.id) ?? selected,
@@ -97,7 +99,7 @@ export function AdminSavedAddressPicker({ value, onChange }: AdminSavedAddressPi
         filterOptions={(items) => items}
         getOptionLabel={(option) => optionLabel(option)}
         isOptionEqualToValue={(option, item) => option.id === item.id}
-        noOptionsText={debounced ? 'No saved addresses match that search.' : 'No recently used addresses yet.'}
+        noOptionsText={debounced ? t('admin.addressPicker.emptySearch') : t('admin.addressPicker.empty')}
         onInputChange={(_, next, reason) => {
           if (reason !== 'reset') {
             setInput(next);
@@ -136,11 +138,11 @@ export function AdminSavedAddressPicker({ value, onChange }: AdminSavedAddressPi
         renderInput={(params) => (
           <TextField
             {...params}
-            label="Select saved address"
-            placeholder="Search address, city, state, or pincode"
+            label={t('admin.addressPicker.selectLabel')}
+            placeholder={t('admin.addressPicker.searchPlaceholder')}
             size="small"
             error={Boolean(error)}
-            helperText={error ?? 'Recently used addresses appear first. Fields stay editable after selection.'}
+            helperText={error ?? t('admin.addressPicker.helper')}
           />
         )}
       />
@@ -150,11 +152,11 @@ export function AdminSavedAddressPicker({ value, onChange }: AdminSavedAddressPi
         onClick={startNewAddress}
         sx={{ mt: 1, textTransform: 'none' }}
       >
-        Add new address
+        {t('admin.addressPicker.addNew')}
       </Button>
       {selected && value.addressLine ? (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-          Using saved address. You can still edit the fields below.
+          {t('admin.addressPicker.usingSaved')}
         </Typography>
       ) : null}
     </Box>

@@ -1,6 +1,7 @@
 import { Alert, Button, InputAdornment, Stack, TextField } from '@mui/material';
 import { Phone, User } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { isValidIndianMobile, normalizeIndianMobileDigits } from '@/shared/utils/indianMobile';
 import type { AdminUpdateRegistrationContactRequest } from '@/shared/types/admin';
 
@@ -23,6 +24,7 @@ export function AdminRegistrationContactEditor({
   onSave,
   onCancel,
 }: AdminRegistrationContactEditorProps) {
+  const { t } = useTranslation();
   const [owner, setOwner] = useState(ownerName ?? '');
   const [primary, setPrimary] = useState(mobileNumber ?? '');
   const [alternate, setAlternate] = useState(alternateMobileNumber ?? '');
@@ -31,11 +33,11 @@ export function AdminRegistrationContactEditor({
   function handleSubmit() {
     setError(null);
     if (primary.trim() && !isValidIndianMobile(primary)) {
-      setError('Enter a valid 10-digit primary mobile number, or leave it unchanged.');
+      setError(t('admin.contactEditor.errors.primaryMobile'));
       return;
     }
     if (alternate.trim() && !isValidIndianMobile(alternate)) {
-      setError('Enter a valid 10-digit alternate mobile number, or leave it blank.');
+      setError(t('admin.contactEditor.errors.alternateMobile'));
       return;
     }
     if (
@@ -43,7 +45,7 @@ export function AdminRegistrationContactEditor({
       alternate.trim() &&
       normalizeIndianMobileDigits(primary) === normalizeIndianMobileDigits(alternate)
     ) {
-      setError('Alternate mobile number must be different from the primary mobile number.');
+      setError(t('admin.contactEditor.errors.alternateDifferent'));
       return;
     }
 
@@ -59,7 +61,7 @@ export function AdminRegistrationContactEditor({
     <Stack spacing={1.5} sx={{ maxWidth: 420 }}>
       {error ? <Alert severity="error">{error}</Alert> : null}
       <TextField
-        label="Owner name"
+        label={t('admin.contactEditor.ownerName')}
         value={owner}
         onChange={(e) => setOwner(e.target.value)}
         fullWidth
@@ -76,10 +78,10 @@ export function AdminRegistrationContactEditor({
         }}
       />
       <TextField
-        label="Primary mobile number"
+        label={t('admin.contactEditor.primaryMobile')}
         value={primary}
         onChange={(e) => setPrimary(normalizeIndianMobileDigits(e.target.value))}
-        placeholder="10-digit number"
+        placeholder={t('admin.common.primaryMobilePlaceholder')}
         fullWidth
         size="small"
         sx={fieldSx}
@@ -95,11 +97,11 @@ export function AdminRegistrationContactEditor({
         }}
       />
       <TextField
-        label="Alternate mobile number"
+        label={t('admin.contactEditor.alternateMobile')}
         value={alternate}
         onChange={(e) => setAlternate(normalizeIndianMobileDigits(e.target.value))}
-        placeholder="Optional 10-digit number"
-        helperText="Optional. Leave blank to remove the alternate number."
+        placeholder={t('admin.common.alternateMobilePlaceholder')}
+        helperText={t('admin.contactEditor.alternateHint')}
         fullWidth
         size="small"
         sx={fieldSx}
@@ -116,10 +118,10 @@ export function AdminRegistrationContactEditor({
       />
       <Stack direction="row" spacing={1}>
         <Button variant="contained" size="small" disabled={saving} onClick={handleSubmit}>
-          {saving ? 'Saving…' : 'Save contact'}
+          {saving ? t('admin.common.saving') : t('admin.contactEditor.save')}
         </Button>
         <Button size="small" disabled={saving} onClick={onCancel}>
-          Cancel
+          {t('admin.common.cancel')}
         </Button>
       </Stack>
     </Stack>

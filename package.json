@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "node scripts/check-otp-registration.mjs",
+    "test:i18n": "node scripts/check-locale-coverage.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -b --pretty false"

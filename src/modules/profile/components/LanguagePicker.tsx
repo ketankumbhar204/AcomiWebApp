@@ -15,9 +15,15 @@ import {
 type LanguagePickerProps = {
   value: AppLanguage;
   hideLabel?: boolean;
+  /** Compact select for app header toolbars. */
+  compact?: boolean;
 };
 
-export function LanguagePicker({ value, hideLabel = false }: LanguagePickerProps) {
+export function LanguagePicker({
+  value,
+  hideLabel = false,
+  compact = false,
+}: LanguagePickerProps) {
   const { t } = useTranslation();
 
   const handleChange = (event: SelectChangeEvent) => {
@@ -25,6 +31,35 @@ export function LanguagePicker({ value, hideLabel = false }: LanguagePickerProps
     if (next === value) return;
     void changeAppLanguage(next);
   };
+
+  if (compact) {
+    return (
+      <FormControl size="small" sx={{ minWidth: { xs: 96, sm: 120 } }}>
+        <Select
+          id="app-language-header"
+          value={value}
+          onChange={handleChange}
+          aria-label={t('settings.language.select')}
+          displayEmpty
+          sx={{
+            height: 36,
+            borderRadius: 999,
+            typography: 'body2',
+            '& .MuiSelect-select': {
+              py: 0.75,
+              px: 1.5,
+            },
+          }}
+        >
+          {SUPPORTED_LANGUAGES.map((language) => (
+            <MenuItem key={language} value={language}>
+              {t(`settings.language.names.${language}`)}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    );
+  }
 
   return (
     <FormControl fullWidth size="small">

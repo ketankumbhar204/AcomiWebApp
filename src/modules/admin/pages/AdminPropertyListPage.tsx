@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import {
@@ -27,6 +28,7 @@ import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import type { AdminActiveSpace, PropertyRegistrationListItem } from '@/shared/types/admin';
 
 export function AdminPropertyListPage() {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { enqueueSnackbar } = useSnackbar();
   const filter = useMemo(() => parseAdminListSearchParams(searchParams), [searchParams]);
@@ -79,10 +81,10 @@ export function AdminPropertyListPage() {
     try {
       await adminApi.deletePropertyRegistration(deleteTarget.id);
       setLeads((prev) => prev.filter((item) => item.id !== deleteTarget.id));
-      enqueueSnackbar('Property lead deleted.', { variant: 'success' });
+      enqueueSnackbar(t('admin.property.deleted'), { variant: 'success' });
       setDeleteTarget(null);
     } catch {
-      enqueueSnackbar('Could not delete property lead.', { variant: 'error' });
+      enqueueSnackbar(t('admin.property.deleteFailed'), { variant: 'error' });
     } finally {
       setDeleting(false);
     }
@@ -92,15 +94,15 @@ export function AdminPropertyListPage() {
     <Box>
       <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Properties
+          {t('admin.property.title')}
         </Typography>
         <Button component={RouterLink} to={adminAddPropertyPath()} variant="contained">
-          Add property
+          {t('admin.nav.addProperty')}
         </Button>
       </Stack>
       <Tabs value={tab} onChange={handleTabChange} sx={{ mb: 2 }}>
-        <Tab value="leads" label="Leads" />
-        <Tab value="active" label="Active" />
+        <Tab value="leads" label={t('admin.filters.leads')} />
+        <Tab value="active" label={t('admin.filters.active')} />
       </Tabs>
       {filterLabel && tab === 'leads' ? (
         <Chip
@@ -124,10 +126,10 @@ export function AdminPropertyListPage() {
         </Box>
       ) : tab === 'leads' ? (
         leads.length === 0 ? (
-          <Typography color="text.secondary">No property leads found.</Typography>
+          <Typography color="text.secondary">{t('admin.property.emptyLeads')}</Typography>
         ) : (
           <Stack spacing={1.5}>
-            <AdminLeadListHeader entityLabel="Property" />
+            <AdminLeadListHeader entityLabel={t('admin.nav.property')} />
             {leads.map((item) => (
               <Box
                 key={item.id}
@@ -159,7 +161,7 @@ export function AdminPropertyListPage() {
                   source={<Chip size="small" label={formatPropertyRegistrationSource(item.source)} />}
                   testLead={
                     <Typography variant="body2" color="text.secondary">
-                      {item.testLead ? 'Yes' : 'No'}
+                      {item.testLead ? t('admin.common.yes') : t('admin.common.no')}
                     </Typography>
                   }
                   actions={
@@ -168,7 +170,7 @@ export function AdminPropertyListPage() {
                       color="error"
                       variant="text"
                       onClick={() => setDeleteTarget(item)}>
-                      Delete
+                      {t('admin.common.delete')}
                     </Button>
                   }
                 />
@@ -177,7 +179,7 @@ export function AdminPropertyListPage() {
           </Stack>
         )
       ) : active.length === 0 ? (
-        <Typography color="text.secondary">No active property spaces found.</Typography>
+        <Typography color="text.secondary">{t('admin.property.emptyActive')}</Typography>
       ) : (
         <Stack spacing={1.5}>
           {active.map((space) => (
@@ -191,18 +193,18 @@ export function AdminPropertyListPage() {
         </Stack>
       )}
       <Button component={RouterLink} to={ROUTES.adminDashboard} sx={{ mt: 3 }}>
-        Back to dashboard
+        {t('admin.common.backToDashboard')}
       </Button>
       <ConfirmDialog
         open={deleteTarget != null}
-        title="Delete this property lead?"
+        title={t('admin.property.deleteTitle')}
         description={
           deleteTarget
-            ? `${deleteTarget.propertyName}\n\nThis action will remove the registration from the Admin lead list.`
+            ? t('admin.property.deleteMessage', { name: deleteTarget.propertyName })
             : undefined
         }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t('admin.common.delete')}
+        cancelLabel={t('admin.common.cancel')}
         destructive
         confirming={deleting}
         onConfirm={() => void handleDeleteConfirm()}

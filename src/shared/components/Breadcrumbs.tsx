@@ -1,5 +1,6 @@
 import { Box, Breadcrumbs as MuiBreadcrumbs, Link, Typography, useTheme } from '@mui/material';
 import { ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 
@@ -13,6 +14,7 @@ type BreadcrumbsProps = {
 };
 
 export function Breadcrumbs({ items }: BreadcrumbsProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
 
@@ -23,7 +25,7 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
   return (
     <MuiBreadcrumbs
       separator={<ChevronRight size={DASHBOARD_UX.iconSize} />}
-      aria-label="Breadcrumb"
+      aria-label={t('common.breadcrumb')}
       sx={{
         mb: 1.25,
         maxWidth: '100%',

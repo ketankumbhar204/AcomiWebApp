@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import {
@@ -27,6 +28,7 @@ import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import type { AdminActiveSpace, MessRegistrationListItem } from '@/shared/types/admin';
 
 export function AdminMessListPage() {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { enqueueSnackbar } = useSnackbar();
   const filter = useMemo(() => parseAdminListSearchParams(searchParams), [searchParams]);
@@ -79,10 +81,10 @@ export function AdminMessListPage() {
     try {
       await adminApi.deleteMessRegistration(deleteTarget.id);
       setLeads((prev) => prev.filter((item) => item.id !== deleteTarget.id));
-      enqueueSnackbar('Mess lead deleted.', { variant: 'success' });
+      enqueueSnackbar(t('admin.mess.deleted'), { variant: 'success' });
       setDeleteTarget(null);
     } catch {
-      enqueueSnackbar('Could not delete mess lead.', { variant: 'error' });
+      enqueueSnackbar(t('admin.mess.deleteFailed'), { variant: 'error' });
     } finally {
       setDeleting(false);
     }
@@ -92,15 +94,15 @@ export function AdminMessListPage() {
     <Box>
       <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Mess
+          {t('admin.mess.title')}
         </Typography>
         <Button component={RouterLink} to={adminAddMessPath()} variant="contained">
-          Add mess
+          {t('admin.nav.addMess')}
         </Button>
       </Stack>
       <Tabs value={tab} onChange={handleTabChange} sx={{ mb: 2 }}>
-        <Tab value="leads" label="Leads" />
-        <Tab value="active" label="Active" />
+        <Tab value="leads" label={t('admin.filters.leads')} />
+        <Tab value="active" label={t('admin.filters.active')} />
       </Tabs>
       {filterLabel && tab === 'leads' ? (
         <Chip
@@ -124,10 +126,10 @@ export function AdminMessListPage() {
         </Box>
       ) : tab === 'leads' ? (
         leads.length === 0 ? (
-          <Typography color="text.secondary">No mess leads found.</Typography>
+          <Typography color="text.secondary">{t('admin.mess.emptyLeads')}</Typography>
         ) : (
           <Stack spacing={1.5}>
-            <AdminLeadListHeader entityLabel="Mess" />
+            <AdminLeadListHeader entityLabel={t('admin.nav.mess')} />
             {leads.map((item) => (
               <Box
                 key={item.id}
@@ -159,7 +161,7 @@ export function AdminMessListPage() {
                   source={<Chip size="small" label={formatMessRegistrationSource(item.source)} />}
                   testLead={
                     <Typography variant="body2" color="text.secondary">
-                      {item.testLead ? 'Yes' : 'No'}
+                      {item.testLead ? t('admin.common.yes') : t('admin.common.no')}
                     </Typography>
                   }
                   actions={
@@ -168,7 +170,7 @@ export function AdminMessListPage() {
                       color="error"
                       variant="text"
                       onClick={() => setDeleteTarget(item)}>
-                      Delete
+                      {t('admin.common.delete')}
                     </Button>
                   }
                 />
@@ -177,7 +179,7 @@ export function AdminMessListPage() {
           </Stack>
         )
       ) : active.length === 0 ? (
-        <Typography color="text.secondary">No active mess spaces found.</Typography>
+        <Typography color="text.secondary">{t('admin.mess.emptyActive')}</Typography>
       ) : (
         <Stack spacing={1.5}>
           {active.map((space) => (
@@ -191,18 +193,18 @@ export function AdminMessListPage() {
         </Stack>
       )}
       <Button component={RouterLink} to={ROUTES.adminDashboard} sx={{ mt: 3 }}>
-        Back to dashboard
+        {t('admin.common.backToDashboard')}
       </Button>
       <ConfirmDialog
         open={deleteTarget != null}
-        title="Delete this mess lead?"
+        title={t('admin.mess.deleteTitle')}
         description={
           deleteTarget
-            ? `${deleteTarget.messName}\n\nThis action will remove the registration from the Admin lead list.`
+            ? t('admin.mess.deleteMessage', { name: deleteTarget.messName })
             : undefined
         }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t('admin.common.delete')}
+        cancelLabel={t('admin.common.cancel')}
         destructive
         confirming={deleting}
         onConfirm={() => void handleDeleteConfirm()}

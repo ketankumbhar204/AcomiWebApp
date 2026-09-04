@@ -520,7 +520,7 @@ export function MySpacesPage() {
                     <InputAdornment position="end">
                       <IconButton
                         size="small"
-                        aria-label="Clear search"
+                        aria-label={t('common.clearSearch')}
                         onClick={() => setSearch('')}
                       >
                         <X size={DASHBOARD_UX.iconSize} />

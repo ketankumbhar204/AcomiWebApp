@@ -431,10 +431,10 @@ export function BedInventoryPage() {
         },
       }}
     >
-      <ToggleButton value="cards" aria-label="Cards">
+      <ToggleButton value="cards" aria-label={t('accommodation.workspace.cards')}>
         <LayoutGrid size={16} />
       </ToggleButton>
-      <ToggleButton value="table" aria-label="Table">
+      <ToggleButton value="table" aria-label={t('accommodation.workspace.table')}>
         <List size={16} />
       </ToggleButton>
     </ToggleButtonGroup>

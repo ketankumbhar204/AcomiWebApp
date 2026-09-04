@@ -7,6 +7,7 @@ import {
   useTheme,
 } from '@mui/material';
 import type { FormEvent, ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { PageHeader } from '@/shared/components/PageHeader';
@@ -37,6 +38,7 @@ export function AdminRegistrationFormLayout({
   onSubmit,
   children,
 }: AdminRegistrationFormLayoutProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
 
@@ -65,7 +67,7 @@ export function AdminRegistrationFormLayout({
           disabled={loading}
           sx={dashOutlinedButtonSx}
         >
-          Cancel
+          {t('admin.common.cancel')}
         </Button>
         <Button
           type="submit"
@@ -89,7 +91,7 @@ export function AdminRegistrationFormLayout({
           px: 0.5,
         }}
       >
-        All fields are optional. Incomplete leads use placeholders until an owner completes registration.
+        {t('admin.common.formOptionalHint')}
       </Box>
     </Box>
   );

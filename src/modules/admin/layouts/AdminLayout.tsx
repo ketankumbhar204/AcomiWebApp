@@ -8,24 +8,26 @@ import {
   Typography,
 } from '@mui/material';
 import { Building2, ChefHat, LayoutDashboard, LogOut, MapPin, Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/routes/paths';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminStore } from '@/store/adminStore';
 
-const navItems = [
-  { to: ROUTES.adminDashboard, label: 'Dashboard', icon: LayoutDashboard },
-  { to: ROUTES.adminRegisteredUsers, label: 'Users', icon: Users },
-  { to: ROUTES.adminProperties, label: 'Properties', icon: Building2 },
-  { to: ROUTES.adminMess, label: 'Mess', icon: ChefHat },
-  { to: ROUTES.adminSavedAddresses, label: 'Addresses', icon: MapPin },
-];
-
 export function AdminLayout() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
   const setAdminMode = useAdminStore((state) => state.setAdminMode);
+
+  const navItems = [
+    { to: ROUTES.adminDashboard, label: t('admin.nav.dashboard'), icon: LayoutDashboard },
+    { to: ROUTES.adminRegisteredUsers, label: t('admin.nav.users'), icon: Users },
+    { to: ROUTES.adminProperties, label: t('admin.nav.properties'), icon: Building2 },
+    { to: ROUTES.adminMess, label: t('admin.nav.mess'), icon: ChefHat },
+    { to: ROUTES.adminSavedAddresses, label: t('admin.nav.addresses'), icon: MapPin },
+  ];
 
   async function handleLogout() {
     setAdminMode(false);
@@ -38,7 +40,7 @@ export function AdminLayout() {
       <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Toolbar sx={{ gap: 1, flexWrap: 'wrap', minHeight: { xs: 56, sm: 64 } }}>
           <Typography variant="h6" sx={{ fontWeight: 700, mr: { xs: 0, sm: 1 }, flexShrink: 0 }}>
-            Acomi Admin
+            {t('admin.brand')}
           </Typography>
           <Stack
             direction="row"
@@ -68,10 +70,10 @@ export function AdminLayout() {
             ))}
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
-            {user?.fullName ?? 'Admin'}
+            {user?.fullName ?? t('admin.dashboard.welcome')}
           </Typography>
           <Button color="inherit" startIcon={<LogOut size={16} />} onClick={() => void handleLogout()}>
-            Sign out
+            {t('admin.dashboard.signOut')}
           </Button>
         </Toolbar>
       </AppBar>

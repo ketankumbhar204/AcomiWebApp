@@ -1,5 +1,6 @@
 import { Box, Button, Typography } from '@mui/material';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { i18n } from '@/i18n';
 import { APP_NAME } from '@/shared/constants/app';
 import { DASHBOARD_UX, DASH_LIGHT } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
@@ -25,7 +26,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return {
       hasError: true,
-      message: error?.message || 'An unexpected error occurred.',
+      message: error?.message || i18n.t('common.unexpectedError'),
     };
   }
 
@@ -59,7 +60,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           }}
         >
           <Typography component="h1" sx={{ ...DASHBOARD_UX.sectionHeading, color: DASH_LIGHT.textPrimary }}>
-            Something went wrong
+            {i18n.t('common.errors.generic')}
           </Typography>
           <Typography
             sx={{
@@ -69,11 +70,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               maxWidth: 420,
             }}
           >
-            {this.state.message || 'An unexpected error occurred. Please reload the application.'}
+            {i18n.t('common.unexpectedError')}
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
             <Button variant="contained" onClick={this.handleReload} sx={dashContainedButtonSx}>
-              Reload
+              {i18n.t('common.reload')}
             </Button>
             <Button
               variant="outlined"
@@ -84,7 +85,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 color: colors.primaryDark,
               }}
             >
-              Home
+              {i18n.t('common.home')}
             </Button>
           </Box>
         </Box>

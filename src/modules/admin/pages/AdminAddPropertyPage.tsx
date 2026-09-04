@@ -1,6 +1,7 @@
 import { InputAdornment, TextField } from '@mui/material';
 import { Building2, IndianRupee, MapPin, Phone, User } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import { AdminPropertyTypePicker } from '@/modules/admin/components/AdminPropertyTypePicker';
@@ -31,6 +32,7 @@ function optionalText(value: string): string | undefined {
 const fieldSx = { '& .MuiInputBase-root': { bgcolor: 'background.paper' } };
 
 export function AdminAddPropertyPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [propertyType, setPropertyType] = useState<Exclude<SpaceType, 'MESS'>>('PG');
   const [propertyName, setPropertyName] = useState('');
@@ -52,11 +54,11 @@ export function AdminAddPropertyPage() {
     setError(null);
 
     if (mobileNumber.trim() && !isValidIndianMobile(mobileNumber)) {
-      setError('Enter a valid 10-digit mobile number, or leave it blank.');
+      setError(t('admin.property.errors.mobile'));
       return;
     }
     if (alternateMobileNumber.trim() && !isValidIndianMobile(alternateMobileNumber)) {
-      setError('Enter a valid 10-digit alternate mobile number, or leave it blank.');
+      setError(t('admin.property.errors.alternateMobile'));
       return;
     }
     if (
@@ -64,22 +66,22 @@ export function AdminAddPropertyPage() {
       alternateMobileNumber.trim() &&
       normalizeIndianMobileDigits(mobileNumber) === normalizeIndianMobileDigits(alternateMobileNumber)
     ) {
-      setError('Alternate mobile number must be different from the primary mobile number.');
+      setError(t('admin.property.errors.alternateDifferent'));
       return;
     }
     if (pincode.trim() && !isValidPincode(pincode.trim())) {
-      setError('Enter a valid 6-digit pincode, or leave it blank.');
+      setError(t('admin.property.errors.pincode'));
       return;
     }
     if (mapUrl.trim() && !isValidMapUrl(mapUrl)) {
-      setError('Map link must start with http:// or https://');
+      setError(t('admin.property.errors.mapUrl'));
       return;
     }
     let price: number | undefined;
     if (startingPrice.trim()) {
       price = Number(startingPrice);
       if (!Number.isFinite(price) || price < 0) {
-        setError('Enter a valid starting price, or leave it blank.');
+        setError(t('admin.property.errors.startingPrice'));
         return;
       }
     }
@@ -111,7 +113,7 @@ export function AdminAddPropertyPage() {
       await adminApi.createPropertyRegistration(payload);
       navigate(ROUTES.adminProperties);
     } catch {
-      setError('Could not save property registration.');
+      setError(t('admin.property.saveFailed'));
     } finally {
       setLoading(false);
     }
@@ -119,29 +121,29 @@ export function AdminAddPropertyPage() {
 
   return (
     <AdminRegistrationFormLayout
-      title="Add property lead"
-      description="Create a property registration for the admin lead list. Owners can claim it later via the public website."
+      title={t('admin.property.addHeading')}
+      description={t('admin.property.addSubheading')}
       breadcrumbs={[
-        { label: 'Properties', to: ROUTES.adminProperties },
-        { label: 'Add property' },
+        { label: t('admin.nav.properties'), to: ROUTES.adminProperties },
+        { label: t('admin.nav.addProperty') },
       ]}
       cancelTo={ROUTES.adminProperties}
-      submitLabel="Save property lead"
+      submitLabel={t('admin.property.save')}
       loading={loading}
       error={error}
       onSubmit={(e) => void handleSubmit(e)}
     >
       <ContentCard>
         <FormSection
-          title="Property details"
-          description="Choose the property type and name shown in the lead list."
+          title={t('admin.property.detailsTitle')}
+          description={t('admin.property.detailsHint')}
         >
           <AdminPropertyTypePicker value={propertyType} onChange={setPropertyType} />
           <TextField
-            label="Property name"
+            label={t('admin.property.name')}
             value={propertyName}
             onChange={(e) => setPropertyName(e.target.value)}
-            placeholder="e.g. Sunrise PG"
+            placeholder={t('admin.property.namePlaceholder')}
             fullWidth
             size="small"
             sx={{ ...fieldSx, gridColumn: { md: '1 / -1' } }}
@@ -160,11 +162,11 @@ export function AdminAddPropertyPage() {
 
       <ContentCard>
         <FormSection
-          title="Owner contact"
-          description="Contact details for follow-up. Leave blank if unknown."
+          title={t('admin.common.ownerContact')}
+          description={t('admin.common.ownerContactHint')}
         >
           <TextField
-            label="Owner name"
+            label={t('admin.common.ownerName')}
             value={ownerName}
             onChange={(e) => setOwnerName(e.target.value)}
             fullWidth
@@ -181,10 +183,10 @@ export function AdminAddPropertyPage() {
             }}
           />
           <TextField
-            label="Primary mobile number"
+            label={t('admin.common.primaryMobile')}
             value={mobileNumber}
             onChange={(e) => setMobileNumber(normalizeIndianMobileDigits(e.target.value))}
-            placeholder="10-digit number"
+            placeholder={t('admin.common.primaryMobilePlaceholder')}
             fullWidth
             size="small"
             sx={fieldSx}
@@ -200,11 +202,11 @@ export function AdminAddPropertyPage() {
             }}
           />
           <TextField
-            label="Alternate mobile number"
+            label={t('admin.common.alternateMobileLabel')}
             value={alternateMobileNumber}
             onChange={(e) => setAlternateMobileNumber(normalizeIndianMobileDigits(e.target.value))}
-            placeholder="Optional 10-digit number"
-            helperText="Optional secondary contact. Leave blank if unknown."
+            placeholder={t('admin.common.alternateMobilePlaceholder')}
+            helperText={t('admin.common.alternateMobileHint')}
             fullWidth
             size="small"
             sx={fieldSx}
@@ -224,8 +226,8 @@ export function AdminAddPropertyPage() {
 
       <ContentCard>
         <FormSection
-          title="Location"
-          description="Reuse a recent address or enter a new one. The same address can be used by multiple properties."
+          title={t('admin.common.location')}
+          description={t('admin.common.locationHintProperty')}
         >
           <AdminSavedAddressPicker
             value={{ addressLine, city, state, pincode, mapUrl }}
@@ -238,7 +240,7 @@ export function AdminAddPropertyPage() {
             }}
           />
           <TextField
-            label="Address line"
+            label={t('admin.common.addressLine')}
             value={addressLine}
             onChange={(e) => setAddressLine(e.target.value)}
             fullWidth
@@ -254,10 +256,10 @@ export function AdminAddPropertyPage() {
               },
             }}
           />
-          <TextField label="City" value={city} onChange={(e) => setCity(e.target.value)} fullWidth size="small" sx={fieldSx} />
-          <TextField label="State" value={state} onChange={(e) => setState(e.target.value)} fullWidth size="small" sx={fieldSx} />
+          <TextField label={t('admin.common.city')} value={city} onChange={(e) => setCity(e.target.value)} fullWidth size="small" sx={fieldSx} />
+          <TextField label={t('admin.common.state')} value={state} onChange={(e) => setState(e.target.value)} fullWidth size="small" sx={fieldSx} />
           <TextField
-            label="Pincode"
+            label={t('admin.common.pincode')}
             value={pincode}
             onChange={(e) => setPincode(e.target.value)}
             fullWidth
@@ -266,10 +268,10 @@ export function AdminAddPropertyPage() {
             slotProps={{ htmlInput: { maxLength: 6, inputMode: 'numeric' } }}
           />
           <TextField
-            label="Google Maps link"
+            label={t('admin.common.mapLink')}
             value={mapUrl}
             onChange={(e) => setMapUrl(e.target.value)}
-            placeholder="https://maps.google.com/..."
+            placeholder={t('admin.common.mapLinkPlaceholder')}
             fullWidth
             size="small"
             sx={{ ...fieldSx, gridColumn: { md: '1 / -1' } }}
@@ -278,9 +280,9 @@ export function AdminAddPropertyPage() {
       </ContentCard>
 
       <ContentCard>
-        <FormSection title="Pricing & options" description="Optional pricing and lead metadata.">
+        <FormSection title={t('admin.common.pricingOptions')} description={t('admin.common.pricingOptionsHint')}>
           <TextField
-            label="Starting price (₹)"
+            label={t('admin.property.startingPriceLabel')}
             value={startingPrice}
             onChange={(e) => setStartingPrice(e.target.value)}
             fullWidth

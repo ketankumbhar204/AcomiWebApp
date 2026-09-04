@@ -6,6 +6,7 @@ import {
   type ClipboardEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { colors } from '@/shared/theme/colors';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 
@@ -26,6 +27,7 @@ export function OtpInput({
   autoFocus = true,
   onComplete,
 }: OtpInputProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -102,7 +104,7 @@ export function OtpInput({
   return (
     <Box
       role="group"
-      aria-label="One-time password"
+      aria-label={t('auth.otp.ariaLabel')}
       sx={{
         display: 'flex',
         gap: { xs: 0.75, sm: 1 },
