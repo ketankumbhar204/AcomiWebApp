@@ -39,6 +39,28 @@ import type {
 } from '@/shared/types/meals';
 import type { SubmitPaymentProofRequest } from '@/shared/types/payments';
 import { normalizeMemberMealActivityDayDetail } from '../utils/memberMealActivityDayDetail';
+import { ensureUploadedFileId } from '@/shared/services/fileUploadService';
+
+type MealProofInput = string | (SubmitPaymentProofRequest & { localFile?: File });
+
+async function resolveMealProofBody(
+  spaceId: string,
+  proof: MealProofInput | undefined,
+  pollDate?: string,
+): Promise<SubmitPaymentProofRequest | undefined> {
+  if (!proof) {
+    return undefined;
+  }
+  const body: SubmitPaymentProofRequest & { localFile?: File } =
+    typeof proof === 'string' ? { proofImageBase64: proof } : proof;
+  const proofFileId = await ensureUploadedFileId(body.proofFileId, body.localFile, {
+    purpose: 'MEAL_PAYMENT_PROOF',
+    spaceId,
+    pollDate,
+  });
+  const { localFile: _ignored, ...rest } = body;
+  return { ...rest, proofFileId };
+}
 
 export const mealsApi = {
   getMealPlans: (spaceId: string) =>
@@ -353,23 +375,21 @@ export const mealsApi = {
       ),
     ),
 
-  submitMealPollResponses: (
+  submitMealPollResponses: async (
     spaceId: string,
     menuDate: string,
     selections: SubmitMealPollSelection[],
     paymentChoice?: MealPollPaymentChoice,
-    proof?: string | SubmitPaymentProofRequest,
+    proof?: MealProofInput,
   ) => {
-    const proofBody: SubmitPaymentProofRequest | undefined =
-      typeof proof === 'string'
-        ? { proofImageBase64: proof }
-        : proof ?? undefined;
+    const proofBody = await resolveMealProofBody(spaceId, proof, menuDate);
     return unwrapApiResponse(
       apiClient.post<ApiResponse<MealPollDayResponse>>(
         `/spaces/${spaceId}/meal-polls/${menuDate}/responses`,
         {
           selections,
           ...(paymentChoice ? { paymentChoice } : {}),
+          ...(proofBody?.proofFileId ? { proofFileId: proofBody.proofFileId } : {}),
           ...(proofBody?.proofImageBase64
             ? { proofImageBase64: proofBody.proofImageBase64 }
             : {}),
@@ -410,13 +430,12 @@ export const mealsApi = {
     }
   },
 
-  submitMealPollPaymentProof: (
+  submitMealPollPaymentProof: async (
     spaceId: string,
     menuDate: string,
-    proof: string | SubmitPaymentProofRequest,
+    proof: MealProofInput,
   ) => {
-    const body: SubmitPaymentProofRequest =
-      typeof proof === 'string' ? { proofImageBase64: proof } : proof;
+    const body = await resolveMealProofBody(spaceId, proof, menuDate);
     return unwrapApiResponse(
       apiClient.post<ApiResponse<MealPollDayResponse>>(
         `/spaces/${spaceId}/meal-polls/${menuDate}/payment-proof`,
@@ -425,13 +444,12 @@ export const mealsApi = {
     );
   },
 
-  submitBulkMealPollPaymentProof: (
+  submitBulkMealPollPaymentProof: async (
     spaceId: string,
     dates: string[],
-    proof: string | SubmitPaymentProofRequest,
+    proof: MealProofInput,
   ) => {
-    const body: SubmitPaymentProofRequest =
-      typeof proof === 'string' ? { proofImageBase64: proof } : proof;
+    const body = await resolveMealProofBody(spaceId, proof, dates[0]);
     return unwrapApiResponse(
       apiClient.post<ApiResponse<BulkMealPollPaymentProofResponse>>(
         `/spaces/${spaceId}/meal-polls/payment-proof/bulk`,

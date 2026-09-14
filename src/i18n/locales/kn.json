@@ -100,6 +100,7 @@
   },
   "navigation": {
     "mySpaces": "ನನ್ನ ಸ್ಪೇಸ್‌ಗಳು",
+    "findAPlace": "ಸ್ಥಳ ಹುಡುಕಿ",
     "profile": "ಪ್ರೊಫೈಲ್",
     "createSpace": "ಸ್ಪೇಸ್ ರಚಿಸಿ",
     "inviteMember": "ಸದಸ್ಯರನ್ನು ಆಹ್ವಾನಿಸಿ",
@@ -152,7 +153,12 @@
       "verifyContinue": "ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಮುಂದುವರಿಸಿ",
       "devHint": "ನಿಮ್ಮ OTP ಅನ್ನು ಬ್ಯಾಕೆಂಡ್ ಡೆವಲಪ್‌ಮೆಂಟ್ ಲಾಗ್‌ನಲ್ಲಿ ನೋಡಿ.",
       "wrongNumber": "ತಪ್ಪಾದ ಸಂಖ್ಯೆ?",
-      "changeIt": "ಬದಲಾಯಿಸಿ"
+      "changeIt": "ಬದಲಾಯಿಸಿ",
+      "smsSampleTitle": "Look for this SMS",
+      "smsSampleSender": "SMS from ACOMI",
+      "smsSampleBody": "[Hello] Your OTP for Phone Verification is XXXXXX. Valid for 5 mins - [Southern Express]",
+      "smsSampleCaption": "“Southern Express” is only our SMS provider’s template name — this code is for ACOMI.",
+      "smsSampleA11y": "Sample of the ACOMI OTP SMS message"
     }
   },
   "spaces": {
@@ -164,6 +170,39 @@
       "emptyDescription": "ಪ್ರಾರಂಭಿಸಲು ನಿಮ್ಮ ಮೊದಲ Mess, PG, Hostel ಅಥವಾ Rental ಸ್ಪೇಸ್ ರಚಿಸಿ.",
       "createFab": "ಹೊಸ ಸ್ಪೇಸ್ ರಚಿಸಿ",
       "openProfile": "ಪ್ರೊಫೈಲ್ ಮತ್ತು ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ತೆರೆಯಿರಿ"
+    },
+    "findPlace": {
+      "eyebrow": "Search for a place",
+      "heroTitle": "Search for a place",
+      "heroSubtitle": "Search PGs, hostels, rentals and co-living spaces around you.",
+      "subtitle": "ACOMI ನಲ್ಲಿ ಸಕ್ರಿಯ ಸ್ಪೇಸ್‌ಗಳನ್ನು ನೋಡಿ. ಸೇರಲು ಇನ್ನೂ ಮಾಲೀಕರ ಆಮಂತ್ರಣ ಬೇಕು.",
+      "searchLabel": "ಸ್ಥಳ ಹುಡುಕಿ",
+      "searchPlaceholder": "ಹೆಸರು ಅಥವಾ ವಿಳಾಸದಿಂದ ಹುಡುಕಿ…",
+      "filterAll": "ಎಲ್ಲಾ",
+      "resultCount_one": "{{count}} ಸ್ಥಳ ಕಂಡುಬಂದಿದೆ",
+      "resultCount_other": "{{count}} ಸ್ಥಳಗಳು ಕಂಡುಬಂದಿವೆ",
+      "sortRecommended": "Sort by · Recommended",
+      "emptyTitle": "ಯಾವುದೇ ಸ್ಥಳ ಕಂಡುಬಂದಿಲ್ಲ",
+      "emptyDescription": "ಬೇರೆ ಹುಡುಕಾಟ ಪ್ರಯತ್ನಿಸಿ ಅಥವಾ ಪ್ರಕಾರ ಫಿಲ್ಟರ್ ತೆರವುಗೊಳಿಸಿ.",
+      "addressNotSet": "ವಿಳಾಸ ಹೊಂದಿಸಿಲ್ಲ",
+      "mealsIncluded": "ಊಟ ಸೇರಿದೆ",
+      "alreadyMember": "ನೀವು ಸದಸ್ಯರು",
+      "viewDetails": "ವಿವರಗಳನ್ನು ನೋಡಿ",
+      "detailTitle": "ಸ್ಥಳದ ವಿವರಗಳು",
+      "amenities": "ಸೌಲಭ್ಯಗಳು",
+      "noAmenities": "ಯಾವುದೇ ಸೌಲಭ್ಯಗಳು ಪಟ್ಟಿಯಲ್ಲಿಲ್ಲ",
+      "inviteNotice": "Joining requires an owner invitation. Ask the owner to invite you to this place.",
+      "askInvite": "ಮಾಲೀಕರನ್ನು ಆಮಂತ್ರಿಸಲು ಕೇಳಿ",
+      "openDashboard": "ಸ್ಪೇಸ್ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ತೆರೆಯಿರಿ",
+      "close": "ಮುಚ್ಚಿ",
+      "ctaFindPlace": "ಸ್ಥಳ ಹುಡುಕಿ",
+      "errorLoad": "ಸ್ಥಳಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+      "paginationAria": "ಸ್ಥಳ ಫಲಿತಾಂಶ ಪುಟಗಳು",
+      "gender": {
+        "MALE": "ಪುರುಷ",
+        "FEMALE": "ಮಹಿಳೆ",
+        "MIXED": "Gents and Ladies"
+      }
     },
     "createSpace": {
       "eyebrow": "ಹೊಸ ಆಸ್ತಿ",

@@ -6,12 +6,11 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useDailyMenus, useMealHeadcountDay } from '@/modules/meals/hooks/useMeals';
 import { formatMenuDateLabel } from '@/modules/meals/utils/mealDates';
-import { spaceMealHeadcountPath, spaceMealsPath } from '@/routes/paths';
+import { mealTypeTheme } from '@/modules/meals/utils/mealTypeTheme';
+import { spaceMealsEditPath, spaceMealsPath } from '@/routes/paths';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
-import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
 import type { DailyMenuResponse, MealType } from '@/shared/types/meals';
-import { IconBadge } from './IconBadge';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
 
 const MEAL_TYPES: MealType[] = ['BREAKFAST', 'LUNCH', 'DINNER'];
@@ -20,12 +19,6 @@ const ICONS: Record<MealType, LucideIcon> = {
   BREAKFAST: Sunrise,
   LUNCH: Sun,
   DINNER: Moon,
-};
-
-const MEAL_TONES: Record<MealType, SemanticTone> = {
-  BREAKFAST: 'peach',
-  LUNCH: 'success',
-  DINNER: 'purple',
 };
 
 function hasPlannedMenu(menu: DailyMenuResponse | undefined): boolean {
@@ -39,8 +32,7 @@ type MealOperationsTodayCardProps = {
 };
 
 /**
- * Row-1 center — Meal operations.
- * Quiet title + date + one status line; Breakfast / Lunch / Dinner tiles.
+ * Dashboard meal operations — tiles open the menu editor (mobile parity).
  */
 export function MealOperationsTodayCard({
   spaceId,
@@ -65,8 +57,8 @@ export function MealOperationsTodayCard({
   const dateLabel = formatMenuDateLabel(menuDate, i18n.language);
 
   const goPlan = () => navigate(spaceMealsPath(spaceId, menuDate));
-  const goHeadcount = (mealType: MealType) =>
-    navigate(spaceMealHeadcountPath(spaceId, { date: menuDate, mealType }));
+  const goEdit = (mealType: MealType) =>
+    navigate(spaceMealsEditPath(spaceId, { date: menuDate, mealType }));
 
   return (
     <Box
@@ -90,27 +82,52 @@ export function MealOperationsTodayCard({
         boxSizing: 'border-box',
       }}
     >
-      <Typography
+      <Box
         sx={{
-          ...DASHBOARD_UX.sectionHeading,
-          color: s.textPrimary,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
           minWidth: 0,
         }}
       >
-        {t('dashboard.mealOperations.title', { defaultValue: 'Meal operations' })}
-        {' '}
-        <Box
-          component="span"
+        <Typography
           sx={{
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            lineHeight: 1.3,
-            color: s.textSecondary,
+            ...DASHBOARD_UX.sectionHeading,
+            color: s.textPrimary,
+            minWidth: 0,
           }}
         >
-          ({dateLabel})
-        </Box>
-      </Typography>
+          {t('dashboard.mealOperations.title', { defaultValue: 'Meal operations' })}{' '}
+          <Box
+            component="span"
+            sx={{
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              lineHeight: 1.3,
+              color: s.textSecondary,
+            }}
+          >
+            ({dateLabel})
+          </Box>
+        </Typography>
+        <Typography
+          component="button"
+          type="button"
+          onClick={goPlan}
+          sx={{
+            ...DASHBOARD_UX.link,
+            color: colors.primaryDark,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            fontWeight: 700,
+          }}
+        >
+          {t('dashboard.operations.planMenuCta', { defaultValue: 'Plan menu' })} →
+        </Typography>
+      </Box>
 
       <Box
         sx={{
@@ -128,8 +145,7 @@ export function MealOperationsTodayCard({
           const menu = menus.menus.find((row) => row.mealType === mealType);
           const planned = hasPlannedMenu(menu);
           const Icon = ICONS[mealType];
-          const tone = MEAL_TONES[mealType];
-          const surface = semanticSurface(tone, theme.palette.mode);
+          const mealTheme = mealTypeTheme(mealType);
           const isShared = planned && menu?.status === 'PUBLISHED';
           const count = headcountByType[mealType];
 
@@ -145,24 +161,16 @@ export function MealOperationsTodayCard({
             statusTone = 'warning';
           }
 
-          const onSlotPress = () => {
-            if (isShared) {
-              goHeadcount(mealType);
-              return;
-            }
-            goPlan();
-          };
-
           return (
             <Box
               key={mealType}
               role="button"
               tabIndex={0}
-              onClick={onSlotPress}
+              onClick={() => goEdit(mealType)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  onSlotPress();
+                  goEdit(mealType);
                 }
               }}
               aria-label={`${t(`meals.mealType.${mealType}`)} — ${statusLabel}`}
@@ -170,8 +178,8 @@ export function MealOperationsTodayCard({
                 minWidth: 0,
                 px: 1.1,
                 py: 1,
-                bgcolor: surface.bg,
-                border: `1px solid ${surface.border}`,
+                bgcolor: mealTheme.soft,
+                border: `1px solid #E5E7EB`,
                 borderRadius: `${DASHBOARD_UX.tileRadius}px`,
                 display: 'flex',
                 flexDirection: 'column',
@@ -179,72 +187,55 @@ export function MealOperationsTodayCard({
                 cursor: 'pointer',
                 transition: DASHBOARD_UX.transition,
                 '&:hover': {
-                  bgcolor: s.surface,
                   boxShadow: s.shadow,
                   transform: 'translateY(-1px)',
                 },
                 '&:focus-visible': {
-                  outline: `2px solid ${colors.primary}`,
+                  outline: `2px solid ${mealTheme.accent}`,
                   outlineOffset: 2,
                 },
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.65, minWidth: 0 }}>
-                <IconBadge tone={tone}>
+                <Box
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: '8px',
+                    bgcolor: `${mealTheme.accent}1A`,
+                    color: mealTheme.accent,
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                    '& svg': { width: 16, height: 16, strokeWidth: 2.2 },
+                  }}
+                >
                   <Icon />
-                </IconBadge>
+                </Box>
                 <Typography
                   sx={{
-                    ...DASHBOARD_UX.cardTitle,
-                    color: s.textPrimary,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    flex: 1,
+                    fontSize: '0.9375rem',
+                    fontWeight: 700,
+                    color: mealTheme.accent,
                     minWidth: 0,
                   }}
+                  noWrap
                 >
                   {t(`meals.mealType.${mealType}`)}
                 </Typography>
               </Box>
-
               <StatusChip label={statusLabel} tone={statusTone} />
-
-              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                {isShared && count != null ? (
-                  <>
-                    <Typography
-                      sx={{
-                        ...DASHBOARD_UX.largeNumber,
-                        color: s.textPrimary,
-                      }}
-                    >
-                      {count}
-                    </Typography>
-                    <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted, mt: 0.1 }}>
-                      {t('dashboard.headcount.label', { defaultValue: 'Headcount' })}
-                    </Typography>
-                  </>
-                ) : (
-                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mt: 0.25 }}>
-                    {planned
-                      ? t('dashboard.todaysOverview.notShared')
-                      : t('meals.planning.emptySlot', { defaultValue: 'Not planned' })}
-                  </Typography>
-                )}
-              </Box>
-
               <Typography
                 sx={{
-                  ...DASHBOARD_UX.link,
-                  color: 'primary.dark',
-                  alignSelf: 'flex-start',
-                  mt: 'auto',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: mealTheme.accent,
                 }}
               >
-                {isShared
-                  ? `${t('dashboard.headcount.viewDetails', { defaultValue: 'View details' })} →`
-                  : `${t('dashboard.mealOperations.planMenu')} →`}
+                {planned
+                  ? t('meals.planning.selector.viewMenu', { defaultValue: 'View menu' })
+                  : t('meals.planning.selector.planMenu', { defaultValue: 'Plan menu' })}
+                {isShared && count != null ? ` · ${count}` : ''}
               </Typography>
             </Box>
           );

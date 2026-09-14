@@ -100,6 +100,7 @@
   },
   "navigation": {
     "mySpaces": "నా స్పేస్‌లు",
+    "findAPlace": "స్థలం కనుగొనండి",
     "profile": "ప్రొఫైల్",
     "createSpace": "స్పేస్ సృష్టించు",
     "inviteMember": "సభ్యుడిని ఆహ్వానించు",
@@ -152,7 +153,12 @@
       "verifyContinue": "ధృవీకరించి కొనసాగించు",
       "devHint": "మీ OTPని బ్యాకెండ్ డెవలప్‌మెంట్ లాగ్‌లో చూడండి.",
       "wrongNumber": "తప్పు నంబరా?",
-      "changeIt": "మార్చు"
+      "changeIt": "మార్చు",
+      "smsSampleTitle": "Look for this SMS",
+      "smsSampleSender": "SMS from ACOMI",
+      "smsSampleBody": "[Hello] Your OTP for Phone Verification is XXXXXX. Valid for 5 mins - [Southern Express]",
+      "smsSampleCaption": "“Southern Express” is only our SMS provider’s template name — this code is for ACOMI.",
+      "smsSampleA11y": "Sample of the ACOMI OTP SMS message"
     }
   },
   "spaces": {
@@ -164,6 +170,39 @@
       "emptyDescription": "ప్రారంభించడానికి మీ మొదటి Mess, PG, Hostel లేదా Rental స్పేస్ సృష్టించండి.",
       "createFab": "కొత్త స్పేస్ సృష్టించు",
       "openProfile": "ప్రొఫైల్ మరియు సెట్టింగ్‌లు తెరవండి"
+    },
+    "findPlace": {
+      "eyebrow": "Search for a place",
+      "heroTitle": "Search for a place",
+      "heroSubtitle": "Search PGs, hostels, rentals and co-living spaces around you.",
+      "subtitle": "ACOMIలో సక్రియ స్పేస్‌లను చూడండి. చేరడానికి ఇంకా యజమాని ఆహ్వానం అవసరం.",
+      "searchLabel": "స్థలం కనుగొనండి",
+      "searchPlaceholder": "పేరు లేదా చిరునామాతో వెతకండి…",
+      "filterAll": "అన్నీ",
+      "resultCount_one": "{{count}} స్థలం కనుగొనబడింది",
+      "resultCount_other": "{{count}} స్థలాలు కనుగొనబడ్డాయి",
+      "sortRecommended": "Sort by · Recommended",
+      "emptyTitle": "స్థలాలు కనుగొనబడలేదు",
+      "emptyDescription": "వేరే శోధన ప్రయత్నించండి లేదా రకం ఫిల్టర్‌ను తీసివేయండి.",
+      "addressNotSet": "చిరునామా సెట్ చేయలేదు",
+      "mealsIncluded": "భోజనం చేర్చబడింది",
+      "alreadyMember": "మీరు సభ్యులు",
+      "viewDetails": "వివరాలు చూడండి",
+      "detailTitle": "స్థలం వివరాలు",
+      "amenities": "సౌకర్యాలు",
+      "noAmenities": "సౌకర్యాలు జాబితా చేయబడలేదు",
+      "inviteNotice": "Joining requires an owner invitation. Ask the owner to invite you to this place.",
+      "askInvite": "యజమానిని ఆహ్వానించమని అడగండి",
+      "openDashboard": "స్పేస్ డాష్‌బోర్డ్ తెరవండి",
+      "close": "మూసివేయి",
+      "ctaFindPlace": "స్థలం కనుగొనండి",
+      "errorLoad": "స్థలాలను లోడ్ చేయలేకపోయాము. దయచేసి మళ్లీ ప్రయత్నించండి.",
+      "paginationAria": "స్థలం ఫలితాల పేజీలు",
+      "gender": {
+        "MALE": "పురుషుడు",
+        "FEMALE": "స్త్రీ",
+        "MIXED": "Gents and Ladies"
+      }
     },
     "createSpace": {
       "eyebrow": "కొత్త ఆస్తి",

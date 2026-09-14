@@ -11,17 +11,12 @@ import {
   resolveMealStatusKind,
   type SlotShareState,
 } from '../utils/shareMenuSelection';
+import { mealTypeTheme } from '../utils/mealTypeTheme';
 
 const ICONS: Record<MealType, LucideIcon> = {
   BREAKFAST: Sunrise,
   LUNCH: Sun,
   DINNER: Moon,
-};
-
-const ACCENTS: Record<MealType, string> = {
-  BREAKFAST: '#D97706',
-  LUNCH: colors.primaryDark,
-  DINNER: '#7C3AED',
 };
 
 type ShareMealSlotCheckboxProps = {
@@ -47,7 +42,8 @@ export function ShareMealSlotCheckbox({
   const statusKind = resolveMealStatusKind(menu);
   const shareable = state === 'shareable' && !disabled;
   const Icon = ICONS[mealType];
-  const accent = ACCENTS[mealType];
+  const mealTheme = mealTypeTheme(mealType);
+  const accent = mealTheme.accent;
   const mealLabel = t(`meals.mealType.${mealType}`);
 
   const statusTone =
@@ -92,14 +88,16 @@ export function ShareMealSlotCheckbox({
         p: 1.5,
         mb: 1,
         borderRadius: `${DASHBOARD_UX.radius}px`,
-        border: `1px solid ${selected && shareable ? colors.primary : s.border}`,
-        bgcolor: shareable ? s.surface : s.elevated,
+        border: `1.5px solid ${
+          selected && shareable ? mealTheme.borderStrong : mealTheme.border
+        }`,
+        bgcolor: shareable ? mealTheme.soft : s.elevated,
         boxShadow: shareable ? s.shadow : 'none',
         cursor: shareable ? 'pointer' : 'default',
         opacity: shareable ? 1 : 0.75,
         transition: DASHBOARD_UX.transition,
         '&:hover': shareable
-          ? { bgcolor: selected ? s.successTint : s.hover, borderColor: colors.primary }
+          ? { borderColor: mealTheme.borderStrong }
           : undefined,
       }}
     >

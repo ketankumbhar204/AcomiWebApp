@@ -69,12 +69,14 @@ export function MemberDocumentsSection({
   const [addOpen, setAddOpen] = useState(false);
   const [documentType, setDocumentType] = useState<MemberDocumentType | null>(null);
   const [documentNumber, setDocumentNumber] = useState('');
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const openAdd = () => {
     setDocumentType(null);
     setDocumentNumber('');
+    setDocumentFile(null);
     setFormError(null);
     setAddOpen(true);
   };
@@ -88,6 +90,10 @@ export function MemberDocumentsSection({
       setFormError(t('membership.documents.numberRequired'));
       return;
     }
+    if (!documentFile) {
+      setFormError(t('membership.documents.fileRequired', { defaultValue: 'Please choose a file.' }));
+      return;
+    }
 
     try {
       await addMemberDocument.mutateAsync({
@@ -95,7 +101,7 @@ export function MemberDocumentsSection({
         body: {
           documentType,
           documentNumber: documentNumber.trim(),
-          fileUrl: PENDING_UPLOAD_FILE_URL,
+          localFile: documentFile,
         },
       });
       enqueueSnackbar(t('membership.documents.successToast'), { variant: 'success' });
@@ -241,6 +247,20 @@ export function MemberDocumentsSection({
               onChange={(e) => setDocumentNumber(e.target.value)}
               placeholder={t('membership.documents.numberPlaceholder')}
             />
+            <Button component="label" variant="outlined" sx={dashOutlinedButtonSx}>
+              {documentFile
+                ? documentFile.name
+                : t('membership.documents.chooseFile', { defaultValue: 'Choose file' })}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                hidden
+                onChange={(e) => {
+                  setDocumentFile(e.target.files?.[0] ?? null);
+                  e.target.value = '';
+                }}
+              />
+            </Button>
             {formError ? (
               <Typography sx={{ ...DASHBOARD_UX.caption, color: 'error.main' }}>
                 {formError}

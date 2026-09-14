@@ -13,6 +13,7 @@ import type {
   UpdateComplaintResolutionRequest,
   UpdateComplaintStatusRequest,
 } from '@/shared/types/complaints';
+import { ensureUploadedFileId, uploadLocalFile } from '@/shared/services/fileUploadService';
 
 export const complaintsApi = {
   list: (spaceId: string, params?: ListComplaintsParams) =>
@@ -29,10 +30,26 @@ export const complaintsApi = {
       ),
     ),
 
-  create: (spaceId: string, body: CreateComplaintRequest) =>
-    unwrapApiResponse(
-      apiClient.post<ApiResponse<ComplaintResponse>>(`/spaces/${spaceId}/complaints`, body),
-    ),
+  create: async (
+    spaceId: string,
+    body: CreateComplaintRequest & { localFiles?: File[] },
+  ) => {
+    const attachmentFileIds = [...(body.attachmentFileIds ?? [])];
+    if (body.localFiles?.length) {
+      for (const file of body.localFiles) {
+        attachmentFileIds.push(
+          await uploadLocalFile(file, { purpose: 'COMPLAINT_ATTACHMENT', spaceId }),
+        );
+      }
+    }
+    const { localFiles: _ignored, ...rest } = body;
+    return unwrapApiResponse(
+      apiClient.post<ApiResponse<ComplaintResponse>>(`/spaces/${spaceId}/complaints`, {
+        ...rest,
+        attachmentFileIds: attachmentFileIds.length ? attachmentFileIds : undefined,
+      }),
+    );
+  },
 
   updateStatus: (spaceId: string, complaintId: string, body: UpdateComplaintStatusRequest) =>
     unwrapApiResponse(
@@ -50,13 +67,24 @@ export const complaintsApi = {
       ),
     ),
 
-  addAttachment: (spaceId: string, complaintId: string, body: AddComplaintAttachmentRequest) =>
-    unwrapApiResponse(
+  addAttachment: async (
+    spaceId: string,
+    complaintId: string,
+    body: AddComplaintAttachmentRequest & { localFile?: File },
+  ) => {
+    const fileId = await ensureUploadedFileId(body.fileId, body.localFile, {
+      purpose: 'COMPLAINT_ATTACHMENT',
+      spaceId,
+      complaintId,
+    });
+    const { localFile: _ignored, ...rest } = body;
+    return unwrapApiResponse(
       apiClient.post<ApiResponse<ComplaintResponse>>(
         `/spaces/${spaceId}/complaints/${complaintId}/attachments`,
-        body,
+        { ...rest, fileId },
       ),
-    ),
+    );
+  },
 
   reopen: (spaceId: string, complaintId: string, body?: ReopenComplaintRequest) =>
     unwrapApiResponse(

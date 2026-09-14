@@ -67,7 +67,8 @@ export function useComplaintMutations(spaceId: string | undefined) {
 
   return {
     create: useMutation({
-      mutationFn: (body: CreateComplaintRequest) => complaintsApi.create(spaceId!, body),
+      mutationFn: (body: CreateComplaintRequest & { localFiles?: File[] }) =>
+        complaintsApi.create(spaceId!, body),
       onSuccess: invalidate,
     }),
     updateStatus: useMutation({
@@ -96,7 +97,7 @@ export function useComplaintMutations(spaceId: string | undefined) {
         body,
       }: {
         complaintId: string;
-        body: AddComplaintAttachmentRequest;
+        body: AddComplaintAttachmentRequest & { localFile?: File };
       }) => complaintsApi.addAttachment(spaceId!, complaintId, body),
       onSuccess: invalidate,
     }),

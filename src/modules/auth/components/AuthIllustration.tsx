@@ -1,7 +1,8 @@
-import { Box, Typography, useTheme } from '@mui/material';
+import { Box, Link, Typography, useTheme } from '@mui/material';
 import { Building2, IndianRupee, Users, UtensilsCrossed } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { PUBLIC_SITE } from '@/shared/constants/publicSite';
 import { colors, darkColors } from '@/shared/theme/colors';
 import { AUTH_UX, authSurfaces } from '../theme/authUx';
 import { AuthBrandMark } from './AuthBrandMark';
@@ -67,13 +68,26 @@ export function AuthIllustration() {
         boxSizing: 'border-box',
         minHeight: '100%',
         px: { md: 5, lg: 7 },
-        pt: { md: 6, lg: 7 },
+        pt: { md: 10, lg: 11 },
         pb: { md: 22, lg: 24 },
         position: 'relative',
       }}
     >
       <Box sx={{ position: 'relative', zIndex: 2, maxWidth: 440 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+        <Box
+          component={Link}
+          href={PUBLIC_SITE.home}
+          underline="none"
+          aria-label={t('auth.backToWebsite', { defaultValue: 'Back to website' })}
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 1.25,
+            color: 'inherit',
+            borderRadius: 2,
+            '&:hover': { opacity: 0.9 },
+          }}
+        >
           <AuthBrandMark size={36} />
           <Typography sx={{ ...AUTH_UX.brandName, color: a.brand, letterSpacing: '-0.02em' }}>
             {t('auth.login.brandPanelTitle')}

@@ -221,7 +221,8 @@ export function CustomerSubscriptionPlansPage() {
                       payload: {
                         planId: selected.planId,
                         paymentReference: proof.referenceNumber?.trim() || undefined,
-                        proofImageBase64: proof.proofImageBase64?.trim() || undefined,
+                        proofFileId: proof.proofFileId,
+                        localFile: proof.localFile,
                         customerNotes: noteParts.join('\n') || undefined,
                       },
                     });

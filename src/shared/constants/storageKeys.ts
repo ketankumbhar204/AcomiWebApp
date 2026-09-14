@@ -9,4 +9,8 @@ export const STORAGE_KEYS = {
   /** Aligns with mobile `@acomi/language`. */
   appLanguage: 'acomi.ui.language',
   adminMode: 'acomi.admin.mode',
+  /** Last onboarding choice: member vs owner (session UX only, not account role). */
+  accountIntent: 'acomi.onboarding.accountIntent',
 } as const;
+
+export type AccountIntent = 'member' | 'owner';

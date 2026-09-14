@@ -30,16 +30,10 @@ export type UniversalPaymentProofFormProps = {
   methodVariant?: 'chips' | 'select';
 };
 
-function readImageAsBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? '');
-      resolve(result.includes(',') ? result.split(',')[1]! : result);
-    };
-    reader.onerror = () => reject(reader.error ?? new Error('read failed'));
-    reader.readAsDataURL(file);
-  });
+function revokePreview(url: string | undefined) {
+  if (url?.startsWith('blob:')) {
+    URL.revokeObjectURL(url);
+  }
 }
 
 export function UniversalPaymentProofForm({
@@ -54,22 +48,41 @@ export function UniversalPaymentProofForm({
   const s = dashSurfaces(theme.palette.mode);
   const payload = { ...EMPTY_PAYMENT_PROOF, ...value };
   const method = payload.paymentMethod ?? 'UPI';
-  const hasProof = Boolean(payload.proofImageBase64?.trim());
-  const previewSrc = hasProof
-    ? `data:image/jpeg;base64,${payload.proofImageBase64}`
-    : null;
+  const hasProof = Boolean(
+    payload.localFile || payload.proofFileId?.trim() || payload.proofImageBase64?.trim(),
+  );
+  const previewSrc = payload.previewUrl
+    ? payload.previewUrl
+    : payload.proofImageBase64?.trim()
+      ? `data:image/jpeg;base64,${payload.proofImageBase64}`
+      : null;
 
   const patch = (partial: Partial<PaymentProofSubmission>) => {
     onChange({ ...payload, ...partial });
   };
 
-  const onFile = async (file: File | null) => {
+  const clearProof = () => {
+    revokePreview(payload.previewUrl);
+    patch({
+      proofImageBase64: undefined,
+      proofFileId: undefined,
+      localFile: undefined,
+      previewUrl: undefined,
+    });
+  };
+
+  const onFile = (file: File | null) => {
     if (!file) {
-      patch({ proofImageBase64: undefined });
+      clearProof();
       return;
     }
-    const base64 = await readImageAsBase64(file);
-    patch({ proofImageBase64: base64 });
+    revokePreview(payload.previewUrl);
+    patch({
+      localFile: file,
+      previewUrl: URL.createObjectURL(file),
+      proofImageBase64: undefined,
+      proofFileId: undefined,
+    });
   };
 
   return (
@@ -113,10 +126,10 @@ export function UniversalPaymentProofForm({
             const file = e.target.files?.[0] ?? null;
             e.target.value = '';
             if (hasProof && !file) {
-              patch({ proofImageBase64: undefined });
+              clearProof();
               return;
             }
-            void onFile(file);
+            onFile(file);
           }}
         />
       </Button>
@@ -124,7 +137,7 @@ export function UniversalPaymentProofForm({
         <Button
           size="small"
           disabled={disabled}
-          onClick={() => patch({ proofImageBase64: undefined })}
+          onClick={clearProof}
           sx={{ alignSelf: 'flex-start', ...dashOutlinedButtonSx }}
         >
           {t('meals.customerPlans.removeScreenshot', { defaultValue: 'Remove screenshot' })}

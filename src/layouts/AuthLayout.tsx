@@ -1,8 +1,12 @@
-import { Box, useTheme } from '@mui/material';
+import { Box, Link, useTheme } from '@mui/material';
+import { ArrowLeft } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AuthIllustration } from '@/modules/auth/components/AuthIllustration';
 import { AuthPhonePreview } from '@/modules/auth/components/AuthPhonePreview';
 import { authSurfaces } from '@/modules/auth/theme/authUx';
+import { DASHBOARD_UX } from '@/modules/dashboard/theme/dashboardUx';
+import { PUBLIC_SITE } from '@/shared/constants/publicSite';
 import { SkipLink, MAIN_CONTENT_ID } from '@/shared/components/SkipLink';
 
 type AuthLayoutProps = {
@@ -15,6 +19,7 @@ type AuthLayoutProps = {
  * and create a second scrollbar.
  */
 export function AuthLayout({ children }: AuthLayoutProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const a = authSurfaces(theme.palette.mode);
   const isDark = theme.palette.mode === 'dark';
@@ -55,6 +60,43 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           pointerEvents: 'none',
         }}
       />
+
+      <Box
+        sx={{
+          position: 'absolute',
+          top: { xs: 14, md: 20 },
+          left: { xs: 14, md: 28 },
+          zIndex: 3,
+        }}
+      >
+        <Link
+          href={PUBLIC_SITE.home}
+          underline="none"
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.75,
+            px: 1.25,
+            py: 0.75,
+            borderRadius: 999,
+            border: `1px solid ${a.border}`,
+            bgcolor: isDark ? 'rgba(17, 24, 39, 0.72)' : 'rgba(255,255,255,0.88)',
+            color: a.textSecondary,
+            ...DASHBOARD_UX.caption,
+            fontWeight: 700,
+            backdropFilter: 'blur(8px)',
+            transition: 'color 120ms ease, border-color 120ms ease, background-color 120ms ease',
+            '&:hover': {
+              color: a.textPrimary,
+              borderColor: a.brand,
+              bgcolor: isDark ? 'rgba(17, 24, 39, 0.9)' : '#FFFFFF',
+            },
+          }}
+        >
+          <ArrowLeft size={14} strokeWidth={2.4} />
+          {t('auth.backToWebsite', { defaultValue: 'Back to website' })}
+        </Link>
+      </Box>
 
       <Box
         sx={{

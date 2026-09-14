@@ -161,6 +161,10 @@ export const authApi = {
     );
   },
 
+  logout: async (): Promise<void> => {
+    await unwrapVoidResponse(apiClient.post('/auth/logout'));
+  },
+
   changeMobile: async (payload: OtpVerifiedActionRequest): Promise<AuthTokenResponse> => {
     if (env.isDevelopment) {
       console.log(`${LOG_TAG} changeMobile → mobile:`, payload.mobileNumber);

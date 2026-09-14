@@ -52,13 +52,13 @@ export function navigateFromNotificationType(
       }
       return;
     case 'PAYMENT_NEEDS_REVIEW':
-      navigate(spacePaymentsPath(spaceId, undefined, { tab: 'submitted' }));
+      navigate(spacePaymentsPath(spaceId, undefined, { filter: 'underReview', queue: 'SUBMITTED' }));
       return;
     case 'PAYMENT_NEEDS_UPDATE':
-      navigate(spacePaymentsPath(spaceId, undefined, { tab: 'changesRequested' }));
+      navigate(spacePaymentsPath(spaceId, undefined, { filter: 'underReview', queue: 'NEEDS_UPDATE' }));
       return;
     case 'PAYMENT_OVERDUE':
-      navigate(spacePaymentsPath(spaceId, undefined, { tab: 'members' }));
+      navigate(spacePaymentsPath(spaceId, undefined, { filter: 'pending' }));
       return;
     case 'MENU_NOT_PLANNED':
     case 'MEAL_RESPONSES_BELOW_THRESHOLD':

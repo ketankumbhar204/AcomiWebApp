@@ -7,6 +7,7 @@ import { OnboardingLayout } from '@/layouts/OnboardingLayout';
 import { AUTH_UX, authSurfaces } from '@/modules/auth/theme/authUx';
 import { OnboardingChoiceCard } from '@/modules/onboarding/components/OnboardingChoiceCard';
 import { OnboardingHeroVisual } from '@/modules/onboarding/components/OnboardingHeroVisual';
+import { setAccountIntent } from '@/modules/onboarding/utils/accountIntent';
 import { ROUTES } from '@/routes/paths';
 import { colors } from '@/shared/theme/colors';
 
@@ -154,7 +155,10 @@ export function OnboardingChoicePage() {
             accent={a.brand}
             accentSoft={a.brandSoft}
             illustration="owner"
-            onClick={() => navigate(ROUTES.createSpace)}
+            onClick={() => {
+              setAccountIntent('owner');
+              navigate(ROUTES.createSpace);
+            }}
           />
           <OnboardingChoiceCard
             icon={UsersRound}
@@ -171,7 +175,10 @@ export function OnboardingChoicePage() {
             accent="#2563EB"
             accentSoft={theme.palette.mode === 'dark' ? 'rgba(37, 99, 235, 0.18)' : '#E8F0FF'}
             illustration="member"
-            onClick={() => navigate(ROUTES.joinSpace)}
+            onClick={() => {
+              setAccountIntent('member');
+              navigate(ROUTES.memberHome);
+            }}
           />
 
           <Box sx={{ display: { xs: 'block', lg: 'none' } }}>

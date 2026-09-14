@@ -2,6 +2,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  Divider,
   TextField,
   Typography,
 } from '@mui/material';
@@ -121,8 +122,7 @@ export function AdminSavedAddressPicker({ value, onChange }: AdminSavedAddressPi
               component="li"
               key={option.id}
               {...rest}
-              sx={{ alignItems: 'flex-start !important', minWidth: 0 }}
-            >
+              sx={{ alignItems: 'flex-start !important', minWidth: 0 }}>
               <MapPin size={16} style={{ marginTop: 4, flexShrink: 0 }} />
               <Box sx={{ ml: 1, minWidth: 0 }}>
                 <Typography sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
@@ -142,16 +142,32 @@ export function AdminSavedAddressPicker({ value, onChange }: AdminSavedAddressPi
             placeholder={t('admin.addressPicker.searchPlaceholder')}
             size="small"
             error={Boolean(error)}
-            helperText={error ?? t('admin.addressPicker.helper')}
+            helperText={error}
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
           />
         )}
       />
+
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, my: 1.75 }}>
+        <Divider sx={{ flex: 1 }} />
+        <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary' }}>
+          {t('admin.addressPicker.or')}
+        </Typography>
+        <Divider sx={{ flex: 1 }} />
+      </Box>
+
       <Button
         type="button"
         startIcon={<Plus size={16} />}
         onClick={startNewAddress}
-        sx={{ mt: 1, textTransform: 'none' }}
-      >
+        sx={{
+          textTransform: 'none',
+          fontWeight: 700,
+          color: '#15803D',
+          px: 0,
+          minWidth: 0,
+          '&:hover': { bgcolor: 'transparent', color: '#166534' },
+        }}>
         {t('admin.addressPicker.addNew')}
       </Button>
       {selected && value.addressLine ? (

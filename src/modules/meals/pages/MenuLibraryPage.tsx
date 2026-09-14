@@ -62,6 +62,7 @@ import { ConfigureLibraryExtrasDrawer } from '../components/ConfigureLibraryExtr
 import { CreateComboPlannerDialog } from '../components/CreateComboPlannerDialog';
 import { FoodItemFormDrawer } from '../components/FoodItemFormDrawer';
 import { MealComboFormDrawer } from '../components/MealComboFormDrawer';
+import { MenuLibraryReadyTip } from '../components/MenuLibraryReadyTip';
 import {
   useFoodCategories,
   useFoodItems,
@@ -967,6 +968,15 @@ export function MenuLibraryPage() {
                 </Button>
               ) : null}
             </Stack>
+          }
+        />
+
+        <MenuLibraryReadyTip
+          spaceId={spaceId}
+          visible={
+            !items.loading &&
+            !combos.loading &&
+            (items.items.some((i) => i.isActive) || combos.combos.some((c) => c.isActive))
           }
         />
 

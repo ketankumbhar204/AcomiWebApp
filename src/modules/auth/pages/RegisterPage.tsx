@@ -4,7 +4,7 @@ import { UserRound } from 'lucide-react';
 import { useMemo } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/routes/paths';
 import { AUTH_UX, authContainedButtonSx, authSurfaces } from '../theme/authUx';
 import { AuthCard } from '../components/AuthCard';
@@ -15,17 +15,29 @@ import { NameInput } from '../components/NameInput';
 import { PasswordInput } from '../components/PasswordInput';
 import { useOtpCooldown } from '../hooks/useOtpCooldown';
 import { useSendOtp } from '../hooks/useSendOtp';
+import { useRegister } from '../hooks/usePasswordAuth';
 import { formatCountdown } from '../utils/otpAuthErrors';
 import { createRegisterSchema, type RegisterFormValues } from '../schemas/loginSchema';
 import { useRegistrationDraftStore } from '@/store/registrationDraftStore';
+import { returnPathFromLocation } from '@/shared/utils/safeReturnPath';
 
 export function RegisterPage() {
   const { t } = useTranslation();
   const theme = useTheme();
   const a = authSurfaces(theme.palette.mode);
   const navigate = useNavigate();
-  const { sendOtp, isLoading, error, clearError } = useSendOtp();
+  const location = useLocation();
+  const returnTo = returnPathFromLocation(location);
+  const { sendOtp, isLoading: isSendingOtp, error: sendError, clearError: clearSendError } = useSendOtp();
+  const { register, isLoading: isRegistering, error: registerError, clearError: clearRegisterError } =
+    useRegister();
   const setCredentials = useRegistrationDraftStore((state) => state.setCredentials);
+  const isLoading = isSendingOtp || isRegistering;
+  const error = sendError || registerError;
+  const clearError = () => {
+    clearSendError();
+    clearRegisterError();
+  };
 
   const schema = useMemo(
     () =>
@@ -71,9 +83,21 @@ export function RegisterPage() {
       confirmPassword: values.confirmPassword,
     });
     const result = await sendOtp(values.mobileNumber, 'REGISTER');
-    if (result) {
-      navigate(ROUTES.registerOtp, { state: { mobileNumber: values.mobileNumber } });
+    if (!result) {
+      return;
     }
+    // Local backend may return a verification token so registration can skip the OTP screen.
+    if (result.otpSkipped && result.verificationToken) {
+      await register({
+        fullName: values.fullName.trim(),
+        mobileNumber: values.mobileNumber,
+        password: values.password,
+        confirmPassword: values.confirmPassword,
+        verificationToken: result.verificationToken,
+      });
+      return;
+    }
+    navigate(ROUTES.registerOtp, { state: { mobileNumber: values.mobileNumber, from: returnTo } });
   });
 
   return (
@@ -204,7 +228,8 @@ export function RegisterPage() {
           {t('auth.register.loginPrompt')}{' '}
           <Link
             component={RouterLink}
-            to={ROUTES.login}
+            to={returnTo ? `${ROUTES.login}?next=${encodeURIComponent(returnTo)}` : ROUTES.login}
+            state={returnTo ? { from: returnTo } : undefined}
             underline="hover"
             sx={{ ...AUTH_UX.label, color: a.brand }}
           >

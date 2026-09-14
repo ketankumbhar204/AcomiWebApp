@@ -28,6 +28,7 @@ import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardU
 import { useCustomerSubscriptionStatus } from '@/modules/meals/hooks/useCustomerSubscriptionStatus';
 import { useMemberMealActivity } from '@/modules/meals/hooks/useMemberMealActivity';
 import { useMealPolls } from '@/modules/meals/hooks/useMeals';
+import { PollClosesInHint } from '@/modules/meals/components/PollClosesInHint';
 import {
   buildRecentOrdersFromActivity,
   countMenuItemsFromPolls,
@@ -39,7 +40,7 @@ import {
   customerMealDateBounds,
   resolveCustomerMealFocusDate,
 } from '@/modules/meals/utils/customerMealFocusDate';
-import { buildMealSummaryFromPolls } from '@/modules/meals/utils/mealSelectionSummary';
+import { buildMealSummaryFromPolls, platesForSingleSelectOption } from '@/modules/meals/utils/mealSelectionSummary';
 import { showMealPrices } from '@/modules/meals/utils/mealPricingPolicy';
 import { ContentCard } from '@/shared/components/ContentCard';
 import { PeriodDayNav } from '@/shared/components/PeriodDayNav';
@@ -131,7 +132,8 @@ function platesForPoll(poll: MealPollSlot, multiQuantity: boolean): number {
   if (multiQuantity) {
     return (poll.mySelections ?? []).reduce((sum, row) => sum + (row.quantity > 0 ? row.quantity : 0), 0);
   }
-  return poll.mySelectedOptionId ? 1 : 0;
+  const option = poll.options.find((row) => row.id === poll.mySelectedOptionId);
+  return platesForSingleSelectOption(option);
 }
 
 function resolveCardState(
@@ -569,6 +571,13 @@ export function DashboardCustomerMealsSection({
             maxDate={maxDate}
             size="compact"
           />
+          {!isPastDate ? (
+            <Box sx={{ flex: 1, minWidth: 0, px: { sm: 1 } }}>
+              <PollClosesInHint polls={displayPolls} />
+            </Box>
+          ) : (
+            <Box sx={{ flex: 1, minWidth: 0 }} />
+          )}
           <Button
             variant="outlined"
             disabled={mealSelectionBlocked && !isPastDate && cardState === 'empty'}
@@ -581,6 +590,7 @@ export function DashboardCustomerMealsSection({
               px: 1.25,
               fontSize: 13,
               py: 0,
+              flexShrink: 0,
             }}
           >
             {headerChooseLabel}

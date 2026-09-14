@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Collapse,
   Stack,
   Typography,
   useTheme,
@@ -9,8 +8,6 @@ import {
 import {
   ArrowRight,
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
   Circle,
   CircleSlash,
   Clock3,
@@ -38,7 +35,6 @@ import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardU
 import { ContentCard } from '@/shared/components/ContentCard';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { LoadingState } from '@/shared/components/LoadingState';
-import { PageHeader } from '@/shared/components/PageHeader';
 import { PeriodDayNav } from '@/shared/components/PeriodDayNav';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { StickyFooter, StickyFooterClearance } from '@/shared/components/StickyFooter';
@@ -74,7 +70,15 @@ import {
   resolveCustomerMealFocusDate,
 } from '../utils/customerMealFocusDate';
 import { resolvePreferredDeliveryLocationId } from '../utils/mealPollDeliveryLocations';
+import { platesForSingleSelectOption } from '../utils/mealSelectionSummary';
 import { showMealPrices } from '../utils/mealPricingPolicy';
+import {
+  earliestOpenPollCloseAt,
+  formatPollClosesIn,
+  formatPollDeadline,
+  formatPollRemaining,
+  timezoneForPollClose,
+} from '../utils/pollCountdown';
 
 const MEAL_ICONS: Record<MealType, LucideIcon> = {
   BREAKFAST: Sunrise,
@@ -88,67 +92,27 @@ const MEAL_ACCENTS: Record<MealType, string> = {
   DINNER: '#7C3AED',
 };
 
-/** Soft header tints so Breakfast / Lunch / Dinner accordions are easy to tell apart. */
-const MEAL_HEADER_BG: Record<MealType, string> = {
+/** Soft band tints so Breakfast / Lunch / Dinner stay distinct without collapsing. */
+const MEAL_BAND_BG: Record<MealType, string> = {
   BREAKFAST: '#FFF7ED',
-  LUNCH: '#EAF7F0',
-  DINNER: '#F5F3FF',
+  LUNCH: '#F0FDF4',
+  DINNER: '#FAF5FF',
 };
 
-const MEAL_HEADER_BG_EXPANDED: Record<MealType, string> = {
-  BREAKFAST: '#FFEDD5',
-  LUNCH: '#DCF5E8',
-  DINNER: '#EDE9FE',
+const MEAL_BAND_BG_DARK: Record<MealType, string> = {
+  BREAKFAST: 'rgba(217, 119, 6, 0.14)',
+  LUNCH: 'rgba(16, 185, 129, 0.12)',
+  DINNER: 'rgba(124, 58, 237, 0.14)',
 };
 
 type QuantitySelections = Partial<Record<MealType, Record<string, number>>>;
 type DeliverySelections = Partial<Record<MealType, string>>;
 
-function foodTypeIcon(foodType?: FoodType | null): LucideIcon {
-  if (foodType === 'EGG') return Egg;
-  if (foodType === 'NON_VEG') return Drumstick;
-  return Leaf;
-}
-
-function foodTypeLabel(
-  foodType: FoodType | null | undefined,
-  t: (key: string, options?: Record<string, unknown>) => string,
-): string {
-  if (foodType === 'EGG') return t('meals.foodType.EGG', { defaultValue: 'Egg' });
-  if (foodType === 'NON_VEG') return t('meals.foodType.NON_VEG', { defaultValue: 'Non veg' });
-  if (foodType === 'VEG') return t('meals.foodType.VEG', { defaultValue: 'Veg' });
-  return '';
-}
-
-function formatCountdown(
-  closeAt: string | null | undefined,
-  t: (key: string, options?: Record<string, unknown>) => string,
-): string | null {
-  if (!closeAt) return null;
-  const ms = new Date(closeAt).getTime() - Date.now();
-  if (!Number.isFinite(ms) || ms <= 0) {
-    return t('meals.poll.closingSoon', { defaultValue: 'Closing soon' });
-  }
-  const hours = Math.floor(ms / (60 * 60 * 1000));
-  const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
-  if (hours >= 24) {
-    const days = Math.floor(hours / 24);
-    return t('meals.poll.closesInDays', {
-      defaultValue: 'Closes in {{count}}d',
-      count: days,
-    });
-  }
-  if (hours > 0) {
-    return t('meals.poll.closesInHoursMinutes', {
-      defaultValue: 'Closes in {{hours}}h {{minutes}}m',
-      hours,
-      minutes,
-    });
-  }
-  return t('meals.poll.closesInMinutes', {
-    defaultValue: 'Closes in {{count}}m',
-    count: Math.max(minutes, 1),
-  });
+function accentForFood(foodType?: FoodType | null): string {
+  if (foodType === 'EGG') return '#D97706';
+  if (foodType === 'NON_VEG') return '#B45309';
+  if (foodType === 'VEG') return colors.primaryDark;
+  return '#64748B';
 }
 
 function aggregatePollStatus(
@@ -206,8 +170,8 @@ function MetaChip({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
       spacing={0.6}
       sx={{
         alignItems: 'center',
-        px: 1.1,
-        py: 0.55,
+        px: 0.9,
+        py: 0.4,
         borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
         border: `1px solid ${s.border}`,
         bgcolor: s.surface,
@@ -233,14 +197,9 @@ function OptionMiniCard({
   showPrice: boolean;
   onSelect: () => void;
 }) {
-  const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const unavailable = option.optionType === 'NOT_AVAILABLE';
-  const FoodIcon = unavailable ? CircleSlash : foodTypeIcon(option.foodType);
-  const typeLabel = unavailable
-    ? t('meals.poll.notAvailableShort', { defaultValue: 'Skip' })
-    : foodTypeLabel(option.foodType, t);
   const priceLabel =
     showPrice && option.price != null && !unavailable
       ? formatCurrency(Number(option.price), option.currencyCode || 'INR')
@@ -255,16 +214,16 @@ function OptionMiniCard({
       aria-pressed={selected}
       sx={{
         display: 'flex',
-        alignItems: 'center',
-        gap: 1,
+        flexDirection: 'column',
+        alignItems: 'stretch',
         width: '100%',
-        textAlign: 'left',
-        p: 1.1,
-        minHeight: 56,
+        textAlign: 'center',
+        p: 0.7,
+        minHeight: 0,
         borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-        border: `1px solid ${selected ? colors.primaryDark : disabled ? s.divider : s.border}`,
+        border: `1.5px solid ${selected ? colors.primary : disabled ? s.divider : s.border}`,
         bgcolor: selected ? s.selected : disabled ? s.elevated : s.surface,
-        boxShadow: selected ? s.shadowHover : 'none',
+        boxShadow: 'none',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled && !selected ? 0.65 : 1,
         transition: DASHBOARD_UX.transition,
@@ -273,7 +232,7 @@ function OptionMiniCard({
         '&:hover': disabled
           ? undefined
           : {
-              borderColor: `${colors.primaryDark}66`,
+              borderColor: selected ? colors.primary : `${colors.primaryDark}66`,
               bgcolor: selected ? s.selected : s.hover,
             },
         '&:focus-visible': {
@@ -282,42 +241,52 @@ function OptionMiniCard({
         },
       }}
     >
-      {selected ? (
-        <CheckCircle2 size={18} color={colors.primaryDark} />
-      ) : (
-        <Circle size={18} color={s.textMuted} />
-      )}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', minHeight: 16, mb: 0.15 }}>
+        {selected ? (
+          <CheckCircle2 size={15} color={colors.primaryDark} />
+        ) : (
+          <Circle size={15} color={s.textMuted} />
+        )}
+      </Box>
       <Box
         sx={{
-          width: 28,
-          height: 28,
-          borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-          bgcolor: selected ? `${colors.primaryDark}18` : `${s.textMuted}14`,
-          color: selected ? colors.primaryDark : s.textMuted,
+          height: 44,
+          borderRadius: 1.25,
+          bgcolor: selected ? `${colors.primaryDark}14` : s.elevated,
+          color: unavailable ? s.textMuted : selected ? colors.primaryDark : accentForFood(option.foodType),
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          flexShrink: 0,
+          mb: 0.5,
         }}
       >
-        <FoodIcon size={14} />
+        {unavailable ? (
+          <CircleSlash size={22} />
+        ) : option.foodType === 'EGG' ? (
+          <Egg size={22} />
+        ) : option.foodType === 'NON_VEG' ? (
+          <Drumstick size={22} />
+        ) : (
+          <Leaf size={22} />
+        )}
       </Box>
-      <Box sx={{ minWidth: 0, flex: 1 }}>
-        <Typography
-          sx={{
-            ...DASHBOARD_UX.link,
-            color: disabled && !selected ? s.textMuted : s.textPrimary,
-          }}
-          noWrap
-        >
-          {option.label}
+      <Typography
+        sx={{
+          ...DASHBOARD_UX.smallCaption,
+          fontWeight: 600,
+          color: disabled && !selected ? s.textMuted : s.textPrimary,
+          lineHeight: 1.25,
+        }}
+        noWrap
+        title={option.label}
+      >
+        {option.label}
+      </Typography>
+      {priceLabel ? (
+        <Typography sx={{ ...DASHBOARD_UX.badge, color: s.textMuted, mt: 0.1 }} noWrap>
+          {priceLabel}
         </Typography>
-        {typeLabel || priceLabel ? (
-          <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }} noWrap>
-            {[typeLabel, priceLabel].filter(Boolean).join(' · ')}
-          </Typography>
-        ) : null}
-      </Box>
+      ) : null}
     </Box>
   );
 }
@@ -441,10 +410,9 @@ export function MealPollResponsePage() {
   const [paymentTouched, setPaymentTouched] = useState(false);
   const [paymentHighlight, setPaymentHighlight] = useState(false);
   const [paymentProof, setPaymentProof] = useState<PaymentProofSubmission>(EMPTY_PAYMENT_PROOF);
-  const [expandedMeal, setExpandedMeal] = useState<MealType | null>(null);
-  const [didInitExpand, setDidInitExpand] = useState(false);
   const [hydratedAt, setHydratedAt] = useState(0);
   const paymentSectionRef = useRef<HTMLDivElement | null>(null);
+  const mealSectionRefs = useRef<Partial<Record<MealType, HTMLDivElement | null>>>({});
 
   useEffect(() => {
     document.title = `${t('meals.poll.respondTitle')} · ${t('common.appName')}`;
@@ -465,9 +433,7 @@ export function MealPollResponsePage() {
   useEffect(() => {
     setTouched(false);
     setHydratedAt(0);
-    setDidInitExpand(false);
     setPaymentProof(EMPTY_PAYMENT_PROOF);
-    setExpandedMeal(null);
     setPaymentTouched(false);
     setPaymentHighlight(false);
   }, [menuDate]);
@@ -500,29 +466,13 @@ export function MealPollResponsePage() {
     !pollsQuery.loading && openPolls.length === 0 && polls.length > 0;
   const viewOnly = dateReadOnly || mealEditsLocked || pollsClosedOnly;
 
-  // One accordion open at a time — deep-link meal, else Breakfast / first available.
+  // Deep-link ?meal= scrolls that band into view (all meals stay expanded).
   useEffect(() => {
-    if (didInitExpand || polls.length === 0) return;
-    const fromQuery =
-      focusMealType != null
-        ? polls.find((p) => p.mealType === focusMealType)
-        : undefined;
-    const preferred =
-      fromQuery ??
-      polls.find((p) => p.mealType === 'BREAKFAST') ??
-      polls.find((p) => p.status === 'OPEN') ??
-      polls[0];
-    setExpandedMeal(preferred?.mealType ?? null);
-    setDidInitExpand(true);
-  }, [didInitExpand, focusMealType, polls]);
-
-  // When navigating from dashboard meal cards with ?meal=, open that accordion.
-  useEffect(() => {
-    if (!didInitExpand || !focusMealType || polls.length === 0) return;
-    if (polls.some((p) => p.mealType === focusMealType)) {
-      setExpandedMeal(focusMealType);
-    }
-  }, [didInitExpand, focusMealType, polls]);
+    if (!focusMealType || polls.length === 0) return;
+    const el = mealSectionRefs.current[focusMealType];
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [focusMealType, polls.length]);
 
   useEffect(() => {
     const choice = pollsQuery.pollDay?.myPaymentChoice;
@@ -579,25 +529,6 @@ export function MealPollResponsePage() {
   const isPayPerMeal = pollsQuery.pollDay?.myMealBillingType !== 'PREPAID_BALANCE';
   const pricesVisible = showMealPrices({ spaceType: permissions.space?.spaceType });
 
-  const mealsWithPlates = useMemo(
-    () =>
-      openPolls
-        .filter((poll) => sumQuantities(quantitySelections[poll.mealType]) > 0)
-        .map((poll) => poll.mealType),
-    [openPolls, quantitySelections],
-  );
-
-  const totalPlates = useMemo(
-    () => mealsWithPlates.reduce((sum, mealType) => sum + sumQuantities(quantitySelections[mealType]), 0),
-    [mealsWithPlates, quantitySelections],
-  );
-
-  const showPayment = multiQuantity
-    ? isPayPerMeal &&
-      (totalPlates > 0 || Boolean(pollsQuery.pollDay?.myPaymentStatus)) &&
-      Boolean(pollsQuery.pollDay)
-    : isPayPerMeal && Boolean(pollsQuery.pollDay);
-
   const effectiveSelections = useMemo(() => {
     if (touched) return selections;
     const next: Partial<Record<MealType, string>> = {};
@@ -650,8 +581,9 @@ export function MealPollResponsePage() {
       const option = (poll.options ?? []).find((o) => o.id === id);
       const selected = Boolean(option);
       const pending = poll.status === 'OPEN' && !selected;
+      const plates = platesForSingleSelectOption(option);
       const unit =
-        option && option.optionType !== 'NOT_AVAILABLE' && option.price != null
+        option && plates > 0 && option.price != null
           ? Number(option.price)
           : null;
       const items =
@@ -660,7 +592,7 @@ export function MealPollResponsePage() {
               {
                 optionId: option.id,
                 label: option.label,
-                quantity: 1,
+                quantity: plates,
                 unitPrice: unit,
                 lineAmount: unit,
                 currencyCode: option.currencyCode || 'INR',
@@ -674,13 +606,30 @@ export function MealPollResponsePage() {
         pending,
         closed: poll.status !== 'OPEN' && !selected,
         summary: option?.label ?? '',
-        plates: selected ? 1 : 0,
+        plates,
         items,
         mealTotal: unit ?? 0,
         currencyCode: option?.currencyCode || 'INR',
       };
     });
   }, [effectiveSelections, multiQuantity, polls, quantitySelections]);
+
+  const totalPlates = useMemo(
+    () => mealProgress.reduce((sum, row) => sum + row.plates, 0),
+    [mealProgress],
+  );
+  const mealsWithPlates = useMemo(
+    () => mealProgress.filter((row) => row.plates > 0).map((row) => row.mealType),
+    [mealProgress],
+  );
+
+  // Match mobile `requiresPayment`: meal payment UI is MESS + pay-per-meal only.
+  // PG / Hostel / etc. are headcount polls — no Review & payment step.
+  const showPayment =
+    multiQuantity &&
+    isPayPerMeal &&
+    Boolean(pollsQuery.pollDay) &&
+    (totalPlates > 0 || Boolean(pollsQuery.pollDay?.myPaymentStatus));
 
   const mealsSelectedCount = mealProgress.filter((row) => row.selected).length;
   const allOpenSelected =
@@ -708,20 +657,22 @@ export function MealPollResponsePage() {
     window.setTimeout(() => setPaymentHighlight(false), 2200);
   };
 
-  const earliestCloseAt = useMemo(() => {
-    const times = openPolls
-      .map((p) => p.pollCloseAt)
-      .filter((v): v is string => Boolean(v))
-      .sort();
-    return times[0] ?? null;
-  }, [openPolls]);
+  const earliestCloseAt = useMemo(() => earliestOpenPollCloseAt(openPolls), [openPolls]);
+  const closeTimezone = useMemo(
+    () => timezoneForPollClose(openPolls, earliestCloseAt),
+    [earliestCloseAt, openPolls],
+  );
 
   const pollStatus = aggregatePollStatus(polls);
   const responseCount = useMemo(
     () => Math.max(0, ...polls.map((p) => p.responseCount ?? 0), 0),
     [polls],
   );
-  const countdown = formatCountdown(earliestCloseAt, t);
+  const countdown = formatPollClosesIn(earliestCloseAt, t, Date.now(), closeTimezone);
+  const remaining = formatPollRemaining(earliestCloseAt, t, Date.now(), closeTimezone);
+  const deadlineLabel = earliestCloseAt
+    ? formatPollDeadline(earliestCloseAt, i18n.language, closeTimezone)
+    : null;
   const dateLabel = formatMenuDateLabel(menuDate, i18n.language);
 
   const totalAmount = useMemo(() => {
@@ -837,7 +788,7 @@ export function MealPollResponsePage() {
       }
     }
 
-    const paymentNeeded = showPayment && (multiQuantity ? totalPlates > 0 : true);
+    const paymentNeeded = Boolean(showPayment) && totalPlates > 0;
     if (paymentNeeded && paymentChoice === 'MARK_AS_PAID') {
       const validationError = validatePaymentProofSubmission(paymentProof);
       if (validationError) {
@@ -874,128 +825,83 @@ export function MealPollResponsePage() {
       <Box
         sx={{
           width: '100%',
-          display: 'grid',
-          gap: 1.5,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 1,
           alignItems: 'center',
-          gridTemplateColumns: {
-            xs: '1fr',
-            lg: 'minmax(0, 1fr) auto auto',
-          },
+          justifyContent: 'space-between',
         }}
       >
-        <Stack spacing={0.65} sx={{ minWidth: 0 }}>
-          <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textMuted }}>
-            {t('meals.poll.yourCurrentSelection', { defaultValue: 'Your current selection' })}
-          </Typography>
-          <Stack
-            direction="row"
-            spacing={1}
-            useFlexGap
-            sx={{ flexWrap: 'wrap', alignItems: 'stretch' }}
-          >
-            {mealProgress.map((row) => {
-              const MealIcon = MEAL_ICONS[row.mealType];
-              const accent = MEAL_ACCENTS[row.mealType];
-              const ordered = [
-                ...row.items.filter((item) => !item.isExtra),
-                ...row.items.filter((item) => item.isExtra),
-              ];
-              const itemLine = ordered
-                .map((item) =>
-                  item.quantity > 1 ? `${item.label} ×${item.quantity}` : item.label,
-                )
-                .join(', ');
-              return (
-                <Box
-                  key={row.mealType}
-                  sx={{
-                    minWidth: 0,
-                    maxWidth: 220,
-                    px: 1.15,
-                    py: 0.85,
-                    borderRadius: 2,
-                    border: `1px solid ${s.border}`,
-                    bgcolor: colors.surface,
-                    boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
-                  }}
-                >
-                  <Stack direction="row" spacing={0.55} sx={{ alignItems: 'center', mb: 0.2 }}>
-                    <Box sx={{ color: accent, display: 'flex' }}>
-                      <MealIcon size={13} />
-                    </Box>
-                    <Typography
-                      sx={{ ...DASHBOARD_UX.badge, color: s.textSecondary, fontWeight: 700 }}
-                    >
-                      {t(`meals.mealType.${row.mealType}`)}
-                    </Typography>
-                  </Stack>
-                  {ordered.length > 0 ? (
-                    <>
-                      <Typography
-                        sx={{ ...DASHBOARD_UX.smallCaption, color: s.textPrimary, fontWeight: 600 }}
-                        noWrap
-                        title={itemLine}
-                      >
-                        {itemLine}
-                      </Typography>
-                      <Typography sx={{ ...DASHBOARD_UX.badge, color: s.textMuted, mt: 0.15 }}>
-                        {t('meals.poll.platesCount', {
-                          defaultValue: '{{count}} plates',
-                          count: row.plates,
-                        })}
-                      </Typography>
-                    </>
-                  ) : (
-                    <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
-                      {row.pending
-                        ? t('meals.poll.notSelectedShort', { defaultValue: 'Not selected' })
-                        : t('meals.poll.statusClosed', { defaultValue: 'Closed' })}
-                    </Typography>
-                  )}
-                </Box>
-              );
+        <Stack
+          direction="row"
+          spacing={1.25}
+          useFlexGap
+          sx={{ minWidth: 0, flexWrap: 'wrap', alignItems: 'center', flex: 1 }}
+        >
+          <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary, whiteSpace: 'nowrap' }}>
+            {t('meals.poll.mealsSelectedLabel', {
+              defaultValue: '{{count}} meals selected',
+              count: mealsSelectedCount,
             })}
-          </Stack>
+          </Typography>
+          {mealProgress
+            .filter((row) => row.selected && row.items.length > 0)
+            .map((row) => {
+            const MealIcon = MEAL_ICONS[row.mealType];
+            const accent = MEAL_ACCENTS[row.mealType];
+            const ordered = [
+              ...row.items.filter((item) => !item.isExtra),
+              ...row.items.filter((item) => item.isExtra),
+            ];
+            const itemLine = ordered
+              .map((item) =>
+                item.quantity > 1 ? `${item.label} ×${item.quantity}` : item.label,
+              )
+              .join(', ');
+            return (
+              <Stack
+                key={row.mealType}
+                direction="row"
+                spacing={0.5}
+                sx={{
+                  alignItems: 'center',
+                  maxWidth: 180,
+                  px: 0.75,
+                  py: 0.35,
+                  borderRadius: 1.5,
+                  border: `1px solid ${s.border}`,
+                  bgcolor: s.surface,
+                }}
+              >
+                <Box sx={{ color: accent, display: 'flex' }}>
+                  <MealIcon size={12} />
+                </Box>
+                <Typography
+                  sx={{ ...DASHBOARD_UX.smallCaption, color: s.textPrimary, fontWeight: 600 }}
+                  noWrap
+                  title={itemLine || t(`meals.mealType.${row.mealType}`)}
+                >
+                  {itemLine || t(`meals.mealType.${row.mealType}`)}
+                </Typography>
+              </Stack>
+            );
+          })}
         </Stack>
-
-        <Box sx={{ minWidth: 0, textAlign: { xs: 'left', md: 'right' }, px: { md: 1 } }}>
-          <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textMuted }}>
-            {t('meals.poll.totalLabel', { defaultValue: 'Total' })}
-          </Typography>
-          <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary, fontWeight: 800 }}>
-            {pricesVisible && totalAmount.sum > 0
-              ? formatCurrency(totalAmount.sum, totalAmount.currency)
-              : multiQuantity
-                ? t('meals.poll.platesCount', {
-                    defaultValue: '{{count}} plates',
-                    count: totalPlates,
-                  })
-                : '—'}
-          </Typography>
-          {(totalPlates > 0 || mealsSelectedCount > 0) && pricesVisible && totalAmount.sum > 0 ? (
-            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
-              {totalPlates > 0
-                ? t('meals.poll.platesCount', {
-                    defaultValue: '{{count}} plates',
-                    count: totalPlates,
-                  })
-                : null}
-              {totalPlates > 0 && mealsSelectedCount > 0 ? ' · ' : null}
-              {mealsSelectedCount > 0
-                ? t('meals.poll.mealsSelectedCount', {
-                    defaultValue: '{{count}} meals',
-                    count: mealsSelectedCount,
-                  })
-                : null}
-            </Typography>
-          ) : null}
-        </Box>
 
         <Stack
           direction="row"
           spacing={1}
-          sx={{ justifyContent: { xs: 'stretch', md: 'flex-end' } }}
+          useFlexGap
+          sx={{ alignItems: 'center', flexWrap: 'wrap', justifyContent: { xs: 'stretch', md: 'flex-end' } }}
         >
+          <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, fontWeight: 600, whiteSpace: 'nowrap' }}>
+            {pricesVisible && totalAmount.sum > 0
+              ? `${t('meals.poll.totalLabel', { defaultValue: 'Total' })} ${formatCurrency(totalAmount.sum, totalAmount.currency)}`
+              : t('meals.poll.totalPlatesShort', {
+                  defaultValue: 'Total {{count}} plates',
+                  count: totalPlates,
+                })}
+          </Typography>
           <Button
             variant="outlined"
             onClick={() => navigate(spaceMealsPath(spaceId))}
@@ -1040,27 +946,7 @@ export function MealPollResponsePage() {
         minHeight: '100%',
       }}
     >
-      <Stack spacing={`${DASHBOARD_UX.sectionGap}px`} sx={{ width: '100%' }}>
-        <PageHeader
-          title={t('meals.poll.respondTitle', { defaultValue: 'Respond to meal poll' })}
-          description={
-            multiQuantity
-              ? t('meals.poll.responseHintMess', {
-                  defaultValue:
-                    'Choose items and set quantities for each meal. Your selections help the kitchen prepare better.',
-                })
-              : t('meals.poll.respondSubtitle', {
-                  defaultValue: 'Choose one option for each meal before the poll closes.',
-                })
-          }
-          breadcrumbs={[
-            { label: t('navigation.meals'), to: spaceMealsPath(spaceId) },
-            {
-              label: t('meals.poll.respondTitle', { defaultValue: 'Respond to meal poll' }),
-            },
-          ]}
-        />
-
+      <Stack spacing={1} sx={{ width: '100%' }}>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1}
@@ -1121,6 +1007,23 @@ export function MealPollResponsePage() {
           </Stack>
         </Stack>
 
+        <Box>
+          <Typography component="h1" sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
+            {t('meals.poll.chooseTitle', { defaultValue: 'Choose your meals for this day' })}
+          </Typography>
+          <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textSecondary, mt: 0.25 }}>
+            {multiQuantity
+              ? t('meals.poll.responseHintMess', {
+                  defaultValue:
+                    'Choose items and set quantities for each meal. Your selections help the kitchen prepare better.',
+                })
+              : t('meals.poll.chooseSubtitle', {
+                  defaultValue:
+                    'Select one option for each meal. You can change your selection until the poll closes.',
+                })}
+          </Typography>
+        </Box>
+
         {mealEditsLocked ? (
           <ContentCard>
             <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
@@ -1163,7 +1066,7 @@ export function MealPollResponsePage() {
           <Box
             sx={{
               display: 'grid',
-              gap: `${DASHBOARD_UX.cardGap}px`,
+              gap: 1,
               width: '100%',
               alignItems: 'start',
               gridTemplateColumns: {
@@ -1172,12 +1075,11 @@ export function MealPollResponsePage() {
               },
             }}
           >
-            <Stack spacing={`${DASHBOARD_UX.cardGap}px`} sx={{ minWidth: 0 }}>
+            <Stack spacing={1} sx={{ minWidth: 0 }}>
               {polls.map((poll) => {
                 const MealIcon = MEAL_ICONS[poll.mealType];
                 const accent = MEAL_ACCENTS[poll.mealType];
                 const isOpen = poll.status === 'OPEN' && !viewOnly;
-                const isExpanded = expandedMeal === poll.mealType;
                 const selectedId = effectiveSelections[poll.mealType];
                 const mains = menuOptions(poll);
                 const extras = extraOptions(poll);
@@ -1188,88 +1090,93 @@ export function MealPollResponsePage() {
                 const progressRow = mealProgress.find((row) => row.mealType === poll.mealType);
                 const mealTotal = progressRow?.mealTotal ?? 0;
                 const mealCurrency = progressRow?.currencyCode ?? 'INR';
-                const captionParts = [
-                  t('meals.poll.optionCount', {
-                    defaultValue: '{{count}} options',
-                    count: optionCount,
-                  }),
-                ];
-                if (multiQuantity && plates > 0) {
-                  captionParts.push(
-                    t('meals.poll.platesCount', {
-                      defaultValue: '{{count}} plates',
-                      count: plates,
-                    }),
-                  );
-                }
+                const selectHint = multiQuantity
+                  ? t('meals.poll.selectItemsHint', { defaultValue: 'Select items' })
+                  : t('meals.poll.selectOneOption', { defaultValue: 'Select 1 option' });
+                const optionLabel = t('meals.poll.optionCount', {
+                  defaultValue: '{{count}} options',
+                  count: optionCount,
+                });
+                const headerMeta = [
+                  selectHint,
+                  optionLabel,
+                  multiQuantity && plates > 0
+                    ? t('meals.poll.platesCount', {
+                        defaultValue: '{{count}} plates',
+                        count: plates,
+                      })
+                    : null,
+                  pricesVisible && mealTotal > 0
+                    ? formatCurrency(mealTotal, mealCurrency)
+                    : null,
+                  poll.status === 'CLOSED'
+                    ? t('meals.poll.statusClosed', { defaultValue: 'Closed' })
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' • ');
 
                 return (
-                  <ContentCard key={poll.id} padded={false}>
-                    <Box
-                      component="button"
-                      type="button"
-                      onClick={() =>
-                        setExpandedMeal((prev) => (prev === poll.mealType ? null : poll.mealType))
-                      }
+                  <Box
+                    key={poll.id}
+                    ref={(el: HTMLDivElement | null) => {
+                      mealSectionRefs.current[poll.mealType] = el;
+                    }}
+                    sx={{
+                      borderRadius: `${DASHBOARD_UX.radius}px`,
+                      border: `1px solid ${s.border}`,
+                      bgcolor:
+                        theme.palette.mode === 'dark'
+                          ? MEAL_BAND_BG_DARK[poll.mealType]
+                          : MEAL_BAND_BG[poll.mealType],
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <Stack
+                      direction="row"
+                      spacing={0.75}
                       sx={{
-                        width: '100%',
-                        display: 'flex',
                         alignItems: 'center',
-                        gap: 1,
-                        px: `${DASHBOARD_UX.cardPadding}px`,
-                        py: 1.25,
-                        border: 'none',
-                        borderLeft: `4px solid ${accent}`,
-                        borderRadius: isExpanded ? '12px 12px 0 0' : undefined,
-                        bgcolor: isExpanded
-                          ? MEAL_HEADER_BG_EXPANDED[poll.mealType]
-                          : MEAL_HEADER_BG[poll.mealType],
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        textAlign: 'left',
-                        transition: DASHBOARD_UX.transition,
-                        '&:hover': {
-                          bgcolor: MEAL_HEADER_BG_EXPANDED[poll.mealType],
-                        },
+                        px: 1.1,
+                        py: 0.7,
+                        minHeight: 36,
                       }}
                     >
-                      <IconBadge accent={accent}>
-                        <MealIcon />
-                      </IconBadge>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
-                          {t(`meals.mealType.${poll.mealType}`)}
-                        </Typography>
-                        <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
-                          {captionParts.join(' · ')}
-                        </Typography>
-                      </Box>
-                      <StatusChip
-                        label={
-                          poll.status === 'OPEN'
-                            ? t('meals.poll.statusOpen', { defaultValue: 'Open' })
-                            : t('meals.poll.statusClosed', { defaultValue: 'Closed' })
-                        }
-                        tone={poll.status === 'OPEN' ? 'success' : 'neutral'}
-                      />
-                      {isExpanded ? (
-                        <ChevronUp size={16} color={s.textMuted} />
-                      ) : (
-                        <ChevronDown size={16} color={s.textMuted} />
-                      )}
-                    </Box>
-
-                    <Collapse in={isExpanded}>
                       <Box
                         sx={{
-                          px: `${DASHBOARD_UX.cardPadding}px`,
-                          pb: `${DASHBOARD_UX.cardPadding}px`,
-                          borderTop: `1px solid ${s.divider}`,
-                          pt: 2,
+                          width: 24,
+                          height: 24,
+                          borderRadius: 1,
+                          bgcolor: `${accent}22`,
+                          color: accent,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
                         }}
                       >
+                        <MealIcon size={14} />
+                      </Box>
+                      <Typography
+                        sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary, whiteSpace: 'nowrap' }}
+                      >
+                        {t(`meals.mealType.${poll.mealType}`)}
+                      </Typography>
+                      <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
+                        |
+                      </Typography>
+                      <Typography
+                        sx={{ ...DASHBOARD_UX.smallCaption, color: s.textSecondary, minWidth: 0 }}
+                        noWrap
+                        title={headerMeta}
+                      >
+                        {headerMeta}
+                      </Typography>
+                    </Stack>
+
+                    <Box sx={{ px: 1.1, pb: 1 }}>
                         {multiQuantity ? (
-                          <Stack spacing={2}>
+                          <Stack spacing={1}>
                             {requiresDeliveryLocation ? (
                               <MealPollDeliveryPicker
                                 locations={deliveryLocations}
@@ -1289,10 +1196,10 @@ export function MealPollResponsePage() {
                             <Box>
                               <Typography
                                 sx={{
-                                  ...DASHBOARD_UX.body,
+                                  ...DASHBOARD_UX.smallCaption,
                                   color: s.textPrimary,
                                   fontWeight: 700,
-                                  mb: 1.15,
+                                  mb: 0.7,
                                 }}
                               >
                                 {t('meals.poll.mainItemsSection', {
@@ -1302,7 +1209,7 @@ export function MealPollResponsePage() {
                               <Box
                                 sx={{
                                   display: 'grid',
-                                  gap: 1.25,
+                                  gap: 0.85,
                                   gridTemplateColumns: {
                                     xs: '1fr',
                                     sm: 'repeat(2, minmax(0, 1fr))',
@@ -1328,8 +1235,8 @@ export function MealPollResponsePage() {
                             {extras.length > 0 ? (
                               <Box
                                 sx={{
-                                  p: 1.5,
-                                  borderRadius: 2,
+                                  p: 1,
+                                  borderRadius: 1.5,
                                   border: `1px solid ${colors.primaryDark}33`,
                                   bgcolor: colors.successTint,
                                 }}
@@ -1337,12 +1244,12 @@ export function MealPollResponsePage() {
                                 <Stack
                                   direction="row"
                                   spacing={0.75}
-                                  sx={{ alignItems: 'center', mb: 1.15 }}
+                                  sx={{ alignItems: 'center', mb: 0.75 }}
                                 >
-                                  <Sparkles size={15} color={colors.primaryDark} />
+                                  <Sparkles size={14} color={colors.primaryDark} />
                                   <Typography
                                     sx={{
-                                      ...DASHBOARD_UX.body,
+                                      ...DASHBOARD_UX.smallCaption,
                                       color: colors.primaryDark,
                                       fontWeight: 700,
                                       flex: 1,
@@ -1352,12 +1259,11 @@ export function MealPollResponsePage() {
                                       defaultValue: 'Extras (Optional)',
                                     })}
                                   </Typography>
-                                  <Info size={14} color={s.textMuted} />
                                 </Stack>
                                 <Box
                                   sx={{
                                     display: 'grid',
-                                    gap: 1.25,
+                                    gap: 0.85,
                                     gridTemplateColumns: {
                                       xs: '1fr',
                                       sm: 'repeat(2, minmax(0, 1fr))',
@@ -1385,107 +1291,46 @@ export function MealPollResponsePage() {
                             ) : null}
                           </Stack>
                         ) : (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                          <Box
+                            sx={{
+                              display: 'grid',
+                              gap: 0.85,
+                              gridTemplateColumns: {
+                                xs: 'repeat(2, minmax(0, 1fr))',
+                                sm: 'repeat(3, minmax(0, 1fr))',
+                                md: 'repeat(4, minmax(0, 1fr))',
+                              },
+                            }}
+                          >
                             {(poll.options ?? []).map((option) => (
-                              <Box
+                              <OptionMiniCard
                                 key={option.id}
-                                sx={{
-                                  flex: '1 1 200px',
-                                  minWidth: { xs: 0, sm: 0 },
-                                  width: { xs: '100%', sm: 'auto' },
-                                  maxWidth: { xs: '100%', sm: 280 },
-                                }}
-                              >
-                                <OptionMiniCard
-                                  option={option}
-                                  selected={selectedId === option.id}
-                                  disabled={!isOpen}
-                                  showPrice={pricesVisible}
-                                  onSelect={() => selectOption(poll.mealType, option.id, isOpen)}
-                                />
-                              </Box>
+                                option={option}
+                                selected={selectedId === option.id}
+                                disabled={!isOpen}
+                                showPrice={pricesVisible}
+                                onSelect={() => selectOption(poll.mealType, option.id, isOpen)}
+                              />
                             ))}
                           </Box>
                         )}
-
-                        <Stack
-                          direction="row"
-                          spacing={0.75}
-                          sx={{
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            mt: 2,
-                            px: 1.35,
-                            py: 1.05,
-                            borderRadius: 2,
-                            bgcolor: plates > 0 || selectedId ? colors.successTint : s.elevated,
-                            border: `1px solid ${
-                              plates > 0 || selectedId ? `${colors.primary}55` : s.border
-                            }`,
-                          }}
-                        >
-                          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                            {plates > 0 || selectedId ? (
-                              <CheckCircle2 size={16} color={colors.success} />
-                            ) : (
-                              <Circle size={16} color={s.textMuted} />
-                            )}
-                            <Typography
-                              sx={{
-                                ...DASHBOARD_UX.body,
-                                color: plates > 0 || selectedId ? colors.primaryDark : s.textPrimary,
-                                fontWeight: 700,
-                              }}
-                            >
-                              {multiQuantity
-                                ? plates > 0
-                                  ? t('meals.poll.platesCount', {
-                                      defaultValue: '{{count}} plates',
-                                      count: plates,
-                                    })
-                                  : t('meals.poll.skipMealHint', {
-                                      defaultValue: 'No plates — this meal will be skipped',
-                                    })
-                                : selectedId
-                                  ? t('meals.poll.selectedShort', { defaultValue: 'Selected' })
-                                  : t('meals.poll.pendingShort', { defaultValue: 'Pending' })}
-                            </Typography>
-                          </Stack>
-                          {pricesVisible && mealTotal > 0 ? (
-                            <Typography
-                              sx={{
-                                ...DASHBOARD_UX.body,
-                                color: colors.primaryDark,
-                                fontWeight: 700,
-                              }}
-                            >
-                              {t('meals.poll.mealTotal', {
-                                defaultValue: 'Total {{amount}}',
-                                amount: formatCurrency(mealTotal, mealCurrency),
-                              })}
-                            </Typography>
-                          ) : null}
-                        </Stack>
-                      </Box>
-                    </Collapse>
-                  </ContentCard>
+                    </Box>
+                  </Box>
                 );
               })}
             </Stack>
 
             <Stack
-              spacing={`${DASHBOARD_UX.cardGap}px`}
+              spacing={1}
               sx={{
                 minWidth: 0,
-                position: { md: 'sticky' },
-                top: { md: `${DASHBOARD_UX.pagePadding}px` },
                 alignSelf: 'start',
               }}
             >
               <ContentCard>
                 <Stack
                   direction="row"
-                  sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1.25 }}
+                  sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}
                 >
                   <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                     <Receipt size={16} color={colors.primaryDark} />
@@ -1515,7 +1360,7 @@ export function MealPollResponsePage() {
                     </Typography>
                   </Box>
                 </Stack>
-                <Stack spacing={1.1}>
+                <Stack spacing={0.75}>
                   {mealProgress.map((row) => {
                     const MealIcon = MEAL_ICONS[row.mealType];
                     const accent = MEAL_ACCENTS[row.mealType];
@@ -1716,18 +1561,18 @@ export function MealPollResponsePage() {
                 sx={{
                   borderRadius: 2,
                   border: `1px solid #BFDBFE`,
-                  bgcolor: '#EFF6FF',
+                  bgcolor: theme.palette.mode === 'dark' ? 'rgba(37, 99, 235, 0.12)' : '#EFF6FF',
                   boxShadow: 'none',
-                  p: `${DASHBOARD_UX.cardPadding}px`,
+                  p: 1.1,
                 }}
               >
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+                <Stack direction="row" spacing={0.85} sx={{ alignItems: 'flex-start' }}>
                   <Box
                     sx={{
-                      width: 28,
-                      height: 28,
+                      width: 24,
+                      height: 24,
                       borderRadius: '50%',
-                      bgcolor: '#DBEAFE',
+                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(37, 99, 235, 0.22)' : '#DBEAFE',
                       color: '#2563EB',
                       display: 'flex',
                       alignItems: 'center',
@@ -1735,9 +1580,9 @@ export function MealPollResponsePage() {
                       flexShrink: 0,
                     }}
                   >
-                    <Info size={14} />
+                    <Info size={13} />
                   </Box>
-                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
+                  <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textSecondary }}>
                     {t('meals.poll.changeUntilClose', {
                       defaultValue:
                         'You can change your response until the poll closes. Once submitted, it cannot be changed.',
@@ -1745,13 +1590,32 @@ export function MealPollResponsePage() {
                   </Typography>
                 </Stack>
               </Box>
+
+              {remaining && openPolls.length > 0 ? (
+                <ContentCard>
+                  <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mb: 0.35 }}>
+                    <Clock3 size={14} color={colors.primaryDark} />
+                    <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textSecondary }}>
+                      {t('meals.poll.pollClosesIn', { defaultValue: 'Poll closes in' })}
+                    </Typography>
+                  </Stack>
+                  <Typography sx={{ ...DASHBOARD_UX.largeNumber, color: colors.primaryDark }}>
+                    {remaining}
+                  </Typography>
+                  {deadlineLabel ? (
+                    <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted, mt: 0.25 }}>
+                      {deadlineLabel}
+                    </Typography>
+                  ) : null}
+                </ContentCard>
+              ) : null}
             </Stack>
           </Box>
         )}
       </Stack>
 
       {polls.length > 0 ? (
-        <StickyFooterClearance height={{ xs: 220, sm: 170, md: 132 }} />
+        <StickyFooterClearance height={{ xs: 148, sm: 96, md: 80 }} />
       ) : null}
       {footer}
     </Box>

@@ -220,24 +220,18 @@ export function ComplaintInspector({
     if (!file) {
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? '');
-      const base64 = result.includes(',') ? result.split(',')[1] : result;
-      void run(
-        () =>
-          mutations.addAttachment.mutateAsync({
-            complaintId: complaint.complaintId,
-            body: {
-              imageBase64: base64 ?? '',
-              fileName: file.name,
-              contentType: file.type || undefined,
-            },
-          }),
-        'complaints.updated',
-      );
-    };
-    reader.readAsDataURL(file);
+    void run(
+      () =>
+        mutations.addAttachment.mutateAsync({
+          complaintId: complaint.complaintId,
+          body: {
+            localFile: file,
+            fileName: file.name,
+            contentType: file.type || undefined,
+          },
+        }),
+      'complaints.updated',
+    );
   };
 
   const footerActions = (

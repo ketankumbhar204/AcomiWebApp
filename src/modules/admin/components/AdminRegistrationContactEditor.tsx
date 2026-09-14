@@ -1,7 +1,8 @@
 import { Alert, Button, InputAdornment, Stack, TextField } from '@mui/material';
-import { Phone, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { IndianMobileTextField } from '@/modules/admin/components/IndianMobileTextField';
 import { isValidIndianMobile, normalizeIndianMobileDigits } from '@/shared/utils/indianMobile';
 import type { AdminUpdateRegistrationContactRequest } from '@/shared/types/admin';
 
@@ -26,8 +27,8 @@ export function AdminRegistrationContactEditor({
 }: AdminRegistrationContactEditorProps) {
   const { t } = useTranslation();
   const [owner, setOwner] = useState(ownerName ?? '');
-  const [primary, setPrimary] = useState(mobileNumber ?? '');
-  const [alternate, setAlternate] = useState(alternateMobileNumber ?? '');
+  const [primary, setPrimary] = useState(normalizeIndianMobileDigits(mobileNumber ?? ''));
+  const [alternate, setAlternate] = useState(normalizeIndianMobileDigits(alternateMobileNumber ?? ''));
   const [error, setError] = useState<string | null>(null);
 
   function handleSubmit() {
@@ -77,44 +78,24 @@ export function AdminRegistrationContactEditor({
           },
         }}
       />
-      <TextField
+      <IndianMobileTextField
         label={t('admin.contactEditor.primaryMobile')}
         value={primary}
-        onChange={(e) => setPrimary(normalizeIndianMobileDigits(e.target.value))}
+        onChange={setPrimary}
         placeholder={t('admin.common.primaryMobilePlaceholder')}
         fullWidth
         size="small"
         sx={fieldSx}
-        slotProps={{
-          htmlInput: { maxLength: 10, inputMode: 'numeric' },
-          input: {
-            startAdornment: (
-              <InputAdornment position="start">
-                <Phone size={16} />
-              </InputAdornment>
-            ),
-          },
-        }}
       />
-      <TextField
+      <IndianMobileTextField
         label={t('admin.contactEditor.alternateMobile')}
         value={alternate}
-        onChange={(e) => setAlternate(normalizeIndianMobileDigits(e.target.value))}
+        onChange={setAlternate}
         placeholder={t('admin.common.alternateMobilePlaceholder')}
         helperText={t('admin.contactEditor.alternateHint')}
         fullWidth
         size="small"
         sx={fieldSx}
-        slotProps={{
-          htmlInput: { maxLength: 10, inputMode: 'numeric' },
-          input: {
-            startAdornment: (
-              <InputAdornment position="start">
-                <Phone size={16} />
-              </InputAdornment>
-            ),
-          },
-        }}
       />
       <Stack direction="row" spacing={1}>
         <Button variant="contained" size="small" disabled={saving} onClick={handleSubmit}>

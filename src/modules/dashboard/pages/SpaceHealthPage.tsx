@@ -27,6 +27,7 @@ import { HealthScoreRing } from '@/modules/dashboard/components/HealthScoreRing'
 import { usePendingActions } from '@/modules/dashboard/hooks/usePendingActions';
 import { useSpaceDashboard } from '@/modules/dashboard/hooks/useSpaceDashboard';
 import { useSpaceLifecycleSignals } from '@/modules/dashboard/hooks/useSpaceLifecycleSignals';
+import { useSpaceProgressiveAccess } from '@/modules/dashboard/hooks/useSpaceProgressiveAccess';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { PageContainer } from '@/shared/components/PageContainer';
@@ -34,6 +35,7 @@ import { PageHeader } from '@/shared/components/PageHeader';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { colors } from '@/shared/theme/colors';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
+import { filterPendingGroupsWhenMealsHidden } from '@/shared/utils/filterPendingActionsForMealCapabilities';
 import { canManageNotifications } from '@/shared/utils/spaceOperator';
 import { ROUTES, spaceDashboardPath } from '@/routes/paths';
 import {
@@ -95,7 +97,22 @@ export function SpaceHealthPage() {
 
   const dashboard = useSpaceDashboard(spaceId, spaceType, isOperator);
   const pending = usePendingActions(spaceId, isOperator);
-  const pendingCount = dashboard.pendingActions?.totalCount ?? pending.totalCount;
+  const { getCapability } = useSpaceProgressiveAccess(spaceId);
+  const mealsHidden =
+    getCapability('MEAL_CONFIG')?.mode === 'HIDDEN' &&
+    getCapability('MEAL_OPS')?.mode === 'HIDDEN';
+  const pendingGroups = useMemo(
+    () =>
+      filterPendingGroupsWhenMealsHidden(
+        dashboard.pendingActions?.groups ?? pending.groups,
+        mealsHidden,
+      ),
+    [dashboard.pendingActions?.groups, mealsHidden, pending.groups],
+  );
+  const pendingCount = useMemo(
+    () => pendingGroups.reduce((sum, group) => sum + group.count, 0),
+    [pendingGroups],
+  );
 
   const hasOperationalSignal = useMemo(() => {
     const occupied = dashboard.accommodationOperations?.occupiedBeds ?? 0;
@@ -123,8 +140,7 @@ export function SpaceHealthPage() {
 
   const healthExtras = useMemo(() => {
     const reviewFromPending =
-      dashboard.pendingActions?.groups?.find((g) => g.actionType === 'PAYMENT_NEEDS_REVIEW')
-        ?.count ?? 0;
+      pendingGroups.find((g) => g.actionType === 'PAYMENT_NEEDS_REVIEW')?.count ?? 0;
     const underReviewAmount = dashboard.financial?.underReview ?? 0;
     return {
       occupiedBeds: dashboard.accommodationOperations?.occupiedBeds,
@@ -136,7 +152,7 @@ export function SpaceHealthPage() {
     dashboard.accommodationOperations?.occupiedBeds,
     dashboard.accommodationOperations?.vacantBeds,
     dashboard.financial?.underReview,
-    dashboard.pendingActions?.groups,
+    pendingGroups,
   ]);
 
   const { health } = useSpaceHealth({

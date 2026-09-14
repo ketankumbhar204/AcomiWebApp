@@ -24,6 +24,15 @@ export type MealSelectionSummaryModel = {
   selectedMealTypes: MealType[];
 };
 
+export function isMenuEntryOption(option?: { optionType?: string } | null): boolean {
+  return option?.optionType === 'MENU_ENTRY';
+}
+
+/** Single-select poll: a food choice is 1 plate; Not available / skip is 0. */
+export function platesForSingleSelectOption(option?: { optionType?: string } | null): number {
+  return isMenuEntryOption(option) ? 1 : 0;
+}
+
 /** Build summary from open/display poll slots (dashboard customer card). */
 export function buildMealSummaryFromPolls(
   polls: MealPollSlot[],

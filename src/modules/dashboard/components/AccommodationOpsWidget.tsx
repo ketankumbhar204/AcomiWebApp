@@ -83,7 +83,7 @@ export function AccommodationOpsWidget({
                 <IndianRupee />
               </IconBadge>
             ),
-            onClick: () => navigate(spacePaymentsPath(spaceId, undefined, { tab: 'members' })),
+            onClick: () => navigate(spacePaymentsPath(spaceId, undefined, { filter: 'pending' })),
           },
         ]}
       />

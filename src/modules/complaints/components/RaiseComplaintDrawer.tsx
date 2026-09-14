@@ -64,7 +64,7 @@ export function RaiseComplaintDrawer({
   const [description, setDescription] = useState('');
   const [mealDate, setMealDate] = useState('');
   const [mealType, setMealType] = useState<MealType>('BREAKFAST');
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<File[]>([]);
 
   const foodRelated = isFoodCategory(category);
 
@@ -88,17 +88,7 @@ export function RaiseComplaintDrawer({
       return;
     }
     const selected = Array.from(files).slice(0, remaining);
-    selected.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = String(reader.result ?? '');
-        const base64 = result.includes(',') ? result.split(',')[1] : result;
-        if (base64) {
-          setPhotos((prev) => [...prev, base64].slice(0, MAX_PHOTOS));
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    setPhotos((prev) => [...prev, ...selected].slice(0, MAX_PHOTOS));
   };
 
   const handleSubmit = async () => {
@@ -106,12 +96,12 @@ export function RaiseComplaintDrawer({
       enqueueSnackbar(t('complaints.errors.requiredFields'), { variant: 'warning' });
       return;
     }
-    const body: CreateComplaintRequest = {
+    const body: CreateComplaintRequest & { localFiles?: File[] } = {
       category,
       priority,
       title: title.trim().slice(0, 200),
       description: description.trim(),
-      attachmentImagesBase64: photos.length ? photos : undefined,
+      localFiles: photos.length ? photos : undefined,
     };
     if (foodRelated) {
       if (mealDate) {

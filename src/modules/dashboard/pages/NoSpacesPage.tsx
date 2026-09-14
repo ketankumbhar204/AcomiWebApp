@@ -60,14 +60,14 @@ export function NoSpacesPage() {
                   </Button>
                   <Button
                     variant="outlined"
-                    onClick={() => navigate(ROUTES.joinSpace)}
+                    onClick={() => navigate(ROUTES.memberHome)}
                     sx={dashOutlinedButtonSx}
                   >
-                    {t('navigation.joinSpace')}
+                    {t('navigation.home', { defaultValue: 'Home' })}
                   </Button>
                   <Button
                     variant="text"
-                    onClick={() => navigate(ROUTES.acceptInvitations)}
+                    onClick={() => navigate(ROUTES.memberHome)}
                     sx={dashOutlinedButtonSx}
                   >
                     {t('navigation.acceptInvitations')}

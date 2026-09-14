@@ -75,7 +75,7 @@ export function AppHeader({
         {leading ? (
           <Box
             sx={{
-              flex: 1,
+              flexShrink: 1,
               minWidth: 0,
               maxWidth: { md: 420 },
             }}
@@ -83,7 +83,7 @@ export function AppHeader({
             {leading}
           </Box>
         ) : title || subtitle ? (
-          <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box sx={{ flexShrink: 1, minWidth: 0 }}>
             {title ? (
               <Typography sx={{ ...DASHBOARD_UX.spaceName, color: s.textPrimary }} noWrap>
                 {title}
@@ -95,9 +95,9 @@ export function AppHeader({
               </Typography>
             ) : null}
           </Box>
-        ) : (
-          <Box sx={{ flex: 1, minWidth: 0 }} />
-        )}
+        ) : null}
+
+        <Box sx={{ flex: 1, minWidth: 0 }} />
 
         <Box
           sx={{
@@ -106,6 +106,7 @@ export function AppHeader({
             gap: { xs: 0.5, md: 1 },
             flexShrink: 0,
             minWidth: 0,
+            ml: 'auto',
           }}
         >
           {actions}

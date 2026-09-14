@@ -1,5 +1,6 @@
 import {
   AppBar,
+  Avatar,
   Box,
   Button,
   Container,
@@ -7,12 +8,19 @@ import {
   Toolbar,
   Typography,
 } from '@mui/material';
-import { Building2, ChefHat, LayoutDashboard, LogOut, MapPin, Users } from 'lucide-react';
+import { Building2, ChefHat, LayoutDashboard, LogOut, MapPin, MessageCircle, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { AdminNotificationBell } from '@/modules/admin/components/AdminNotificationBell';
 import { ROUTES } from '@/routes/paths';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminStore } from '@/store/adminStore';
+
+function initials(name?: string | null): string {
+  if (!name?.trim()) return 'AA';
+  const parts = name.trim().split(/\s+/).slice(0, 2);
+  return parts.map((part) => part[0]?.toUpperCase() ?? '').join('') || 'AA';
+}
 
 export function AdminLayout() {
   const { t } = useTranslation();
@@ -23,6 +31,7 @@ export function AdminLayout() {
 
   const navItems = [
     { to: ROUTES.adminDashboard, label: t('admin.nav.dashboard'), icon: LayoutDashboard },
+    { to: ROUTES.adminEnquiries, label: t('admin.nav.enquiries'), icon: MessageCircle },
     { to: ROUTES.adminRegisteredUsers, label: t('admin.nav.users'), icon: Users },
     { to: ROUTES.adminProperties, label: t('admin.nav.properties'), icon: Building2 },
     { to: ROUTES.adminMess, label: t('admin.nav.mess'), icon: ChefHat },
@@ -36,12 +45,39 @@ export function AdminLayout() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', minWidth: 0 }}>
-      <AppBar position="sticky" color="default" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Toolbar sx={{ gap: 1, flexWrap: 'wrap', minHeight: { xs: 56, sm: 64 } }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, mr: { xs: 0, sm: 1 }, flexShrink: 0 }}>
-            {t('admin.brand')}
-          </Typography>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#F5F7FA', minWidth: 0 }}>
+      <AppBar
+        position="sticky"
+        color="inherit"
+        elevation={0}
+        sx={{
+          bgcolor: '#FFFFFF',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+        }}>
+        <Toolbar
+          sx={{
+            gap: 1.5,
+            flexWrap: 'wrap',
+            minHeight: { xs: 64, sm: 68 },
+            px: { xs: 2, md: 3 },
+          }}>
+          <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', flexShrink: 0 }}>
+            <Avatar
+              sx={{
+                width: 32,
+                height: 32,
+                bgcolor: '#22C55E',
+                fontSize: 15,
+                fontWeight: 800,
+              }}>
+              A
+            </Avatar>
+            <Typography sx={{ fontWeight: 800, fontSize: 17, color: 'text.primary' }}>
+              {t('admin.brand')}
+            </Typography>
+          </Stack>
+
           <Stack
             direction="row"
             spacing={0.5}
@@ -49,7 +85,7 @@ export function AdminLayout() {
               flex: 1,
               minWidth: 0,
               overflowX: 'auto',
-              flexWrap: { xs: 'nowrap', md: 'wrap' },
+              py: 0.5,
             }}>
             {navItems.map(({ to, label, icon: Icon }) => (
               <Button
@@ -61,23 +97,56 @@ export function AdminLayout() {
                 sx={{
                   color: 'text.secondary',
                   fontWeight: 600,
+                  fontSize: 13.5,
                   flexShrink: 0,
                   whiteSpace: 'nowrap',
-                  '&.active': { color: 'primary.main', bgcolor: 'action.selected' },
+                  borderRadius: '999px',
+                  px: 1.75,
+                  py: 0.75,
+                  minHeight: 36,
+                  '&.active': {
+                    color: '#15803D',
+                    bgcolor: '#DCFCE7',
+                    '& .MuiButton-startIcon': { color: '#16A34A' },
+                  },
                 }}>
                 {label}
               </Button>
             ))}
           </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
-            {user?.fullName ?? t('admin.dashboard.welcome')}
-          </Typography>
-          <Button color="inherit" startIcon={<LogOut size={16} />} onClick={() => void handleLogout()}>
-            {t('admin.dashboard.signOut')}
-          </Button>
+
+          <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', flexShrink: 0 }}>
+            <AdminNotificationBell />
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: 'center', display: { xs: 'none', sm: 'flex' } }}>
+              <Typography sx={{ fontSize: 13, fontWeight: 600, color: 'text.secondary' }}>
+                {user?.fullName ?? t('admin.dashboard.welcome')}
+              </Typography>
+              <Avatar
+                sx={{
+                  width: 34,
+                  height: 34,
+                  bgcolor: '#DBEAFE',
+                  color: '#1D4ED8',
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}>
+                {initials(user?.fullName)}
+              </Avatar>
+            </Stack>
+            <Button
+              color="inherit"
+              startIcon={<LogOut size={16} />}
+              onClick={() => void handleLogout()}
+              sx={{ fontWeight: 600, color: 'text.secondary' }}>
+              {t('admin.dashboard.signOut')}
+            </Button>
+          </Stack>
         </Toolbar>
       </AppBar>
-      <Container maxWidth="lg" sx={{ py: 3, minWidth: 0 }}>
+      <Container maxWidth="xl" sx={{ py: { xs: 2.5, md: 3.5 }, px: { xs: 2, md: 3 }, minWidth: 0 }}>
         <Outlet />
       </Container>
     </Box>

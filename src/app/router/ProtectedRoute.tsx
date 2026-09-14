@@ -3,6 +3,7 @@ import { ROUTES } from '@/routes/paths';
 import { LoadingFallback } from '@/shared/components/LoadingBoundary';
 import { useAuthSession } from '@/shared/hooks/useAuthSession';
 import { authenticatedEntryPath } from '@/shared/utils/authenticatedEntryPath';
+import { returnPathFromLocation } from '@/shared/utils/safeReturnPath';
 import { useAdminStore } from '@/store/adminStore';
 
 type ProtectedRouteProps = {
@@ -19,7 +20,7 @@ export function ProtectedRoute({ redirectTo = ROUTES.login }: ProtectedRouteProp
   }
 
   if (!isAuthenticated) {
-    return <Navigate to={redirectTo} replace state={{ from: location.pathname }} />;
+    return <Navigate to={redirectTo} replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
 
   return <Outlet />;
@@ -29,15 +30,17 @@ export function ProtectedRoute({ redirectTo = ROUTES.login }: ProtectedRouteProp
 export function GuestRoute({ redirectTo = ROUTES.root }: { redirectTo?: string }) {
   const { isAuthenticated, isBootstrapping, user } = useAuthSession();
   const adminMode = useAdminStore((state) => state.adminMode);
+  const location = useLocation();
 
   if (isBootstrapping) {
     return <LoadingFallback />;
   }
 
   if (isAuthenticated) {
+    const safeFrom = returnPathFromLocation(location);
     return (
       <Navigate
-        to={authenticatedEntryPath(user, adminMode) || redirectTo}
+        to={safeFrom || authenticatedEntryPath(user, adminMode) || redirectTo}
         replace
       />
     );

@@ -43,6 +43,7 @@ import { EntityInspector } from '../components/EntityInspector';
 import { EntityFormDrawer, type EntityFormMode } from '../components/EntityFormDrawer';
 import { AccommodationPathBar } from '../components/AccommodationPathBar';
 import { AccommodationEmptySetup } from '../components/AccommodationEmptySetup';
+import { RoomInventoryPanel } from '../components/RoomInventoryPanel';
 import { useBuildings } from '../hooks/useAccommodation';
 import { getAccommodationUiProfile } from '../utils/accommodationProfile';
 
@@ -273,10 +274,32 @@ export function AccommodationWorkspacePage() {
     </Paper>
   );
 
-  // Leaf (bed): keep beds list in center, show bed details on the right.
+  const inventoryPanel = (
+    <RoomInventoryPanel
+      spaceId={spaceId}
+      canManage={permissions.canManageAccommodation}
+      onSelect={handleSelect}
+      onEditEntity={(sel) => setFormMode({ kind: 'edit', selection: sel })}
+      onAddBed={(roomSelection) =>
+        setFormMode({ kind: 'create', parent: roomSelection })
+      }
+    />
+  );
+
+  // Cards view = mock full-width room inventory (no hierarchy columns).
+  // Table view keeps the classic 3-column workspace.
+  const useInventoryLayout = viewMode === 'cards';
   const bedLeaf = selection?.type === 'bed';
-  const centerPane = bedLeaf ? childrenList : entityDashboard;
-  const rightPane = bedLeaf ? entityDashboard : childrenList;
+  const centerPane = useInventoryLayout
+    ? inventoryPanel
+    : bedLeaf
+      ? childrenList
+      : entityDashboard;
+  const rightPane = useInventoryLayout
+    ? null
+    : bedLeaf
+      ? entityDashboard
+      : childrenList;
 
   return (
     <PageContainer gap={0}>
@@ -370,6 +393,10 @@ export function AccommodationWorkspacePage() {
             onStartSetup={() => navigate(spaceAccommodationQuickSetupPath(spaceId))}
             onAddManually={() => setFormMode({ kind: 'create', parent: null })}
           />
+        ) : useInventoryLayout ? (
+          <Box sx={{ width: '100%', minHeight: { xs: 480, md: 'calc(100vh - 260px)' } }}>
+            {inventoryPanel}
+          </Box>
         ) : (
           <Stack spacing={`${DASHBOARD_UX.cardGap}px`} sx={{ width: '100%' }}>
             <AccommodationPathBar
@@ -383,7 +410,6 @@ export function AccommodationWorkspacePage() {
                 display: 'grid',
                 gap: `${DASHBOARD_UX.cardGap}px`,
                 minHeight: { xs: 480, md: 'calc(100vh - 260px)' },
-                // Equal thirds: Hierarchy | Selected entity | Children
                 gridTemplateColumns: isMdDown
                   ? '1fr'
                   : isLgDown
@@ -419,7 +445,9 @@ export function AccommodationWorkspacePage() {
 
               <Box sx={{ minHeight: 0, overflow: 'hidden' }}>{centerPane}</Box>
 
-              {!isLgDown ? <Box sx={{ minHeight: 0, overflow: 'hidden' }}>{rightPane}</Box> : null}
+              {!isLgDown && rightPane ? (
+                <Box sx={{ minHeight: 0, overflow: 'hidden' }}>{rightPane}</Box>
+              ) : null}
             </Box>
           </Stack>
         )}
@@ -430,7 +458,7 @@ export function AccommodationWorkspacePage() {
       </AppDrawer>
 
       <AppDrawer
-        open={childrenDrawerOpen && isLgDown}
+        open={childrenDrawerOpen && isLgDown && !useInventoryLayout}
         onClose={() => setChildrenDrawerOpen(false)}
         width={400}
       >

@@ -33,7 +33,8 @@ import { canManageNotifications } from '@/shared/utils/spaceOperator';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { useAuthStore } from '@/store/authStore';
 import { useSpaceStore } from '@/store/spaceStore';
-import { useSpaceHealth, useSpaceLifecycle } from '@/spaceLifecycle';
+import { useSpaceHealth, useSpaceLifecycle, dashboardVisibilityForLifecycle } from '@/spaceLifecycle';
+import { filterPendingGroupsWhenMealsHidden } from '@/shared/utils/filterPendingActionsForMealCapabilities';
 
 /**
  * Operations dashboard layout:
@@ -56,7 +57,7 @@ export function DashboardPage() {
   const isOperator = canManageNotifications(permissions);
   const isMess = spaceType === 'MESS';
   const accommodationApplicable = spaceType ? isAccommodationApplicable(spaceType) : true;
-  const showMealDay = isOperator && (isMess || permissions.canManageMeals === true);
+  const showMealDayPermission = isOperator && (isMess || permissions.canManageMeals === true);
 
   const isTenant = permissions.membershipRole === 'TENANT';
   const isCustomer = permissions.membershipRole === 'CUSTOMER';
@@ -101,11 +102,39 @@ export function DashboardPage() {
     hasOperationalSignal,
   });
 
-  const { evaluation } = useSpaceLifecycle({
+  const { evaluation, lifecycle, getCapability } = useSpaceLifecycle({
     spaceType,
     context: lifecycleSignals.context,
     enabled: isOperator,
   });
+
+  const mealConfigOpen = getCapability('MEAL_CONFIG')?.mode === 'AVAILABLE';
+  const mealOpsMode = getCapability('MEAL_OPS')?.mode;
+  const mealConfigMode = getCapability('MEAL_CONFIG')?.mode;
+  const mealsHidden = mealConfigMode === 'HIDDEN' && mealOpsMode === 'HIDDEN';
+  const visiblePendingGroups = useMemo(
+    () => filterPendingGroupsWhenMealsHidden(pendingGroups, mealsHidden),
+    [mealsHidden, pendingGroups],
+  );
+  const visiblePendingCount = useMemo(
+    () => visiblePendingGroups.reduce((sum, group) => sum + group.count, 0),
+    [visiblePendingGroups],
+  );
+  const accommodationOpen = getCapability('ACCOMMODATION')?.mode === 'AVAILABLE';
+  const dashVisibility = dashboardVisibilityForLifecycle(lifecycle, {
+    spaceType,
+    mealConfigOpen,
+    accommodationOpen,
+  });
+  const showMealDay =
+    showMealDayPermission &&
+    dashVisibility.showMealOps &&
+    mealOpsMode !== 'HIDDEN' &&
+    mealConfigMode !== 'HIDDEN';
+  const showAccommodationOps =
+    accommodationApplicable &&
+    dashVisibility.showAccommodationOps &&
+    accommodationOpen;
 
   const healthExtras = useMemo(() => {
     const reviewFromPending =
@@ -205,7 +234,7 @@ export function DashboardPage() {
                     spaceType={spaceType}
                     membershipRole={permissions.membershipRole ?? space.membershipRole}
                     health={health}
-                    pendingCount={pendingCount}
+                    pendingCount={visiblePendingCount}
                     onRefresh={handleRefresh}
                     userFullName={userFullName}
                   />
@@ -239,8 +268,8 @@ export function DashboardPage() {
                 )}
                 <PendingActionsPanel
                   spaceId={spaceId}
-                  totalCount={pendingCount}
-                  groups={pendingGroups}
+                  totalCount={visiblePendingCount}
+                  groups={visiblePendingGroups}
                 />
               </Box>
 
@@ -269,7 +298,7 @@ export function DashboardPage() {
                     gridTemplateColumns: {
                       xs: '1fr',
                       md:
-                        accommodationApplicable && dashboard.accommodationOperations
+                        showAccommodationOps && dashboard.accommodationOperations
                           ? '1fr 1fr'
                           : '1fr',
                     },
@@ -288,7 +317,7 @@ export function DashboardPage() {
                   ) : (
                     <Box />
                   )}
-                  {accommodationApplicable && dashboard.accommodationOperations ? (
+                  {showAccommodationOps && dashboard.accommodationOperations ? (
                     <AccommodationOpsWidget
                       spaceId={spaceId}
                       operations={dashboard.accommodationOperations}
@@ -304,7 +333,7 @@ export function DashboardPage() {
                 spaceType={spaceType}
                 permissions={permissions}
                 isOperator={isOperator}
-                pendingCount={pendingCount}
+                pendingCount={visiblePendingCount}
                 layout="row"
               />
             </>

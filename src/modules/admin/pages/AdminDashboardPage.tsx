@@ -1,211 +1,489 @@
 import {
   Box,
+  Button,
   Card,
   CardActionArea,
   CardContent,
-  CircularProgress,
+  FormControl,
   Grid,
+  MenuItem,
+  Select,
+  Stack,
   Typography,
 } from '@mui/material';
-import { Building2, ChefHat, MapPin, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import {
+  Building2,
+  CalendarDays,
+  ChefHat,
+  FileText,
+  Home,
+  MapPin,
+  Plus,
+  Soup,
+  UserPlus,
+  UserRound,
+  Users,
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
+import { AdminEnquiriesTrendChart } from '@/modules/admin/components/AdminEnquiriesTrendChart';
+import { AdminMetricCard } from '@/modules/admin/components/AdminMetricCard';
+import { AdminRecentActivityPanel } from '@/modules/admin/components/AdminRecentActivityPanel';
+import { AdminUserRegistrationBreakdownChart } from '@/modules/admin/components/AdminUserRegistrationBreakdownChart';
+import {
+  adminDashboardDateRange,
+  type AdminDashboardDateRangeKey,
+} from '@/modules/admin/utils/adminActivityUi';
 import { adminListPath } from '@/modules/admin/utils/adminListFilters';
-import { ROUTES } from '@/routes/paths';
-import type { AdminDashboardSummary } from '@/shared/types/admin';
+import {
+  ROUTES,
+  adminAddMessPath,
+  adminAddPropertyPath,
+} from '@/routes/paths';
+import type {
+  AdminActivityItem,
+  AdminDashboardSummary,
+  AdminEnquiriesTrend,
+  AdminUserRegistrationBreakdown,
+} from '@/shared/types/admin';
+import { useAuthStore } from '@/store/authStore';
 
-function StatCard({ label, value, to }: { label: string; value: number; to: string }) {
-  return (
-    <Card
-      variant="outlined"
-      sx={{
-        height: '100%',
-        minWidth: 0,
-        transition: 'border-color 0.15s ease',
-        '&:hover': { borderColor: 'primary.main' },
-      }}>
-      <CardActionArea component={RouterLink} to={to} sx={{ height: '100%' }}>
-        <CardContent>
-          <Typography variant="caption" color="text.secondary">
-            {label}
-          </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5 }}>
-            {value}
-          </Typography>
-        </CardContent>
-      </CardActionArea>
-    </Card>
-  );
+function greetingKey(hour: number): 'morning' | 'afternoon' | 'evening' {
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  return 'evening';
 }
+
+const cardSx = {
+  borderRadius: '14px',
+  border: '1px solid',
+  borderColor: 'divider',
+  boxShadow: '0 1px 2px rgb(15 23 42 / 0.04), 0 4px 12px rgb(15 23 42 / 0.04)',
+} as const;
 
 export function AdminDashboardPage() {
   const { t } = useTranslation();
+  const user = useAuthStore((state) => state.user);
+  const [rangeKey, setRangeKey] = useState<AdminDashboardDateRangeKey>('7d');
+  const range = useMemo(() => adminDashboardDateRange(rangeKey), [rangeKey]);
+  const rangeLabel = t(`admin.dashboard.range.${rangeKey}`);
+
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [activity, setActivity] = useState<AdminActivityItem[]>([]);
+  const [trend, setTrend] = useState<AdminEnquiriesTrend | null>(null);
+  const [breakdown, setBreakdown] = useState<AdminUserRegistrationBreakdown | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [chartsLoading, setChartsLoading] = useState(true);
+  const [activityError, setActivityError] = useState(false);
+  const [activeRangeKey, setActiveRangeKey] = useState(rangeKey);
+
+  if (activeRangeKey !== rangeKey) {
+    setActiveRangeKey(rangeKey);
+    setSummaryLoading(true);
+    setChartsLoading(true);
+    setActivityLoading(true);
+    setActivityError(false);
+  }
+
+  const loadActivity = useCallback(async () => {
+    setActivityLoading(true);
+    setActivityError(false);
+    try {
+      const page = await adminApi.listActivity({
+        from: range.from,
+        to: range.to,
+        page: 0,
+        size: 10,
+      });
+      setActivity(page.content);
+    } catch {
+      setActivityError(true);
+      setActivity([]);
+    } finally {
+      setActivityLoading(false);
+    }
+  }, [range.from, range.to]);
 
   useEffect(() => {
     let active = true;
-    void adminApi.getDashboardSummary().then((data) => {
-      if (active) {
-        setSummary(data);
-        setLoading(false);
-      }
-    });
+    void adminApi
+      .getDashboardSummary({ from: range.from, to: range.to })
+      .then((data) => {
+        if (active) setSummary(data);
+      })
+      .finally(() => {
+        if (active) setSummaryLoading(false);
+      });
     return () => {
       active = false;
     };
-  }, []);
+  }, [range.from, range.to]);
 
-  if (loading || !summary) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  useEffect(() => {
+    let active = true;
+    void adminApi
+      .listActivity({
+        from: range.from,
+        to: range.to,
+        page: 0,
+        size: 10,
+      })
+      .then((page) => {
+        if (!active) return;
+        setActivity(page.content);
+        setActivityError(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setActivityError(true);
+        setActivity([]);
+      })
+      .finally(() => {
+        if (active) setActivityLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [range.from, range.to]);
+
+  useEffect(() => {
+    let active = true;
+    void Promise.all([
+      adminApi.getEnquiriesTrend({ from: range.from, to: range.to }),
+      adminApi.getUserRegistrationBreakdown({ from: range.from, to: range.to }),
+    ])
+      .then(([trendData, breakdownData]) => {
+        if (!active) return;
+        setTrend(trendData);
+        setBreakdown(breakdownData);
+      })
+      .finally(() => {
+        if (active) setChartsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [range.from, range.to]);
+
+  const enquirySparkline = useMemo(
+    () => trend?.points.map((point) => point.count) ?? null,
+    [trend],
+  );
+
+  const hour = new Date().getHours();
+  const displayName = user?.fullName?.trim() || t('admin.dashboard.welcome');
+  const metricsLoading = summaryLoading && !summary;
+
+  const metrics = [
+    {
+      key: 'users',
+      label: t('admin.dashboard.stats.registeredUsers'),
+      value: summary?.registeredUsersCount ?? 0,
+      to: ROUTES.adminRegisteredUsers,
+      icon: Users,
+      accentBg: '#DCFCE7',
+      accentFg: '#16A34A',
+      deltaPercent: summary?.registeredUsersDeltaPercent,
+      sparkline: null as number[] | null,
+    },
+    {
+      key: 'enquiries',
+      label: t('admin.dashboard.stats.totalEnquiries'),
+      value: summary?.totalEnquiriesCount ?? 0,
+      to: ROUTES.adminEnquiries,
+      icon: FileText,
+      accentBg: '#F3E8FF',
+      accentFg: '#7C3AED',
+      deltaPercent: summary?.totalEnquiriesDeltaPercent,
+      sparkline: enquirySparkline,
+    },
+    {
+      key: 'properties',
+      label: t('admin.dashboard.stats.properties'),
+      value: summary?.propertyRegistrationCount ?? 0,
+      to: adminListPath('properties', { tab: 'leads' }),
+      icon: Building2,
+      accentBg: '#DBEAFE',
+      accentFg: '#2563EB',
+      deltaPercent: null as number | null,
+      sparkline: null as number[] | null,
+    },
+    {
+      key: 'mess',
+      label: t('admin.dashboard.stats.mess'),
+      value: summary?.messRegistrationCount ?? 0,
+      to: adminListPath('mess', { tab: 'leads' }),
+      icon: ChefHat,
+      accentBg: '#FFEDD5',
+      accentFg: '#EA580C',
+      deltaPercent: null as number | null,
+      sparkline: null as number[] | null,
+    },
+    {
+      key: 'owners',
+      label: t('admin.dashboard.stats.vendorsOwners'),
+      value: summary?.ownersCount ?? 0,
+      to: ROUTES.adminRegisteredUsers,
+      icon: UserRound,
+      accentBg: '#FEF9C3',
+      accentFg: '#CA8A04',
+      deltaPercent: summary?.ownersDeltaPercent,
+      sparkline: null as number[] | null,
+    },
+    {
+      key: 'activeProperties',
+      label: t('admin.dashboard.stats.activeProperties'),
+      value: summary?.activePropertySpaces ?? 0,
+      to: adminListPath('properties', { tab: 'active' }),
+      icon: Home,
+      accentBg: '#FCE7F3',
+      accentFg: '#DB2777',
+      deltaPercent: summary?.propertySpacesDeltaPercent,
+      sparkline: null as number[] | null,
+    },
+    {
+      key: 'activeMesses',
+      label: t('admin.dashboard.stats.activeMesses'),
+      value: summary?.activeMessSpaces ?? 0,
+      to: adminListPath('mess', { tab: 'active' }),
+      icon: Soup,
+      accentBg: '#CCFBF1',
+      accentFg: '#0F766E',
+      deltaPercent: summary?.messSpacesDeltaPercent,
+      sparkline: null as number[] | null,
+    },
+    {
+      key: 'addresses',
+      label: t('admin.dashboard.stats.savedAddresses'),
+      value: summary?.savedAddressesCount ?? 0,
+      to: ROUTES.adminSavedAddresses,
+      icon: MapPin,
+      accentBg: '#E0E7FF',
+      accentFg: '#4F46E5',
+      deltaPercent: summary?.savedAddressesDeltaPercent,
+      sparkline: null as number[] | null,
+    },
+  ] as const;
+
+  const quickActions = [
+    {
+      to: adminAddPropertyPath(),
+      icon: Plus,
+      title: t('admin.dashboard.quickActions.addProperty'),
+      hint: t('admin.dashboard.quickActions.addPropertyHint'),
+      color: '#16A34A',
+      bg: '#DCFCE7',
+    },
+    {
+      to: adminAddMessPath(),
+      icon: ChefHat,
+      title: t('admin.dashboard.quickActions.addMess'),
+      hint: t('admin.dashboard.quickActions.addMessHint'),
+      color: '#EA580C',
+      bg: '#FFEDD5',
+    },
+    {
+      to: ROUTES.adminRegisteredUsers,
+      icon: UserPlus,
+      title: t('admin.dashboard.quickActions.addUser'),
+      hint: t('admin.dashboard.quickActions.addUserHint'),
+      color: '#2563EB',
+      bg: '#DBEAFE',
+    },
+    {
+      to: ROUTES.adminSavedAddresses,
+      icon: MapPin,
+      title: t('admin.dashboard.quickActions.addresses'),
+      hint: t('admin.dashboard.quickActions.addressesHint'),
+      color: '#4F46E5',
+      bg: '#E0E7FF',
+    },
+  ];
 
   return (
     <Box>
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 3 }}>
-        {t('admin.dashboard.title')}
-      </Typography>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        sx={{
+          mb: 3,
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'flex-start' },
+        }}>
+        <Box>
+          <Typography
+            sx={{
+              fontWeight: 800,
+              fontSize: { xs: 26, md: 30 },
+              letterSpacing: -0.6,
+              color: 'text.primary',
+              lineHeight: 1.2,
+            }}>
+            {t(`admin.dashboard.greeting.${greetingKey(hour)}`, { name: displayName })}
+          </Typography>
+          <Typography sx={{ mt: 0.5, color: 'text.secondary', fontSize: 14.5 }}>
+            {t('admin.dashboard.subtitle')}
+          </Typography>
+        </Box>
+        <FormControl size="small" sx={{ minWidth: 176 }}>
+          <Select
+            value={rangeKey}
+            onChange={(event) => setRangeKey(event.target.value as AdminDashboardDateRangeKey)}
+            renderValue={(value) => (
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <CalendarDays size={16} color="#64748B" />
+                <span>{t(`admin.dashboard.range.${value}`)}</span>
+              </Stack>
+            )}
+            sx={{
+              borderRadius: '10px',
+              bgcolor: '#FFFFFF',
+              fontWeight: 600,
+              boxShadow: '0 1px 2px rgb(15 23 42 / 0.04)',
+            }}>
+            <MenuItem value="7d">{t('admin.dashboard.range.7d')}</MenuItem>
+            <MenuItem value="30d">{t('admin.dashboard.range.30d')}</MenuItem>
+            <MenuItem value="90d">{t('admin.dashboard.range.90d')}</MenuItem>
+          </Select>
+        </FormControl>
+      </Stack>
 
-      <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, mb: 1.5 }}>
-        {t('admin.dashboard.sectionRegistration')}
-      </Typography>
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard
-            label={t('admin.dashboard.stats.registeredUsers')}
-            value={summary.registeredUsersCount ?? 0}
-            to={ROUTES.adminRegisteredUsers}
-          />
-        </Grid>
-      </Grid>
+      <Grid container spacing={2.5}>
+        <Grid size={{ xs: 12, lg: 8 }}>
+          <Grid container spacing={2} sx={{ mb: 2.5 }}>
+            {metrics.map((metric) => (
+              <Grid key={metric.key} size={{ xs: 12, sm: 6, md: 3 }}>
+                <AdminMetricCard
+                  label={metric.label}
+                  value={metric.value}
+                  to={metric.to}
+                  icon={metric.icon}
+                  accentBg={metric.accentBg}
+                  accentFg={metric.accentFg}
+                  deltaPercent={metric.deltaPercent}
+                  sparkline={metric.sparkline}
+                  loading={metricsLoading}
+                />
+              </Grid>
+            ))}
+          </Grid>
 
-      <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, mb: 1.5 }}>
-        {t('admin.dashboard.sectionLeadsSpaces')}
-      </Typography>
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 6, sm: 4, md: 3 }}>
-          <StatCard
-            label={t('admin.dashboard.stats.propertyLeads')}
-            value={summary.propertyRegistrationCount}
-            to={adminListPath('properties', { tab: 'leads' })}
-          />
-        </Grid>
-        <Grid size={{ xs: 6, sm: 4, md: 3 }}>
-          <StatCard
-            label={t('admin.dashboard.stats.messLeads')}
-            value={summary.messRegistrationCount}
-            to={adminListPath('mess', { tab: 'leads' })}
-          />
-        </Grid>
-        <Grid size={{ xs: 6, sm: 4, md: 3 }}>
-          <StatCard
-            label={t('admin.dashboard.stats.websiteProperty')}
-            value={summary.websitePropertyLeads}
-            to={adminListPath('properties', { tab: 'leads', source: 'PUBLIC_WEBSITE' })}
-          />
-        </Grid>
-        <Grid size={{ xs: 6, sm: 4, md: 3 }}>
-          <StatCard
-            label={t('admin.dashboard.stats.websiteMess')}
-            value={summary.websiteMessLeads}
-            to={adminListPath('mess', { tab: 'leads', source: 'PUBLIC_WEBSITE' })}
-          />
-        </Grid>
-        <Grid size={{ xs: 6, sm: 4, md: 3 }}>
-          <StatCard
-            label={t('admin.dashboard.stats.adminProperty')}
-            value={summary.adminPropertyLeads}
-            to={adminListPath('properties', { tab: 'leads', source: 'ADMIN' })}
-          />
-        </Grid>
-        <Grid size={{ xs: 6, sm: 4, md: 3 }}>
-          <StatCard
-            label={t('admin.dashboard.stats.adminMess')}
-            value={summary.adminMessLeads}
-            to={adminListPath('mess', { tab: 'leads', source: 'ADMIN' })}
-          />
-        </Grid>
-        <Grid size={{ xs: 6, sm: 4, md: 3 }}>
-          <StatCard
-            label={t('admin.dashboard.stats.activeProperties')}
-            value={summary.activePropertySpaces}
-            to={adminListPath('properties', { tab: 'active' })}
-          />
-        </Grid>
-        <Grid size={{ xs: 6, sm: 4, md: 3 }}>
-          <StatCard
-            label={t('admin.dashboard.stats.activeMesses')}
-            value={summary.activeMessSpaces}
-            to={adminListPath('mess', { tab: 'active' })}
-          />
-        </Grid>
-      </Grid>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 3 }}>
-          <Card variant="outlined" sx={{ minWidth: 0 }}>
-            <CardActionArea component={RouterLink} to={ROUTES.adminRegisteredUsers}>
-              <CardContent sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                <Users size={28} />
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="h6">{t('admin.dashboard.nav.registeredUsersTitle')}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('admin.dashboard.nav.registeredUsersHint')}
-                  </Typography>
-                </Box>
-              </CardContent>
-            </CardActionArea>
+          <Grid container spacing={2} sx={{ mb: 2.5 }}>
+            <Grid size={{ xs: 12, md: 8 }}>
+              <AdminEnquiriesTrendChart
+                trend={trend}
+                loading={chartsLoading}
+                rangeLabel={rangeLabel}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <AdminUserRegistrationBreakdownChart
+                breakdown={breakdown}
+                loading={chartsLoading}
+                rangeLabel={rangeLabel}
+              />
+            </Grid>
+          </Grid>
+
+          <Card elevation={0} sx={{ ...cardSx, mb: 2.5 }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography sx={{ fontWeight: 800, fontSize: 15, mb: 1.5 }}>
+                {t('admin.dashboard.quickActionsTitle')}
+              </Typography>
+              <Grid container spacing={1.5}>
+                {quickActions.map((action) => (
+                  <Grid key={action.to + action.title} size={{ xs: 12, sm: 6, md: 3 }}>
+                    <CardActionArea
+                      component={RouterLink}
+                      to={action.to}
+                      sx={{
+                        borderRadius: '12px',
+                        p: 1.5,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        height: '100%',
+                        '&:hover': { bgcolor: '#F8FAFC', borderColor: action.color },
+                      }}>
+                      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'flex-start' }}>
+                        <Box
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: '999px',
+                            bgcolor: action.bg,
+                            color: action.color,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}>
+                          <action.icon size={18} />
+                        </Box>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography sx={{ fontWeight: 700, fontSize: 14 }}>
+                            {action.title}
+                          </Typography>
+                          <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
+                            {action.hint}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </CardActionArea>
+                  </Grid>
+                ))}
+              </Grid>
+            </CardContent>
           </Card>
+
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ flexWrap: 'wrap', alignItems: 'center', rowGap: 1 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary', mr: 0.5 }}>
+              {t('admin.dashboard.sectionLeadsSpaces')}:
+            </Typography>
+            {(
+              [
+                ['websiteProperty', summary?.websitePropertyLeads ?? 0, adminListPath('properties', { tab: 'leads', source: 'PUBLIC_WEBSITE' })],
+                ['websiteMess', summary?.websiteMessLeads ?? 0, adminListPath('mess', { tab: 'leads', source: 'PUBLIC_WEBSITE' })],
+                ['adminProperty', summary?.adminPropertyLeads ?? 0, adminListPath('properties', { tab: 'leads', source: 'ADMIN' })],
+                ['adminMess', summary?.adminMessLeads ?? 0, adminListPath('mess', { tab: 'leads', source: 'ADMIN' })],
+              ] as const
+            ).map(([key, value, to]) => (
+              <Button
+                key={key}
+                component={RouterLink}
+                to={to}
+                size="small"
+                sx={{
+                  textTransform: 'none',
+                  borderRadius: '999px',
+                  bgcolor: '#FFFFFF',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  color: 'text.secondary',
+                  fontWeight: 600,
+                  fontSize: 12,
+                  px: 1.25,
+                }}>
+                {t(`admin.dashboard.stats.${key}`)} · {value}
+              </Button>
+            ))}
+          </Stack>
         </Grid>
-        <Grid size={{ xs: 12, md: 3 }}>
-          <Card variant="outlined" sx={{ minWidth: 0 }}>
-            <CardActionArea component={RouterLink} to={ROUTES.adminProperties}>
-              <CardContent sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                <Building2 size={28} />
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="h6">{t('admin.dashboard.nav.propertiesTitle')}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('admin.dashboard.nav.propertiesHint')}
-                  </Typography>
-                </Box>
-              </CardContent>
-            </CardActionArea>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, md: 3 }}>
-          <Card variant="outlined" sx={{ minWidth: 0 }}>
-            <CardActionArea component={RouterLink} to={ROUTES.adminMess}>
-              <CardContent sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                <ChefHat size={28} />
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="h6">{t('admin.dashboard.nav.messTitle')}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('admin.dashboard.nav.messHint')}
-                  </Typography>
-                </Box>
-              </CardContent>
-            </CardActionArea>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, md: 3 }}>
-          <Card variant="outlined" sx={{ minWidth: 0 }}>
-            <CardActionArea component={RouterLink} to={ROUTES.adminSavedAddresses}>
-              <CardContent sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                <MapPin size={28} />
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="h6">{t('admin.dashboard.nav.savedAddressesTitle')}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('admin.dashboard.nav.savedAddressesHint')}
-                  </Typography>
-                </Box>
-              </CardContent>
-            </CardActionArea>
-          </Card>
+
+        <Grid size={{ xs: 12, lg: 4 }}>
+          <AdminRecentActivityPanel
+            items={activity}
+            loading={activityLoading}
+            error={activityError}
+            onRetry={() => void loadActivity()}
+            viewAllFrom={range.from}
+            viewAllTo={range.to}
+          />
         </Grid>
       </Grid>
     </Box>

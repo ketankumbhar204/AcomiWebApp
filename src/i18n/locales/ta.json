@@ -100,6 +100,7 @@
   },
   "navigation": {
     "mySpaces": "என் ஸ்பேஸ்கள்",
+    "findAPlace": "இடம் தேடு",
     "profile": "சுயவிவரம்",
     "createSpace": "ஸ்பேஸ் உருவாக்கு",
     "inviteMember": "உறுப்பினரை அழை",
@@ -152,7 +153,12 @@
       "verifyContinue": "சரிபார்த்து தொடரவும்",
       "devHint": "உங்கள் OTP-ஐ பேக்கெண்ட் டெவலப்மென்ட் பதிவில் பாருங்கள்.",
       "wrongNumber": "தவறான எண்ணா?",
-      "changeIt": "மாற்று"
+      "changeIt": "மாற்று",
+      "smsSampleTitle": "Look for this SMS",
+      "smsSampleSender": "SMS from ACOMI",
+      "smsSampleBody": "[Hello] Your OTP for Phone Verification is XXXXXX. Valid for 5 mins - [Southern Express]",
+      "smsSampleCaption": "“Southern Express” is only our SMS provider’s template name — this code is for ACOMI.",
+      "smsSampleA11y": "Sample of the ACOMI OTP SMS message"
     }
   },
   "spaces": {
@@ -164,6 +170,39 @@
       "emptyDescription": "தொடங்க உங்கள் முதல் Mess, PG, Hostel அல்லது Rental ஸ்பேஸை உருவாக்கவும்.",
       "createFab": "புதிய ஸ்பேஸ் உருவாக்கு",
       "openProfile": "சுயவிவரம் மற்றும் அமைப்புகளைத் திற"
+    },
+    "findPlace": {
+      "eyebrow": "Search for a place",
+      "heroTitle": "Search for a place",
+      "heroSubtitle": "Search PGs, hostels, rentals and co-living spaces around you.",
+      "subtitle": "ACOMI-இல் செயலில் உள்ள ஸ்பேஸ்களைப் பாருங்கள். சேர இன்னும் உரிமையாளர் அழைப்பு தேவை.",
+      "searchLabel": "இடம் தேடு",
+      "searchPlaceholder": "பெயர் அல்லது முகவரியால் தேடுங்கள்…",
+      "filterAll": "அனைத்தும்",
+      "resultCount_one": "{{count}} இடம் கிடைத்தது",
+      "resultCount_other": "{{count}} இடங்கள் கிடைத்தன",
+      "sortRecommended": "Sort by · Recommended",
+      "emptyTitle": "இடங்கள் எதுவும் கிடைக்கவில்லை",
+      "emptyDescription": "வேறு தேடலை முயற்சிக்கவும் அல்லது வகை வடிகட்டியை அழிக்கவும்.",
+      "addressNotSet": "முகவரி அமைக்கப்படவில்லை",
+      "mealsIncluded": "உணவு சேர்க்கப்பட்டுள்ளது",
+      "alreadyMember": "நீங்கள் உறுப்பினர்",
+      "viewDetails": "விவரங்களைப் பார்க்க",
+      "detailTitle": "இட விவரங்கள்",
+      "amenities": "வசதிகள்",
+      "noAmenities": "வசதிகள் பட்டியலிடப்படவில்லை",
+      "inviteNotice": "Joining requires an owner invitation. Ask the owner to invite you to this place.",
+      "askInvite": "உரிமையாளரிடம் அழைக்கச் சொல்லுங்கள்",
+      "openDashboard": "ஸ்பேஸ் டாஷ்போர்டைத் திற",
+      "close": "மூடு",
+      "ctaFindPlace": "இடம் தேடு",
+      "errorLoad": "இடங்களை ஏற்ற முடியவில்லை. மீண்டும் முயற்சிக்கவும்.",
+      "paginationAria": "இட முடிவு பக்கங்கள்",
+      "gender": {
+        "MALE": "ஆண்",
+        "FEMALE": "பெண்",
+        "MIXED": "Gents and Ladies"
+      }
     },
     "createSpace": {
       "eyebrow": "புதிய சொத்து",

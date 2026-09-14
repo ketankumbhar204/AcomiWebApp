@@ -1,5 +1,5 @@
 import { InputAdornment, TextField } from '@mui/material';
-import { ChefHat, IndianRupee, MapPin, Phone, User } from 'lucide-react';
+import { ChefHat, IndianRupee, MapPin, User } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { adminApi } from '@/modules/admin/api/adminApi';
 import { AdminRegistrationFormLayout } from '@/modules/admin/components/AdminRegistrationFormLayout';
 import { AdminSavedAddressPicker } from '@/modules/admin/components/AdminSavedAddressPicker';
 import { AdminTestLeadOption } from '@/modules/admin/components/AdminTestLeadOption';
+import { IndianMobileTextField } from '@/modules/admin/components/IndianMobileTextField';
 import { ROUTES } from '@/routes/paths';
 import { ContentCard } from '@/shared/components/ContentCard';
 import { FormSection } from '@/shared/components/FormSection';
@@ -189,44 +190,24 @@ export function AdminAddMessPage() {
               },
             }}
           />
-          <TextField
+          <IndianMobileTextField
             label={t('admin.common.primaryMobile')}
             value={mobileNumber}
-            onChange={(e) => setMobileNumber(normalizeIndianMobileDigits(e.target.value))}
+            onChange={setMobileNumber}
             placeholder={t('admin.common.primaryMobilePlaceholder')}
             fullWidth
             size="small"
             sx={fieldSx}
-            slotProps={{
-              htmlInput: { maxLength: 10, inputMode: 'numeric' },
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Phone size={16} />
-                  </InputAdornment>
-                ),
-              },
-            }}
           />
-          <TextField
+          <IndianMobileTextField
             label={t('admin.common.alternateMobileLabel')}
             value={alternateMobileNumber}
-            onChange={(e) => setAlternateMobileNumber(normalizeIndianMobileDigits(e.target.value))}
+            onChange={setAlternateMobileNumber}
             placeholder={t('admin.common.alternateMobilePlaceholder')}
             helperText={t('admin.common.alternateMobileHint')}
             fullWidth
             size="small"
             sx={fieldSx}
-            slotProps={{
-              htmlInput: { maxLength: 10, inputMode: 'numeric' },
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Phone size={16} />
-                  </InputAdornment>
-                ),
-              },
-            }}
           />
         </FormSection>
       </ContentCard>

@@ -370,17 +370,32 @@ export function MealsPlannerPage() {
             {/* Selected day — full width for meals */}
             <ContentCard>
               <Box sx={{ mb: 2 }}>
-                <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
-                  {dateLabel}
-                </Typography>
-                <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, mt: 0.35 }}>
+                <Box sx={{ width: 'fit-content', maxWidth: '100%' }}>
+                  <PeriodDayNav
+                    date={focusDate}
+                    onPrevious={() => shiftDate(-1)}
+                    onNext={() => shiftDate(1)}
+                    onDateSelect={(next) => setSearchParams({ date: next })}
+                    label={formatMenuDateLabel(focusDate)}
+                  />
+                </Box>
+                <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, mt: 0.75 }}>
                   {t('meals.planning.selectedDaySubtitle', {
                     defaultValue: 'Plan your menu for the day',
                   })}
                 </Typography>
               </Box>
 
-              <Stack spacing={`${DASHBOARD_UX.cardGap + 4}px`}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(3, minmax(0, 1fr))',
+                  },
+                  gap: `${DASHBOARD_UX.cardGap}px`,
+                }}
+              >
                 {MEAL_TYPES.map((mealType) => (
                   <MealSlotCard
                     key={`${focusDate}-${mealType}`}
@@ -430,7 +445,7 @@ export function MealsPlannerPage() {
                     }
                   />
                 ))}
-              </Stack>
+              </Box>
 
               {canManage ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2.5 }}>

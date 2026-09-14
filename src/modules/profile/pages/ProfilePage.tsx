@@ -16,6 +16,7 @@ import {
   LogOut,
   Mail,
   MapPin,
+  MessageCircle,
   Shield,
   Smartphone,
   SquarePen,
@@ -247,9 +248,41 @@ export function ProfilePage() {
                   >
                     {t('settings.profile.changeMobile')}
                   </Button>
+                  <Button
+                    variant="text"
+                    size="small"
+                    startIcon={<MessageCircle size={14} />}
+                    onClick={() => navigate(ROUTES.myEnquiries)}
+                    sx={{
+                      mt: 0.25,
+                      px: 0,
+                      minWidth: 0,
+                      color: colors.primary,
+                      justifyContent: 'flex-start',
+                      ...DASHBOARD_UX.smallCaption,
+                    }}
+                  >
+                    {t('spaces.enquiries.title')}
+                  </Button>
                   <Stack direction="row" spacing={0.75} useFlexGap sx={{ mt: 1, flexWrap: 'wrap' }}>
                     {currentSpace ? (
                       <StatusChip label={currentSpace.spaceName} tone="info" />
+                    ) : null}
+                    {currentSpace?.membershipRole ? (
+                      <StatusChip
+                        label={t(`spaces.roles.${currentSpace.membershipRole}`, {
+                          defaultValue: currentSpace.membershipRole,
+                        })}
+                        tone="success"
+                      />
+                    ) : null}
+                    {user.systemRole === 'ADMIN' ? (
+                      <StatusChip
+                        label={t('settings.profile.systemAdmin', {
+                          defaultValue: 'Platform admin',
+                        })}
+                        tone="info"
+                      />
                     ) : null}
                     {profileStatusLabel ? (
                       <StatusChip label={profileStatusLabel} tone="warning" />
@@ -312,6 +345,17 @@ export function ProfilePage() {
                 {t('settings.profile.personalSection')}
               </Typography>
             </Stack>
+            <ProfileField
+              icon={<Shield size={15} />}
+              label={t('settings.profile.roleLabel', { defaultValue: 'Role in current space' })}
+              value={
+                currentSpace?.membershipRole
+                  ? t(`spaces.roles.${currentSpace.membershipRole}`, {
+                      defaultValue: currentSpace.membershipRole,
+                    })
+                  : '—'
+              }
+            />
             <ProfileField
               icon={<Mail size={15} />}
               label={t('settings.profile.emailLabel')}

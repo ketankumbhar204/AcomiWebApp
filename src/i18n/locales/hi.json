@@ -3329,7 +3329,11 @@
     "moreSection": "अधिक",
     "library": {
       "title": "मेनू लाइब्रेरी",
-      "subtitle": "Set up categories, items, and combos before planning daily menus.",
+      "subtitle": "Defaults are ready to use — edit anytime, or continue to plan menus.",
+      "readyTipTitle": "Your menu library is ready",
+      "readyTipBody": "Sample items and combos are already here. You can edit the library now, or continue to menu planning and customize later.",
+      "readyTipContinue": "Continue to menu planning",
+      "readyTipStay": "Stay and edit library",
       "items": "आइटम",
       "combos": "कॉम्बोs",
       "extras": "Extras",

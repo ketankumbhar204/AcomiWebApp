@@ -1,6 +1,7 @@
-import { Box, Paper, Typography, useTheme } from '@mui/material';
+import { Box, Link, Paper, Typography, useTheme } from '@mui/material';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PUBLIC_SITE } from '@/shared/constants/publicSite';
 import { AUTH_UX, authSurfaces } from '../theme/authUx';
 import { AuthBrandMark } from './AuthBrandMark';
 
@@ -27,15 +28,30 @@ export function AuthCard({ children }: AuthCardProps) {
         boxShadow: a.shadow,
       }}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2.25 }}>
+      <Box
+        component={Link}
+        href={PUBLIC_SITE.home}
+        underline="none"
+        aria-label={t('auth.backToWebsite', { defaultValue: 'Back to website' })}
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          mb: 2.25,
+          color: 'inherit',
+          '&:hover .auth-card-brand': { opacity: 0.85 },
+        }}
+      >
         <AuthBrandMark size={40} />
         <Typography
+          className="auth-card-brand"
           sx={{
             ...AUTH_UX.brandName,
             fontSize: '1.375rem',
             color: a.brand,
             mt: 1,
             letterSpacing: '-0.02em',
+            transition: 'opacity 120ms ease',
           }}
         >
           {t('common.appName')}

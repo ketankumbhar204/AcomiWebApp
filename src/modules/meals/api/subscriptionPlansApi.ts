@@ -9,6 +9,7 @@ import type {
   SubscriptionPlanResponse,
   UpdateSubscriptionPlanRequest,
 } from '@/shared/types/subscription';
+import { ensureUploadedFileId } from '@/shared/services/fileUploadService';
 
 export const subscriptionPlansApi = {
   listPlans: (spaceId: string, options?: { includeInactive?: boolean }) => {
@@ -63,17 +64,24 @@ export const subscriptionPlansApi = {
       ),
     ),
 
-  createActivationRequest: (
+  createActivationRequest: async (
     spaceId: string,
     memberId: string,
-    payload: CreateSubscriptionActivationRequest,
-  ) =>
-    unwrapApiResponse(
+    payload: CreateSubscriptionActivationRequest & { localFile?: File },
+  ) => {
+    const proofFileId = await ensureUploadedFileId(payload.proofFileId, payload.localFile, {
+      purpose: 'SUBSCRIPTION_PAYMENT_PROOF',
+      spaceId,
+      memberId,
+    });
+    const { localFile: _ignored, ...rest } = payload;
+    return unwrapApiResponse(
       apiClient.post<ApiResponse<SubscriptionActivationRequestResponse>>(
         `/spaces/${spaceId}/members/${memberId}/subscription-activation-requests`,
-        payload,
+        { ...rest, proofFileId },
       ),
-    ),
+    );
+  },
 
   approveActivationRequest: (spaceId: string, requestId: string, ownerNotes?: string) =>
     unwrapApiResponse(

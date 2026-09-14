@@ -6,7 +6,9 @@ import { AdminRoute } from '@/modules/admin/components/AdminRoute';
 import { SpaceBootstrapOutlet } from '@/modules/dashboard/layouts/SpaceBootstrapOutlet';
 import { SpaceShellLayout } from '@/modules/dashboard/layouts/SpaceShellLayout';
 import { GlobalShellLayout } from '@/layouts/GlobalShellLayout';
+import { DiscoverShellLayout } from '@/layouts/DiscoverShellLayout';
 import { AccommodationPermissionGate } from '@/modules/accommodation/components/AccommodationPermissionGate';
+import { AllocationCapabilityGate } from '@/modules/accommodation/components/AllocationCapabilityGate';
 import { MealsPermissionGate } from '@/modules/meals/components/MealsPermissionGate';
 import { PaymentsPermissionGate } from '@/modules/payments/components/PaymentsPermissionGate';
 import { ComplaintsPermissionGate } from '@/modules/complaints/components/ComplaintsPermissionGate';
@@ -136,6 +138,16 @@ const AcceptInvitationsPage = lazyPage(() =>
 );
 const MySpacesPage = lazyPage(() =>
   import('@/modules/onboarding/pages/MySpacesPage').then((m) => ({ default: m.MySpacesPage })),
+);
+const FindAPlacePage = lazyPage(() =>
+  import('@/modules/onboarding/pages/FindAPlacePage').then((m) => ({
+    default: m.FindAPlacePage,
+  })),
+);
+const MemberHomePage = lazyPage(() =>
+  import('@/modules/onboarding/pages/MemberHomePage').then((m) => ({
+    default: m.MemberHomePage,
+  })),
 );
 const CompleteProfilePage = lazyPage(() =>
   import('@/modules/onboarding/pages/CompleteProfilePage').then((m) => ({
@@ -305,6 +317,11 @@ const AdminPropertyDetailPage = lazyPage(() =>
 const AdminAddPropertyPage = lazyPage(() =>
   import('@/modules/admin/pages/AdminAddPropertyPage').then((m) => ({ default: m.AdminAddPropertyPage })),
 );
+const AdminBulkPropertyImportPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminBulkPropertyImportPage').then((m) => ({
+    default: m.AdminBulkPropertyImportPage,
+  })),
+);
 const AdminMessListPage = lazyPage(() =>
   import('@/modules/admin/pages/AdminMessListPage').then((m) => ({ default: m.AdminMessListPage })),
 );
@@ -319,9 +336,29 @@ const AdminRegisteredUsersPage = lazyPage(() =>
     default: m.AdminRegisteredUsersPage,
   })),
 );
+const AdminRegisteredUserDetailPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminRegisteredUserDetailPage').then((m) => ({
+    default: m.AdminRegisteredUserDetailPage,
+  })),
+);
+const AdminActivityPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminActivityPage').then((m) => ({
+    default: m.AdminActivityPage,
+  })),
+);
 const AdminSavedAddressesPage = lazyPage(() =>
   import('@/modules/admin/pages/AdminSavedAddressesPage').then((m) => ({
     default: m.AdminSavedAddressesPage,
+  })),
+);
+const AdminEnquiryListPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminEnquiryListPage').then((m) => ({
+    default: m.AdminEnquiryListPage,
+  })),
+);
+const MyEnquiriesPage = lazyPage(() =>
+  import('@/modules/onboarding/pages/MyEnquiriesPage').then((m) => ({
+    default: m.MyEnquiriesPage,
   })),
 );
 const AdminLayout = lazyPage(() =>
@@ -438,10 +475,42 @@ export const appRoutes = [
                 ),
               },
               {
+                path: `${ROUTES.adminRegisteredUsers}/:id`,
+                element: (
+                  <L>
+                    <AdminRegisteredUserDetailPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.adminActivity,
+                element: (
+                  <L>
+                    <AdminActivityPage />
+                  </L>
+                ),
+              },
+              {
                 path: ROUTES.adminSavedAddresses,
                 element: (
                   <L>
                     <AdminSavedAddressesPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.adminEnquiries,
+                element: (
+                  <L>
+                    <AdminEnquiryListPage />
+                  </L>
+                ),
+              },
+              {
+                path: `${ROUTES.adminEnquiries}/:id`,
+                element: (
+                  <L>
+                    <AdminEnquiryListPage />
                   </L>
                 ),
               },
@@ -458,6 +527,14 @@ export const appRoutes = [
                 element: (
                   <L>
                     <AdminAddPropertyPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.adminBulkProperty,
+                element: (
+                  <L>
+                    <AdminBulkPropertyImportPage />
                   </L>
                 ),
               },
@@ -550,14 +627,6 @@ export const appRoutes = [
                 ),
               },
               {
-                path: ROUTES.joinSpace,
-                element: (
-                  <L>
-                    <JoinSpacePage />
-                  </L>
-                ),
-              },
-              {
                 path: ROUTES.acceptInvitations,
                 element: (
                   <L>
@@ -572,6 +641,35 @@ export const appRoutes = [
                     <CompleteProfilePage />
                   </L>
                 ),
+              },
+              {
+                element: <DiscoverShellLayout />,
+                children: [
+                  {
+                    path: ROUTES.memberHome,
+                    element: (
+                      <L>
+                        <MemberHomePage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.findAPlace,
+                    element: (
+                      <L>
+                        <FindAPlacePage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.joinSpace,
+                    element: (
+                      <L>
+                        <JoinSpacePage />
+                      </L>
+                    ),
+                  },
+                ],
               },
               {
                 element: <GlobalShellLayout />,
@@ -589,6 +687,14 @@ export const appRoutes = [
                     element: (
                       <L>
                         <ProfilePage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.myEnquiries,
+                    element: (
+                      <L>
+                        <MyEnquiriesPage />
                       </L>
                     ),
                   },
@@ -717,19 +823,31 @@ export const appRoutes = [
                       },
                       {
                         path: 'occupancy',
-                        element: (
-                          <L>
-                            <OccupancyListPage />
-                          </L>
-                        ),
+                        element: <AllocationCapabilityGate />,
+                        children: [
+                          {
+                            index: true,
+                            element: (
+                              <L>
+                                <OccupancyListPage />
+                              </L>
+                            ),
+                          },
+                        ],
                       },
                       {
                         path: 'bed-inventory',
-                        element: (
-                          <L>
-                            <BedInventoryPage />
-                          </L>
-                        ),
+                        element: <AllocationCapabilityGate />,
+                        children: [
+                          {
+                            index: true,
+                            element: (
+                              <L>
+                                <BedInventoryPage />
+                              </L>
+                            ),
+                          },
+                        ],
                       },
                       {
                         path: 'space-health',
@@ -741,11 +859,17 @@ export const appRoutes = [
                       },
                       {
                         path: 'meal-headcount',
-                        element: (
-                          <L>
-                            <MealHeadcountPage />
-                          </L>
-                        ),
+                        element: <MealsPermissionGate />,
+                        children: [
+                          {
+                            index: true,
+                            element: (
+                              <L>
+                                <MealHeadcountPage />
+                              </L>
+                            ),
+                          },
+                        ],
                       },
                       {
                         path: 'members',
@@ -809,7 +933,7 @@ export const appRoutes = [
                       },
                       {
                         path: 'occupancy/wizard',
-                        element: <AccommodationPermissionGate />,
+                        element: <AllocationCapabilityGate />,
                         children: [
                           {
                             index: true,
@@ -905,11 +1029,17 @@ export const appRoutes = [
                           },
                           {
                             path: 'day-meals',
-                            element: (
-                              <L>
-                                <DayMealPaymentsPage />
-                              </L>
-                            ),
+                            element: <MealsPermissionGate />,
+                            children: [
+                              {
+                                index: true,
+                                element: (
+                                  <L>
+                                    <DayMealPaymentsPage />
+                                  </L>
+                                ),
+                              },
+                            ],
                           },
                           {
                             path: ':paymentId',

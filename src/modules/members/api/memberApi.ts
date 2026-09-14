@@ -21,6 +21,7 @@ import type {
   UpdateMemberRequest,
   UpdateMemberStatusRequest,
 } from '@/shared/types/member';
+import { ensureUploadedFileId } from '@/shared/services/fileUploadService';
 
 /** Matches mobile admin document create — metadata only, no real file upload. */
 export const PENDING_UPLOAD_FILE_URL = 'pending-upload';
@@ -161,12 +162,18 @@ export const memberApi = {
   addMemberDocument: async (
     spaceId: string,
     memberId: string,
-    body: CreateMemberDocumentRequest,
+    body: CreateMemberDocumentRequest & { localFile?: File },
   ): Promise<MemberDocumentResponse> => {
+    const fileId = await ensureUploadedFileId(body.fileId ?? undefined, body.localFile, {
+      purpose: 'MEMBER_DOCUMENT',
+      spaceId,
+      memberId,
+    });
+    const { localFile: _ignored, ...rest } = body;
     return unwrapApiResponse(
       apiClient.post<ApiResponse<MemberDocumentResponse>>(
         `/spaces/${spaceId}/members/${memberId}/documents`,
-        body,
+        { ...rest, fileId },
       ),
     );
   },

@@ -55,7 +55,7 @@ export function FinancialSummaryWidget({
           <Wallet />
         </IconBadge>
       ),
-      onClick: () => navigate(spacePaymentsPath(spaceId, undefined, { tab: 'members' })),
+      onClick: () => navigate(spacePaymentsPath(spaceId, undefined, { filter: 'all' })),
     },
     {
       id: 'collected',
@@ -68,7 +68,7 @@ export function FinancialSummaryWidget({
           <Inbox />
         </IconBadge>
       ),
-      onClick: () => navigate(spacePaymentsPath(spaceId, undefined, { tab: 'history' })),
+      onClick: () => navigate(spacePaymentsPath(spaceId, undefined, { filter: 'collected' })),
     },
     {
       id: 'underReview',
@@ -81,7 +81,7 @@ export function FinancialSummaryWidget({
           <Clock />
         </IconBadge>
       ),
-      onClick: () => navigate(spacePaymentsPath(spaceId, undefined, { tab: 'review' })),
+      onClick: () => navigate(spacePaymentsPath(spaceId, undefined, { filter: 'underReview', queue: 'SUBMITTED' })),
     },
     {
       id: 'pending',
@@ -94,7 +94,7 @@ export function FinancialSummaryWidget({
           <IndianRupee />
         </IconBadge>
       ),
-      onClick: () => navigate(spacePaymentsPath(spaceId, undefined, { tab: 'members' })),
+      onClick: () => navigate(spacePaymentsPath(spaceId, undefined, { filter: 'pending' })),
     },
   ];
 

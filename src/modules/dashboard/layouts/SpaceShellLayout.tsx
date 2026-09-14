@@ -24,6 +24,7 @@ import {
 } from '@/modules/dashboard/components/customer/CustomerSidebarChrome';
 import { SpaceContextSelector } from '@/modules/dashboard/components/SpaceContextSelector';
 import { usePendingActions } from '@/modules/dashboard/hooks/usePendingActions';
+import { useSpaceProgressiveAccess } from '@/modules/dashboard/hooks/useSpaceProgressiveAccess';
 import { DASHBOARD_UX } from '@/modules/dashboard/theme/dashboardUx';
 import { NotificationBellButton } from '@/modules/notifications/components/NotificationBellButton';
 import { useAuthSession } from '@/shared/hooks/useAuthSession';
@@ -55,6 +56,7 @@ export function SpaceShellLayout() {
   const { user } = useAuthSession();
   const permissions = useSpacePermissions(spaceId);
   const isOperator = canManageNotifications(permissions);
+  const { getCapability } = useSpaceProgressiveAccess(isOperator ? spaceId : null);
   const role = permissions.membershipRole;
   const isConsumer = role === 'CUSTOMER' || role === 'TENANT';
   const pending = usePendingActions(
@@ -163,7 +165,14 @@ export function SpaceShellLayout() {
       },
     ];
 
-    if (permissions.canManageMembers) {
+    const accommodationCap = getCapability('ACCOMMODATION');
+    const membersCap = getCapability('MEMBERS');
+    const mealConfigCap = getCapability('MEAL_CONFIG');
+    const mealOpsCap = getCapability('MEAL_OPS');
+    const inventoryCap = getCapability('INVENTORY');
+    const complaintsCap = getCapability('COMPLAINTS');
+
+    if (permissions.canManageMembers && membersCap?.mode !== 'HIDDEN') {
       items.push({
         id: 'members',
         label: t('navigation.members'),
@@ -172,7 +181,10 @@ export function SpaceShellLayout() {
       });
     }
 
-    if (permissions.canViewAccommodation) {
+    if (
+      permissions.canViewAccommodation &&
+      accommodationCap?.mode !== 'HIDDEN'
+    ) {
       items.push({
         id: 'accommodation',
         label: t('navigation.rooms'),
@@ -181,14 +193,16 @@ export function SpaceShellLayout() {
       });
     }
 
-    if (permissions.canViewMeals === true) {
+    const mealsHidden =
+      mealConfigCap?.mode === 'HIDDEN' && mealOpsCap?.mode === 'HIDDEN';
+    if (permissions.canViewMeals === true && !mealsHidden) {
       items.push({
         id: 'meals',
         label: t('navigation.meals'),
         to: spaceMealsPath(spaceId),
         icon: <UtensilsCrossed size={16} />,
       });
-      if (permissions.canManageMeals === true) {
+      if (permissions.canManageMeals === true && mealConfigCap?.mode !== 'HIDDEN') {
         items.push({
           id: 'meal-plans',
           label: t('meals.subscriptionPlans.title'),
@@ -205,18 +219,21 @@ export function SpaceShellLayout() {
         to: spacePaymentsPath(spaceId),
         icon: <Wallet size={16} />,
       });
-      items.push({
-        id: 'day-meals',
-        label: t('paymentCollection.dayMeals.title', { defaultValue: 'Day meals' }),
-        to: spaceDayMealsPath(spaceId),
-        icon: <Wallet size={16} />,
-      });
+      if (!mealsHidden && mealOpsCap?.mode !== 'HIDDEN') {
+        items.push({
+          id: 'day-meals',
+          label: t('paymentCollection.dayMeals.title', { defaultValue: 'Day meals' }),
+          to: spaceDayMealsPath(spaceId),
+          icon: <Wallet size={16} />,
+        });
+      }
     }
 
     const mayComplaints =
-      permissions.canViewAllComplaints === true ||
-      permissions.canManageComplaints === true ||
-      canRaiseComplaint(permissions.membershipRole, permissions.canRaiseComplaint);
+      complaintsCap?.mode !== 'HIDDEN' &&
+      (permissions.canViewAllComplaints === true ||
+        permissions.canManageComplaints === true ||
+        canRaiseComplaint(permissions.membershipRole, permissions.canRaiseComplaint));
     if (mayComplaints) {
       items.push({
         id: 'complaints',
@@ -226,7 +243,10 @@ export function SpaceShellLayout() {
       });
     }
 
-    if (permissions.canViewInventory === true) {
+    if (
+      permissions.canViewInventory === true &&
+      inventoryCap?.mode !== 'HIDDEN'
+    ) {
       items.push({
         id: 'inventory',
         label: t('navigation.inventory'),
@@ -291,6 +311,7 @@ export function SpaceShellLayout() {
     space?.spaceType,
     spaceId,
     t,
+    getCapability,
   ]);
 
   const consumerChrome = isConsumer && !isOperator;

@@ -1,35 +1,29 @@
 import {
+  Alert,
   Avatar,
   Box,
   Button,
   Chip,
   FormControl,
-  Grid,
   IconButton,
   InputLabel,
   MenuItem,
   Select,
   Stack,
-  Tab,
-  Tabs,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
 import {
-  CalendarDays,
   ChevronRight,
-  Clock3,
-  Inbox,
-  IndianRupee,
   RefreshCw,
+  Users,
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
-import { IconBadge } from '@/modules/dashboard/components/IconBadge';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
@@ -37,11 +31,11 @@ import { ErrorState } from '@/shared/components/ErrorState';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { PeriodMonthNav } from '@/shared/components/PeriodMonthNav';
-import { StatCard } from '@/shared/components/StatCard';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashFilterControlSx } from '@/shared/theme/dashButtonSx';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
+import { useSpaceProgressiveAccess } from '@/modules/dashboard/hooks/useSpaceProgressiveAccess';
 import {
   canManagePayments,
   currentMonthKey,
@@ -54,6 +48,11 @@ import type {
   SpacePaymentResponse,
 } from '@/shared/types/payments';
 import { PaymentInspector } from '../components/PaymentInspector';
+import {
+  PaymentsSummaryFilters,
+  type PaymentSummaryFilter,
+  type PaymentsOwnerFilter,
+} from '../components/PaymentsSummaryFilters';
 import {
   usePaymentMutations,
   usePaymentsHistory,
@@ -71,8 +70,6 @@ import {
 } from '../utils/paymentHelpers';
 import { TenantPaymentsPage } from './TenantPaymentsPage';
 
-type OwnerTab = 'members' | 'review' | 'history';
-
 const filterControlSx = {
   ...dashFilterControlSx,
   '& .MuiInputBase-root': {
@@ -82,6 +79,62 @@ const filterControlSx = {
     ...DASHBOARD_UX.body,
   },
 } as const;
+
+const SUMMARY_FILTERS: PaymentSummaryFilter[] = ['all', 'collected', 'underReview', 'pending'];
+
+function isSummaryFilter(value: string | null | undefined): value is PaymentSummaryFilter {
+  return Boolean(value && (SUMMARY_FILTERS as string[]).includes(value));
+}
+
+/** Map legacy tab=… deep links onto the summary-filter model. */
+function resolveOwnerFilter(searchParams: URLSearchParams): PaymentsOwnerFilter {
+  const filter = searchParams.get('filter');
+  if (filter === 'history') return 'history';
+  if (isSummaryFilter(filter)) return filter;
+
+  const tab = searchParams.get('tab');
+  switch (tab) {
+    case 'review':
+    case 'submitted':
+    case 'pendingReview':
+    case 'changesRequested':
+      return 'underReview';
+    case 'history':
+    case 'paid':
+    case 'rejected':
+      return 'history';
+    case 'members':
+      return 'all';
+    case 'collected':
+      return 'collected';
+    case 'pending':
+      return 'pending';
+    case 'underReview':
+      return 'underReview';
+    default:
+      return 'all';
+  }
+}
+
+function resolveReviewQueue(
+  searchParams: URLSearchParams,
+  filter: PaymentsOwnerFilter,
+): PaymentsReviewQueueParam {
+  const queue = searchParams.get('queue') as PaymentsReviewQueueParam | null;
+  if (queue) return queue;
+
+  const tab = searchParams.get('tab');
+  if (tab === 'submitted') return 'SUBMITTED';
+  if (tab === 'changesRequested') return 'NEEDS_UPDATE';
+  if (filter === 'underReview') return 'SUBMITTED';
+  return 'PENDING_REVIEW';
+}
+
+function memberStatusForFilter(filter: PaymentsOwnerFilter): string {
+  if (filter === 'collected') return 'PAID';
+  if (filter === 'pending') return 'PENDING';
+  return '';
+}
 
 function initials(name: string): string {
   return name
@@ -145,20 +198,26 @@ function OwnerPaymentsWorkspace({
   const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const permissions = useSpacePermissions(spaceId);
+  const { getCapability } = useSpaceProgressiveAccess(spaceId);
+  const paymentsAccess = getCapability('PAYMENTS');
 
   const month = searchParams.get('month') || currentMonthKey();
-  const tab = (searchParams.get('tab') as OwnerTab) || 'review';
-  const queue = (searchParams.get('queue') as PaymentsReviewQueueParam) || 'PENDING_REVIEW';
+  const filter = resolveOwnerFilter(searchParams);
+  const queue = resolveReviewQueue(searchParams, filter);
   const historyQueue = (searchParams.get('historyQueue') as PaymentsReviewQueueParam) || 'HISTORY';
   const memberIdFilter = searchParams.get('memberId') || undefined;
 
   const [search, setSearch] = useState('');
-  const [memberStatus, setMemberStatus] = useState('');
+  const [memberStatus, setMemberStatus] = useState(() => memberStatusForFilter(filter));
   const [page, setPage] = useState(0);
   const selectedPaymentId = routePaymentId ?? null;
   const inspectorOpen = Boolean(routePaymentId);
   const pageSize = 25;
-  const memberScoped = Boolean(memberIdFilter) && tab !== 'members';
+
+  const showMembers = filter === 'all' || filter === 'collected' || filter === 'pending';
+  const showReview = filter === 'underReview';
+  const showHistory = filter === 'history';
+  const memberScoped = Boolean(memberIdFilter) && !showMembers;
 
   const summary = usePaymentsSummary(spaceId, month, true);
   const members = usePaymentsMembers(
@@ -170,17 +229,17 @@ function OwnerPaymentsWorkspace({
       q: search.trim() || undefined,
       status: memberStatus || undefined,
     },
-    tab === 'members',
+    showMembers,
   );
   const review = usePaymentsReview(
     spaceId,
     { month, queue, page, size: pageSize },
-    tab === 'review' && !memberScoped,
+    showReview && !memberScoped,
   );
   const history = usePaymentsHistory(
     spaceId,
     { month, queue: historyQueue, page, size: pageSize },
-    tab === 'history' && !memberScoped,
+    showHistory && !memberScoped,
   );
   const memberPayments = useSpacePaymentsList(
     spaceId,
@@ -204,6 +263,13 @@ function OwnerPaymentsWorkspace({
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Keep status dropdown aligned when filter deep-links change.
+  useEffect(() => {
+    if (showMembers) {
+      setMemberStatus(memberStatusForFilter(filter));
+    }
+  }, [filter, showMembers]);
+
   const setMonth = (next: string) => {
     setPage(0);
     setSearchParams((prev) => {
@@ -213,35 +279,72 @@ function OwnerPaymentsWorkspace({
     });
   };
 
-  const setTab = (next: OwnerTab) => {
+  const applyFilter = (
+    next: PaymentsOwnerFilter,
+    opts?: { queue?: PaymentsReviewQueueParam; historyQueue?: PaymentsReviewQueueParam },
+  ) => {
     setPage(0);
+    if (next === 'all' || next === 'collected' || next === 'pending') {
+      setMemberStatus(memberStatusForFilter(next));
+    }
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
-      p.set('tab', next);
+      p.set('filter', next);
       p.set('month', month);
+      p.delete('tab');
+      if (next === 'underReview') {
+        p.set('queue', opts?.queue ?? 'SUBMITTED');
+      } else {
+        p.delete('queue');
+      }
+      if (next === 'history') {
+        p.set('historyQueue', opts?.historyQueue ?? historyQueue);
+      } else {
+        p.delete('historyQueue');
+      }
       return p;
     });
+  };
+
+  const handleSummaryFilterPress = (next: PaymentSummaryFilter) => {
+    if (next === 'underReview') {
+      applyFilter('underReview', { queue: 'SUBMITTED' });
+      return;
+    }
+    if (next === filter) {
+      applyFilter('all');
+      return;
+    }
+    applyFilter(next);
   };
 
   const selectPayment = (id: string) => {
     navigate(
       spacePaymentsPath(spaceId, id, {
         month,
-        tab,
+        filter,
         memberId: memberIdFilter,
+        queue: showReview ? queue : undefined,
       }),
       { replace: true },
     );
   };
 
   const closeInspector = () => {
-    navigate(spacePaymentsPath(spaceId, undefined, { month, tab, memberId: memberIdFilter }), {
-      replace: true,
-    });
+    navigate(
+      spacePaymentsPath(spaceId, undefined, {
+        month,
+        filter,
+        memberId: memberIdFilter,
+        queue: showReview ? queue : undefined,
+      }),
+      { replace: true },
+    );
   };
 
   const financial = summary.summary?.financial;
   const counts = summary.summary?.counts;
+  const submittedCount = counts?.submitted ?? 0;
 
   const memberColumns: DataTableColumn<MemberPaymentLedgerRow & { id: string }>[] = useMemo(
     () => [
@@ -368,10 +471,27 @@ function OwnerPaymentsWorkspace({
         accessor: (row) => {
           const status = row.paymentStatus ?? row.status ?? 'PENDING';
           return (
-            <StatusChip
-              label={t(paymentStatusLabelKey(status))}
-              tone={paymentStatusTone(status)}
-            />
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
+              <StatusChip
+                label={t(paymentStatusLabelKey(status))}
+                tone={paymentStatusTone(status)}
+              />
+              {row.isOverdue ? (
+                <StatusChip
+                  label={t('paymentCollection.overdue.chip', {
+                    days: row.daysOverdue ?? 0,
+                  })}
+                  tone="error"
+                />
+              ) : null}
+              {row.isOverdue && row.outstandingAmount != null ? (
+                <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted }}>
+                  {t('paymentCollection.overdue.outstanding', {
+                    amount: formatCurrency(row.outstandingAmount, row.currencyCode),
+                  })}
+                </Typography>
+              ) : null}
+            </Box>
           );
         },
       },
@@ -461,7 +581,7 @@ function OwnerPaymentsWorkspace({
 
   const paymentRows = memberScoped
     ? memberPayments.payments.map((p) => ({ ...p, id: p.paymentId }))
-    : tab === 'review'
+    : showReview
       ? review.payments.map((p) => ({ ...p, id: p.paymentId }))
       : history.payments.map((p) => ({ ...p, id: p.paymentId }));
 
@@ -527,7 +647,7 @@ function OwnerPaymentsWorkspace({
   );
 
   const queueFilter =
-    !memberScoped && tab === 'review' ? (
+    !memberScoped && showReview ? (
       <FormControl size="small" sx={filterControlSx}>
         <InputLabel id="payments-review-queue">{t('payments.review.queue')}</InputLabel>
         <Select
@@ -539,7 +659,8 @@ function OwnerPaymentsWorkspace({
             setSearchParams((prev) => {
               const p = new URLSearchParams(prev);
               p.set('queue', String(e.target.value));
-              p.set('tab', 'review');
+              p.set('filter', 'underReview');
+              p.delete('tab');
               p.set('month', month);
               return p;
             });
@@ -550,7 +671,7 @@ function OwnerPaymentsWorkspace({
           <MenuItem value="NEEDS_UPDATE">{t('payments.review.queues.NEEDS_UPDATE')}</MenuItem>
         </Select>
       </FormControl>
-    ) : !memberScoped && tab === 'history' ? (
+    ) : !memberScoped && showHistory ? (
       <FormControl size="small" sx={filterControlSx}>
         <InputLabel id="payments-history-queue">{t('payments.history.queue')}</InputLabel>
         <Select
@@ -562,7 +683,8 @@ function OwnerPaymentsWorkspace({
             setSearchParams((prev) => {
               const p = new URLSearchParams(prev);
               p.set('historyQueue', String(e.target.value));
-              p.set('tab', 'history');
+              p.set('filter', 'history');
+              p.delete('tab');
               p.set('month', month);
               return p;
             });
@@ -574,6 +696,12 @@ function OwnerPaymentsWorkspace({
         </Select>
       </FormControl>
     ) : null;
+
+  const listTitle = showReview
+    ? t('payments.tabs.review')
+    : showHistory
+      ? t('payments.tabs.history')
+      : t('payments.tabs.members');
 
   return (
     <PageContainer gap={0}>
@@ -643,104 +771,110 @@ function OwnerPaymentsWorkspace({
           }
         />
 
-        <Grid container spacing={1.5}>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <StatCard
-              dense
-              tone="success"
-              label={t('payments.kpi.collected')}
-              value={formatCurrency(financial?.collected, financial?.currencyCode)}
-              hint={formatMonthLabel(month)}
-              icon={
-                <IconBadge tone="success">
-                  <Inbox />
-                </IconBadge>
-              }
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <StatCard
-              dense
-              tone="warning"
-              label={t('payments.kpi.pending')}
-              value={formatCurrency(financial?.pending, financial?.currencyCode)}
-              hint={t('payments.kpi.pendingMembersHint', {
-                count: counts?.pendingMembers ?? 0,
-                defaultValue: '{{count}} members',
-              })}
-              icon={
-                <IconBadge tone="warning">
-                  <IndianRupee />
-                </IconBadge>
-              }
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <StatCard
-              dense
-              tone="info"
-              label={t('payments.kpi.underReview')}
-              value={formatCurrency(financial?.underReview, financial?.currencyCode)}
-              hint={t('payments.kpi.reviewCount', { count: counts?.pendingReview ?? 0 })}
-              icon={
-                <IconBadge tone="info">
-                  <Clock3 />
-                </IconBadge>
-              }
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <StatCard
-              dense
-              tone="accent"
-              label={t('payments.kpi.expected')}
-              value={formatCurrency(financial?.expectedCharges, financial?.currencyCode)}
-              hint={t('payments.kpi.expectedHint', { defaultValue: 'This month' })}
-              icon={
-                <IconBadge tone="accent">
-                  <CalendarDays />
-                </IconBadge>
-              }
-            />
-          </Grid>
-        </Grid>
+        {paymentsAccess?.mode === 'SOFT' && paymentsAccess.reasonKey ? (
+          <Alert severity="info" sx={{ borderRadius: `${DASHBOARD_UX.radius}px` }}>
+            {t(paymentsAccess.reasonKey)}
+          </Alert>
+        ) : null}
 
-        <Tabs
-          value={tab}
-          onChange={(_, v: OwnerTab) => setTab(v)}
-          aria-label={t('navigation.payments')}
+        <Box>
+          <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted, mb: 0.75 }}>
+            {formatMonthLabel(month)}
+          </Typography>
+          <PaymentsSummaryFilters
+            loading={summary.loading}
+            financial={financial}
+            activeFilter={filter}
+            onFilterPress={handleSummaryFilterPress}
+          />
+        </Box>
+
+        {submittedCount > 0 ? (
+          <Box
+            component="button"
+            type="button"
+            onClick={() => applyFilter('underReview', { queue: 'SUBMITTED' })}
+            aria-label={t('payments.attention.a11y', { count: submittedCount })}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              width: '100%',
+              border: `1px solid ${colors.primary}33`,
+              bgcolor: colors.successTint,
+              borderRadius: `${DASHBOARD_UX.radius}px`,
+              px: 1.5,
+              py: 1.25,
+              cursor: 'pointer',
+              textAlign: 'left',
+              font: 'inherit',
+              transition: DASHBOARD_UX.transition,
+              '&:hover': { opacity: 0.94 },
+              '&:focus-visible': {
+                outline: `2px solid ${colors.primary}`,
+                outlineOffset: 2,
+              },
+            }}
+          >
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: '18px',
+                bgcolor: colors.white,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Users size={18} color={colors.primaryDark} strokeWidth={2.2} aria-hidden />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary, fontWeight: 700 }}>
+                {t('payments.attention.title', { count: submittedCount })}
+              </Typography>
+              <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary }}>
+                {t('payments.attention.subtitle')}
+              </Typography>
+            </Box>
+            <ChevronRight size={18} color={colors.primaryDark} strokeWidth={2.2} aria-hidden />
+          </Box>
+        ) : null}
+
+        <Box
           sx={{
-            minHeight: DASHBOARD_UX.buttonHeight,
-            borderBottom: `1px solid ${s.border}`,
-            '& .MuiTab-root': {
-              minHeight: DASHBOARD_UX.buttonHeight,
-              ...DASHBOARD_UX.button,
-              textTransform: 'none',
-              color: s.textMuted,
-            },
-            '& .Mui-selected': {
-              color: `${colors.primaryDark} !important`,
-            },
-            '& .MuiTabs-indicator': {
-              bgcolor: colors.primaryDark,
-              height: 2,
-            },
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
+            flexWrap: 'wrap',
           }}
         >
-          <Tab
-            value="members"
-            label={`${t('payments.tabs.members')}${
-              counts?.pendingMembers ? ` (${counts.pendingMembers})` : ''
-            }`}
-          />
-          <Tab
-            value="review"
-            label={`${t('payments.tabs.review')}${
-              counts?.pendingReview ? ` (${counts.pendingReview})` : ''
-            }`}
-          />
-          <Tab value="history" label={t('payments.tabs.history')} />
-        </Tabs>
+          <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
+            {listTitle}
+          </Typography>
+          {!showHistory ? (
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => applyFilter('history')}
+              sx={{ ...DASHBOARD_UX.button, textTransform: 'none', color: s.textSecondary }}
+            >
+              {t('payments.tabs.history')}
+            </Button>
+          ) : (
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => applyFilter('all')}
+              sx={{ ...DASHBOARD_UX.button, textTransform: 'none', color: s.textSecondary }}
+            >
+              {t('payments.tabs.members')}
+            </Button>
+          )}
+        </Box>
 
         <Box
           sx={{
@@ -753,7 +887,7 @@ function OwnerPaymentsWorkspace({
           }}
         >
           <Box sx={{ minWidth: 0 }}>
-            {tab === 'members' ? (
+            {showMembers ? (
               <DataTable
                 columns={memberColumns}
                 rows={memberRows}
@@ -766,12 +900,19 @@ function OwnerPaymentsWorkspace({
                 searchPlaceholder={t('payments.members.search')}
                 searchInputId="payments-search"
                 toolbarFilters={memberStatusFilter}
-                emptyTitle={t('payments.members.empty')}
+                emptyTitle={
+                  filter === 'pending'
+                    ? t('payments.emptyPending.title')
+                    : filter === 'collected'
+                      ? t('payments.emptyCollected.title')
+                      : t('payments.members.empty')
+                }
                 onRowClick={(row) =>
                   navigate(
                     spacePaymentsPath(spaceId, undefined, {
                       month,
-                      tab: 'review',
+                      filter: 'underReview',
+                      queue: 'SUBMITTED',
                       memberId: row.memberId,
                     }),
                   )
@@ -783,12 +924,12 @@ function OwnerPaymentsWorkspace({
               />
             ) : (
               <DataTable
-                columns={tab === 'history' ? historyColumns : reviewColumns}
+                columns={showHistory ? historyColumns : reviewColumns}
                 rows={paymentRows}
                 loading={
                   memberScoped
                     ? memberPayments.loading
-                    : tab === 'review'
+                    : showReview
                       ? review.loading
                       : history.loading
                 }
@@ -815,7 +956,7 @@ function OwnerPaymentsWorkspace({
                 totalItems={
                   memberScoped
                     ? paymentRows.length
-                    : tab === 'review'
+                    : showReview
                       ? review.page?.totalElements
                       : history.page?.totalElements
                 }

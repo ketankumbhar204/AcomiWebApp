@@ -22,6 +22,7 @@ export interface UserResponse {
   mobileNumber: string;
   fullName: string;
   profilePhotoUrl?: string | null;
+  profilePhotoFileId?: UUID | null;
   active: boolean;
   createdAt: string;
   email?: string | null;
@@ -38,6 +39,7 @@ export interface UserResponse {
   documentsUploaded?: number | null;
   kycStatus?: KycStatus | null;
   systemRole?: 'USER' | 'ADMIN' | null;
+  enquiryEmails?: string[] | null;
 }
 
 export type OtpPurpose = 'REGISTER' | 'LOGIN' | 'RESET_PASSWORD' | 'ACCOUNT_DELETION' | 'CHANGE_MOBILE';
@@ -53,6 +55,10 @@ export interface SendOtpResponse {
   expiresIn: number;
   resendAfter: number;
   message: string;
+  /** True when local backend skipped OTP and returned a verification token. */
+  otpSkipped?: boolean;
+  /** Present only when otpSkipped is true. */
+  verificationToken?: string;
 }
 
 export interface VerifyOtpRequest {
@@ -116,6 +122,10 @@ export interface CompleteUserProfileRequest {
   dateOfBirth?: string | null;
   email?: string | null;
   profilePhotoUrl?: string | null;
+  profilePhotoFileId?: string | null;
+  identityProofFileId?: string | null;
+  addressProofFileId?: string | null;
+  additionalDocumentFileId?: string | null;
   permanentAddress: string;
   city: string;
   state: string;
@@ -136,6 +146,7 @@ export interface CompleteUserProfileRequest {
 export interface AuthTokenPort {
   getToken: () => string | null;
   setToken: (token: string | null) => void;
+  hasSession?: () => boolean;
 }
 
 export interface AuthSessionState {

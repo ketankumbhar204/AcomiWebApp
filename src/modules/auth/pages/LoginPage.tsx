@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/routes/paths';
 import { isValidIndianMobile } from '@/shared/utils/indianMobile';
+import { returnPathFromLocation } from '@/shared/utils/safeReturnPath';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
 import { AuthCard } from '../components/AuthCard';
@@ -29,6 +30,7 @@ export function LoginPage() {
   const accountDeleted = Boolean(
     (location.state as { accountDeleted?: boolean } | null)?.accountDeleted,
   );
+  const returnTo = returnPathFromLocation(location);
   const { login, isLoading, error, clearError } = useLogin();
   const { sendOtp, isLoading: isSendingOtp, error: otpError, clearError: clearOtpError } = useSendOtp();
 
@@ -83,7 +85,7 @@ export function LoginPage() {
     }
     const result = await sendOtp(mobileNumber, 'LOGIN');
     if (result) {
-      navigate(ROUTES.loginOtp, { state: { mobileNumber, purpose: 'LOGIN' } });
+      navigate(ROUTES.loginOtp, { state: { mobileNumber, purpose: 'LOGIN', from: returnTo } });
     }
   };
 
@@ -229,7 +231,12 @@ export function LoginPage() {
 
         <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, textAlign: 'center' }}>
           {t('auth.login.registerPrompt')}{' '}
-          <Link component={RouterLink} to={ROUTES.register} underline="hover">
+          <Link
+            component={RouterLink}
+            to={returnTo ? `${ROUTES.register}?next=${encodeURIComponent(returnTo)}` : ROUTES.register}
+            state={returnTo ? { from: returnTo } : undefined}
+            underline="hover"
+          >
             {t('auth.login.registerLink')}
           </Link>
         </Typography>

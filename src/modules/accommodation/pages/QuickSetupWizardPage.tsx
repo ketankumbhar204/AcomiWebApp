@@ -41,7 +41,12 @@ import type {
   PropertyLayoutMode,
   RoomType,
 } from '@/shared/types/accommodation';
+import {
+  suggestBuildingCode,
+  suggestBuildingName,
+} from '@/shared/utils/suggestBuildingDefaults';
 import { accommodationApi } from '../api/accommodationApi';
+import { useBuildings } from '../hooks/useAccommodation';
 import {
   defaultLayoutModeForSpaceType,
   selectableLayoutModes,
@@ -63,6 +68,8 @@ export function QuickSetupWizardPage() {
   const s = dashSurfaces(theme.palette.mode);
   const permissions = useSpacePermissions(spaceId);
   const spaceType = permissions.space?.spaceType ?? 'PG';
+  const spaceName = permissions.space?.spaceName ?? '';
+  const { buildings, loading: buildingsLoading } = useBuildings(spaceId);
 
   const layoutOptions = selectableLayoutModes(spaceType);
   const [stepIndex, setStepIndex] = useState(0);
@@ -73,6 +80,7 @@ export function QuickSetupWizardPage() {
   const [buildingCode, setBuildingCode] = useState('');
   const [buildingNameError, setBuildingNameError] = useState<string | null>(null);
   const [validatedBuildingName, setValidatedBuildingName] = useState<string | null>(null);
+  const buildingDefaultsAppliedRef = useRef(false);
   const [floorCount, setFloorCount] = useState('3');
   const [includeGround, setIncludeGround] = useState(false);
   const [roomsPerFloor, setRoomsPerFloor] = useState('6');
@@ -95,6 +103,15 @@ export function QuickSetupWizardPage() {
   useEffect(() => {
     document.title = `${t('accommodation.setup.title')} · ${t('common.appName')}`;
   }, [t]);
+
+  useEffect(() => {
+    if (buildingDefaultsAppliedRef.current || !spaceId || buildingsLoading) {
+      return;
+    }
+    setBuildingName(suggestBuildingName(spaceName));
+    setBuildingCode(suggestBuildingCode(buildings.length));
+    buildingDefaultsAppliedRef.current = true;
+  }, [buildings.length, buildingsLoading, spaceId, spaceName]);
 
   const buildRequest = (): AccommodationSetupRequest => {
     const request: AccommodationSetupRequest = {
@@ -336,7 +353,9 @@ export function QuickSetupWizardPage() {
                     void validateBuildingName(buildingName);
                   }
                 }}
-                placeholder={t('accommodation.buildings.namePlaceholder')}
+                placeholder={t('accommodation.buildings.namePlaceholderSpace', {
+                  defaultValue: 'Uses your space name by default',
+                })}
                 required
                 error={Boolean(buildingNameError)}
                 helperText={buildingNameError ?? undefined}
@@ -347,7 +366,9 @@ export function QuickSetupWizardPage() {
                 label={t('accommodation.fields.code')}
                 value={buildingCode}
                 onChange={(event) => setBuildingCode(event.target.value)}
-                placeholder={t('accommodation.buildings.codePlaceholder')}
+                placeholder={t('accommodation.buildings.codePlaceholderBld', {
+                  defaultValue: 'e.g. BLD 1',
+                })}
                 fullWidth
                 size="small"
               />

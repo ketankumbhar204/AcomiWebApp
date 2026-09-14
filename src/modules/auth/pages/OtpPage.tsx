@@ -15,6 +15,7 @@ import { AuthCard } from '../components/AuthCard';
 import { AuthErrorBanner } from '../components/AuthErrorBanner';
 import { AuthHero } from '../components/AuthHero';
 import { OtpInput } from '../components/OtpInput';
+import { OtpSmsSample } from '../components/OtpSmsSample';
 import { useCountdown } from '../hooks/useCountdown';
 import { useOtpCooldown } from '../hooks/useOtpCooldown';
 import { useRegister, useLoginWithOtp } from '../hooks/usePasswordAuth';
@@ -33,6 +34,7 @@ type OtpLocationState = {
   mobileNumber?: string;
   purpose?: OtpPurpose;
   fromProfile?: boolean;
+  from?: string;
 };
 
 function fallbackRoute(purpose: OtpPurpose): string {
@@ -246,6 +248,8 @@ export function OtpPage() {
           heading={t('auth.otp.heading')}
           subheading={`${t('auth.otp.subheading')} ${maskIndianMobile(mobileNumber)}`}
         />
+
+        <OtpSmsSample />
 
         {bannerError ? <AuthErrorBanner message={bannerError} /> : null}
         {info && !bannerError ? (

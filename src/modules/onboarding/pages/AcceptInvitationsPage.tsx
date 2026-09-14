@@ -145,10 +145,10 @@ export function AcceptInvitationsPage() {
                 action={
                   <Button
                     variant="contained"
-                    onClick={() => navigate(ROUTES.joinSpace)}
+                    onClick={() => navigate(ROUTES.memberHome)}
                     sx={dashContainedButtonSx}
                   >
-                    {t('navigation.joinSpace')}
+                    {t('onboarding.memberHome.findCta')}
                   </Button>
                 }
               />

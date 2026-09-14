@@ -9,8 +9,11 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "node scripts/check-otp-registration.mjs",
+    "test": "node scripts/check-otp-registration.mjs && node scripts/check-space-capabilities.mjs",
+    "test:admin-activity": "node scripts/check-admin-activity-destination.mjs",
     "test:i18n": "node scripts/check-locale-coverage.mjs",
+    "test:listing-detail": "node scripts/check-listing-location.mjs",
+    "test:cookie-session": "node scripts/check-cookie-session.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -b --pretty false"

@@ -62,9 +62,6 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
 
   refreshUser: async () => {
     const token = get().accessToken ?? readStorage(STORAGE_KEYS.authToken);
-    if (!token) {
-      return null;
-    }
     try {
       const user = await authApi.getMe();
       persistUser(user);
@@ -92,23 +89,14 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       isAuthenticated: false,
       isBootstrapping: false,
     });
+    void authApi.logout().catch(() => undefined);
   },
 
   bootstrap: async () => {
     const storedToken = readStorage(STORAGE_KEYS.authToken);
-    if (!storedToken) {
-      set({
-        isBootstrapping: false,
-        isAuthenticated: false,
-        accessToken: null,
-        user: null,
-        userId: null,
-      });
-      return;
+    if (storedToken) {
+      set({ accessToken: storedToken });
     }
-
-    // Make token available to Axios before calling /auth/me
-    set({ accessToken: storedToken });
 
     try {
       const user = await authApi.getMe();
@@ -126,6 +114,16 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         userId: merged.id as UUID,
       });
     } catch {
+      if (!storedToken) {
+        set({
+          isBootstrapping: false,
+          isAuthenticated: false,
+          accessToken: null,
+          user: null,
+          userId: null,
+        });
+        return;
+      }
       removeStorage(STORAGE_KEYS.authToken);
       removeStorage(STORAGE_KEYS.authUser);
       set({
@@ -149,4 +147,5 @@ configureAuthTokenPort({
     writeStorage(STORAGE_KEYS.authToken, token);
     useAuthStore.setState({ accessToken: token, isAuthenticated: true });
   },
+  hasSession: () => useAuthStore.getState().isAuthenticated,
 });

@@ -11,6 +11,42 @@ export type AmenityAssignment = {
   label: string;
 };
 
+/** Public discovery card — GET /spaces/discover */
+export interface DiscoverSpaceCardResponse {
+  spaceId: string;
+  name: string;
+  type: SpaceType;
+  address?: string | null;
+  amenityCodes?: string[];
+  amenityLabels?: string[];
+  foodIncludedInRent: boolean;
+  genderPolicy?: GenderPolicy | null;
+  alreadyMember: boolean;
+  /** Converted from a test-lead registration (shown in local discovery). */
+  testSpace?: boolean;
+}
+
+export type ListingPriceBasis = 'PER_BED' | 'PER_ROOM' | 'PER_UNIT';
+
+/** Public discovery detail — GET /spaces/discover/{spaceId} */
+export interface DiscoverSpaceDetailResponse extends DiscoverSpaceCardResponse {
+  amenities?: AmenityAssignment[];
+  ownedByCurrentUser?: boolean;
+  addressLine?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  mapUrl?: string | null;
+  description?: string | null;
+  startingPrice?: number | string | null;
+  priceBasis?: ListingPriceBasis | null;
+  monthlyPrice?: number | string | null;
+  mealPrice?: number | string | null;
+  sharingNotes?: string | null;
+}
+
 export type PollCloseDayOffset = 'SAME_DAY' | 'PREVIOUS_DAY';
 
 export interface SpacePermissionsResponse {
@@ -63,6 +99,7 @@ export interface SpaceResponse {
   address?: string;
   contactNumber?: string;
   isActive: boolean;
+  discoverable?: boolean;
   ownerId: string;
   ownerName: string;
   createdAt: string;

@@ -39,7 +39,7 @@ export function AuthenticatedRootRedirect() {
           return;
         }
         if (resolved.kind === 'invitations') {
-          setTarget(ROUTES.acceptInvitations);
+          setTarget(ROUTES.memberHome);
           return;
         }
         setTarget(ROUTES.onboarding);

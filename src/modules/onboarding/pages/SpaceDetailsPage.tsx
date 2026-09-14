@@ -37,6 +37,7 @@ import { useSpaceDashboard } from '@/modules/dashboard/hooks/useSpaceDashboard';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { spaceApi } from '@/modules/onboarding/api/spaceApi';
 import { isSpaceOwner } from '@/modules/onboarding/utils/spaceOwnership';
+import { genderPolicyLabelKey } from '@/modules/onboarding/utils/spacePropertyCategory';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { ContentCard } from '@/shared/components/ContentCard';
 import { LoadingState } from '@/shared/components/LoadingState';
@@ -431,7 +432,7 @@ export function SpaceDetailsPage() {
                 <DetailField
                   icon={Users}
                   label={t('spaces.propertyCategory.label')}
-                  value={details.genderPolicy}
+                  value={t(genderPolicyLabelKey(details.genderPolicy))}
                 />
               ) : null}
               {details.amenities?.length ? (

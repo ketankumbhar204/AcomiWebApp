@@ -163,6 +163,53 @@ export function useBeds(spaceId: string | undefined, roomId: string | undefined,
   };
 }
 
+/** Loads all matching beds for room inventory cards (space-wide or filtered). */
+export function useSpaceBedSearch(options: {
+  spaceId: string | undefined;
+  buildingId?: string;
+  floorId?: string;
+  unitId?: string;
+  query?: string;
+  enabled?: boolean;
+}) {
+  const { spaceId, buildingId, floorId, unitId, query, enabled = true } = options;
+  const searchQuery = useQuery({
+    queryKey: ['space-beds', spaceId, buildingId ?? 'all', floorId ?? '', unitId ?? '', query ?? ''],
+    queryFn: async () => {
+      const pageSize = 100;
+      let page = 0;
+      let totalPages = 1;
+      const items: Awaited<ReturnType<typeof accommodationApi.searchBeds>>['content'] = [];
+      while (page < totalPages) {
+        const result = await accommodationApi.searchBeds(spaceId!, {
+          buildingId,
+          floorId,
+          unitId,
+          query: query || undefined,
+          page,
+          size: pageSize,
+        });
+        items.push(...result.content);
+        totalPages = Math.max(result.totalPages ?? 1, 1);
+        page += 1;
+        if (page > 40) {
+          break;
+        }
+      }
+      return items;
+    },
+    enabled: Boolean(enabled && spaceId),
+    staleTime: 10_000,
+  });
+
+  return {
+    items: searchQuery.data ?? [],
+    loading: searchQuery.isLoading || searchQuery.isFetching,
+    error: searchQuery.error,
+    reload: () => searchQuery.refetch(),
+  };
+}
+
 export function useBedDetail(
   spaceId: string | undefined,
   bedId: string | undefined,

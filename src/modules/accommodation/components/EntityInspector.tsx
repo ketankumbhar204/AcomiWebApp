@@ -248,7 +248,7 @@ export function EntityInspector({
           <DetailTable
             rows={[
               {
-                label: t('accommodation.floors.floorNumber'),
+                label: t('accommodation.floors.floorNumberLabel'),
                 value: floor?.floorNumber,
                 icon: <Hash size={16} />,
               },
@@ -276,7 +276,7 @@ export function EntityInspector({
           <DetailTable
             rows={[
               {
-                label: t('accommodation.units.unitNumber'),
+                label: t('accommodation.units.unitNumberLabel'),
                 value: unit?.unitNumber,
                 icon: <Hash size={16} />,
               },

@@ -21,9 +21,11 @@ export const ROUTES = {
   noSpaces: '/no-spaces',
   onboarding: '/onboarding',
   createSpace: '/create-space',
+  memberHome: '/member-home',
   joinSpace: '/join-space',
   acceptInvitations: '/accept-invitations',
   mySpaces: '/my-spaces',
+  findAPlace: '/find-a-place',
   completeProfile: '/complete-profile',
   profile: '/profile',
   globalAttention: '/global/attention',
@@ -39,11 +41,20 @@ export const ROUTES = {
   adminDashboard: '/admin',
   adminProperties: '/admin/properties',
   adminAddProperty: '/admin/properties/new',
+  adminBulkProperty: '/admin/properties/bulk',
   adminMess: '/admin/mess',
   adminAddMess: '/admin/mess/new',
   adminRegisteredUsers: '/admin/registered-users',
+  adminActivity: '/admin/activity',
   adminSavedAddresses: '/admin/saved-addresses',
+  adminEnquiries: '/admin/enquiries',
+  myEnquiries: '/my-enquiries',
 } as const;
+
+export function myEnquiriesPath(enquiryId?: string): string {
+  if (!enquiryId) return ROUTES.myEnquiries;
+  return `${ROUTES.myEnquiries}?id=${encodeURIComponent(enquiryId)}`;
+}
 
 export function spaceDashboardPath(spaceId: string): string {
   return `/spaces/${spaceId}/dashboard`;
@@ -212,7 +223,10 @@ export function spacePaymentsPath(
   paymentId?: string,
   params?: {
     month?: string;
+    /** @deprecated Prefer filter; kept for legacy deep links. */
     tab?: string;
+    filter?: string;
+    queue?: string;
     memberId?: string;
   },
 ): string {
@@ -221,7 +235,9 @@ export function spacePaymentsPath(
     : `/spaces/${spaceId}/payments`;
   const search = new URLSearchParams();
   if (params?.month) search.set('month', params.month);
-  if (params?.tab) search.set('tab', params.tab);
+  if (params?.filter) search.set('filter', params.filter);
+  else if (params?.tab) search.set('tab', params.tab);
+  if (params?.queue) search.set('queue', params.queue);
   if (params?.memberId) search.set('memberId', params.memberId);
   const qs = search.toString();
   return qs ? `${base}?${qs}` : base;
@@ -288,6 +304,10 @@ export function adminAddPropertyPath(): string {
   return ROUTES.adminAddProperty;
 }
 
+export function adminBulkPropertyPath(): string {
+  return ROUTES.adminBulkProperty;
+}
+
 export function adminMessDetailPath(id: string): string {
   return `/admin/mess/${id}`;
 }
@@ -305,6 +325,51 @@ export function adminMessPath(params?: {
 
 export function adminAddMessPath(): string {
   return ROUTES.adminAddMess;
+}
+
+export function findAPlaceEnquirePath(options: {
+  name: string;
+  tab?: 'places' | 'mess';
+  spaceId?: string;
+}): string {
+  const params = new URLSearchParams();
+  params.set('enquire', '1');
+  if (options.tab) {
+    params.set('tab', options.tab);
+  }
+  if (options.name.trim()) {
+    params.set('name', options.name.trim());
+  }
+  if (options.spaceId) {
+    params.set('space', options.spaceId);
+  }
+  return `${ROUTES.findAPlace}?${params.toString()}`;
+}
+
+export function adminEnquiryDetailPath(id: string): string {
+  return `/admin/enquiries/${id}`;
+}
+
+export function adminRegisteredUserDetailPath(id: string): string {
+  return `${ROUTES.adminRegisteredUsers}/${id}`;
+}
+
+export function adminSavedAddressesPath(params?: { highlight?: string }): string {
+  if (!params?.highlight) return ROUTES.adminSavedAddresses;
+  return `${ROUTES.adminSavedAddresses}?highlight=${encodeURIComponent(params.highlight)}`;
+}
+
+export function adminActivityPath(params?: {
+  from?: string;
+  to?: string;
+  activityType?: string;
+}): string {
+  const search = new URLSearchParams();
+  if (params?.from) search.set('from', params.from);
+  if (params?.to) search.set('to', params.to);
+  if (params?.activityType) search.set('activityType', params.activityType);
+  const qs = search.toString();
+  return qs ? `${ROUTES.adminActivity}?${qs}` : ROUTES.adminActivity;
 }
 
 export type AppRoutePath = (typeof ROUTES)[keyof typeof ROUTES];

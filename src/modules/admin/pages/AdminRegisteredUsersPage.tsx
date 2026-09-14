@@ -1,136 +1,904 @@
-import { Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
-import { useEffect, useState } from 'react';
+import {
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Checkbox,
+  FormControl,
+  Grid,
+  InputAdornment,
+  MenuItem,
+  Pagination,
+  Select,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TableSortLabel,
+  TextField,
+  Typography,
+} from '@mui/material';
+import {
+  Building2,
+  Calendar,
+  Check,
+  Download,
+  Link2,
+  Phone,
+  Search,
+  Trash2,
+  UserPlus,
+  Users,
+} from 'lucide-react';
+import { useSnackbar } from 'notistack';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import {
   formatAdminAssociatedSpaces,
-  formatAdminDate,
   formatAdminOnboardingStatus,
   formatAdminUserName,
   formatAdminUserRole,
 } from '@/modules/admin/utils/adminLabels';
-import { ROUTES } from '@/routes/paths';
-import type { AdminRegisteredUser } from '@/shared/types/admin';
+import { ROUTES, adminRegisteredUserDetailPath } from '@/routes/paths';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import type {
+  AdminRegisteredUser,
+  AdminRegisteredUsersSummary,
+  AdminUserOnboardingStatus,
+  AdminUserSelectedRole,
+} from '@/shared/types/admin';
 
-const headerSx = {
-  px: 2,
-  py: 1,
-  display: { xs: 'none' as const, md: 'flex' as const },
-  color: 'text.secondary',
-  typography: 'caption',
-  fontWeight: 600,
-};
+const PAGE_SIZE = 8;
+
+type SortDir = 'asc' | 'desc';
+type DeleteTarget = { kind: 'one' | 'bulk'; ids: string[] };
+
+function initials(name?: string | null): string {
+  const trimmed = name?.trim();
+  if (!trimmed || trimmed.toLowerCase() === 'user') return 'U';
+  const parts = trimmed.split(/\s+/).slice(0, 2);
+  return parts.map((p) => p[0]?.toUpperCase() ?? '').join('') || 'U';
+}
+
+function formatRegistered(iso: string): { date: string; time: string } {
+  const d = new Date(iso);
+  return {
+    date: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+    time: d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }),
+  };
+}
+
+function roleChipSx(role: string): { bgcolor: string; color: string } {
+  if (role === 'OWNER') return { bgcolor: '#FFEDD5', color: '#C2410C' };
+  if (role === 'MEMBER') return { bgcolor: '#F3E8FF', color: '#7C3AED' };
+  if (role === 'OWNER_AND_MEMBER') return { bgcolor: '#DBEAFE', color: '#1D4ED8' };
+  return { bgcolor: '#F1F5F9', color: '#64748B' };
+}
+
+function exportCsv(rows: AdminRegisteredUser[]) {
+  const header = [
+    'ID',
+    'Name',
+    'Email',
+    'Phone',
+    'Verified',
+    'Role',
+    'Onboarding',
+    'Registered At',
+    'Spaces',
+    'Test User',
+  ];
+  const lines = rows.map((row) =>
+    [
+      row.id,
+      formatAdminUserName(row.fullName),
+      row.email || '',
+      row.mobileNumber,
+      row.mobileVerified ? 'Yes' : 'No',
+      row.selectedRole,
+      row.onboardingStatus,
+      row.registeredAt,
+      formatAdminAssociatedSpaces(row.spaces),
+      row.testUser ? 'Yes' : 'No',
+    ]
+      .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+      .join(','),
+  );
+  const blob = new Blob([[header.join(','), ...lines].join('\n')], {
+    type: 'text/csv;charset=utf-8',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `acomi-registered-users-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function AdminRegisteredUsersPage() {
   const { t } = useTranslation();
+  const { enqueueSnackbar } = useSnackbar();
   const [users, setUsers] = useState<AdminRegisteredUser[]>([]);
+  const [summary, setSummary] = useState<AdminRegisteredUsersSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedQ, setDebouncedQ] = useState('');
+  const [role, setRole] = useState<AdminUserSelectedRole | ''>('');
+  const [onboarding, setOnboarding] = useState<AdminUserOnboardingStatus | ''>('');
+  const [spaceAssociation, setSpaceAssociation] = useState<'' | 'WITH_SPACE' | 'WITHOUT_SPACE'>('');
+  const [registeredDate, setRegisteredDate] = useState('');
+
+  const filterKey = `${debouncedQ}|${role}|${onboarding}|${spaceAssociation}|${registeredDate}`;
+  const [activeFilterKey, setActiveFilterKey] = useState(filterKey);
+  if (activeFilterKey !== filterKey) {
+    setActiveFilterKey(filterKey);
+    setPage(0);
+    setSelected(new Set());
+  }
+
+  const requestKey = `${page}|${filterKey}|${sortDir}`;
+  const [activeRequestKey, setActiveRequestKey] = useState(requestKey);
+  if (activeRequestKey !== requestKey) {
+    setActiveRequestKey(requestKey);
+    setLoading(true);
+  }
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const page = await adminApi.listRegisteredUsers({ size: 100 });
-        if (!cancelled) setUsers(page.content);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    const timer = window.setTimeout(() => setDebouncedQ(searchInput.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
+
+  const loadSummary = useCallback(() => {
+    void adminApi.getRegisteredUsersSummary().then(setSummary).catch(() => setSummary(null));
   }, []);
+
+  useEffect(() => {
+    loadSummary();
+  }, [loadSummary]);
+
+  useEffect(() => {
+    let active = true;
+    void adminApi
+      .listRegisteredUsers({
+        q: debouncedQ || undefined,
+        role: role || undefined,
+        onboarding: onboarding || undefined,
+        spaceAssociation: spaceAssociation || undefined,
+        from: registeredDate || undefined,
+        to: registeredDate || undefined,
+        page,
+        size: PAGE_SIZE,
+      })
+      .then((result) => {
+        if (!active) return;
+        const content = [...result.content];
+        content.sort((a, b) => {
+          const diff = new Date(a.registeredAt).getTime() - new Date(b.registeredAt).getTime();
+          return sortDir === 'asc' ? diff : -diff;
+        });
+        setUsers(content);
+        setTotalPages(result.totalPages);
+        setTotalElements(result.totalElements);
+      })
+      .catch(() => {
+        if (!active) return;
+        setUsers([]);
+        setTotalPages(0);
+        setTotalElements(0);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [debouncedQ, onboarding, page, registeredDate, role, sortDir, spaceAssociation]);
+
+  const stats = useMemo(
+    () => [
+      {
+        key: 'total',
+        label: t('admin.users.stats.total'),
+        value: summary?.totalUsers ?? 0,
+        delta: summary?.totalUsersDeltaPercent,
+        hint: t('admin.users.stats.vsLast30'),
+        icon: Users,
+        bg: '#DCFCE7',
+        fg: '#16A34A',
+      },
+      {
+        key: 'verified',
+        label: t('admin.users.stats.verified'),
+        value: summary?.verifiedUsers ?? 0,
+        delta: summary?.verifiedUsersDeltaPercent,
+        hint: t('admin.users.stats.vsLast30'),
+        icon: Phone,
+        bg: '#CCFBF1',
+        fg: '#0F766E',
+      },
+      {
+        key: 'new',
+        label: t('admin.users.stats.new30'),
+        value: summary?.newUsersLast30Days ?? 0,
+        delta: summary?.newUsersDeltaPercent,
+        hint: t('admin.users.stats.vsPrev30'),
+        icon: UserPlus,
+        bg: '#F3E8FF',
+        fg: '#7C3AED',
+      },
+      {
+        key: 'spaces',
+        label: t('admin.users.stats.withSpace'),
+        value: summary?.withSpaceAssociation ?? 0,
+        delta: summary?.withSpaceDeltaPercent,
+        hint: t('admin.users.stats.withSpaceHint'),
+        icon: Building2,
+        bg: '#DBEAFE',
+        fg: '#2563EB',
+      },
+    ],
+    [summary, t],
+  );
+
+  const allSelected = users.length > 0 && users.every((user) => selected.has(user.id));
+  const selectedCount = selected.size;
+  const showingFrom = totalElements === 0 ? 0 : page * PAGE_SIZE + 1;
+  const showingTo = Math.min((page + 1) * PAGE_SIZE, totalElements);
+
+  function clearFilters() {
+    setSearchInput('');
+    setDebouncedQ('');
+    setRole('');
+    setOnboarding('');
+    setSpaceAssociation('');
+    setRegisteredDate('');
+  }
+
+  function toggleAll() {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(users.map((u) => u.id)));
+  }
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      if (deleteTarget.kind === 'one') {
+        const id = deleteTarget.ids[0];
+        if (!id) return;
+        await adminApi.deleteRegisteredUser(id);
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+        setTotalElements((n) => Math.max(0, n - 1));
+        setSelected((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        loadSummary();
+        enqueueSnackbar(t('admin.users.deleted'), { variant: 'success' });
+      } else {
+        const ids = deleteTarget.ids;
+        const results = await Promise.allSettled(ids.map((id) => adminApi.deleteRegisteredUser(id)));
+        const okIds = ids.filter((_, i) => results[i]?.status === 'fulfilled');
+        const failed = ids.length - okIds.length;
+        if (okIds.length > 0) {
+          const removed = new Set(okIds);
+          setUsers((prev) => prev.filter((u) => !removed.has(u.id)));
+          setTotalElements((n) => Math.max(0, n - okIds.length));
+          setSelected(new Set());
+          loadSummary();
+        }
+        if (failed === 0) {
+          enqueueSnackbar(t('admin.users.bulkDeleted', { count: okIds.length }), {
+            variant: 'success',
+          });
+        } else if (okIds.length === 0) {
+          enqueueSnackbar(t('admin.users.bulkDeleteFailed'), { variant: 'error' });
+        } else {
+          enqueueSnackbar(
+            t('admin.users.bulkDeletePartial', { deleted: okIds.length, failed }),
+            { variant: 'warning' },
+          );
+        }
+      }
+      setDeleteTarget(null);
+    } catch {
+      enqueueSnackbar(t('admin.users.deleteFailed'), { variant: 'error' });
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function handleExport() {
+    try {
+      const result = await adminApi.listRegisteredUsers({
+        q: debouncedQ || undefined,
+        role: role || undefined,
+        onboarding: onboarding || undefined,
+        spaceAssociation: spaceAssociation || undefined,
+        from: registeredDate || undefined,
+        to: registeredDate || undefined,
+        page: 0,
+        size: 100,
+      });
+      exportCsv(result.content);
+    } catch {
+      exportCsv(users);
+    }
+  }
 
   return (
     <Box>
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-        {t('admin.users.title')}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        {t('admin.users.hint')}
-      </Typography>
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-          <CircularProgress />
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        sx={{ mb: 3, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'flex-start' } }}>
+        <Box>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: 26, md: 30 }, letterSpacing: -0.5 }}>
+            {t('admin.users.title')}
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', mt: 0.5, maxWidth: 640 }}>
+            {t('admin.users.hint')}
+          </Typography>
         </Box>
-      ) : users.length === 0 ? (
-        <Typography color="text.secondary">{t('admin.users.empty')}</Typography>
-      ) : (
-        <Stack spacing={1.5}>
-          <Stack direction="row" sx={headerSx}>
-            <Box sx={{ flex: 1.2, minWidth: 0 }}>{t('admin.users.columns.user')}</Box>
-            <Box sx={{ width: 120, flexShrink: 0 }}>{t('admin.users.columns.phone')}</Box>
-            <Box sx={{ width: 88, flexShrink: 0 }}>{t('admin.users.columns.verified')}</Box>
-            <Box sx={{ width: 120, flexShrink: 0 }}>{t('admin.users.columns.role')}</Box>
-            <Box sx={{ width: 104, flexShrink: 0 }}>{t('admin.users.columns.onboarding')}</Box>
-            <Box sx={{ width: 112, flexShrink: 0 }}>{t('admin.users.columns.registered')}</Box>
-            <Box sx={{ flex: 1, minWidth: 0 }}>{t('admin.users.columns.space')}</Box>
-          </Stack>
-          {users.map((user) => (
-            <Box
-              key={user.id}
-              sx={{
-                p: 2,
-                border: 1,
-                borderColor: 'divider',
-                borderRadius: 2,
-                minWidth: 0,
-              }}>
-              <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                <Typography sx={{ fontWeight: 700 }}>{formatAdminUserName(user.fullName)}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {user.mobileNumber}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {user.mobileVerified ? t('admin.labels.verified') : t('admin.labels.notVerified')} · {formatAdminUserRole(user.selectedRole)}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {t('admin.labels.onboardingPrefix')} {formatAdminOnboardingStatus(user.onboardingStatus)} ·{' '}
-                  {formatAdminDate(user.registeredAt)}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
-                  {formatAdminAssociatedSpaces(user.spaces)}
-                </Typography>
-              </Box>
-              <Stack
-                direction="row"
-                sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'flex-start', minWidth: 0 }}>
-                <Box sx={{ flex: 1.2, minWidth: 0, pr: 1 }}>
-                  <Typography sx={{ fontWeight: 700 }} noWrap>
-                    {formatAdminUserName(user.fullName)}
-                  </Typography>
-                </Box>
-                <Box sx={{ width: 120, flexShrink: 0 }}>
-                  <Typography variant="body2">{user.mobileNumber}</Typography>
-                </Box>
-                <Box sx={{ width: 88, flexShrink: 0 }}>
-                  <Typography variant="body2">{user.mobileVerified ? t('admin.labels.verified') : t('admin.labels.no')}</Typography>
-                </Box>
-                <Box sx={{ width: 120, flexShrink: 0 }}>
-                  <Typography variant="body2">{formatAdminUserRole(user.selectedRole)}</Typography>
-                </Box>
-                <Box sx={{ width: 104, flexShrink: 0 }}>
-                  <Typography variant="body2">
-                    {formatAdminOnboardingStatus(user.onboardingStatus)}
-                  </Typography>
-                </Box>
-                <Box sx={{ width: 112, flexShrink: 0 }}>
-                  <Typography variant="body2">{formatAdminDate(user.registeredAt)}</Typography>
-                </Box>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
-                    {formatAdminAssociatedSpaces(user.spaces)}
-                  </Typography>
-                </Box>
-              </Stack>
-            </Box>
-          ))}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ flexShrink: 0 }}>
+          <Button
+            variant="outlined"
+            startIcon={<Download size={16} />}
+            onClick={() => void handleExport()}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              borderColor: '#22C55E',
+              color: '#15803D',
+              borderRadius: '10px',
+              '&:hover': { borderColor: '#16A34A', bgcolor: '#F0FDF4' },
+            }}>
+            {t('admin.users.export')}
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<Link2 size={16} />}
+            component={RouterLink}
+            to={ROUTES.register}
+            target="_blank"
+            rel="noreferrer"
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              bgcolor: '#22C55E',
+              borderRadius: '10px',
+              '&:hover': { bgcolor: '#16A34A' },
+            }}>
+            {t('admin.users.invite')}
+          </Button>
         </Stack>
-      )}
-      <Button component={RouterLink} to={ROUTES.adminDashboard} sx={{ mt: 3 }}>
-        {t('admin.common.backToDashboard')}
-      </Button>
+      </Stack>
+
+      <Grid container spacing={2} sx={{ mb: 2.5 }}>
+        {stats.map((stat) => {
+          const positive = (stat.delta ?? 0) > 0;
+          const negative = (stat.delta ?? 0) < 0;
+          return (
+            <Grid key={stat.key} size={{ xs: 12, sm: 6, md: 3 }}>
+              <Card
+                elevation={0}
+                sx={{
+                  borderRadius: '14px',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  boxShadow: '0 1px 2px rgb(15 23 42 / 0.04), 0 4px 12px rgb(15 23 42 / 0.04)',
+                  height: '100%',
+                }}>
+                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                  <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: '10px',
+                        bgcolor: stat.bg,
+                        color: stat.fg,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                      <stat.icon size={18} />
+                    </Box>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary' }}>
+                        {stat.label}
+                      </Typography>
+                      <Typography sx={{ fontWeight: 800, fontSize: 26, lineHeight: 1.1, my: 0.5 }}>
+                        {stat.value}
+                      </Typography>
+                      {typeof stat.delta === 'number' ? (
+                        <Typography
+                          sx={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: positive ? '#16A34A' : negative ? '#DC2626' : 'text.secondary',
+                          }}>
+                          {positive ? '↑' : negative ? '↓' : '→'} {positive ? '+' : ''}
+                          {Math.abs(stat.delta).toFixed(0)}% {stat.hint}
+                        </Typography>
+                      ) : (
+                        <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{stat.hint}</Typography>
+                      )}
+                    </Box>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
+          );
+        })}
+      </Grid>
+
+      <Card
+        elevation={0}
+        sx={{
+          mb: 2,
+          borderRadius: '14px',
+          border: '1px solid',
+          borderColor: 'divider',
+          boxShadow: '0 1px 2px rgb(15 23 42 / 0.04)',
+        }}>
+        <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+          <Stack
+            direction={{ xs: 'column', lg: 'row' }}
+            spacing={1.25}
+            sx={{ alignItems: { xs: 'stretch', lg: 'center' } }}>
+            <TextField
+              size="small"
+              fullWidth
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder={t('admin.users.searchPlaceholder')}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search size={16} color="#94A3B8" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+              sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+            />
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <Select
+                displayEmpty
+                value={role}
+                onChange={(e) => setRole(e.target.value as AdminUserSelectedRole | '')}
+                sx={{ borderRadius: '10px' }}>
+                <MenuItem value="">{t('admin.users.filters.allRoles')}</MenuItem>
+                <MenuItem value="OWNER">{t('admin.labels.owner')}</MenuItem>
+                <MenuItem value="MEMBER">{t('admin.labels.member')}</MenuItem>
+                <MenuItem value="OWNER_AND_MEMBER">{t('admin.labels.ownerAndMember')}</MenuItem>
+                <MenuItem value="NOT_SELECTED">{t('admin.labels.notSelected')}</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 170 }}>
+              <Select
+                displayEmpty
+                value={onboarding}
+                onChange={(e) => setOnboarding(e.target.value as AdminUserOnboardingStatus | '')}
+                sx={{ borderRadius: '10px' }}>
+                <MenuItem value="">{t('admin.users.filters.allOnboarding')}</MenuItem>
+                <MenuItem value="COMPLETE">{t('admin.labels.complete')}</MenuItem>
+                <MenuItem value="INCOMPLETE">{t('admin.labels.incomplete')}</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 170 }}>
+              <Select
+                displayEmpty
+                value={spaceAssociation}
+                onChange={(e) =>
+                  setSpaceAssociation(e.target.value as '' | 'WITH_SPACE' | 'WITHOUT_SPACE')
+                }
+                sx={{ borderRadius: '10px' }}>
+                <MenuItem value="">{t('admin.users.filters.allSpace')}</MenuItem>
+                <MenuItem value="WITH_SPACE">{t('admin.users.filters.withSpace')}</MenuItem>
+                <MenuItem value="WITHOUT_SPACE">{t('admin.users.filters.withoutSpace')}</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              size="small"
+              type="date"
+              value={registeredDate}
+              onChange={(e) => setRegisteredDate(e.target.value)}
+              label={t('admin.users.filters.registeredDate')}
+              slotProps={{
+                inputLabel: { shrink: true },
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Calendar size={15} color="#94A3B8" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+              sx={{
+                minWidth: { xs: '100%', lg: 190 },
+                '& .MuiOutlinedInput-root': { borderRadius: '10px' },
+              }}
+            />
+            <Button
+              onClick={clearFilters}
+              variant="outlined"
+              sx={{
+                textTransform: 'none',
+                fontWeight: 700,
+                color: 'text.secondary',
+                borderColor: 'divider',
+                borderRadius: '10px',
+                minWidth: 72,
+              }}>
+              {t('admin.users.filters.clear')}
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      {selectedCount > 0 ? (
+        <Card
+          elevation={0}
+          sx={{
+            mb: 2,
+            borderRadius: '14px',
+            border: '1px solid #FECACA',
+            bgcolor: '#FEF2F2',
+            boxShadow: '0 1px 2px rgb(15 23 42 / 0.04)',
+          }}>
+          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1.25}
+              sx={{ alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between' }}>
+              <Typography sx={{ fontWeight: 700, color: '#991B1B' }}>
+                {t('admin.common.selectedCount', { count: selectedCount })}
+              </Typography>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setSelected(new Set())}
+                  sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '10px' }}>
+                  {t('admin.common.clearSelection')}
+                </Button>
+                <Button
+                  variant="contained"
+                  color="error"
+                  startIcon={<Trash2 size={16} />}
+                  onClick={() => setDeleteTarget({ kind: 'bulk', ids: Array.from(selected) })}
+                  sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '10px' }}>
+                  {t('admin.common.bulkDelete', { count: selectedCount })}
+                </Button>
+              </Stack>
+            </Stack>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: '14px',
+          border: '1px solid',
+          borderColor: 'divider',
+          boxShadow: '0 1px 2px rgb(15 23 42 / 0.04), 0 4px 12px rgb(15 23 42 / 0.04)',
+          overflow: 'hidden',
+        }}>
+        <Box sx={{ overflowX: 'auto' }}>
+          <Table sx={{ minWidth: 1120 }}>
+            <TableHead>
+              <TableRow sx={{ bgcolor: '#FAFBFC' }}>
+                <TableCell padding="checkbox">
+                  <Checkbox checked={allSelected} onChange={toggleAll} />
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700, width: 48 }}>#</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>{t('admin.users.columns.user')}</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>{t('admin.users.columns.phone')}</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>{t('admin.users.columns.verified')}</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>{t('admin.users.columns.role')}</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>{t('admin.users.columns.onboarding')}</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>
+                  <TableSortLabel
+                    active
+                    direction={sortDir}
+                    onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}>
+                    {t('admin.users.columns.registered')}
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>{t('admin.users.columns.space')}</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>{t('admin.common.testUser')}</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>{t('admin.users.columns.actions')}</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={11}>
+                    <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+                      {t('common.loading')}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : users.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={11}>
+                    <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+                      {t('admin.users.empty')}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                users.map((user, index) => {
+                  const registered = formatRegistered(user.registeredAt);
+                  const name = formatAdminUserName(user.fullName);
+                  const roleSx = roleChipSx(user.selectedRole);
+                  const complete = user.onboardingStatus === 'COMPLETE';
+                  return (
+                    <TableRow key={user.id} hover>
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          checked={selected.has(user.id)}
+                          onChange={() => toggleOne(user.id)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                          {page * PAGE_SIZE + index + 1}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+                          <Avatar
+                            sx={{
+                              width: 36,
+                              height: 36,
+                              bgcolor: '#DBEAFE',
+                              color: '#1D4ED8',
+                              fontSize: 12,
+                              fontWeight: 800,
+                            }}>
+                            {initials(user.fullName)}
+                          </Avatar>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography sx={{ fontWeight: 700, fontSize: 14 }} noWrap>
+                              {name}
+                            </Typography>
+                            <Typography sx={{ fontSize: 12, color: 'text.secondary' }} noWrap>
+                              {user.email || t('admin.labels.emDash')}
+                            </Typography>
+                          </Box>
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        <Typography sx={{ fontSize: 13.5 }}>{user.mobileNumber}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        {user.mobileVerified ? (
+                          <Box
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              px: 1,
+                              py: 0.35,
+                              borderRadius: '999px',
+                              bgcolor: '#DCFCE7',
+                              color: '#15803D',
+                              fontSize: 12,
+                              fontWeight: 700,
+                            }}>
+                            <Check size={12} />
+                            {t('admin.labels.verified')}
+                          </Box>
+                        ) : (
+                          <Box
+                            sx={{
+                              display: 'inline-flex',
+                              px: 1,
+                              py: 0.35,
+                              borderRadius: '999px',
+                              bgcolor: '#F1F5F9',
+                              color: '#64748B',
+                              fontSize: 12,
+                              fontWeight: 700,
+                            }}>
+                            {t('admin.labels.notVerified')}
+                          </Box>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Box
+                          sx={{
+                            display: 'inline-flex',
+                            px: 1.25,
+                            py: 0.35,
+                            borderRadius: '999px',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            ...roleSx,
+                          }}>
+                          {formatAdminUserRole(user.selectedRole)}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Box
+                          sx={{
+                            display: 'inline-flex',
+                            px: 1.25,
+                            py: 0.35,
+                            borderRadius: '999px',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            bgcolor: complete ? '#DCFCE7' : '#FEE2E2',
+                            color: complete ? '#15803D' : '#B91C1C',
+                          }}>
+                          {formatAdminOnboardingStatus(user.onboardingStatus)}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{registered.date}</Typography>
+                        <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                          {registered.time}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography sx={{ fontSize: 13, color: 'text.secondary', maxWidth: 180 }} noWrap>
+                          {formatAdminAssociatedSpaces(user.spaces)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {user.testUser ? (
+                          <Box
+                            sx={{
+                              display: 'inline-flex',
+                              px: 1.25,
+                              py: 0.35,
+                              borderRadius: '999px',
+                              bgcolor: '#EF4444',
+                              color: '#FFFFFF',
+                              fontSize: 12,
+                              fontWeight: 700,
+                            }}>
+                            {t('admin.common.yes')}
+                          </Box>
+                        ) : (
+                          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                            {t('admin.labels.emDash')}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                          <Button
+                            component={RouterLink}
+                            to={adminRegisteredUserDetailPath(user.id)}
+                            size="small"
+                            sx={{
+                              textTransform: 'none',
+                              fontWeight: 700,
+                              color: '#15803D',
+                              bgcolor: '#DCFCE7',
+                              borderRadius: '8px',
+                              px: 1.75,
+                              minWidth: 0,
+                              '&:hover': { bgcolor: '#BBF7D0' },
+                            }}>
+                            {t('admin.users.view')}
+                          </Button>
+                          <Button
+                            size="small"
+                            onClick={() => setDeleteTarget({ kind: 'one', ids: [user.id] })}
+                            sx={{
+                              textTransform: 'none',
+                              fontWeight: 700,
+                              color: '#B91C1C',
+                              bgcolor: '#FEE2E2',
+                              borderRadius: '8px',
+                              px: 1.5,
+                              minWidth: 0,
+                              '&:hover': { bgcolor: '#FECACA' },
+                            }}>
+                            {t('admin.common.delete')}
+                          </Button>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </Box>
+
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          sx={{
+            px: 2,
+            py: 1.75,
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            {t('admin.users.showing', {
+              from: showingFrom,
+              to: showingTo,
+              total: totalElements,
+            })}
+          </Typography>
+          {totalPages > 1 ? (
+            <Pagination
+              count={totalPages}
+              page={page + 1}
+              onChange={(_, value) => setPage(value - 1)}
+              color="primary"
+              shape="rounded"
+              sx={{
+                '& .Mui-selected': {
+                  bgcolor: '#22C55E !important',
+                  color: '#FFFFFF',
+                },
+              }}
+            />
+          ) : null}
+        </Stack>
+      </Card>
+
+      <ConfirmDialog
+        open={deleteTarget != null}
+        title={
+          deleteTarget?.kind === 'bulk'
+            ? t('admin.users.bulkDeleteTitle')
+            : t('admin.users.deleteTitle')
+        }
+        description={
+          deleteTarget
+            ? deleteTarget.kind === 'bulk'
+              ? t('admin.users.bulkDeleteMessage', { count: deleteTarget.ids.length })
+              : t('admin.users.deleteMessage', {
+                  name:
+                    formatAdminUserName(
+                      users.find((u) => u.id === deleteTarget.ids[0])?.fullName,
+                    ) || deleteTarget.ids[0],
+                })
+            : undefined
+        }
+        confirmLabel={t('admin.common.delete')}
+        cancelLabel={t('admin.common.cancel')}
+        destructive
+        confirming={deleting}
+        onConfirm={() => void handleDeleteConfirm()}
+        onClose={() => setDeleteTarget(null)}
+      />
     </Box>
   );
 }

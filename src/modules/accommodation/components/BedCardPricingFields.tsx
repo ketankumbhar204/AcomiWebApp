@@ -2,6 +2,7 @@ import { Box, InputAdornment, Stack, TextField, Typography, useTheme } from '@mu
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { colors } from '@/shared/theme/colors';
 import { parseOptionalMoney, type PricingField } from '../setup-preview/setupPricingAutofill';
 
 type BedCardPricingFieldsProps = {
@@ -152,10 +153,13 @@ function MoneyField({
   onBlur: () => void;
   mutedColor: string;
 }) {
+  const theme = useTheme();
+  const empty = value.trim() === '';
+
   return (
     <Box sx={{ flex: 1, minWidth: 0 }}>
       {hideLabel ? null : (
-        <Typography sx={{ ...DASHBOARD_UX.caption, color: mutedColor, mb: 0.25 }}>{label}</Typography>
+        <Typography sx={{ ...DASHBOARD_UX.caption, color: mutedColor, mb: 0.35 }}>{label}</Typography>
       )}
       <TextField
         size="small"
@@ -173,7 +177,19 @@ function MoneyField({
           },
         }}
         sx={{
-          '& .MuiInputBase-root': { height: 32, fontSize: '0.8125rem' },
+          '& .MuiInputBase-root': {
+            height: 36,
+            fontSize: '0.8125rem',
+            bgcolor: theme.palette.mode === 'dark' ? 'rgba(15,23,42,0.45)' : '#fff',
+          },
+          '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: empty ? colors.primary : undefined,
+            borderStyle: empty ? 'dashed' : 'solid',
+          },
+          '& .MuiInputBase-input::placeholder': {
+            opacity: 1,
+            color: mutedColor,
+          },
           '& input[type=number]': { MozAppearance: 'textfield' },
           '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
             WebkitAppearance: 'none',

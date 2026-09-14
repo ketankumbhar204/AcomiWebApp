@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  CircularProgress,
   FormControl,
   FormHelperText,
   InputLabel,
@@ -11,13 +12,14 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StickyFooter } from '@/shared/components/StickyFooter';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import type {
   AccommodationStatus,
   PropertyLayoutMode,
@@ -25,10 +27,15 @@ import type {
 } from '@/shared/types/accommodation';
 import type { SpaceType } from '@/shared/types/space';
 import {
+  suggestBuildingCode,
+  suggestBuildingName,
+} from '@/shared/utils/suggestBuildingDefaults';
+import {
   selectableLayoutModes,
   type AccommodationUiProfile,
 } from '../utils/accommodationProfile';
-import { useAccommodationMutations } from '../hooks/useAccommodation';
+import { accommodationApi } from '../api/accommodationApi';
+import { useAccommodationMutations, useBuildings } from '../hooks/useAccommodation';
 import type { TreeSelection } from './HierarchyTree';
 import { PropertyLayoutModePicker } from '../illustrations/PropertyLayoutModePicker';
 
@@ -55,6 +62,13 @@ const STATUSES: AccommodationStatus[] = [
 ];
 
 const ROOM_TYPES: RoomType[] = ['PRIVATE', 'SHARED', 'DORMITORY'];
+
+const fieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
+    bgcolor: 'background.paper',
+  },
+} as const;
 
 function childEntityType(
   parent: TreeSelection | null,
@@ -107,6 +121,8 @@ function EntityFormBody({
   const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const mutations = useAccommodationMutations(spaceId);
+  const permissions = useSpacePermissions(spaceId);
+  const spaceName = permissions.space?.spaceName ?? '';
 
   const createParent = mode.kind === 'create' ? mode.parent : null;
   const editSelection = mode.kind === 'edit' ? mode.selection : null;
@@ -117,8 +133,15 @@ function EntityFormBody({
         : editSelection!.type
       : childEntityType(createParent, profile);
 
+  const { buildings, loading: buildingsLoading } = useBuildings(
+    spaceId,
+    mode.kind === 'create' && entityType === 'building',
+  );
+  const buildingDefaultsAppliedRef = useRef(false);
+
   const layoutOptions = selectableLayoutModes(spaceType ?? 'PG');
 
+  const [loading, setLoading] = useState(mode.kind === 'edit');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [layoutMode, setLayoutMode] = useState<PropertyLayoutMode>(
@@ -134,6 +157,85 @@ function EntityFormBody({
   const [defaultRent, setDefaultRent] = useState('');
   const [defaultDeposit, setDefaultDeposit] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (
+      mode.kind !== 'create' ||
+      entityType !== 'building' ||
+      buildingDefaultsAppliedRef.current ||
+      buildingsLoading
+    ) {
+      return;
+    }
+    setName(suggestBuildingName(spaceName));
+    setCode(suggestBuildingCode(buildings.length));
+    buildingDefaultsAppliedRef.current = true;
+  }, [buildings.length, buildingsLoading, entityType, mode.kind, spaceName]);
+
+  useEffect(() => {
+    if (mode.kind !== 'edit' || !editSelection) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+
+    void (async () => {
+      try {
+        if (editSelection.type === 'building') {
+          const building = await accommodationApi.getBuilding(spaceId, editSelection.buildingId);
+          if (cancelled) return;
+          setName(building.name ?? '');
+          setCode(building.code ?? '');
+          if (building.layoutMode) {
+            setLayoutMode(building.layoutMode);
+          }
+        } else if (editSelection.type === 'floor') {
+          const floor = await accommodationApi.getFloor(spaceId, editSelection.floorId);
+          if (cancelled) return;
+          setName(floor.name ?? '');
+          setFloorNumber(String(floor.floorNumber ?? 0));
+        } else if (editSelection.type === 'unit') {
+          const unit = await accommodationApi.getUnit(spaceId, editSelection.unitId);
+          if (cancelled) return;
+          setName(unit.name ?? '');
+          setUnitNumber(unit.unitNumber ?? '');
+          if (unit.status) setStatus(unit.status);
+          setDefaultRent(unit.defaultRent != null ? String(unit.defaultRent) : '');
+          setDefaultDeposit(unit.defaultDeposit != null ? String(unit.defaultDeposit) : '');
+        } else if (editSelection.type === 'room') {
+          const room = await accommodationApi.getRoom(spaceId, editSelection.roomId);
+          if (cancelled) return;
+          setName(room.name ?? '');
+          setRoomNumber(room.roomNumber ?? '');
+          if (room.roomType) setRoomType(room.roomType);
+          setCapacity(String(room.capacity ?? 1));
+          if (room.status) setStatus(room.status);
+          setDefaultRent(room.defaultRent != null ? String(room.defaultRent) : '');
+          setDefaultDeposit(room.defaultDeposit != null ? String(room.defaultDeposit) : '');
+        } else if (editSelection.type === 'bed') {
+          const bed = await accommodationApi.getBed(spaceId, editSelection.bedId);
+          if (cancelled) return;
+          setName(bed.name ?? '');
+          setBedNumber(bed.bedNumber ?? '');
+          if (bed.status) setStatus(bed.status);
+          setDefaultRent(bed.defaultRent != null ? String(bed.defaultRent) : '');
+          setDefaultDeposit(bed.defaultDeposit != null ? String(bed.defaultDeposit) : '');
+        }
+      } catch {
+        if (!cancelled) {
+          enqueueSnackbar(t('common.errors.generic'), { variant: 'error' });
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editSelection, enqueueSnackbar, mode.kind, spaceId, t]);
 
   const saving =
     mutations.createBuilding.isPending ||
@@ -153,6 +255,11 @@ function EntityFormBody({
     mode.kind === 'create'
       ? `accommodation.form.create.${entityType}`
       : `accommodation.form.edit.${entityType}`;
+
+  const subtitleKey =
+    mode.kind === 'create'
+      ? `accommodation.form.createHint.${entityType}`
+      : `accommodation.form.editHint.${entityType}`;
 
   const handleSubmit = async () => {
     setError(null);
@@ -289,233 +396,299 @@ function EntityFormBody({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+      <Box
+        sx={{
+          px: 2.5,
+          py: 2,
+          borderBottom: `1px solid ${s.border}`,
+          bgcolor: s.surface,
+        }}
+      >
+        <Typography sx={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', color: s.textPrimary }}>
           {t(titleKey)}
         </Typography>
+        <Typography sx={{ mt: 0.5, fontSize: 13, color: s.textSecondary, lineHeight: 1.4 }}>
+          {t(subtitleKey, {
+            defaultValue:
+              mode.kind === 'edit'
+                ? 'Update details for this item in your property hierarchy.'
+                : 'Add this item to your property hierarchy.',
+          })}
+        </Typography>
       </Box>
-      <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-        <Stack spacing={2}>
-          {entityType === 'building' ? (
-            <>
-              <TextField
-                label={t('accommodation.fields.name')}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('accommodation.buildings.namePlaceholder')}
-                required
-                fullWidth
-              />
-              <TextField
-                label={t('accommodation.fields.code')}
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder={t('accommodation.buildings.codePlaceholder')}
-                fullWidth
-              />
-              <FormControl fullWidth>
-                {layoutOptions.length > 1 ? (
-                  <PropertyLayoutModePicker
-                    value={layoutMode}
-                    onChange={setLayoutMode}
-                    options={layoutOptions}
-                    variant="compact"
-                  />
-                ) : (
-                  <>
-                    <InputLabel>{t('accommodation.layoutMode.label')}</InputLabel>
-                    <Select
-                      label={t('accommodation.layoutMode.label')}
+
+      <Box sx={{ flex: 1, overflow: 'auto', px: 2.5, py: 2.5, bgcolor: s.pageBg }}>
+        {loading ? (
+          <Box sx={{ display: 'grid', placeItems: 'center', minHeight: 220 }}>
+            <CircularProgress size={28} />
+          </Box>
+        ) : (
+          <Stack
+            spacing={2}
+            sx={{
+              p: 2,
+              borderRadius: 2.5,
+              border: `1px solid ${s.border}`,
+              bgcolor: s.surface,
+              boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+            }}
+          >
+            {entityType === 'building' ? (
+              <>
+                <TextField
+                  label={t('accommodation.fields.name')}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t('accommodation.buildings.namePlaceholderSpace', {
+                    defaultValue: 'Uses your space name by default',
+                  })}
+                  required
+                  fullWidth
+                  sx={fieldSx}
+                />
+                <TextField
+                  label={t('accommodation.fields.code')}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder={t('accommodation.buildings.codePlaceholderBld', {
+                    defaultValue: 'e.g. BLD 1',
+                  })}
+                  fullWidth
+                  sx={fieldSx}
+                />
+                <FormControl fullWidth>
+                  {layoutOptions.length > 1 ? (
+                    <PropertyLayoutModePicker
                       value={layoutMode}
-                      onChange={(e) => setLayoutMode(e.target.value as PropertyLayoutMode)}
-                    >
-                      {layoutOptions.map((opt) => (
-                        <MenuItem key={opt} value={opt}>
-                          {t(`accommodation.layoutMode.${opt}`)}
-                        </MenuItem>
-                      ))}
-                    </Select>
+                      onChange={setLayoutMode}
+                      options={layoutOptions}
+                      variant="compact"
+                    />
+                  ) : (
+                    <>
+                      <InputLabel>{t('accommodation.layoutMode.label')}</InputLabel>
+                      <Select
+                        label={t('accommodation.layoutMode.label')}
+                        value={layoutMode}
+                        onChange={(e) => setLayoutMode(e.target.value as PropertyLayoutMode)}
+                      >
+                        {layoutOptions.map((opt) => (
+                          <MenuItem key={opt} value={opt}>
+                            {t(`accommodation.layoutMode.${opt}`)}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </>
+                  )}
+                </FormControl>
+              </>
+            ) : null}
+
+            {entityType === 'floor' ? (
+              <>
+                <TextField
+                  label={t('accommodation.fields.name')}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t('accommodation.floors.namePlaceholder')}
+                  fullWidth
+                  sx={fieldSx}
+                />
+                <TextField
+                  label={t('accommodation.floors.floorNumberLabel', { defaultValue: 'Floor number' })}
+                  value={floorNumber}
+                  onChange={(e) => setFloorNumber(e.target.value)}
+                  placeholder="e.g. 0"
+                  type="number"
+                  required
+                  fullWidth
+                  sx={fieldSx}
+                />
+              </>
+            ) : null}
+
+            {entityType === 'unit' ? (
+              <>
+                <TextField
+                  label={t('accommodation.fields.name')}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t('accommodation.units.namePlaceholder')}
+                  required
+                  fullWidth
+                  sx={fieldSx}
+                />
+                <TextField
+                  label={t('accommodation.units.unitNumberLabel', { defaultValue: 'Unit number' })}
+                  value={unitNumber}
+                  onChange={(e) => setUnitNumber(e.target.value)}
+                  placeholder={t('accommodation.units.unitNumberPlaceholder')}
+                  fullWidth
+                  sx={fieldSx}
+                />
+                <FormControl fullWidth>
+                  <InputLabel>{t('accommodation.status.label')}</InputLabel>
+                  <Select
+                    label={t('accommodation.status.label')}
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as AccommodationStatus)}
+                  >
+                    {STATUSES.map((item) => (
+                      <MenuItem key={item} value={item}>
+                        {t(`accommodation.status.${item}`)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                {mode.kind === 'edit' ? (
+                  <>
+                    <TextField
+                      label={t('accommodation.fields.defaultRent')}
+                      value={defaultRent}
+                      onChange={(e) => setDefaultRent(e.target.value)}
+                      placeholder="e.g. 8500"
+                      type="number"
+                      fullWidth
+                      sx={fieldSx}
+                    />
+                    <TextField
+                      label={t('accommodation.fields.defaultDeposit')}
+                      value={defaultDeposit}
+                      onChange={(e) => setDefaultDeposit(e.target.value)}
+                      placeholder="e.g. 15000"
+                      type="number"
+                      fullWidth
+                      sx={fieldSx}
+                    />
                   </>
-                )}
-              </FormControl>
-            </>
-          ) : null}
+                ) : null}
+              </>
+            ) : null}
 
-          {entityType === 'floor' ? (
-            <>
-              <TextField
-                label={t('accommodation.fields.name')}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('accommodation.floors.namePlaceholder')}
-                fullWidth
-              />
-              <TextField
-                label={t('accommodation.floors.floorNumber')}
-                value={floorNumber}
-                onChange={(e) => setFloorNumber(e.target.value)}
-                placeholder="e.g. 0"
-                type="number"
-                required
-                fullWidth
-              />
-            </>
-          ) : null}
+            {entityType === 'room' ? (
+              <>
+                <TextField
+                  label={t('accommodation.fields.name')}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t('accommodation.rooms.namePlaceholder')}
+                  required
+                  fullWidth
+                  sx={fieldSx}
+                />
+                <TextField
+                  label={t('accommodation.rooms.roomNumberLabel', {
+                    defaultValue: t('accommodation.rooms.roomNumber'),
+                  })}
+                  value={roomNumber}
+                  onChange={(e) => setRoomNumber(e.target.value)}
+                  placeholder="e.g. 101"
+                  fullWidth
+                  sx={fieldSx}
+                />
+                <FormControl fullWidth>
+                  <InputLabel>{t('accommodation.roomType.label')}</InputLabel>
+                  <Select
+                    label={t('accommodation.roomType.label')}
+                    value={roomType}
+                    onChange={(e) => setRoomType(e.target.value as RoomType)}
+                  >
+                    {ROOM_TYPES.map((rt) => (
+                      <MenuItem key={rt} value={rt}>
+                        {t(`accommodation.roomType.${rt}`)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <TextField
+                  label={t('accommodation.rooms.capacity')}
+                  value={capacity}
+                  onChange={(e) => setCapacity(e.target.value)}
+                  placeholder="e.g. 2"
+                  type="number"
+                  fullWidth
+                  sx={fieldSx}
+                />
+              </>
+            ) : null}
 
-          {entityType === 'unit' ? (
-            <>
-              <TextField
-                label={t('accommodation.fields.name')}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('accommodation.units.namePlaceholder')}
-                required
-                fullWidth
-              />
-              <TextField
-                label={t('accommodation.units.unitNumber')}
-                value={unitNumber}
-                onChange={(e) => setUnitNumber(e.target.value)}
-                placeholder={t('accommodation.units.unitNumberPlaceholder')}
-                fullWidth
-              />
-              <FormControl fullWidth>
-                <InputLabel>{t('accommodation.status.label')}</InputLabel>
-                <Select
-                  label={t('accommodation.status.label')}
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as AccommodationStatus)}
-                >
-                  {STATUSES.map((s) => (
-                    <MenuItem key={s} value={s}>
-                      {t(`accommodation.status.${s}`)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              {mode.kind === 'edit' ? (
-                <>
-                  <TextField
-                    label={t('accommodation.fields.defaultRent')}
-                    value={defaultRent}
-                    onChange={(e) => setDefaultRent(e.target.value)}
-                    placeholder="e.g. 8500"
-                    type="number"
-                    fullWidth
-                  />
-                  <TextField
-                    label={t('accommodation.fields.defaultDeposit')}
-                    value={defaultDeposit}
-                    onChange={(e) => setDefaultDeposit(e.target.value)}
-                    placeholder="e.g. 15000"
-                    type="number"
-                    fullWidth
-                  />
-                </>
-              ) : null}
-            </>
-          ) : null}
+            {entityType === 'bed' ? (
+              <>
+                <TextField
+                  label={t('accommodation.fields.name')}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t('accommodation.beds.namePlaceholder')}
+                  required
+                  fullWidth
+                  sx={fieldSx}
+                />
+                <TextField
+                  label={t('accommodation.beds.bedNumberLabel', { defaultValue: 'Bed number' })}
+                  value={bedNumber}
+                  onChange={(e) => setBedNumber(e.target.value)}
+                  placeholder="e.g. A"
+                  fullWidth
+                  sx={fieldSx}
+                />
+                <FormControl fullWidth>
+                  <InputLabel>{t('accommodation.status.label')}</InputLabel>
+                  <Select
+                    label={t('accommodation.status.label')}
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as AccommodationStatus)}
+                  >
+                    {STATUSES.filter((item) => item !== 'OCCUPIED' && item !== 'RESERVED').map(
+                      (item) => (
+                        <MenuItem key={item} value={item}>
+                          {t(`accommodation.status.${item}`)}
+                        </MenuItem>
+                      ),
+                    )}
+                  </Select>
+                </FormControl>
+                <TextField
+                  label={t('accommodation.fields.defaultRent')}
+                  value={defaultRent}
+                  onChange={(e) => setDefaultRent(e.target.value)}
+                  placeholder="e.g. 4500"
+                  type="number"
+                  fullWidth
+                  sx={fieldSx}
+                />
+                <TextField
+                  label={t('accommodation.fields.defaultDeposit')}
+                  value={defaultDeposit}
+                  onChange={(e) => setDefaultDeposit(e.target.value)}
+                  placeholder="e.g. 9000"
+                  type="number"
+                  fullWidth
+                  sx={fieldSx}
+                />
+              </>
+            ) : null}
 
-          {entityType === 'room' ? (
-            <>
-              <TextField
-                label={t('accommodation.fields.name')}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('accommodation.rooms.namePlaceholder')}
-                required
-                fullWidth
-              />
-              <TextField
-                label={t('accommodation.rooms.roomNumber')}
-                value={roomNumber}
-                onChange={(e) => setRoomNumber(e.target.value)}
-                placeholder="e.g. 101"
-                fullWidth
-              />
-              <FormControl fullWidth>
-                <InputLabel>{t('accommodation.roomType.label')}</InputLabel>
-                <Select
-                  label={t('accommodation.roomType.label')}
-                  value={roomType}
-                  onChange={(e) => setRoomType(e.target.value as RoomType)}
-                >
-                  {ROOM_TYPES.map((rt) => (
-                    <MenuItem key={rt} value={rt}>
-                      {t(`accommodation.roomType.${rt}`)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <TextField
-                label={t('accommodation.rooms.capacity')}
-                value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
-                placeholder="e.g. 2"
-                type="number"
-                fullWidth
-              />
-            </>
-          ) : null}
-
-          {entityType === 'bed' ? (
-            <>
-              <TextField
-                label={t('accommodation.fields.name')}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('accommodation.beds.namePlaceholder')}
-                required
-                fullWidth
-              />
-              <TextField
-                label={t('accommodation.beds.bedNumber')}
-                value={bedNumber}
-                onChange={(e) => setBedNumber(e.target.value)}
-                placeholder="e.g. A"
-                fullWidth
-              />
-              <FormControl fullWidth>
-                <InputLabel>{t('accommodation.status.label')}</InputLabel>
-                <Select
-                  label={t('accommodation.status.label')}
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as AccommodationStatus)}
-                >
-                  {STATUSES.filter((s) => s !== 'OCCUPIED' && s !== 'RESERVED').map((s) => (
-                    <MenuItem key={s} value={s}>
-                      {t(`accommodation.status.${s}`)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <TextField
-                label={t('accommodation.fields.defaultRent')}
-                value={defaultRent}
-                onChange={(e) => setDefaultRent(e.target.value)}
-                placeholder="e.g. 4500"
-                type="number"
-                fullWidth
-              />
-              <TextField
-                label={t('accommodation.fields.defaultDeposit')}
-                value={defaultDeposit}
-                onChange={(e) => setDefaultDeposit(e.target.value)}
-                placeholder="e.g. 9000"
-                type="number"
-                fullWidth
-              />
-            </>
-          ) : null}
-
-          {error ? <FormHelperText error>{error}</FormHelperText> : null}
-        </Stack>
+            {error ? <FormHelperText error>{error}</FormHelperText> : null}
+          </Stack>
+        )}
       </Box>
-      <StickyFooter>
-        <Button onClick={onClose} disabled={saving} sx={dashOutlinedButtonSx}>
+
+      <StickyFooter
+        sx={{
+          bgcolor: s.surface,
+          borderTop: `1px solid ${s.border}`,
+          boxShadow: '0 -4px 16px rgba(15, 23, 42, 0.04)',
+        }}
+      >
+        <Button onClick={onClose} disabled={saving || loading} sx={dashOutlinedButtonSx}>
           {t('common.cancel')}
         </Button>
-        <Button variant="contained" onClick={() => void handleSubmit()} disabled={saving} sx={dashContainedButtonSx}>
+        <Button
+          variant="contained"
+          onClick={() => void handleSubmit()}
+          disabled={saving || loading}
+          sx={dashContainedButtonSx}
+        >
           {t('common.save')}
         </Button>
       </StickyFooter>

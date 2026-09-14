@@ -8,18 +8,15 @@ import type { MemberDocumentType } from '@/shared/types/member';
 import { useAuthStore } from '@/store/authStore';
 import { useSpaceStore } from '@/store/spaceStore';
 
-const MAX_DOCUMENT_FILE_URL_LENGTH = 2048;
-const PENDING_UPLOAD_FILE_URL = 'pending://upload';
-
 function resolveMemberDocumentFileUrl(fileUrl: string | null | undefined): string | null {
   const trimmed = fileUrl?.trim() ?? '';
   if (!trimmed) {
     return null;
   }
-  if (trimmed.startsWith('file://') || trimmed.length > MAX_DOCUMENT_FILE_URL_LENGTH) {
-    return PENDING_UPLOAD_FILE_URL;
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
   }
-  return trimmed;
+  return null;
 }
 
 async function syncLinkedMemberProfile(
@@ -48,41 +45,46 @@ async function syncLinkedMemberProfile(
     });
   }
 
-  const uploads: Array<{ type: MemberDocumentType; number: string; fileUrl: string }> = [];
+  const uploads: Array<{ type: MemberDocumentType; number: string; fileUrl?: string; fileId?: string }> =
+    [];
 
   const identityFileUrl = resolveMemberDocumentFileUrl(payload.identityProofFileUrl);
   if (
     payload.identityDocumentType &&
-    (payload.identityDocumentNumber?.trim() || identityFileUrl)
+    (payload.identityDocumentNumber?.trim() || identityFileUrl || payload.identityProofFileId)
   ) {
     uploads.push({
       type: payload.identityDocumentType as MemberDocumentType,
       number: payload.identityDocumentNumber?.trim() || 'Identity document',
-      fileUrl: identityFileUrl || PENDING_UPLOAD_FILE_URL,
+      fileUrl: identityFileUrl ?? undefined,
+      fileId: payload.identityProofFileId ?? undefined,
     });
-  } else if (identityFileUrl) {
+  } else if (identityFileUrl || payload.identityProofFileId) {
     uploads.push({
       type: 'OTHER',
       number: 'Identity proof',
-      fileUrl: identityFileUrl,
+      fileUrl: identityFileUrl ?? undefined,
+      fileId: payload.identityProofFileId ?? undefined,
     });
   }
 
   const addressFileUrl = resolveMemberDocumentFileUrl(payload.addressProofFileUrl);
-  if (addressFileUrl) {
+  if (addressFileUrl || payload.addressProofFileId) {
     uploads.push({
       type: 'OTHER',
       number: 'Address proof',
-      fileUrl: addressFileUrl,
+      fileUrl: addressFileUrl ?? undefined,
+      fileId: payload.addressProofFileId ?? undefined,
     });
   }
 
   const additionalFileUrl = resolveMemberDocumentFileUrl(payload.additionalDocumentFileUrl);
-  if (additionalFileUrl) {
+  if (additionalFileUrl || payload.additionalDocumentFileId) {
     uploads.push({
       type: 'OTHER',
       number: 'Additional document',
-      fileUrl: additionalFileUrl,
+      fileUrl: additionalFileUrl ?? undefined,
+      fileId: payload.additionalDocumentFileId ?? undefined,
     });
   }
 
@@ -91,6 +93,7 @@ async function syncLinkedMemberProfile(
       documentType: upload.type,
       documentNumber: upload.number,
       fileUrl: upload.fileUrl,
+      fileId: upload.fileId,
     });
   }
 }
@@ -122,6 +125,7 @@ export function useCompleteProfile() {
               gender: payload.gender ?? baseUser.gender ?? null,
               dateOfBirth: payload.dateOfBirth ?? baseUser.dateOfBirth ?? null,
               profilePhotoUrl: payload.profilePhotoUrl ?? baseUser.profilePhotoUrl ?? null,
+              profilePhotoFileId: payload.profilePhotoFileId ?? baseUser.profilePhotoFileId ?? null,
               permanentAddress: payload.permanentAddress,
               city: payload.city,
               state: payload.state,

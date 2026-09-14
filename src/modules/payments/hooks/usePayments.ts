@@ -179,7 +179,7 @@ export function usePaymentMutations(spaceId: string | undefined) {
         body,
       }: {
         paymentId: string;
-        body: SubmitPaymentProofRequest;
+        body: SubmitPaymentProofRequest & { localFile?: File };
       }) => paymentsApi.submitProof(spaceId!, paymentId, body),
       onSuccess: invalidate,
     }),
@@ -195,6 +195,14 @@ export function usePaymentMutations(spaceId: string | undefined) {
     }),
     syncMonth: useMutation({
       mutationFn: (month: string) => paymentsApi.syncPaymentsMonth(spaceId!, month),
+      onSuccess: invalidate,
+    }),
+    sendReminder: useMutation({
+      mutationFn: (paymentId: string) => paymentsApi.sendPaymentReminder(spaceId!, paymentId),
+      onSuccess: invalidate,
+    }),
+    processReminders: useMutation({
+      mutationFn: () => paymentsApi.processPaymentReminders(spaceId!),
       onSuccess: invalidate,
     }),
   };

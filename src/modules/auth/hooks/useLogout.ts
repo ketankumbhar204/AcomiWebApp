@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { useTranslation } from 'react-i18next';
 import { queryClient } from '@/app/providers/queryClient';
+import { clearAccountIntent } from '@/modules/onboarding/utils/accountIntent';
 import { ROUTES } from '@/routes/paths';
 import { useAuthStore } from '@/store/authStore';
 import { useSpaceStore } from '@/store/spaceStore';
@@ -17,6 +18,7 @@ export function useLogout() {
   return useCallback(async () => {
     clearSession();
     clearSpaces();
+    clearAccountIntent();
     queryClient.clear();
     enqueueSnackbar(t('common.logout'), { variant: 'info' });
     navigate(ROUTES.login, { replace: true });

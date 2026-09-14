@@ -217,6 +217,9 @@ export type BedSpaceListItemResponse = {
   unitName?: string | null;
   roomId: string;
   roomName: string;
+  roomType?: RoomType | string | null;
+  defaultRent?: number | null;
+  defaultDeposit?: number | null;
 };
 
 export type DuplicateBuildingRequest = {

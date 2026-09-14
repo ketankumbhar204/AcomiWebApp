@@ -8,12 +8,15 @@ import type { SpacePermissionsResponse, SpaceType } from '@/shared/types/space';
 import { isAccommodationApplicable } from '@/shared/utils/spacePermissions';
 import { servingLocationMode } from '@/shared/utils/servingLocationPolicy';
 import {
+  catalogHasAnyMealLibrary,
+  catalogHasCuratedMealLibrary,
   emptyPredicateContext,
   needsPropertyStructure,
   type MilestoneId,
   type PredicateContext,
 } from '@/spaceLifecycle';
 
+/** Mess: CUSTOMER counts. Lodging: exclude OWNER from resident readiness (E2E fix). */
 function countLifecycleMembers(
   members: MemberResponse[] | null | undefined,
   spaceType: SpaceType,
@@ -22,10 +25,24 @@ function countLifecycleMembers(
   if (spaceType === 'MESS') {
     return members.filter((m) => m.role === 'CUSTOMER').length;
   }
-  return members.length;
+  return members.filter((m) => m.role !== 'OWNER').length;
 }
 
-function summarizeDay(menus: { mealType: string; status: string; options?: { isAvailable?: boolean }[] }[]) {
+function countAllocatedMembers(
+  members: MemberResponse[] | null | undefined,
+  spaceType: SpaceType,
+): number {
+  if (!Array.isArray(members) || spaceType === 'MESS') {
+    return 0;
+  }
+  return members.filter(
+    (m) => m.role !== 'OWNER' && m.occupancyStatus === 'ALLOCATED',
+  ).length;
+}
+
+function summarizeDay(
+  menus: { mealType: string; status: string; options?: { isAvailable?: boolean }[] }[],
+) {
   let published = 0;
   let modified = 0;
   let planned = 0;
@@ -52,7 +69,8 @@ export type UseSpaceLifecycleSignalsArgs = {
 };
 
 /**
- * Loads setup signals for Space Health — same sources as mobile useSpaceLifecycleSignals.
+ * Loads setup signals for Space Health + progressive capabilities —
+ * same sources as mobile useSpaceLifecycleSignals.
  */
 export function useSpaceLifecycleSignals({
   spaceId,
@@ -70,7 +88,9 @@ export function useSpaceLifecycleSignals({
   const [buildings, setBuildings] = useState<{ buildingId: string }[]>([]);
   const [buildingsLoading, setBuildingsLoading] = useState(false);
   const [memberCount, setMemberCount] = useState(0);
+  const [allocatedMemberCount, setAllocatedMemberCount] = useState(0);
   const [hasMealLibrary, setHasMealLibrary] = useState(false);
+  const [hasCuratedMealLibrary, setHasCuratedMealLibrary] = useState(false);
   const [hasTodaysMenuPlanned, setHasTodaysMenuPlanned] = useState(false);
   const [hasMenuShared, setHasMenuShared] = useState(false);
   const [deliveryLocationCount, setDeliveryLocationCount] = useState(0);
@@ -104,7 +124,9 @@ export function useSpaceLifecycleSignals({
   const loadExtras = useCallback(async () => {
     if (!spaceId || !shouldLoad || !spaceType) {
       setMemberCount(0);
+      setAllocatedMemberCount(0);
       setHasMealLibrary(false);
+      setHasCuratedMealLibrary(false);
       setHasTodaysMenuPlanned(false);
       setHasMenuShared(false);
       setDeliveryLocationCount(0);
@@ -122,7 +144,9 @@ export function useSpaceLifecycleSignals({
       if (accommodationApplicable && buildingIds.length === 0) {
         const members = await memberApi.getMembers(spaceId).catch(() => []);
         setMemberCount(countLifecycleMembers(members, spaceType));
+        setAllocatedMemberCount(countAllocatedMembers(members, spaceType));
         setHasMealLibrary(false);
+        setHasCuratedMealLibrary(false);
         setHasTodaysMenuPlanned(false);
         setHasMenuShared(false);
         setDeliveryLocationCount(0);
@@ -156,11 +180,15 @@ export function useSpaceLifecycleSignals({
             : Promise.resolve([]),
         ]);
 
+      const catalog = {
+        items: Array.isArray(items) ? items : [],
+        combos: Array.isArray(combos) ? combos : [],
+      };
+
       setMemberCount(countLifecycleMembers(members, spaceType));
-      setHasMealLibrary(
-        (Array.isArray(items) && items.some((i) => i.isActive)) ||
-          (Array.isArray(combos) && combos.some((c) => c.isActive)),
-      );
+      setAllocatedMemberCount(countAllocatedMembers(members, spaceType));
+      setHasMealLibrary(catalogHasAnyMealLibrary(catalog));
+      setHasCuratedMealLibrary(catalogHasCuratedMealLibrary(catalog));
 
       if (isMess) {
         const menus = Array.isArray(todaysMenus) ? todaysMenus : [];
@@ -232,6 +260,12 @@ export function useSpaceLifecycleSignals({
       bedCount: structure.beds,
       memberCount,
       hasMealLibrary,
+      hasCuratedMealLibrary,
+      allocatedMemberCount,
+      hasBillableActivity:
+        allocatedMemberCount > 0 ||
+        (isMess && hasMenuShared && memberCount > 0) ||
+        hasOperationalSignal,
       hasTodaysMenuPlanned,
       hasMenuShared,
       deliveryLocationCount,
@@ -241,13 +275,16 @@ export function useSpaceLifecycleSignals({
     });
   }, [
     accommodationApplicable,
+    allocatedMemberCount,
     buildings.length,
     deliveryLocationCount,
     dismissedOptionalMilestoneIds,
+    hasCuratedMealLibrary,
     hasMealLibrary,
     hasMenuShared,
     hasOperationalSignal,
     hasTodaysMenuPlanned,
+    isMess,
     memberCount,
     pendingActionCount,
     permissions,

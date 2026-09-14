@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { IconBadge } from '@/modules/dashboard/components/IconBadge';
@@ -43,6 +43,9 @@ import {
 import { useGlobalDashboard } from '@/modules/global/hooks/useGlobalDashboard';
 import { useConsumerSpacesAttention } from '@/modules/global/hooks/useConsumerSpacesAttention';
 import { isConsumerMembershipRole } from '@/modules/onboarding/utils/profileCompletion';
+import { getAccountIntent } from '@/modules/onboarding/utils/accountIntent';
+import { PendingInvitationsPanel } from '@/modules/onboarding/components/PendingInvitationsPanel';
+import { invitationApi } from '@/modules/onboarding/api/invitationApi';
 import { mySpacesApi } from '@/shared/api/mySpacesApi';
 import { ContentCard } from '@/shared/components/ContentCard';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -142,6 +145,12 @@ export function MySpacesPage() {
     queryFn: () =>
       debounced ? mySpacesApi.searchMySpaces(debounced) : mySpacesApi.getMySpaces(),
   });
+
+  const invitationsQuery = useQuery({
+    queryKey: ['my-invitations'],
+    queryFn: () => invitationApi.getMyInvitations(),
+  });
+  const hasPendingInvitations = (invitationsQuery.data?.length ?? 0) > 0;
 
   const spaces = useMemo(() => spacesQuery.data ?? [], [spacesQuery.data]);
 
@@ -305,6 +314,16 @@ export function MySpacesPage() {
 
   const isEmptyCatalog = !debounced && filter === 'all' && spaces.length === 0;
 
+  // Members with zero spaces should not sit on an empty My Spaces dashboard.
+  if (
+    !spacesQuery.isLoading &&
+    !spacesQuery.isFetching &&
+    isEmptyCatalog &&
+    getAccountIntent() !== 'owner'
+  ) {
+    return <Navigate to={ROUTES.memberHome} replace />;
+  }
+
   return (
     <PageContainer gap={0}>
         <Stack
@@ -345,17 +364,37 @@ export function MySpacesPage() {
               >
                 {t('spaces.mySpaces.addSpace')}
               </Button>
+              {hasPendingInvitations ? (
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<Mail size={14} />}
+                  onClick={() => {
+                    const el = document.getElementById('pending-invitations');
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  sx={primaryOutlinedSx}
+                >
+                  {t('navigation.acceptInvitations')}
+                </Button>
+              ) : null}
               <Button
                 variant="outlined"
                 color="primary"
-                startIcon={<Mail size={14} />}
-                onClick={() => navigate(ROUTES.acceptInvitations)}
+                startIcon={<Search size={14} />}
+                onClick={() => navigate(ROUTES.findAPlace)}
                 sx={primaryOutlinedSx}
               >
-                {t('navigation.acceptInvitations')}
+                {t('spaces.findPlace.ctaFindPlace')}
               </Button>
             </Stack>
           </Box>
+
+          {hasPendingInvitations || invitationsQuery.isLoading ? (
+            <Box id="pending-invitations" sx={{ scrollMarginTop: 24 }}>
+              <PendingInvitationsPanel compactEmpty={false} hideWhenEmpty />
+            </Box>
+          ) : null}
 
           {/* Compact KPI strip — Dashboard payment-card height, card-width capped */}
           {showGlobalOverview ? (
@@ -668,7 +707,8 @@ export function MySpacesPage() {
                     >
                       <Button
                         variant="contained"
-                        onClick={() => navigate(ROUTES.createSpace)}
+                        startIcon={<Search size={14} />}
+                        onClick={() => navigate(ROUTES.findAPlace)}
                         sx={{
                           ...dashContainedButtonSx,
                           minHeight: DASHBOARD_UX.buttonHeight,
@@ -677,15 +717,24 @@ export function MySpacesPage() {
                           '&:hover': { bgcolor: colors.primaryHover },
                         }}
                       >
-                        {t('spaces.mySpaces.createFab')}
+                        {t('navigation.findAPlace')}
                       </Button>
                       <Button
                         variant="outlined"
                         color="primary"
-                        onClick={() => navigate(ROUTES.acceptInvitations)}
+                        startIcon={<Mail size={14} />}
+                        onClick={() => navigate(ROUTES.memberHome)}
                         sx={primaryOutlinedSx}
                       >
-                        {t('spaces.mySpaces.viewInvitations')}
+                        {t('onboarding.join.title')}
+                      </Button>
+                      <Button
+                        variant="text"
+                        color="primary"
+                        onClick={() => navigate(ROUTES.createSpace)}
+                        sx={primaryOutlinedSx}
+                      >
+                        {t('spaces.mySpaces.createFab')}
                       </Button>
                     </Stack>
                   ) : null

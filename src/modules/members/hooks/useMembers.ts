@@ -138,7 +138,7 @@ export function useMemberMutations(spaceId: string | undefined) {
       body,
     }: {
       memberId: string;
-      body: CreateMemberDocumentRequest;
+      body: CreateMemberDocumentRequest & { localFile?: File };
     }) => memberApi.addMemberDocument(spaceId!, memberId, body),
     onSuccess: async (_data, variables) => invalidate(variables.memberId),
   });

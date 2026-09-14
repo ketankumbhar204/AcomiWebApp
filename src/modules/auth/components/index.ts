@@ -7,3 +7,6 @@ export { AuthPhonePreview } from './AuthPhonePreview';
 export { AuthSceneBuildings } from './AuthSceneBuildings';
 export { MobileNumberInput } from './MobileNumberInput';
 export { OtpInput } from './OtpInput';
+export { OtpSmsSample } from './OtpSmsSample';
+export { NameInput } from './NameInput';
+export { PasswordInput } from './PasswordInput';

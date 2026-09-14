@@ -12,6 +12,9 @@ export const DEFAULT_PAYMENT_PROOF_REQUIREMENTS: PaymentProofRequirements = {
 
 export type PaymentProofSubmission = {
   proofImageBase64?: string;
+  proofFileId?: string;
+  localFile?: File;
+  previewUrl?: string;
   referenceNumber?: string;
   remarks?: string;
   paymentMethod?: UniversalPaymentMethod;
@@ -35,14 +38,23 @@ export const EMPTY_PAYMENT_PROOF: PaymentProofSubmission = {
   referenceNumber: '',
   remarks: '',
   proofImageBase64: undefined,
+  proofFileId: undefined,
+  localFile: undefined,
+  previewUrl: undefined,
 };
+
+function hasProofImage(payload: PaymentProofSubmission): boolean {
+  return Boolean(
+    payload.localFile || payload.proofFileId?.trim() || payload.proofImageBase64?.trim(),
+  );
+}
 
 export function validatePaymentProofSubmission(
   payload: PaymentProofSubmission,
   requirements: PaymentProofRequirements = DEFAULT_PAYMENT_PROOF_REQUIREMENTS,
   options?: { requireProofOrReference?: boolean },
 ): PaymentProofValidationError | null {
-  if (requirements.screenshotRequired && !payload.proofImageBase64?.trim()) {
+  if (requirements.screenshotRequired && !hasProofImage(payload)) {
     return 'screenshotRequired';
   }
   if (requirements.utrRequired && !payload.referenceNumber?.trim()) {
@@ -50,7 +62,7 @@ export function validatePaymentProofSubmission(
   }
   if (
     options?.requireProofOrReference &&
-    !payload.proofImageBase64?.trim() &&
+    !hasProofImage(payload) &&
     !payload.referenceNumber?.trim()
   ) {
     return 'proofOrReferenceRequired';
@@ -60,7 +72,9 @@ export function validatePaymentProofSubmission(
 
 export function toSubmitPaymentProofBody(payload: PaymentProofSubmission) {
   return {
-    proofImageBase64: payload.proofImageBase64?.trim() || undefined,
+    proofFileId: payload.proofFileId,
+    localFile: payload.localFile,
+    proofImageBase64: payload.localFile ? undefined : payload.proofImageBase64?.trim() || undefined,
     referenceNumber: payload.referenceNumber?.trim() || undefined,
     remarks: payload.remarks?.trim() || undefined,
     paymentMethod: payload.paymentMethod,

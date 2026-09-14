@@ -21,6 +21,7 @@ import { APP_NAME } from '@/shared/constants/app';
 import { colors } from '@/shared/theme/colors';
 import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { ROUTES } from '@/routes/paths';
+import { RequesterNotificationBell } from '@/modules/onboarding/components/RequesterNotificationBell';
 import { useAppStore } from '@/store/appStore';
 import { ContentLayout } from './ContentLayout';
 import { LAYOUT } from './layoutConstants';
@@ -189,7 +190,12 @@ export function AccountLayout({
               justifyContent: 'flex-end',
             }}
           >
-            {showNotifications ? <AccountNotificationBell /> : null}
+            {showNotifications ? (
+              <>
+                <RequesterNotificationBell />
+                <AccountNotificationBell />
+              </>
+            ) : null}
             {headerActions}
             <Button
               variant="outlined"

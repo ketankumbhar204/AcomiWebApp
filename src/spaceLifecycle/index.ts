@@ -41,6 +41,35 @@ export { evaluateSpaceLifecycle } from './evaluate';
 export { emptyPredicateContext } from './compat';
 
 export {
+  evaluateSpaceCapabilities,
+  getCapability,
+  isCapabilityLocked,
+  isCapabilityOpen,
+  isProgressiveOperator,
+} from './capabilities';
+export type {
+  AccessMode,
+  CapabilityAccess,
+  CapabilityId,
+  SpaceCapabilitiesResult,
+} from './capabilities';
+export { getBlockingCapability } from './capabilityGuard';
+export {
+  dashboardVisibilityForLifecycle,
+  shouldShowSetupChrome,
+} from './dashboardVisibility';
+export type {
+  DashboardLifecycleVisibility,
+  DashboardVisibilityOptions,
+} from './dashboardVisibility';
+export {
+  SYSTEM_SAMPLE_COMBO_NAMES,
+  catalogHasAnyMealLibrary,
+  catalogHasCuratedMealLibrary,
+  isSystemSampleComboName,
+} from './sampleMealCatalog';
+
+export {
   ATTENTION_PENDING_SATURATION,
   HEALTH_BANDS,
   HEALTH_CATEGORY_WEIGHTS,

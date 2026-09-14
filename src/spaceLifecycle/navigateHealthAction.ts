@@ -39,7 +39,7 @@ export function navigateHealthAction(
       navigate(spacePendingActionsPath(spaceId));
       return;
     case 'paymentsUnderReview':
-      navigate(spacePaymentsPath(spaceId, undefined, { tab: 'review' }));
+      navigate(spacePaymentsPath(spaceId, undefined, { filter: 'underReview', queue: 'SUBMITTED' }));
       return;
     case 'vacantBeds':
       navigate(spaceBedInventoryPath(spaceId, 'AVAILABLE'));

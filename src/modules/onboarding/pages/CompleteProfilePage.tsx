@@ -28,6 +28,7 @@ import { useNavigate, useSearchParams, Link as RouterLink } from 'react-router-d
 import { useSnackbar } from 'notistack';
 import { OnboardingLayout } from '@/layouts/OnboardingLayout';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { uploadLocalFile } from '@/shared/services/fileUploadService';
 import { useCompleteProfile } from '@/modules/onboarding/hooks/useCompleteProfile';
 import {
   isGenericUserName,
@@ -57,6 +58,14 @@ const DOCUMENT_TYPES: MemberDocumentType[] = [
 ];
 const RELATIONS = ['Mother', 'Father', 'Spouse', 'Sibling', 'Guardian', 'Friend', 'Other'] as const;
 const PHOTO_MAX_BYTES = 2 * 1024 * 1024;
+
+function httpUrlOrNull(value: string): string | null {
+  const trimmed = value.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  return null;
+}
 
 function selectableGender(value: MemberGender | null | undefined): MemberGender | '' {
   return value === 'MALE' || value === 'FEMALE' || value === 'OTHER' ? value : '';
@@ -473,6 +482,7 @@ export function CompleteProfilePage() {
   const [dateOfBirth, setDateOfBirth] = useState(toIsoDate(user?.dateOfBirth));
   const [email, setEmail] = useState(user?.email ?? '');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(user?.profilePhotoUrl ?? '');
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
   const [permanentAddress, setPermanentAddress] = useState(user?.permanentAddress ?? '');
   const [city, setCity] = useState(user?.city ?? '');
   const [stateName, setStateName] = useState(user?.state ?? '');
@@ -499,6 +509,7 @@ export function CompleteProfilePage() {
     setDateOfBirth(toIsoDate(current.dateOfBirth));
     setEmail(current.email ?? '');
     setProfilePhotoUrl(current.profilePhotoUrl ?? '');
+    setProfilePhotoFile(null);
     setPermanentAddress(current.permanentAddress ?? '');
     setCity(current.city ?? '');
     setStateName(current.state ?? '');
@@ -548,12 +559,22 @@ export function CompleteProfilePage() {
     if (!validateStep()) return;
     clearError();
 
+    let profilePhotoFileId: string | undefined;
+    if (profilePhotoFile) {
+      try {
+        profilePhotoFileId = await uploadLocalFile(profilePhotoFile, { purpose: 'PROFILE_PHOTO' });
+      } catch {
+        setFieldError(t('profileCompletion.errors.submitFailed', { defaultValue: 'Upload failed.' }));
+        return;
+      }
+    }
+
     const ok = await completeProfile({
       fullName: fullName.trim(),
       gender: gender || null,
       dateOfBirth: toIsoDate(dateOfBirth) || null,
       email: email.trim() || null,
-      profilePhotoUrl: profilePhotoUrl.trim() || null,
+      profilePhotoFileId: profilePhotoFileId ?? undefined,
       permanentAddress: permanentAddress.trim(),
       city: city.trim(),
       state: stateName.trim(),
@@ -563,9 +584,9 @@ export function CompleteProfilePage() {
       emergencyContactRelation: emergencyContactRelation.trim() || null,
       identityDocumentType: identityDocumentType || null,
       identityDocumentNumber: identityDocumentNumber.trim() || null,
-      addressProofFileUrl: addressProofFileUrl.trim() || null,
-      identityProofFileUrl: identityProofFileUrl.trim() || null,
-      additionalDocumentFileUrl: additionalDocumentFileUrl.trim() || null,
+      addressProofFileUrl: httpUrlOrNull(addressProofFileUrl),
+      identityProofFileUrl: httpUrlOrNull(identityProofFileUrl),
+      additionalDocumentFileUrl: httpUrlOrNull(additionalDocumentFileUrl),
     });
 
     if (!ok) return;
@@ -598,14 +619,12 @@ export function CompleteProfilePage() {
       setFieldError(t('profileCompletion.errors.photoTooLarge'));
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setProfilePhotoUrl(reader.result);
-        setFieldError(null);
-      }
-    };
-    reader.readAsDataURL(file);
+    if (profilePhotoUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(profilePhotoUrl);
+    }
+    setProfilePhotoFile(file);
+    setProfilePhotoUrl(URL.createObjectURL(file));
+    setFieldError(null);
   };
 
   const stepTitle = t(`profileCompletion.wizard.sections.${STEPS[stepIndex]}`);
@@ -749,7 +768,7 @@ export function CompleteProfilePage() {
               <input
                 ref={photoInputRef}
                 type="file"
-                accept="image/jpeg,image/png"
+                accept="image/jpeg,image/png,image/webp"
                 hidden
                 onChange={(event) => {
                   onPickPhoto(event.target.files?.[0]);

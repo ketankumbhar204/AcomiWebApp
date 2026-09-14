@@ -6,6 +6,7 @@ import {
   FileBarChart,
   LogOut,
   Megaphone,
+  Search,
   UserRound,
   Users,
   UtensilsCrossed,
@@ -19,10 +20,13 @@ import type { AppNavSection } from '@/layouts/navTypes';
 import { useLogout } from '@/modules/auth/hooks/useLogout';
 import { DASHBOARD_UX } from '@/modules/dashboard/theme/dashboardUx';
 import { useGlobalDashboard } from '@/modules/global/hooks/useGlobalDashboard';
+import { getAccountIntent } from '@/modules/onboarding/utils/accountIntent';
+import { RequesterNotificationBell } from '@/modules/onboarding/components/RequesterNotificationBell';
 import { useAuthSession } from '@/shared/hooks/useAuthSession';
 import { colors } from '@/shared/theme/colors';
 import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { ROUTES } from '@/routes/paths';
+import { useSpaceStore } from '@/store/spaceStore';
 
 function GlobalNotificationBell() {
   const { t } = useTranslation();
@@ -84,6 +88,14 @@ export function GlobalShellLayout() {
   const navigate = useNavigate();
   const logout = useLogout();
   const { user } = useAuthSession();
+  const mySpaces = useSpaceStore((state) => state.mySpaces);
+  const hasSpaces = mySpaces.length > 0;
+  const isOwnerIntent = getAccountIntent() === 'owner';
+  const accountHome = hasSpaces
+    ? ROUTES.mySpaces
+    : isOwnerIntent
+      ? ROUTES.mySpaces
+      : ROUTES.memberHome;
   const displayName = user?.fullName?.trim() || user?.mobileNumber || '';
   const initial = (user?.fullName?.trim()?.[0] || user?.mobileNumber?.[0] || 'A').toUpperCase();
   const isMySpaces = location.pathname === ROUTES.mySpaces;
@@ -94,8 +106,36 @@ export function GlobalShellLayout() {
     document.title = `${pageTitle} · ${t('common.appName')}`;
   }, [pageTitle, t]);
 
-  const navSections: AppNavSection[] = useMemo(
-    () => [
+  const navSections: AppNavSection[] = useMemo(() => {
+    if (!hasSpaces && !isOwnerIntent) {
+      return [
+        {
+          id: 'account',
+          items: [
+            {
+              id: 'home',
+              label: t('navigation.home', { defaultValue: 'Home' }),
+              to: ROUTES.memberHome,
+              icon: <Building2 size={16} />,
+            },
+            {
+              id: 'findAPlace',
+              label: t('navigation.findAPlace'),
+              to: ROUTES.findAPlace,
+              icon: <Search size={16} />,
+            },
+            {
+              id: 'profile',
+              label: t('navigation.profile'),
+              to: ROUTES.profile,
+              icon: <UserRound size={16} />,
+            },
+          ],
+        },
+      ];
+    }
+
+    return [
       {
         id: 'account',
         items: [
@@ -106,41 +146,51 @@ export function GlobalShellLayout() {
             icon: <Building2 size={16} />,
           },
           {
-            id: 'members',
-            label: t('navigation.members'),
-            to: ROUTES.globalMembers,
-            icon: <Users size={16} />,
+            id: 'findAPlace',
+            label: t('navigation.findAPlace'),
+            to: ROUTES.findAPlace,
+            icon: <Search size={16} />,
           },
-          {
-            id: 'meals',
-            label: t('navigation.meals'),
-            to: ROUTES.globalMeals,
-            icon: <UtensilsCrossed size={16} />,
-          },
-          {
-            id: 'payments',
-            label: t('navigation.payments'),
-            to: ROUTES.globalPayments,
-            icon: <Wallet size={16} />,
-          },
-          {
-            id: 'complaints',
-            label: t('navigation.complaints'),
-            to: ROUTES.globalComplaints,
-            icon: <ClipboardList size={16} />,
-          },
-          {
-            id: 'notices',
-            label: t('navigation.notices'),
-            to: ROUTES.globalNotices,
-            icon: <Megaphone size={16} />,
-          },
-          {
-            id: 'reports',
-            label: t('navigation.reports'),
-            to: ROUTES.globalReports,
-            icon: <FileBarChart size={16} />,
-          },
+          ...(hasSpaces
+            ? [
+                {
+                  id: 'members',
+                  label: t('navigation.members'),
+                  to: ROUTES.globalMembers,
+                  icon: <Users size={16} />,
+                },
+                {
+                  id: 'meals',
+                  label: t('navigation.meals'),
+                  to: ROUTES.globalMeals,
+                  icon: <UtensilsCrossed size={16} />,
+                },
+                {
+                  id: 'payments',
+                  label: t('navigation.payments'),
+                  to: ROUTES.globalPayments,
+                  icon: <Wallet size={16} />,
+                },
+                {
+                  id: 'complaints',
+                  label: t('navigation.complaints'),
+                  to: ROUTES.globalComplaints,
+                  icon: <ClipboardList size={16} />,
+                },
+                {
+                  id: 'notices',
+                  label: t('navigation.notices'),
+                  to: ROUTES.globalNotices,
+                  icon: <Megaphone size={16} />,
+                },
+                {
+                  id: 'reports',
+                  label: t('navigation.reports'),
+                  to: ROUTES.globalReports,
+                  icon: <FileBarChart size={16} />,
+                },
+              ]
+            : []),
           {
             id: 'profile',
             label: t('navigation.profile'),
@@ -149,9 +199,8 @@ export function GlobalShellLayout() {
           },
         ],
       },
-    ],
-    [t],
-  );
+    ];
+  }, [hasSpaces, isOwnerIntent, t]);
 
   const profileLeading = (
     <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: 0 }}>
@@ -186,10 +235,10 @@ export function GlobalShellLayout() {
     <Button
       variant="outlined"
       color="primary"
-      onClick={() => navigate(ROUTES.mySpaces)}
+      onClick={() => navigate(accountHome)}
       sx={dashOutlinedButtonSx}
     >
-      {t('navigation.mySpaces')}
+      {hasSpaces || isOwnerIntent ? t('navigation.mySpaces') : t('onboarding.memberHome.findCta')}
     </Button>
   ) : (
     <Box
@@ -201,6 +250,7 @@ export function GlobalShellLayout() {
         justifyContent: 'flex-end',
       }}
     >
+      <RequesterNotificationBell />
       <GlobalNotificationBell />
       <Button
         variant="outlined"

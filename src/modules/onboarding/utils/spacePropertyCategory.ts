@@ -22,3 +22,7 @@ export function propertyCategoryLabelKey(
     policy === 'MALE' ? 'gents' : policy === 'FEMALE' ? 'ladies' : 'mixed';
   return `spaces.propertyCategory.${typeKey}.${policyKey}`;
 }
+
+export function genderPolicyLabelKey(policy: GenderPolicy): string {
+  return `spaces.findPlace.genderShort.${policy}`;
+}

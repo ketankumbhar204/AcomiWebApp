@@ -68,15 +68,17 @@ function normalizeApiError(error: AxiosError<ApiErrorBody>): ApiError {
 const apiClient: AxiosInstance = axios.create({
   baseURL: env.apiBaseUrl,
   timeout: env.apiTimeoutMs,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
 });
 
-apiClient.interceptors.request.use(
+        apiClient.interceptors.request.use(
   (config) => {
     logRequest(config);
+    config.withCredentials = true;
     const token = tokenPort.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -107,11 +109,15 @@ apiClient.interceptors.response.use(
         requestUrl.includes('/auth/send-otp') ||
         requestUrl.includes('/auth/verify-otp') ||
         requestUrl.includes('/auth/reset-password') ||
-        requestUrl.includes('/auth/account-deletion');
+        requestUrl.includes('/auth/account-deletion') ||
+        requestUrl.includes('/auth/logout');
+      const isSessionProbe = requestUrl.includes('/auth/me');
 
-      tokenPort.setToken(null);
+      if (!isPublicAuth && !isSessionProbe && (tokenPort.getToken() || tokenPort.hasSession?.())) {
+        tokenPort.setToken(null);
+      }
 
-      if (!isPublicAuth && typeof window !== 'undefined') {
+      if (!isPublicAuth && !isSessionProbe && typeof window !== 'undefined') {
         const path = window.location.pathname;
         if (
           path !== '/login' &&

@@ -25,6 +25,7 @@ import {
   type CreateSpaceStepId,
 } from '@/modules/onboarding/components/createSpace/createSpaceVisuals';
 import { useCreateSpace } from '@/modules/onboarding/hooks/useCreateSpace';
+import { isDuplicateSpaceName } from '@/shared/utils/suggestBuildingDefaults';
 import {
   buildAllPresetAmenities,
   normalizeAmenityAssignments,
@@ -51,6 +52,7 @@ export function CreateSpacePage() {
   const a = authSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const { createSpace, isSubmitting, error, clearError } = useCreateSpace();
+  const mySpaces = useSpaceStore((state) => state.mySpaces);
   const loadMySpaces = useSpaceStore((state) => state.loadMySpaces);
   const switchSpace = useSpaceStore((state) => state.switchSpace);
   const userMobile = useAuthStore((state) => state.user?.mobileNumber);
@@ -116,6 +118,14 @@ export function CreateSpacePage() {
   function validateDetails() {
     if (!name.trim()) {
       setNameError(t('spaces.createSpace.nameRequired'));
+      return false;
+    }
+    if (isDuplicateSpaceName(name, mySpaces)) {
+      setNameError(
+        t('spaces.createSpace.nameTaken', {
+          defaultValue: 'You already have a space with this name.',
+        }),
+      );
       return false;
     }
     setNameError(null);

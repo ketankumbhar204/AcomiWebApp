@@ -22,6 +22,7 @@ import {
 import { isAccommodationApplicable } from '@/shared/utils/spacePermissions';
 import { canManagePayments } from '@/shared/utils/dashboardFinancial';
 import type { MembershipRole, SpacePermissionsResponse, SpaceType } from '@/shared/types/space';
+import { useSpaceProgressiveAccess } from '@/modules/dashboard/hooks/useSpaceProgressiveAccess';
 import { QuickActionTile } from './QuickActionTile';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
 
@@ -47,15 +48,30 @@ export function DashboardQuickActions({
   const navigate = useNavigate();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const { getCapability } = useSpaceProgressiveAccess(isOperator ? spaceId : null);
 
   const accommodationApplicable = spaceType ? isAccommodationApplicable(spaceType) : true;
   const isMess = spaceType === 'MESS';
-  const showResidents = permissions.canManageOccupancy && accommodationApplicable;
-  const showMeals = permissions.canManageMeals === true;
+  const mealsHidden =
+    getCapability('MEAL_CONFIG')?.mode === 'HIDDEN' &&
+    getCapability('MEAL_OPS')?.mode === 'HIDDEN';
+  const membersLocked = getCapability('MEMBERS')?.mode === 'LOCKED';
+  const showResidents =
+    permissions.canManageOccupancy &&
+    accommodationApplicable &&
+    getCapability('ACCOMMODATION')?.mode !== 'HIDDEN';
+  const showMeals =
+    permissions.canManageMeals === true &&
+    !mealsHidden &&
+    getCapability('MEAL_CONFIG')?.mode !== 'HIDDEN';
   const showPayments = canManagePayments(permissions.membershipRole);
-  const showInventory = permissions.canViewInventory === true;
+  const showInventory =
+    permissions.canViewInventory === true && getCapability('INVENTORY')?.mode !== 'HIDDEN';
   const showAddCustomers =
-    isOperator && permissions.canManageMembers && (isMess || showMeals);
+    isOperator &&
+    permissions.canManageMembers &&
+    isMess &&
+    getCapability('MEMBERS')?.mode !== 'HIDDEN';
 
   const tiles: ReactNode[] = [];
 
@@ -83,7 +99,7 @@ export function DashboardQuickActions({
       />,
     );
   }
-  if (isOperator && showPayments && (!isMess || showMeals)) {
+  if (isOperator && showPayments) {
     tiles.push(
       <QuickActionTile
         key="payments"
@@ -118,7 +134,7 @@ export function DashboardQuickActions({
         onClick={() => navigate(spaceAddCustomersHubPath(spaceId))}
       />,
     );
-  } else if (isOperator && permissions.canManageMembers && !isMess) {
+  } else if (isOperator && permissions.canManageMembers && !isMess && !membersLocked) {
     tiles.push(
       <QuickActionTile
         key="members"
@@ -126,6 +142,17 @@ export function DashboardQuickActions({
         icon={Users}
         title={t('dashboard.quickActions.members')}
         subtitle={t('dashboard.quickActions.membersSubtitle')}
+        onClick={() => navigate(spaceMembersPath(spaceId))}
+      />,
+    );
+  } else if (isOperator && permissions.canManageMembers && !isMess && membersLocked) {
+    tiles.push(
+      <QuickActionTile
+        key="members"
+        tone="purple"
+        icon={Users}
+        title={t('dashboard.quickActions.members')}
+        subtitle={t('spaceLifecycle.capabilities.members.lockedProperty')}
         onClick={() => navigate(spaceMembersPath(spaceId))}
       />,
     );

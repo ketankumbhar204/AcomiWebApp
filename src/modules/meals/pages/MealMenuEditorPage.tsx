@@ -7,7 +7,6 @@ import {
   DialogTitle,
   IconButton,
   InputAdornment,
-  Link,
   Stack,
   Tab,
   Tabs,
@@ -15,21 +14,12 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import {
-  ArrowLeft,
-  BookOpen,
-  Copy,
-  Plus,
-  Share2,
-  Trash2,
-  UtensilsCrossed,
-} from 'lucide-react';
+import { ArrowLeft, BookOpen, Copy, Plus, Trash2, UtensilsCrossed } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
-import { Breadcrumbs } from '@/shared/components/Breadcrumbs';
 import { ContentCard } from '@/shared/components/ContentCard';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { LoadingState } from '@/shared/components/LoadingState';
@@ -444,8 +434,9 @@ export function MealMenuEditorPage() {
     setLeaveOpen(true);
   };
 
-  const previewShare = () => {
-    navigate(spaceMealsSharePath(spaceId, menuDate));
+  const discardAndLeave = () => {
+    setLeaveOpen(false);
+    goBack();
   };
 
   useEffect(() => {
@@ -1007,55 +998,60 @@ export function MealMenuEditorPage() {
             >
               <ArrowLeft size={18} />
             </IconButton>
-            <Box sx={{ minWidth: 0 }}>
-              <Breadcrumbs
-                items={[
-                  { label: t('navigation.meals'), to: spaceMealsPath(spaceId, menuDate) },
-                  { label: t('meals.planning.title') },
-                  {
-                    label: t('meals.planning.editSlot', {
-                      meal: t(`meals.mealType.${mealType}`),
-                    }),
-                  },
-                ]}
-              />
+            <Box sx={{ minWidth: 0, flex: 1 }}>
               <Stack
                 direction="row"
                 spacing={1}
                 useFlexGap
-                sx={{ alignItems: 'center', flexWrap: 'wrap', mt: 0.75, gap: 1 }}
+                sx={{
+                  alignItems: 'center',
+                  flexWrap: 'nowrap',
+                  minWidth: 0,
+                  overflow: 'hidden',
+                }}
               >
-                <Typography sx={{ ...DASHBOARD_UX.pageTitle, color: s.textPrimary }}>
+                <Typography
+                  sx={{
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    color: colors.primaryDark,
+                    flexShrink: 0,
+                  }}
+                >
+                  {t('meals.title')}
+                </Typography>
+                <Typography sx={{ color: s.textMuted, flexShrink: 0 }}>·</Typography>
+                <Typography
+                  sx={{
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    color: colors.primaryDark,
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
                   {t('meals.planning.editSlot', { meal: t(`meals.mealType.${mealType}`) })}
+                </Typography>
+                <Typography sx={{ color: s.textMuted, flexShrink: 0 }}>·</Typography>
+                <Typography
+                  sx={{
+                    ...DASHBOARD_UX.caption,
+                    color: s.textSecondary,
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {dateBadge}
                 </Typography>
                 {hydrated ? (
                   <StatusChip
                     label={t(`meals.status.${menu?.status ?? 'DRAFT'}`)}
                     tone={menuStatusTone(menu?.status)}
                   />
-                ) : null}
-                <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary }}>{dateBadge}</Typography>
-                <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }}>
-                  {planned.total === 0
-                    ? t(plannedKey)
-                    : `• ${t(plannedKey, { count: planned.total })}`}
-                </Typography>
-                {planned.total > 0 ? (
-                  <Link
-                    component="button"
-                    type="button"
-                    onClick={previewShare}
-                    sx={{
-                      ...DASHBOARD_UX.link,
-                      color: colors.primaryDark,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 0.4,
-                    }}
-                  >
-                    <Share2 size={13} />
-                    {t('meals.planning.previewShare')}
-                  </Link>
                 ) : null}
               </Stack>
             </Box>
@@ -1587,6 +1583,9 @@ export function MealMenuEditorPage() {
           <Button onClick={() => setLeaveOpen(false)} sx={dashOutlinedButtonSx}>
             {t('common.cancel')}
           </Button>
+          <Button color="error" onClick={discardAndLeave} sx={dashOutlinedButtonSx}>
+            {t('meals.menu.discardChanges', { defaultValue: 'Discard' })}
+          </Button>
           <Button
             onClick={() => {
               setLeaveOpen(false);
@@ -1595,16 +1594,6 @@ export function MealMenuEditorPage() {
             sx={dashOutlinedButtonSx}
           >
             {t('meals.actions.saveDraft')}
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => {
-              setLeaveOpen(false);
-              void persist(true);
-            }}
-            sx={dashContainedButtonSx}
-          >
-            {t('meals.actions.shareMeal')}
           </Button>
         </DialogActions>
       </Dialog>

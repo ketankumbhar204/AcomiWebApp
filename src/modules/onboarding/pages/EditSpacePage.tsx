@@ -35,6 +35,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { IconBadge } from '@/modules/dashboard/components/IconBadge';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { billingSettingsApi } from '@/modules/onboarding/api/billingSettingsApi';
 import { mealBillingApi } from '@/modules/onboarding/api/mealBillingApi';
 import { mealPollClosingApi } from '@/modules/onboarding/api/mealPollClosingApi';
 import { spaceApi } from '@/modules/onboarding/api/spaceApi';
@@ -61,6 +62,10 @@ import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { ROUTES, spaceDetailsPath } from '@/routes/paths';
 import type {
+  PriceTaxMode,
+  SpaceBillingSettings,
+} from '@/shared/types/payments';
+import type {
   GenderPolicy,
   MealBillingSettings,
   MealPollClosingSettings,
@@ -71,8 +76,9 @@ import type {
 import type { MealBillingType, PrepaidBalanceUnit } from '@/shared/types/dashboard';
 import { useAuthStore } from '@/store/authStore';
 import { useSpaceStore } from '@/store/spaceStore';
+import { isDuplicateSpaceName } from '@/shared/utils/suggestBuildingDefaults';
 
-type EditTab = 'general' | 'meals' | 'polls';
+type EditTab = 'general' | 'billing' | 'meals' | 'polls';
 
 function typeLabelKey(type: SpaceType): string {
   if (type === 'CO_LIVING') return 'spaces.types.coLiving.label';
@@ -134,6 +140,7 @@ type EditSpaceFormProps = {
   showMealsTab: boolean;
   showPollsTab: boolean;
   billing: MealBillingSettings | null;
+  spaceBilling: SpaceBillingSettings | null;
   poll: MealPollClosingSettings | null;
 };
 
@@ -143,6 +150,7 @@ function EditSpaceForm({
   showMealsTab,
   showPollsTab,
   billing,
+  spaceBilling,
   poll,
 }: EditSpaceFormProps) {
   const { t } = useTranslation();
@@ -152,6 +160,7 @@ function EditSpaceForm({
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
   const loadMySpaces = useSpaceStore((state) => state.loadMySpaces);
+  const mySpaces = useSpaceStore((state) => state.mySpaces);
   const deactivateSpace = useSpaceStore((state) => state.deactivateSpace);
   const deactivating = useSpaceStore((state) => state.loading);
 
@@ -181,6 +190,18 @@ function EditSpaceForm({
   );
   const [fallback, setFallback] = useState(
     billing?.fallbackToPayPerMeal ?? details.prepaidFallbackToPayPerMeal ?? true,
+  );
+
+  const [taxEnabled, setTaxEnabled] = useState(spaceBilling?.taxEnabled ?? false);
+  const [taxRatePercent, setTaxRatePercent] = useState(
+    spaceBilling?.taxRatePercent != null ? String(spaceBilling.taxRatePercent) : '18',
+  );
+  const [priceTaxMode, setPriceTaxMode] = useState<PriceTaxMode>(
+    spaceBilling?.priceTaxMode ?? 'EXCLUSIVE',
+  );
+  const [gstin, setGstin] = useState(spaceBilling?.gstin ?? '');
+  const [billingDueDay, setBillingDueDay] = useState(
+    String(spaceBilling?.billingDueDay ?? 1),
   );
 
   const [timezone, setTimezone] = useState(poll?.timezone ?? 'Asia/Kolkata');
@@ -250,6 +271,15 @@ function EditSpaceForm({
       setTab('general');
       return;
     }
+    if (isDuplicateSpaceName(name, mySpaces, { excludeSpaceId: spaceId })) {
+      setNameError(
+        t('spaces.createSpace.nameTaken', {
+          defaultValue: 'You already have a space with this name.',
+        }),
+      );
+      setTab('general');
+      return;
+    }
     setNameError(null);
     setFormError(null);
     setSaving(true);
@@ -271,6 +301,15 @@ function EditSpaceForm({
           fallbackToPayPerMeal: billingType === 'PREPAID_BALANCE' ? fallback : undefined,
         });
       }
+
+      const dueDayParsed = Number.parseInt(billingDueDay, 10);
+      await billingSettingsApi.updateSettings(spaceId, {
+        taxEnabled,
+        taxRatePercent: taxEnabled ? Number(taxRatePercent) : null,
+        priceTaxMode: taxEnabled ? priceTaxMode : null,
+        gstin: gstin.trim() || null,
+        billingDueDay: Number.isFinite(dueDayParsed) ? dueDayParsed : 1,
+      });
 
       if (showPollsTab) {
         await mealPollClosingApi.updateSettings(spaceId, {
@@ -344,6 +383,7 @@ function EditSpaceForm({
           }}
         >
           <Tab value="general" label={t('progressiveWorkflow.editSpace.tabGeneral')} />
+          <Tab value="billing" label={t('progressiveWorkflow.editSpace.tabBilling')} />
           {showMealsTab ? (
             <Tab value="meals" label={t('progressiveWorkflow.editSpace.tabMeals')} />
           ) : null}
@@ -351,6 +391,89 @@ function EditSpaceForm({
             <Tab value="polls" label={t('progressiveWorkflow.editSpace.tabPolls')} />
           ) : null}
         </Tabs>
+
+        {visibleTab === 'billing' ? (
+          <ContentCard>
+            <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary, mb: 1 }}>
+              {t('spaces.billingSettings.title')}
+            </Typography>
+            <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textMuted, mb: 2 }}>
+              {t('spaces.billingSettings.subtitle')}
+            </Typography>
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={taxEnabled}
+                  onChange={(e) => setTaxEnabled(e.target.checked)}
+                />
+              }
+              label={t('spaces.billingSettings.taxEnabled')}
+              sx={{ mb: 2, color: s.textPrimary }}
+            />
+
+            {taxEnabled ? (
+              <Stack spacing={2}>
+                <TextField
+                  label={t('spaces.billingSettings.taxRate')}
+                  value={taxRatePercent}
+                  onChange={(e) => setTaxRatePercent(e.target.value)}
+                  type="number"
+                  inputProps={{ min: 0, max: 100, step: '0.01' }}
+                  fullWidth
+                  size="small"
+                  sx={fieldSx}
+                />
+                <FormControl>
+                  <FormLabel sx={{ ...DASHBOARD_UX.metricLabel, color: s.textMuted, mb: 1 }}>
+                    {t('spaces.billingSettings.pricingMode')}
+                  </FormLabel>
+                  <RadioGroup
+                    value={priceTaxMode}
+                    onChange={(e) => setPriceTaxMode(e.target.value as PriceTaxMode)}
+                  >
+                    <FormControlLabel
+                      value="EXCLUSIVE"
+                      control={<Radio />}
+                      label={t('spaces.billingSettings.exclusive')}
+                    />
+                    <FormHelperText sx={{ ml: 4, mt: 0 }}>
+                      {t('spaces.billingSettings.exclusiveHelp')}
+                    </FormHelperText>
+                    <FormControlLabel
+                      value="INCLUSIVE"
+                      control={<Radio />}
+                      label={t('spaces.billingSettings.inclusive')}
+                    />
+                    <FormHelperText sx={{ ml: 4, mt: 0 }}>
+                      {t('spaces.billingSettings.inclusiveHelp')}
+                    </FormHelperText>
+                  </RadioGroup>
+                </FormControl>
+                <TextField
+                  label={t('spaces.billingSettings.gstin')}
+                  value={gstin}
+                  onChange={(e) => setGstin(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={fieldSx}
+                />
+              </Stack>
+            ) : null}
+
+            <TextField
+              label={t('spaces.billingSettings.dueDay')}
+              value={billingDueDay}
+              onChange={(e) => setBillingDueDay(e.target.value)}
+              type="number"
+              inputProps={{ min: 1, max: 28 }}
+              helperText={t('spaces.billingSettings.dueDayHelp')}
+              fullWidth
+              size="small"
+              sx={{ ...fieldSx, mt: 2 }}
+            />
+          </ContentCard>
+        ) : null}
 
         {visibleTab === 'general' ? (
           <>
@@ -777,6 +900,12 @@ export function EditSpacePage() {
     enabled: Boolean(spaceId) && showMealsTab,
   });
 
+  const spaceBillingQuery = useQuery({
+    queryKey: ['space-billing-settings', spaceId],
+    queryFn: () => billingSettingsApi.getSettings(spaceId),
+    enabled: Boolean(spaceId) && owner,
+  });
+
   const pollQuery = useQuery({
     queryKey: ['meal-poll-closing-settings', spaceId],
     queryFn: () => mealPollClosingApi.getSettings(spaceId),
@@ -803,18 +932,23 @@ export function EditSpacePage() {
     return <Navigate to={spaceDetailsPath(spaceId)} replace />;
   }
 
-  if ((showMealsTab && billingQuery.isLoading) || (showPollsTab && pollQuery.isLoading)) {
+  if (
+    (showMealsTab && billingQuery.isLoading) ||
+    (showPollsTab && pollQuery.isLoading) ||
+    spaceBillingQuery.isLoading
+  ) {
     return <LoadingFallback />;
   }
 
   return (
     <EditSpaceForm
-      key={`${details.id}-${details.updatedAt}-${billingQuery.dataUpdatedAt}-${pollQuery.dataUpdatedAt}`}
+      key={`${details.id}-${details.updatedAt}-${billingQuery.dataUpdatedAt}-${spaceBillingQuery.dataUpdatedAt}-${pollQuery.dataUpdatedAt}`}
       spaceId={spaceId}
       details={details}
       showMealsTab={showMealsTab}
       showPollsTab={showPollsTab}
       billing={billingQuery.data ?? null}
+      spaceBilling={spaceBillingQuery.data ?? null}
       poll={pollQuery.data ?? null}
     />
   );

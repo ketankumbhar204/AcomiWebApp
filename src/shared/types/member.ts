@@ -54,7 +54,8 @@ export type UpdateDepositRequest = {
 export type CreateMemberDocumentRequest = {
   documentType: MemberDocumentType;
   documentNumber: string;
-  fileUrl: string;
+  fileUrl?: string;
+  fileId?: string | null;
 };
 
 export type CreateMemberNoteRequest = {
@@ -186,6 +187,7 @@ export type MemberDocumentResponse = {
   documentType: MemberDocumentType;
   documentNumber: string;
   fileUrl: string;
+  fileId?: string | null;
   verificationStatus: DocumentVerificationStatus;
   uploadedAt: string;
 };

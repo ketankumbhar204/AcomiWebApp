@@ -42,8 +42,10 @@ import {
   getNotificationIcon,
 } from '@/shared/utils/notificationVisuals';
 import { canManageNotifications } from '@/shared/utils/spaceOperator';
+import { filterPendingGroupsWhenMealsHidden } from '@/shared/utils/filterPendingActionsForMealCapabilities';
 import { ROUTES, spaceDashboardPath, spacePendingActionsPath } from '@/routes/paths';
 import { usePendingActions } from '../hooks/usePendingActions';
+import { useSpaceProgressiveAccess } from '../hooks/useSpaceProgressiveAccess';
 
 type PendingRow = SpaceNotification & {
   id: string;
@@ -140,6 +142,14 @@ export function PendingActionsPage() {
   const permissions = useSpacePermissions(spaceId);
   const isOperator = canManageNotifications(permissions);
   const pending = usePendingActions(spaceId, Boolean(spaceId), isOperator);
+  const { getCapability } = useSpaceProgressiveAccess(spaceId);
+  const mealsHidden =
+    getCapability('MEAL_CONFIG')?.mode === 'HIDDEN' &&
+    getCapability('MEAL_OPS')?.mode === 'HIDDEN';
+  const visibleGroups = useMemo(
+    () => filterPendingGroupsWhenMealsHidden(pending.groups, mealsHidden),
+    [mealsHidden, pending.groups],
+  );
 
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -148,12 +158,19 @@ export function PendingActionsPage() {
   const [page, setPage] = useState(0);
 
   useEffect(() => {
+    if (mealsHidden && categoryFilter === 'meals') {
+      setCategoryFilter('all');
+      setPage(0);
+    }
+  }, [categoryFilter, mealsHidden]);
+
+  useEffect(() => {
     document.title = `${t('dashboard.attention.pendingActions')} · ${t('common.appName')}`;
   }, [t]);
 
   const allRows: PendingRow[] = useMemo(() => {
     const result: PendingRow[] = [];
-    for (const group of pending.groups) {
+    for (const group of visibleGroups) {
       for (const item of group.items ?? []) {
         result.push({
           ...item,
@@ -164,7 +181,7 @@ export function PendingActionsPage() {
       }
     }
     return result;
-  }, [pending.groups]);
+  }, [visibleGroups]);
 
   const groupOptions = useMemo(() => {
     const titles = new Set<string>();
@@ -195,17 +212,22 @@ export function PendingActionsPage() {
     return filteredRows.slice(start, start + PAGE_SIZE);
   }, [filteredRows, page]);
 
+  const visibleTotalCount = useMemo(
+    () => visibleGroups.reduce((sum, g) => sum + g.count, 0),
+    [visibleGroups],
+  );
+
   const criticalCount = useMemo(
     () =>
-      pending.groups
+      visibleGroups
         .filter((g) => g.priority === 'CRITICAL' || g.priority === 'HIGH')
         .reduce((sum, g) => sum + g.count, 0),
-    [pending.groups],
+    [visibleGroups],
   );
 
   const todayCount = useMemo(
     () =>
-      pending.groups
+      visibleGroups
         .filter((g) =>
           [
             'MOVE_IN_SCHEDULED_TODAY',
@@ -214,7 +236,7 @@ export function PendingActionsPage() {
           ].includes(g.actionType),
         )
         .reduce((sum, g) => sum + g.count, 0),
-    [pending.groups],
+    [visibleGroups],
   );
 
   const columns: DataTableColumn<PendingRow>[] = useMemo(
@@ -332,9 +354,11 @@ export function PendingActionsPage() {
           <MenuItem value="billing">
             {t('dashboard.pendingActions.filters.billing', { defaultValue: 'Billing' })}
           </MenuItem>
-          <MenuItem value="meals">
-            {t('dashboard.pendingActions.filters.meals', { defaultValue: 'Meals' })}
-          </MenuItem>
+          {!mealsHidden ? (
+            <MenuItem value="meals">
+              {t('dashboard.pendingActions.filters.meals', { defaultValue: 'Meals' })}
+            </MenuItem>
+          ) : null}
           <MenuItem value="occupancy">
             {t('dashboard.pendingActions.filters.occupancy', { defaultValue: 'Occupancy' })}
           </MenuItem>
@@ -372,7 +396,7 @@ export function PendingActionsPage() {
   }
 
   const showLoader = pending.loading && pending.summary == null;
-  const empty = !showLoader && pending.totalCount === 0;
+  const empty = !showLoader && visibleTotalCount === 0;
 
   return (
     <PageContainer gap={0}>
@@ -440,7 +464,7 @@ export function PendingActionsPage() {
                 <StatCard
                   dense
                   label={t('dashboard.pendingActions.kpi.pending')}
-                  value={pending.totalCount}
+                  value={visibleTotalCount}
                   icon={
                     <IconBadge accent={colors.success}>
                       <Clock3 />

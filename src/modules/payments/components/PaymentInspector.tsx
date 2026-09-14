@@ -239,6 +239,36 @@ export function PaymentInspector({
     }
   };
 
+  const runSendReminder = async () => {
+    try {
+      const result = await mutations.sendReminder.mutateAsync(payment.paymentId);
+      if (result.deliveryStatus === 'SENT') {
+        enqueueSnackbar(t('paymentCollection.reminder.sent'), { variant: 'success' });
+        return;
+      }
+      const code = `${result.failureCode || ''} ${result.failureReason || ''}`;
+      if (result.deliveryStatus === 'SKIPPED' || code.includes('already')) {
+        enqueueSnackbar(t('paymentCollection.reminder.alreadySentToday'), { variant: 'info' });
+        return;
+      }
+      if (
+        !result.providerConfigured ||
+        code.includes('WHATSAPP_PROVIDER_NOT_CONFIGURED') ||
+        code.includes('PROVIDER_NOT_CONFIGURED')
+      ) {
+        enqueueSnackbar(t('paymentCollection.reminder.providerUnavailable'), { variant: 'warning' });
+        return;
+      }
+      if (code.includes('INVALID_RECIPIENT') || code.includes('RECIPIENT_MOBILE_MISSING')) {
+        enqueueSnackbar(t('paymentCollection.reminder.invalidRecipient'), { variant: 'warning' });
+        return;
+      }
+      enqueueSnackbar(t('paymentCollection.reminder.failed'), { variant: 'error' });
+    } catch {
+      enqueueSnackbar(t('paymentCollection.reminder.failed'), { variant: 'error' });
+    }
+  };
+
   return (
     <SidePanel
       title={payment.title || t('payments.inspector.title')}
@@ -246,62 +276,76 @@ export function PaymentInspector({
       onClose={onClose}
       framed={framed}
       footer={
-        canManage && canReviewPayment(status) ? (
+        canManage && (canReviewPayment(status) || payment.reminderEligible) ? (
           <Stack spacing={1}>
-            <TextField
-              size="small"
-              label={t('paymentCollection.review.remarks')}
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              placeholder={t('paymentCollection.review.remarksPlaceholder')}
-              multiline
-              minRows={2}
-              fullWidth
-            />
-            <FormControl size="small" fullWidth>
-              <InputLabel>{t('paymentCollection.review.rejectionCode')}</InputLabel>
-              <Select
-                label={t('paymentCollection.review.rejectionCode')}
-                value={rejectCode}
-                onChange={(e) => setRejectCode(e.target.value as PaymentRejectionReason)}
+            {payment.reminderEligible ? (
+              <Button
+                variant="outlined"
+                sx={dashOutlinedButtonSx}
+                onClick={() => void runSendReminder()}
+                disabled={mutations.sendReminder.isPending || mutations.reviewPayment.isPending}
               >
-                {REJECTION_CODES.map((code) => (
-                  <MenuItem key={code} value={code}>
-                    {t(`paymentCollection.rejection.${code}`)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Button
-              variant="contained"
-              sx={{
-                ...dashContainedButtonSx,
-                bgcolor: colors.primaryDark,
-                '&:hover': { bgcolor: colors.primaryHover },
-              }}
-              onClick={() => void runReview('APPROVE')}
-              disabled={mutations.reviewPayment.isPending}
-            >
-              {t('paymentCollection.review.approve')}
-            </Button>
-            <Button
-              variant="outlined"
-              color="warning"
-              sx={dashOutlinedButtonSx}
-              onClick={() => void runReview('REQUEST_UPDATE')}
-              disabled={mutations.reviewPayment.isPending}
-            >
-              {t('paymentCollection.review.requestUpdate')}
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              sx={dashOutlinedButtonSx}
-              onClick={() => void runReview('REJECT')}
-              disabled={mutations.reviewPayment.isPending}
-            >
-              {t('paymentCollection.review.reject')}
-            </Button>
+                {t('paymentCollection.reminder.send')}
+              </Button>
+            ) : null}
+            {canReviewPayment(status) ? (
+              <>
+                <TextField
+                  size="small"
+                  label={t('paymentCollection.review.remarks')}
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  placeholder={t('paymentCollection.review.remarksPlaceholder')}
+                  multiline
+                  minRows={2}
+                  fullWidth
+                />
+                <FormControl size="small" fullWidth>
+                  <InputLabel>{t('paymentCollection.review.rejectionCode')}</InputLabel>
+                  <Select
+                    label={t('paymentCollection.review.rejectionCode')}
+                    value={rejectCode}
+                    onChange={(e) => setRejectCode(e.target.value as PaymentRejectionReason)}
+                  >
+                    {REJECTION_CODES.map((code) => (
+                      <MenuItem key={code} value={code}>
+                        {t(`paymentCollection.rejection.${code}`)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button
+                  variant="contained"
+                  sx={{
+                    ...dashContainedButtonSx,
+                    bgcolor: colors.primaryDark,
+                    '&:hover': { bgcolor: colors.primaryHover },
+                  }}
+                  onClick={() => void runReview('APPROVE')}
+                  disabled={mutations.reviewPayment.isPending}
+                >
+                  {t('paymentCollection.review.approve')}
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  sx={dashOutlinedButtonSx}
+                  onClick={() => void runReview('REQUEST_UPDATE')}
+                  disabled={mutations.reviewPayment.isPending}
+                >
+                  {t('paymentCollection.review.requestUpdate')}
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  sx={dashOutlinedButtonSx}
+                  onClick={() => void runReview('REJECT')}
+                  disabled={mutations.reviewPayment.isPending}
+                >
+                  {t('paymentCollection.review.reject')}
+                </Button>
+              </>
+            ) : null}
           </Stack>
         ) : !canManage && canSubmitProof(status) && onOpenProof ? (
           <Button
@@ -330,6 +374,58 @@ export function PaymentInspector({
               {
                 label: t('paymentCollection.fields.amount'),
                 value: formatCurrency(payment.amount, payment.currencyCode),
+              },
+              {
+                label: t('paymentCollection.fields.billingPeriod'),
+                value:
+                  payment.billingPeriodStart && payment.billingPeriodEnd
+                    ? `${payment.billingPeriodStart} → ${payment.billingPeriodEnd}`
+                    : null,
+              },
+              {
+                label: t('paymentCollection.fields.baseAmount'),
+                value:
+                  payment.baseAmount != null
+                    ? formatCurrency(payment.baseAmount, payment.currencyCode)
+                    : null,
+              },
+              {
+                label: t('paymentCollection.fields.taxAmount'),
+                value:
+                  payment.taxEnabled && payment.taxAmount != null
+                    ? `${formatCurrency(payment.taxAmount, payment.currencyCode)}${
+                        payment.taxRatePercent != null ? ` (${payment.taxRatePercent}%)` : ''
+                      }`
+                    : null,
+              },
+              {
+                label: t('paymentCollection.fields.outstanding'),
+                value:
+                  payment.outstandingAmount != null
+                    ? formatCurrency(payment.outstandingAmount, payment.currencyCode)
+                    : null,
+              },
+              {
+                label: t('paymentCollection.fields.overdue'),
+                value: payment.isOverdue
+                  ? t('paymentCollection.fields.overdueDays', {
+                      days: payment.daysOverdue ?? 0,
+                    })
+                  : t('paymentCollection.fields.notOverdue'),
+              },
+              {
+                label: t('paymentCollection.fields.settlement'),
+                value: payment.settlementStatus
+                  ? t(`paymentCollection.settlement.${payment.settlementStatus}`)
+                  : null,
+              },
+              {
+                label: t('paymentCollection.reminder.statusLabel'),
+                value: payment.reminderEligible
+                  ? t('paymentCollection.reminder.eligible')
+                  : payment.isOverdue
+                    ? t('paymentCollection.reminder.notEligible')
+                    : null,
               },
               {
                 label: t('paymentCollection.fields.reference'),

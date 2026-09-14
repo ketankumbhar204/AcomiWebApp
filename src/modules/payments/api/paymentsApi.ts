@@ -13,6 +13,7 @@ import type {
   SpacePaymentResponse,
   SubmitPaymentProofRequest,
 } from '@/shared/types/payments';
+import { ensureUploadedFileId } from '@/shared/services/fileUploadService';
 
 const OWNER_MONTH_TIMEOUT_MS = 120_000;
 
@@ -31,13 +32,24 @@ export const paymentsApi = {
       ),
     ),
 
-  submitProof: (spaceId: string, paymentId: string, body: SubmitPaymentProofRequest) =>
-    unwrapApiResponse(
+  submitProof: async (
+    spaceId: string,
+    paymentId: string,
+    body: SubmitPaymentProofRequest & { localFile?: File },
+  ) => {
+    const proofFileId = await ensureUploadedFileId(body.proofFileId, body.localFile, {
+      purpose: 'PAYMENT_PROOF',
+      spaceId,
+      paymentId,
+    });
+    const { localFile: _ignored, ...rest } = body;
+    return unwrapApiResponse(
       apiClient.post<ApiResponse<SpacePaymentResponse>>(
         `/spaces/${spaceId}/payments/${paymentId}/proof`,
-        body,
+        { ...rest, proofFileId },
       ),
-    ),
+    );
+  },
 
   reviewPayment: (spaceId: string, paymentId: string, body: ReviewPaymentRequest) =>
     unwrapApiResponse(
@@ -121,4 +133,61 @@ export const paymentsApi = {
       ),
     );
   },
+
+  getOverduePayments: (
+    spaceId: string,
+    params?: {
+      paymentType?: string;
+      reminderEligibleOnly?: boolean;
+      page?: number;
+      size?: number;
+    },
+  ) =>
+    unwrapApiResponse(
+      apiClient.get<ApiResponse<unknown>>(`/spaces/${spaceId}/payments/overdue`, {
+        params,
+      }),
+    ),
+
+  processPaymentReminders: (spaceId: string) =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<PaymentReminderProcessResult>>(
+        `/spaces/${spaceId}/payments/reminders/process`,
+      ),
+    ),
+
+  sendPaymentReminder: (spaceId: string, paymentId: string) =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<PaymentReminderDeliveryResult>>(
+        `/spaces/${spaceId}/payments/${paymentId}/reminders`,
+      ),
+    ),
+};
+
+export type PaymentReminderDeliveryResult = {
+  deliveryId: string;
+  paymentId: string;
+  channel: string;
+  deliveryStatus: 'PENDING' | 'SENT' | 'FAILED' | 'SKIPPED';
+  businessDate?: string;
+  providerMessageId?: string | null;
+  failureReason?: string | null;
+  failureCode?: string | null;
+  providerConfigured: boolean;
+  retryable?: boolean;
+  sentAt?: string | null;
+  lastAttemptAt?: string | null;
+  attemptCount?: number;
+};
+
+export type PaymentReminderProcessResult = {
+  businessDate: string;
+  providerConfigured: boolean;
+  providerMode?: string;
+  candidatesFound: number;
+  remindersCreated: number;
+  remindersSkippedDuplicate: number;
+  deliverySuccesses: number;
+  deliveryFailures: number;
+  deliveries?: PaymentReminderDeliveryResult[];
 };

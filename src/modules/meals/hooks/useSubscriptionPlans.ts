@@ -78,7 +78,7 @@ export function useSubscriptionPlanMutations(spaceId: string) {
       payload,
     }: {
       memberId: string;
-      payload: CreateSubscriptionActivationRequest;
+      payload: CreateSubscriptionActivationRequest & { localFile?: File };
     }) => subscriptionPlansApi.createActivationRequest(spaceId, memberId, payload),
     onSuccess: invalidate,
   });

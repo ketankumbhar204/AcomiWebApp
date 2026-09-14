@@ -45,6 +45,8 @@ export type PaymentTimelineEventType =
 
 export type PaymentReviewAction = 'APPROVE' | 'REJECT' | 'REQUEST_UPDATE';
 
+export type PriceTaxMode = 'EXCLUSIVE' | 'INCLUSIVE';
+
 export type PaymentsReviewQueueParam =
   | 'SUBMITTED'
   | 'NEEDS_UPDATE'
@@ -93,6 +95,39 @@ export type SpacePaymentResponse = {
   mealDates?: string[] | null;
   createdAt: string;
   updatedAt: string;
+  billingPeriodStart?: string | null;
+  billingPeriodEnd?: string | null;
+  billableDays?: number | null;
+  daysInMonth?: number | null;
+  isProrated?: boolean | null;
+  configuredMonthlyAmount?: number | null;
+  taxEnabled?: boolean | null;
+  taxRatePercent?: number | null;
+  priceTaxMode?: PriceTaxMode | null;
+  baseAmount?: number | null;
+  taxAmount?: number | null;
+  paidAmount?: number | null;
+  outstandingAmount?: number | null;
+  isOverdue?: boolean | null;
+  daysOverdue?: number | null;
+  reminderEligible?: boolean | null;
+  settlementStatus?: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | null;
+};
+
+export type SpaceBillingSettings = {
+  taxEnabled: boolean;
+  taxRatePercent?: number | null;
+  priceTaxMode?: PriceTaxMode | null;
+  gstin?: string | null;
+  billingDueDay: number;
+};
+
+export type UpdateSpaceBillingSettingsRequest = {
+  taxEnabled: boolean;
+  taxRatePercent?: number | null;
+  priceTaxMode?: PriceTaxMode | null;
+  gstin?: string | null;
+  billingDueDay?: number | null;
 };
 
 export type SpacePaymentListResponse = {
@@ -166,6 +201,7 @@ export type ListSpacePaymentsParams = {
 
 export type SubmitPaymentProofRequest = {
   proofImageBase64?: string;
+  proofFileId?: string;
   referenceNumber?: string;
   remarks?: string;
   paymentMethod?: UniversalPaymentMethod;

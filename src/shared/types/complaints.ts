@@ -113,6 +113,7 @@ export type CreateComplaintRequest = {
   mealDate?: string;
   mealType?: MealType;
   attachmentImagesBase64?: string[];
+  attachmentFileIds?: string[];
 };
 
 export type UpdateComplaintStatusRequest = {
@@ -126,7 +127,8 @@ export type AddComplaintCommentRequest = {
 };
 
 export type AddComplaintAttachmentRequest = {
-  imageBase64: string;
+  imageBase64?: string;
+  fileId?: string;
   fileName?: string;
   contentType?: string;
 };

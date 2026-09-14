@@ -1,5 +1,5 @@
-import { Box, Checkbox, FormControlLabel, Typography, useTheme } from '@mui/material';
-import { FlaskConical } from 'lucide-react';
+import { Box, Checkbox, FormControlLabel, IconButton, Stack, Tooltip, Typography, useTheme } from '@mui/material';
+import { FlaskConical, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, DASH_LIGHT, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
@@ -7,13 +7,55 @@ import { colors } from '@/shared/theme/colors';
 type AdminTestLeadOptionProps = {
   checked: boolean;
   onChange: (checked: boolean) => void;
+  /** Compact row for footer actions (checkbox + info tooltip). */
+  compact?: boolean;
+  titleKey?: string;
+  descriptionKey?: string;
 };
 
-export function AdminTestLeadOption({ checked, onChange }: AdminTestLeadOptionProps) {
+export function AdminTestLeadOption({
+  checked,
+  onChange,
+  compact = false,
+  titleKey = 'admin.testLead.title',
+  descriptionKey = 'admin.testLead.description',
+}: AdminTestLeadOptionProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const isDark = theme.palette.mode === 'dark';
+
+  if (compact) {
+    return (
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={checked}
+              onChange={(e) => onChange(e.target.checked)}
+              size="small"
+            />
+          }
+          label={
+            <Typography sx={{ fontWeight: 700, fontSize: 14 }}>
+              {t(titleKey)}
+            </Typography>
+          }
+          sx={{ mr: 0.25, ml: 0 }}
+        />
+        <Tooltip title={t(descriptionKey)} arrow enterTouchDelay={0}>
+          <IconButton
+            type="button"
+            size="small"
+            aria-label={t(descriptionKey)}
+            sx={{ color: 'text.secondary' }}
+          >
+            <Info size={16} />
+          </IconButton>
+        </Tooltip>
+      </Stack>
+    );
+  }
 
   return (
     <Box
@@ -55,13 +97,13 @@ export function AdminTestLeadOption({ checked, onChange }: AdminTestLeadOptionPr
           }
           label={
             <Typography sx={{ ...DASHBOARD_UX.cardTitle, fontSize: '0.9375rem' }}>
-              {t('admin.testLead.title')}
+              {t(titleKey)}
             </Typography>
           }
           sx={{ alignItems: 'flex-start', ml: 0 }}
         />
         <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, ml: 4, mt: -0.5 }}>
-          {t('admin.testLead.description')}
+          {t(descriptionKey)}
         </Typography>
       </Box>
     </Box>

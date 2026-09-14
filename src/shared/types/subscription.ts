@@ -61,6 +61,7 @@ export interface CreateSubscriptionActivationRequest {
   planId: string;
   paymentReference?: string;
   proofImageBase64?: string;
+  proofFileId?: string;
   customerNotes?: string;
 }
 
