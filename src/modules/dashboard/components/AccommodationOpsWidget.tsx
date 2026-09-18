@@ -8,12 +8,22 @@ import { IconBadge } from './IconBadge';
 import { MetricRow } from './MetricRow';
 import { DASHBOARD_UX } from '../theme/dashboardUx';
 
+/** Metric ids used by Property operations cards. */
+export type AccommodationOpsMetricId = 'occupied' | 'vacant' | 'moveIns' | 'pendingPay';
+
 type AccommodationOpsWidgetProps = {
   spaceId: string;
   operations: DashboardAccommodationOperations;
   canDrillDown: boolean;
   /** 2 = dashboard 2×2 board; 4 = single Rooms strip on md+. */
   columns?: 2 | 4;
+  /**
+   * When set (Rooms page), Occupied / Vacant / Move-ins call this instead of navigating.
+   * Pending payments always navigates to Payments. Omit on Dashboard to keep drill-downs.
+   */
+  onSelectMetric?: (id: AccommodationOpsMetricId) => void;
+  /** Highlights the active Rooms ops focus card. */
+  selectedMetricId?: AccommodationOpsMetricId | null;
 };
 
 /** Figma: Property operations board — 2×2 metrics matching Payment Summary. */
@@ -22,9 +32,12 @@ export function AccommodationOpsWidget({
   operations,
   canDrillDown,
   columns = 2,
+  onSelectMetric,
+  selectedMetricId = null,
 }: AccommodationOpsWidgetProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const roomsFilterMode = typeof onSelectMetric === 'function';
 
   return (
     <DashboardSection title={t('dashboard.accommodationOperations.title')}>
@@ -39,48 +52,58 @@ export function AccommodationOpsWidget({
             label: t('dashboard.accommodationOperations.occupiedBeds'),
             value: operations.occupiedBeds,
             tone: 'success',
+            selected: selectedMetricId === 'occupied',
             icon: (
               <IconBadge tone="success">
                 <Users />
               </IconBadge>
             ),
-            onClick: canDrillDown
-              ? () => navigate(spaceOccupancyListPath(spaceId, 'active'))
-              : undefined,
+            onClick: roomsFilterMode
+              ? () => onSelectMetric('occupied')
+              : canDrillDown
+                ? () => navigate(spaceOccupancyListPath(spaceId, 'active'))
+                : undefined,
           },
           {
             id: 'vacant',
             label: t('dashboard.accommodationOperations.vacantBeds'),
             value: operations.vacantBeds,
             tone: 'purple',
+            selected: selectedMetricId === 'vacant',
             icon: (
               <IconBadge tone="purple">
                 <BedDouble />
               </IconBadge>
             ),
-            onClick: canDrillDown
-              ? () => navigate(spaceBedInventoryPath(spaceId, 'AVAILABLE'))
-              : undefined,
+            onClick: roomsFilterMode
+              ? () => onSelectMetric('vacant')
+              : canDrillDown
+                ? () => navigate(spaceBedInventoryPath(spaceId, 'AVAILABLE'))
+                : undefined,
           },
           {
             id: 'moveIns',
             label: t('dashboard.accommodationOperations.moveInsThisMonth'),
             value: operations.moveInsThisMonth,
             tone: 'info',
+            selected: selectedMetricId === 'moveIns',
             icon: (
               <IconBadge tone="info">
                 <UserPlus />
               </IconBadge>
             ),
-            onClick: canDrillDown
-              ? () => navigate(spaceOccupancyListPath(spaceId, 'moveInsThisMonth'))
-              : undefined,
+            onClick: roomsFilterMode
+              ? () => onSelectMetric('moveIns')
+              : canDrillDown
+                ? () => navigate(spaceOccupancyListPath(spaceId, 'moveInsThisMonth'))
+                : undefined,
           },
           {
             id: 'pendingPay',
             label: t('dashboard.accommodationOperations.pendingPayments'),
             value: operations.pendingPaymentsCount,
             tone: 'warning',
+            selected: false,
             icon: (
               <IconBadge tone="warning">
                 <IndianRupee />

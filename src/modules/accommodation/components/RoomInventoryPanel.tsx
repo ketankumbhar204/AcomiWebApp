@@ -1,4 +1,5 @@
 import {
+  Chip,
   FormControl,
   InputAdornment,
   InputLabel,
@@ -9,18 +10,22 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { LoadingState } from '@/shared/components/LoadingState';
+import type { BedSpaceListItemResponse } from '@/shared/types/accommodation';
 import { useSpaceBedSearch } from '../hooks/useAccommodation';
 import { groupBedsByRoom, type BedRoomGroup } from '../utils/groupBedsByRoom';
 import type { TreeSelection } from './HierarchyTree';
 import { RoomInventoryCard } from './RoomInventoryCard';
 
 type AvailabilityFilter = 'ALL' | 'HAS_AVAILABLE' | 'FULL';
+
+/** Rooms-local Property operations focus (not used on Dashboard). */
+export type RoomsOpsFocus = 'OCCUPIED' | 'VACANT' | 'MOVE_INS_THIS_MONTH' | null;
 
 type RoomInventoryPanelProps = {
   spaceId: string;
@@ -30,6 +35,11 @@ type RoomInventoryPanelProps = {
   onSelect: (selection: TreeSelection) => void;
   onEditEntity: (selection: TreeSelection) => void;
   onAddBed: (roomSelection: TreeSelection) => void;
+  /** Property operations bed-level focus from Rooms KPI cards. */
+  opsFocus?: RoomsOpsFocus;
+  /** Bed IDs for move-ins this month (from occupancy list). Ignored unless opsFocus is MOVE_INS. */
+  moveInBedIds?: ReadonlySet<string>;
+  onClearOpsFocus?: () => void;
 };
 
 function uniqueSorted(values: Array<string | null | undefined>): string[] {
@@ -45,6 +55,34 @@ function matchesAvailability(group: BedRoomGroup, filter: AvailabilityFilter): b
   return available === 0;
 }
 
+function filterBedsByOpsFocus(
+  beds: BedSpaceListItemResponse[],
+  opsFocus: RoomsOpsFocus,
+  moveInBedIds: ReadonlySet<string>,
+): BedSpaceListItemResponse[] {
+  if (!opsFocus) return beds;
+  if (opsFocus === 'OCCUPIED') {
+    return beds.filter((bed) => bed.status === 'OCCUPIED');
+  }
+  if (opsFocus === 'VACANT') {
+    return beds.filter((bed) => bed.status === 'AVAILABLE');
+  }
+  return beds.filter((bed) => moveInBedIds.has(bed.bedId));
+}
+
+function opsFocusLabel(
+  opsFocus: Exclude<RoomsOpsFocus, null>,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
+  if (opsFocus === 'OCCUPIED') {
+    return t('dashboard.accommodationOperations.occupiedBeds');
+  }
+  if (opsFocus === 'VACANT') {
+    return t('dashboard.accommodationOperations.vacantBeds');
+  }
+  return t('dashboard.accommodationOperations.moveInsThisMonth');
+}
+
 /** Full-width room cards with horizontal bed carousels (web mock). */
 export function RoomInventoryPanel({
   spaceId,
@@ -53,6 +91,9 @@ export function RoomInventoryPanel({
   onSelect,
   onEditEntity,
   onAddBed,
+  opsFocus = null,
+  moveInBedIds,
+  onClearOpsFocus,
 }: RoomInventoryPanelProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -61,6 +102,7 @@ export function RoomInventoryPanel({
   const [buildingFilter, setBuildingFilter] = useState('ALL');
   const [floorFilter, setFloorFilter] = useState('ALL');
   const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>('ALL');
+  const resolvedMoveInBedIds = moveInBedIds ?? EMPTY_BED_ID_SET;
 
   const bedsQuery = useSpaceBedSearch({
     spaceId,
@@ -68,7 +110,12 @@ export function RoomInventoryPanel({
     enabled: Boolean(spaceId),
   });
 
-  const roomGroups = useMemo(() => groupBedsByRoom(bedsQuery.items), [bedsQuery.items]);
+  const focusedBeds = useMemo(
+    () => filterBedsByOpsFocus(bedsQuery.items, opsFocus, resolvedMoveInBedIds),
+    [bedsQuery.items, opsFocus, resolvedMoveInBedIds],
+  );
+
+  const roomGroups = useMemo(() => groupBedsByRoom(focusedBeds), [focusedBeds]);
 
   const buildingOptions = useMemo(
     () => uniqueSorted(roomGroups.map((group) => group.buildingName)),
@@ -104,7 +151,7 @@ export function RoomInventoryPanel({
     ...DASHBOARD_UX.body,
   } as const;
 
-  if (bedsQuery.loading && roomGroups.length === 0) {
+  if (bedsQuery.loading && bedsQuery.items.length === 0) {
     return <LoadingState />;
   }
 
@@ -219,6 +266,21 @@ export function RoomInventoryPanel({
               </MenuItem>
             </Select>
           </FormControl>
+
+          {opsFocus ? (
+            <Chip
+              size="small"
+              color="primary"
+              variant="outlined"
+              label={t('accommodation.workspace.showingOpsFocus', {
+                defaultValue: 'Showing: {{label}}',
+                label: opsFocusLabel(opsFocus, t),
+              })}
+              onDelete={onClearOpsFocus}
+              deleteIcon={<X size={14} aria-label={t('common.clear', { defaultValue: 'Clear' })} />}
+              sx={{ height: DASHBOARD_UX.buttonHeight, borderRadius: `${DASHBOARD_UX.buttonRadius}px` }}
+            />
+          ) : null}
         </Stack>
 
         <Typography
@@ -241,10 +303,22 @@ export function RoomInventoryPanel({
 
       {filteredGroups.length === 0 ? (
         <EmptyState
-          title={t('accommodation.rooms.emptyTitle', { defaultValue: 'No rooms yet' })}
-          description={t('accommodation.rooms.emptyDescription', {
-            defaultValue: 'Add floors and rooms, or run Quick Setup to create inventory.',
-          })}
+          title={
+            opsFocus
+              ? t('accommodation.rooms.emptyOpsFocusTitle', {
+                  defaultValue: 'No matching beds',
+                })
+              : t('accommodation.rooms.emptyTitle', { defaultValue: 'No rooms yet' })
+          }
+          description={
+            opsFocus
+              ? t('accommodation.rooms.emptyOpsFocusDescription', {
+                  defaultValue: 'Try clearing the Property operations filter or adjusting search and filters.',
+                })
+              : t('accommodation.rooms.emptyDescription', {
+                  defaultValue: 'Add floors and rooms, or run Quick Setup to create inventory.',
+                })
+          }
         />
       ) : (
         filteredGroups.map((group, index) => (
@@ -253,7 +327,7 @@ export function RoomInventoryPanel({
             spaceId={spaceId}
             group={group}
             canManage={canManage}
-            showTipCard={index === 0 && canManage}
+            showTipCard={index === 0 && canManage && !opsFocus}
             showUnits={showUnits}
             onSelect={onSelect}
             onEditEntity={onEditEntity}
@@ -265,3 +339,5 @@ export function RoomInventoryPanel({
     </Stack>
   );
 }
+
+const EMPTY_BED_ID_SET: ReadonlySet<string> = new Set();

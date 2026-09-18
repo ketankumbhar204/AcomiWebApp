@@ -14,6 +14,8 @@ export type MetricCell = {
   accent?: string;
   tone?: SemanticTone;
   onClick?: () => void;
+  /** Visually marks an active filter/selection (not color-only: ring + aria-pressed). */
+  selected?: boolean;
 };
 
 type MetricRowProps = {
@@ -63,6 +65,7 @@ export function MetricRow({
     >
       {items.map((item) => {
         const surface = item.tone ? semanticSurface(item.tone, mode) : null;
+        const selected = Boolean(item.selected);
         return (
           <Box
             key={item.id}
@@ -80,6 +83,7 @@ export function MetricRow({
                 : undefined
             }
             aria-label={item.onClick ? `${item.label}: ${String(item.value)}` : undefined}
+            aria-pressed={item.onClick && selected ? true : item.onClick ? false : undefined}
             sx={{
               minWidth: 0,
               minHeight: { xs: 64, md: minHeight },
@@ -95,6 +99,7 @@ export function MetricRow({
               overflow: 'hidden',
               cursor: item.onClick ? 'pointer' : 'default',
               transition: DASHBOARD_UX.transition,
+              boxShadow: selected ? `inset 0 0 0 2px ${colors.primary}` : undefined,
               '&:hover': item.onClick
                 ? {
                     bgcolor: surface?.iconBg ?? (theme.palette.mode === 'dark' ? s.elevated : 'rgba(248, 250, 252, 1)'),

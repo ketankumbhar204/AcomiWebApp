@@ -24,8 +24,9 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AccommodationOpsWidget } from '@/modules/dashboard/components/AccommodationOpsWidget';
+import { AccommodationOpsWidget, type AccommodationOpsMetricId } from '@/modules/dashboard/components/AccommodationOpsWidget';
 import { useSpaceDashboard } from '@/modules/dashboard/hooks/useSpaceDashboard';
+import { useSpaceOccupancyList } from '@/modules/dashboard/hooks/useSpaceOccupancyList';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
@@ -45,7 +46,7 @@ import { EntityInspector } from '../components/EntityInspector';
 import { EntityFormDrawer, type EntityFormMode } from '../components/EntityFormDrawer';
 import { AccommodationPathBar } from '../components/AccommodationPathBar';
 import { AccommodationEmptySetup } from '../components/AccommodationEmptySetup';
-import { RoomInventoryPanel } from '../components/RoomInventoryPanel';
+import { RoomInventoryPanel, type RoomsOpsFocus } from '../components/RoomInventoryPanel';
 import { useBuildings } from '../hooks/useAccommodation';
 import { getAccommodationUiProfile } from '../utils/accommodationProfile';
 
@@ -72,6 +73,7 @@ export function AccommodationWorkspacePage() {
   const canDrillOccupancy =
     permissions.canViewSpaceOccupancies === true || permissions.canManageOccupancy;
 
+  const [opsFocus, setOpsFocus] = useState<RoomsOpsFocus>(null);
   const [selection, setSelection] = useState<TreeSelection | null>(null);
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -84,6 +86,39 @@ export function AccommodationWorkspacePage() {
   const [formMode, setFormMode] = useState<EntityFormMode | null>(null);
   const [treeDrawerOpen, setTreeDrawerOpen] = useState(false);
   const [childrenDrawerOpen, setChildrenDrawerOpen] = useState(false);
+
+  const moveInsQuery = useSpaceOccupancyList(
+    spaceId,
+    'moveInsThisMonth',
+    '',
+    Boolean(spaceId && opsFocus === 'MOVE_INS_THIS_MONTH'),
+  );
+  const moveInBedIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const row of moveInsQuery.items) {
+      if (row.bedId) {
+        ids.add(row.bedId);
+      }
+    }
+    return ids;
+  }, [moveInsQuery.items]);
+
+  const selectedOpsMetricId = useMemo((): AccommodationOpsMetricId | null => {
+    if (opsFocus === 'OCCUPIED') return 'occupied';
+    if (opsFocus === 'VACANT') return 'vacant';
+    if (opsFocus === 'MOVE_INS_THIS_MONTH') return 'moveIns';
+    return null;
+  }, [opsFocus]);
+
+  const handleSelectOpsMetric = (id: AccommodationOpsMetricId) => {
+    if (id === 'pendingPay') {
+      return;
+    }
+    const next: RoomsOpsFocus =
+      id === 'occupied' ? 'OCCUPIED' : id === 'vacant' ? 'VACANT' : 'MOVE_INS_THIS_MONTH';
+    setOpsFocus((prev) => (prev === next ? null : next));
+    setViewMode('cards');
+  };
 
   useEffect(() => {
     document.title = `${t('navigation.rooms')} · ${t('common.appName')}`;
@@ -293,6 +328,9 @@ export function AccommodationWorkspacePage() {
       onAddBed={(roomSelection) =>
         setFormMode({ kind: 'create', parent: roomSelection })
       }
+      opsFocus={opsFocus}
+      moveInBedIds={moveInBedIds}
+      onClearOpsFocus={() => setOpsFocus(null)}
     />
   );
 
@@ -414,6 +452,8 @@ export function AccommodationWorkspacePage() {
                 operations={dashboard.accommodationOperations}
                 canDrillDown={canDrillOccupancy}
                 columns={4}
+                onSelectMetric={handleSelectOpsMetric}
+                selectedMetricId={selectedOpsMetricId}
               />
             ) : null}
 
