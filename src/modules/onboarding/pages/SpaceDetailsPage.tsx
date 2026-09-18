@@ -35,6 +35,7 @@ import { useSnackbar } from 'notistack';
 import { IconBadge } from '@/modules/dashboard/components/IconBadge';
 import { useSpaceDashboard } from '@/modules/dashboard/hooks/useSpaceDashboard';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { useMembers } from '@/modules/members/hooks/useMembers';
 import { spaceApi } from '@/modules/onboarding/api/spaceApi';
 import { isSpaceOwner } from '@/modules/onboarding/utils/spaceOwnership';
 import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
@@ -190,6 +191,8 @@ export function SpaceDetailsPage() {
   const details = detailsQuery.data;
   const spaceType = details?.type ?? mySpace?.spaceType;
   const dashboard = useSpaceDashboard(spaceId, spaceType, Boolean(spaceId && spaceType));
+  // Same source as Members page Total Members (GET /spaces/{id}/members).
+  const membersQuery = useMembers(spaceId, Boolean(spaceId));
 
   useEffect(() => {
     document.title = `${t('spaces.details.heading')} · ${t('common.appName')}`;
@@ -219,12 +222,16 @@ export function SpaceDetailsPage() {
     const totalBeds =
       acc != null ? acc.occupiedBeds + acc.vacantBeds : null;
 
+    // Prefer mess meal-member KPI when present; otherwise member-master list length
+    // (matches Members page "Total Members"). Never use bed totals here.
     const membersValue =
       mess?.membersReceivingMeals != null
         ? String(mess.membersReceivingMeals)
-        : totalBeds != null
-          ? String(totalBeds)
-          : '—';
+        : membersQuery.error
+          ? '—'
+          : membersQuery.loading && membersQuery.members.length === 0
+            ? '—'
+            : String(membersQuery.members.length);
 
     const second =
       acc != null
@@ -273,7 +280,15 @@ export function SpaceDetailsPage() {
         valueColor: colors.warning,
       },
     ];
-  }, [dashboard.accommodationOperations, dashboard.financial, dashboard.messOperations, t]);
+  }, [
+    dashboard.accommodationOperations,
+    dashboard.financial,
+    dashboard.messOperations,
+    membersQuery.error,
+    membersQuery.loading,
+    membersQuery.members.length,
+    t,
+  ]);
 
   const planKey = billingLabelKey(details?.mealBillingType);
   const planLabel = planKey ? t(planKey) : null;
