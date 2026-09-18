@@ -28,6 +28,7 @@ import { AccommodationOpsWidget, type AccommodationOpsMetricId } from '@/modules
 import { useSpaceDashboard } from '@/modules/dashboard/hooks/useSpaceDashboard';
 import { useSpaceOccupancyList } from '@/modules/dashboard/hooks/useSpaceOccupancyList';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { usePaymentsMembers } from '@/modules/payments/hooks/usePayments';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { ErrorState } from '@/shared/components/ErrorState';
@@ -36,6 +37,7 @@ import { EmptyState } from '@/shared/components/EmptyState';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { currentMonthKey } from '@/shared/utils/dashboardFinancial';
 import {
   spaceAccommodationQuickSetupPath,
   spaceOccupancyWizardPath,
@@ -93,29 +95,64 @@ export function AccommodationWorkspacePage() {
     '',
     Boolean(spaceId && opsFocus === 'MOVE_INS_THIS_MONTH'),
   );
-  const moveInBedIds = useMemo(() => {
+  const paymentMonth = currentMonthKey();
+  const pendingMembersQuery = usePaymentsMembers(
+    spaceId,
+    { month: paymentMonth, status: 'PENDING', page: 0, size: 500 },
+    Boolean(spaceId && opsFocus === 'PENDING_PAYMENTS'),
+  );
+  const activeOccupanciesForPending = useSpaceOccupancyList(
+    spaceId,
+    'active',
+    '',
+    Boolean(spaceId && opsFocus === 'PENDING_PAYMENTS'),
+  );
+
+  const focusedBedIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const row of moveInsQuery.items) {
-      if (row.bedId) {
-        ids.add(row.bedId);
+    if (opsFocus === 'MOVE_INS_THIS_MONTH') {
+      for (const row of moveInsQuery.items) {
+        if (row.bedId) {
+          ids.add(row.bedId);
+        }
+      }
+      return ids;
+    }
+    if (opsFocus === 'PENDING_PAYMENTS') {
+      const pendingMemberIds = new Set(
+        pendingMembersQuery.members.map((member) => member.memberId),
+      );
+      for (const row of activeOccupanciesForPending.items) {
+        if (row.bedId && pendingMemberIds.has(row.memberId)) {
+          ids.add(row.bedId);
+        }
       }
     }
     return ids;
-  }, [moveInsQuery.items]);
+  }, [
+    activeOccupanciesForPending.items,
+    moveInsQuery.items,
+    opsFocus,
+    pendingMembersQuery.members,
+  ]);
 
   const selectedOpsMetricId = useMemo((): AccommodationOpsMetricId | null => {
     if (opsFocus === 'OCCUPIED') return 'occupied';
     if (opsFocus === 'VACANT') return 'vacant';
     if (opsFocus === 'MOVE_INS_THIS_MONTH') return 'moveIns';
+    if (opsFocus === 'PENDING_PAYMENTS') return 'pendingPay';
     return null;
   }, [opsFocus]);
 
   const handleSelectOpsMetric = (id: AccommodationOpsMetricId) => {
-    if (id === 'pendingPay') {
-      return;
-    }
     const next: RoomsOpsFocus =
-      id === 'occupied' ? 'OCCUPIED' : id === 'vacant' ? 'VACANT' : 'MOVE_INS_THIS_MONTH';
+      id === 'occupied'
+        ? 'OCCUPIED'
+        : id === 'vacant'
+          ? 'VACANT'
+          : id === 'moveIns'
+            ? 'MOVE_INS_THIS_MONTH'
+            : 'PENDING_PAYMENTS';
     setOpsFocus((prev) => (prev === next ? null : next));
     setViewMode('cards');
   };
@@ -329,7 +366,7 @@ export function AccommodationWorkspacePage() {
         setFormMode({ kind: 'create', parent: roomSelection })
       }
       opsFocus={opsFocus}
-      moveInBedIds={moveInBedIds}
+      focusedBedIds={focusedBedIds}
       onClearOpsFocus={() => setOpsFocus(null)}
     />
   );

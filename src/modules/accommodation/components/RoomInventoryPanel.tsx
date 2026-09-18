@@ -25,7 +25,12 @@ import { RoomInventoryCard } from './RoomInventoryCard';
 type AvailabilityFilter = 'ALL' | 'HAS_AVAILABLE' | 'FULL';
 
 /** Rooms-local Property operations focus (not used on Dashboard). */
-export type RoomsOpsFocus = 'OCCUPIED' | 'VACANT' | 'MOVE_INS_THIS_MONTH' | null;
+export type RoomsOpsFocus =
+  | 'OCCUPIED'
+  | 'VACANT'
+  | 'MOVE_INS_THIS_MONTH'
+  | 'PENDING_PAYMENTS'
+  | null;
 
 type RoomInventoryPanelProps = {
   spaceId: string;
@@ -37,8 +42,11 @@ type RoomInventoryPanelProps = {
   onAddBed: (roomSelection: TreeSelection) => void;
   /** Property operations bed-level focus from Rooms KPI cards. */
   opsFocus?: RoomsOpsFocus;
-  /** Bed IDs for move-ins this month (from occupancy list). Ignored unless opsFocus is MOVE_INS. */
-  moveInBedIds?: ReadonlySet<string>;
+  /**
+   * Bed IDs for Move-ins / Pending payments focuses.
+   * Move-ins: occupancy rows this month. Pending: active beds of members with PENDING dues.
+   */
+  focusedBedIds?: ReadonlySet<string>;
   onClearOpsFocus?: () => void;
 };
 
@@ -58,7 +66,7 @@ function matchesAvailability(group: BedRoomGroup, filter: AvailabilityFilter): b
 function filterBedsByOpsFocus(
   beds: BedSpaceListItemResponse[],
   opsFocus: RoomsOpsFocus,
-  moveInBedIds: ReadonlySet<string>,
+  focusedBedIds: ReadonlySet<string>,
 ): BedSpaceListItemResponse[] {
   if (!opsFocus) return beds;
   if (opsFocus === 'OCCUPIED') {
@@ -67,7 +75,7 @@ function filterBedsByOpsFocus(
   if (opsFocus === 'VACANT') {
     return beds.filter((bed) => bed.status === 'AVAILABLE');
   }
-  return beds.filter((bed) => moveInBedIds.has(bed.bedId));
+  return beds.filter((bed) => focusedBedIds.has(bed.bedId));
 }
 
 function opsFocusLabel(
@@ -79,6 +87,9 @@ function opsFocusLabel(
   }
   if (opsFocus === 'VACANT') {
     return t('dashboard.accommodationOperations.vacantBeds');
+  }
+  if (opsFocus === 'PENDING_PAYMENTS') {
+    return t('dashboard.accommodationOperations.pendingPayments');
   }
   return t('dashboard.accommodationOperations.moveInsThisMonth');
 }
@@ -92,7 +103,7 @@ export function RoomInventoryPanel({
   onEditEntity,
   onAddBed,
   opsFocus = null,
-  moveInBedIds,
+  focusedBedIds,
   onClearOpsFocus,
 }: RoomInventoryPanelProps) {
   const { t } = useTranslation();
@@ -102,7 +113,7 @@ export function RoomInventoryPanel({
   const [buildingFilter, setBuildingFilter] = useState('ALL');
   const [floorFilter, setFloorFilter] = useState('ALL');
   const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>('ALL');
-  const resolvedMoveInBedIds = moveInBedIds ?? EMPTY_BED_ID_SET;
+  const resolvedFocusedBedIds = focusedBedIds ?? EMPTY_BED_ID_SET;
 
   const bedsQuery = useSpaceBedSearch({
     spaceId,
@@ -111,8 +122,8 @@ export function RoomInventoryPanel({
   });
 
   const focusedBeds = useMemo(
-    () => filterBedsByOpsFocus(bedsQuery.items, opsFocus, resolvedMoveInBedIds),
-    [bedsQuery.items, opsFocus, resolvedMoveInBedIds],
+    () => filterBedsByOpsFocus(bedsQuery.items, opsFocus, resolvedFocusedBedIds),
+    [bedsQuery.items, opsFocus, resolvedFocusedBedIds],
   );
 
   const roomGroups = useMemo(() => groupBedsByRoom(focusedBeds), [focusedBeds]);

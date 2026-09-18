@@ -18,8 +18,8 @@ type AccommodationOpsWidgetProps = {
   /** 2 = dashboard 2×2 board; 4 = single Rooms strip on md+. */
   columns?: 2 | 4;
   /**
-   * When set (Rooms page), Occupied / Vacant / Move-ins call this instead of navigating.
-   * Pending payments always navigates to Payments. Omit on Dashboard to keep drill-downs.
+   * When set (Rooms page), all four metrics call this instead of navigating Occupied/Vacant/Move-ins/Pending.
+   * Omit on Dashboard to keep existing drill-down navigation (including Pending → Payments).
    */
   onSelectMetric?: (id: AccommodationOpsMetricId) => void;
   /** Highlights the active Rooms ops focus card. */
@@ -103,13 +103,15 @@ export function AccommodationOpsWidget({
             label: t('dashboard.accommodationOperations.pendingPayments'),
             value: operations.pendingPaymentsCount,
             tone: 'warning',
-            selected: false,
+            selected: selectedMetricId === 'pendingPay',
             icon: (
               <IconBadge tone="warning">
                 <IndianRupee />
               </IconBadge>
             ),
-            onClick: () => navigate(spacePaymentsPath(spaceId, undefined, { filter: 'pending' })),
+            onClick: roomsFilterMode
+              ? () => onSelectMetric('pendingPay')
+              : () => navigate(spacePaymentsPath(spaceId, undefined, { filter: 'pending' })),
           },
         ]}
       />
