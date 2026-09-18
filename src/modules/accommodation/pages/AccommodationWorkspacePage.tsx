@@ -24,6 +24,8 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { AccommodationOpsWidget } from '@/modules/dashboard/components/AccommodationOpsWidget';
+import { useSpaceDashboard } from '@/modules/dashboard/hooks/useSpaceDashboard';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
@@ -62,6 +64,13 @@ export function AccommodationWorkspacePage() {
   const permissions = useSpacePermissions(spaceId);
   const spaceType = permissions.space?.spaceType;
   const buildingsQuery = useBuildings(spaceId, permissions.canViewAccommodation);
+  const dashboard = useSpaceDashboard(
+    spaceId,
+    spaceType,
+    Boolean(spaceId && spaceType && permissions.canViewAccommodation),
+  );
+  const canDrillOccupancy =
+    permissions.canViewSpaceOccupancies === true || permissions.canManageOccupancy;
 
   const [selection, setSelection] = useState<TreeSelection | null>(null);
   const [search, setSearch] = useState('');
@@ -340,7 +349,10 @@ export function AccommodationWorkspacePage() {
               </ToggleButtonGroup>
               <Tooltip title={t('common.refresh')}>
                 <IconButton
-                  onClick={() => void buildingsQuery.reload()}
+                  onClick={() => {
+                    void buildingsQuery.reload();
+                    void dashboard.reload();
+                  }}
                   aria-label={t('common.refresh')}
                   size="small"
                 >
@@ -394,67 +406,80 @@ export function AccommodationWorkspacePage() {
             onStartSetup={() => navigate(spaceAccommodationQuickSetupPath(spaceId))}
             onAddManually={() => setFormMode({ kind: 'create', parent: null })}
           />
-        ) : useInventoryLayout ? (
-          <Box sx={{ width: '100%', minHeight: { xs: 480, md: 'calc(100vh - 260px)' } }}>
-            {inventoryPanel}
-          </Box>
         ) : (
-          <Stack spacing={`${DASHBOARD_UX.cardGap}px`} sx={{ width: '100%' }}>
-            <AccommodationPathBar
-              spaceId={spaceId}
-              selection={selection}
-              buildings={buildingsQuery.buildings}
-              onSelect={handleSelect}
-              onEdit={
-                permissions.canManageAccommodation
-                  ? (next) => setFormMode({ kind: 'edit', selection: next })
-                  : undefined
-              }
-            />
-            <Box
-              sx={{
-                display: 'grid',
-                gap: `${DASHBOARD_UX.cardGap}px`,
-                minHeight: { xs: 480, md: 'calc(100vh - 260px)' },
-                gridTemplateColumns: isMdDown
-                  ? '1fr'
-                  : isLgDown
-                    ? 'minmax(0, 1fr) minmax(0, 1fr)'
-                    : 'repeat(3, minmax(0, 1fr))',
-              }}
-            >
-              {isMdDown ? (
-                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                  <Button
-                    size="small"
-                    startIcon={<Settings2 size={14} />}
-                    onClick={() => setTreeDrawerOpen(true)}
-                    sx={dashOutlinedButtonSx}
-                  >
-                    {t('accommodation.workspace.hierarchy')}
-                  </Button>
-                  {selection ? (
-                    <Button
-                      size="small"
-                      onClick={() => setChildrenDrawerOpen(true)}
-                      sx={dashOutlinedButtonSx}
-                    >
-                      {bedLeaf
-                        ? t('accommodation.workspace.details', { defaultValue: 'Details' })
-                        : t('accommodation.workspace.children', { defaultValue: 'Children' })}
-                    </Button>
+          <Stack spacing={`${DASHBOARD_UX.sectionGap}px`} sx={{ width: '100%' }}>
+            {dashboard.accommodationOperations ? (
+              <AccommodationOpsWidget
+                spaceId={spaceId}
+                operations={dashboard.accommodationOperations}
+                canDrillDown={canDrillOccupancy}
+                columns={4}
+              />
+            ) : null}
+
+            {useInventoryLayout ? (
+              <Box sx={{ width: '100%', minHeight: { xs: 480, md: 'calc(100vh - 260px)' } }}>
+                {inventoryPanel}
+              </Box>
+            ) : (
+              <Stack spacing={`${DASHBOARD_UX.cardGap}px`} sx={{ width: '100%' }}>
+                <AccommodationPathBar
+                  spaceId={spaceId}
+                  selection={selection}
+                  buildings={buildingsQuery.buildings}
+                  onSelect={handleSelect}
+                  onEdit={
+                    permissions.canManageAccommodation
+                      ? (next) => setFormMode({ kind: 'edit', selection: next })
+                      : undefined
+                  }
+                />
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gap: `${DASHBOARD_UX.cardGap}px`,
+                    minHeight: { xs: 480, md: 'calc(100vh - 260px)' },
+                    gridTemplateColumns: isMdDown
+                      ? '1fr'
+                      : isLgDown
+                        ? 'minmax(0, 1fr) minmax(0, 1fr)'
+                        : 'repeat(3, minmax(0, 1fr))',
+                  }}
+                >
+                  {isMdDown ? (
+                    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                      <Button
+                        size="small"
+                        startIcon={<Settings2 size={14} />}
+                        onClick={() => setTreeDrawerOpen(true)}
+                        sx={dashOutlinedButtonSx}
+                      >
+                        {t('accommodation.workspace.hierarchy')}
+                      </Button>
+                      {selection ? (
+                        <Button
+                          size="small"
+                          onClick={() => setChildrenDrawerOpen(true)}
+                          sx={dashOutlinedButtonSx}
+                        >
+                          {bedLeaf
+                            ? t('accommodation.workspace.details', { defaultValue: 'Details' })
+                            : t('accommodation.workspace.children', { defaultValue: 'Children' })}
+                        </Button>
+                      ) : null}
+                    </Stack>
+                  ) : (
+                    <Box sx={{ minHeight: 0 }}>{treePane}</Box>
+                  )}
+
+                  <Box sx={{ minHeight: 0, overflow: 'hidden' }}>{centerPane}</Box>
+
+                  {!isLgDown && rightPane ? (
+                    <Box sx={{ minHeight: 0, overflow: 'hidden' }}>{rightPane}</Box>
                   ) : null}
-                </Stack>
-              ) : (
-                <Box sx={{ minHeight: 0 }}>{treePane}</Box>
-              )}
-
-              <Box sx={{ minHeight: 0, overflow: 'hidden' }}>{centerPane}</Box>
-
-              {!isLgDown && rightPane ? (
-                <Box sx={{ minHeight: 0, overflow: 'hidden' }}>{rightPane}</Box>
-              ) : null}
-            </Box>
+                </Box>
+              </Stack>
+            )}
           </Stack>
         )}
       </Stack>

@@ -12,6 +12,8 @@ type AccommodationOpsWidgetProps = {
   spaceId: string;
   operations: DashboardAccommodationOperations;
   canDrillDown: boolean;
+  /** 2 = dashboard 2×2 board; 4 = single Rooms strip on md+. */
+  columns?: 2 | 4;
 };
 
 /** Figma: Property operations board — 2×2 metrics matching Payment Summary. */
@@ -19,6 +21,7 @@ export function AccommodationOpsWidget({
   spaceId,
   operations,
   canDrillDown,
+  columns = 2,
 }: AccommodationOpsWidgetProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -26,7 +29,7 @@ export function AccommodationOpsWidget({
   return (
     <DashboardSection title={t('dashboard.accommodationOperations.title')}>
       <MetricRow
-        columns={2}
+        columns={columns}
         embedded
         minHeight={DASHBOARD_UX.propertyCardMinHeight}
         maxHeight={DASHBOARD_UX.propertyCardMaxHeight}
