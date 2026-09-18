@@ -74,7 +74,7 @@ function splitAddressLine(line: string): { title: string; subtitle: string } {
     .map((p) => p.trim())
     .filter(Boolean);
   if (parts.length <= 1) return { title: line, subtitle: '' };
-  return { title: parts[0], subtitle: parts.slice(1).join(', ') };
+  return { title: parts[0] ?? line, subtitle: parts.slice(1).join(', ') };
 }
 
 function propertyCount(row: SavedAddress): number {

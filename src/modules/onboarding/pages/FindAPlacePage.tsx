@@ -571,13 +571,15 @@ export function FindAPlacePage() {
         anchor="bottom"
         open={filterSheetOpen}
         onClose={() => setFilterSheetOpen(false)}
-        PaperProps={{
-          sx: {
-            maxHeight: '85dvh',
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
-            p: 2.5,
-            bgcolor: '#d6f3e4',
+        slotProps={{
+          paper: {
+            sx: {
+              maxHeight: '85dvh',
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              p: 2.5,
+              bgcolor: '#d6f3e4',
+            },
           },
         }}
       >

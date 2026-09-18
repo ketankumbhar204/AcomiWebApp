@@ -56,7 +56,7 @@ export function MenuLibraryReadyTip({ spaceId, visible }: MenuLibraryReadyTipPro
       }}
     >
       <Stack spacing={1.25} sx={{ width: '100%', pr: 1 }}>
-        <Typography variant="subtitle2" fontWeight={700}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
           {t('meals.library.readyTipTitle')}
         </Typography>
         <Typography variant="body2" color="text.secondary">

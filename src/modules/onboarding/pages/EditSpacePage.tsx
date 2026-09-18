@@ -423,7 +423,7 @@ function EditSpaceForm({
                   value={taxRatePercent}
                   onChange={(e) => setTaxRatePercent(e.target.value)}
                   type="number"
-                  inputProps={{ min: 0, max: 100, step: '0.01' }}
+                  slotProps={{ htmlInput: { min: 0, max: 100, step: '0.01' } }}
                   fullWidth
                   size="small"
                   sx={fieldSx}
@@ -470,7 +470,7 @@ function EditSpaceForm({
               value={billingDueDay}
               onChange={(e) => setBillingDueDay(e.target.value)}
               type="number"
-              inputProps={{ min: 1, max: 28 }}
+              slotProps={{ htmlInput: { min: 1, max: 28 } }}
               helperText={t('spaces.billingSettings.dueDayHelp')}
               fullWidth
               size="small"

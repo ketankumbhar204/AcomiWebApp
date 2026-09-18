@@ -114,8 +114,8 @@ export function RoomInventoryPanel({
         direction={{ xs: 'column', lg: 'row' }}
         spacing={1.25}
         useFlexGap
-        alignItems={{ xs: 'stretch', lg: 'center' }}
         sx={{
+          alignItems: { xs: 'stretch', lg: 'center' },
           p: 1.5,
           borderRadius: 2.5,
           border: `1px solid ${s.border}`,
@@ -154,8 +154,7 @@ export function RoomInventoryPanel({
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1}
           useFlexGap
-          alignItems={{ xs: 'stretch', sm: 'center' }}
-          sx={{ flexWrap: 'wrap' }}
+          sx={{ alignItems: { xs: 'stretch', sm: 'center' }, flexWrap: 'wrap' }}
         >
           <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 140 } }}>
             <InputLabel id="rooms-building-filter">

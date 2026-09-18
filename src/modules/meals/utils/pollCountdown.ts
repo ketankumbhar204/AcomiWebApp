@@ -50,8 +50,21 @@ export function normalizePollCloseAt(value: unknown): string | null {
     return Number.isFinite(date.getTime()) ? date.toISOString() : null;
   }
   if (Array.isArray(value) && value.length >= 5) {
-    const [year, month, day, hour, minute, second = 0] = value.map(Number);
-    if (![year, month, day, hour, minute, second].every(Number.isFinite)) {
+    const nums = value.map(Number);
+    const year = nums[0];
+    const month = nums[1];
+    const day = nums[2];
+    const hour = nums[3];
+    const minute = nums[4];
+    const second = nums[5] ?? 0;
+    if (
+      year === undefined ||
+      month === undefined ||
+      day === undefined ||
+      hour === undefined ||
+      minute === undefined ||
+      ![year, month, day, hour, minute, second].every(Number.isFinite)
+    ) {
       return null;
     }
     return `${year}-${pad2(month)}-${pad2(day)}T${pad2(hour)}:${pad2(minute)}:${pad2(second)}`;

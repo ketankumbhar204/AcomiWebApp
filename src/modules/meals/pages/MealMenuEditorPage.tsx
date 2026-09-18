@@ -68,7 +68,6 @@ import {
   mergeSelectionIntoOptions,
   optionKey,
   optionsFromMenu,
-  plannedSummaryI18nKey,
   reindexMenuOptions,
   toUpsertOptions,
   type MenuDraftOption,
@@ -381,7 +380,6 @@ export function MealMenuEditorPage() {
   const activeCategories = categoriesQuery.categories.filter((c) => c.isActive !== false);
 
   const planned = countPlannedEntries(options);
-  const plannedKey = plannedSummaryI18nKey(planned);
   const mainOptions = useMemo(() => options.filter((o) => o.isExtra !== true), [options]);
   const extraOptions = useMemo(() => options.filter((o) => o.isExtra === true), [options]);
 

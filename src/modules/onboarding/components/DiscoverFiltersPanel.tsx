@@ -162,7 +162,10 @@ function DualRangeSlider({
         max={maxBound}
         step={step}
         onChange={(_, next) => {
-          const [nextMin, nextMax] = next as number[];
+          const range = next as number[];
+          const nextMin = range[0];
+          const nextMax = range[1];
+          if (nextMin === undefined || nextMax === undefined) return;
           onChange(
             nextMin <= minBound ? null : nextMin,
             nextMax >= maxBound ? null : nextMax,

@@ -424,12 +424,14 @@ export function AdminBulkImportPreviewStep({
                 setSearch(e.target.value);
                 setPage(0);
               }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search size={16} />
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search size={16} />
+                    </InputAdornment>
+                  ),
+                },
               }}
               sx={{ minWidth: { sm: 200 }, bgcolor: colors.surface, borderRadius: 2 }}
             />

@@ -181,7 +181,7 @@ function RoomInventoryBedCard({
       }}
     >
       <Stack spacing={1.5}>
-        <Stack direction="row" spacing={1.25} alignItems="flex-start">
+        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'flex-start' }}>
           <Box
             sx={{
               width: 52,
@@ -203,7 +203,7 @@ function RoomInventoryBedCard({
             />
           </Box>
           <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Stack direction="row" spacing={0.5} alignItems="flex-start">
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'flex-start' }}>
               <Box sx={{ minWidth: 0, flex: 1 }}>
                 <Typography
                   sx={{
@@ -579,9 +579,15 @@ export function RoomInventoryCard({
           <Stack
             direction="row"
             spacing={1.25}
-            alignItems="center"
             useFlexGap
-            sx={{ minWidth: 0, flex: '1 1 320px', cursor: 'pointer', flexWrap: 'wrap', rowGap: 1 }}
+            sx={{
+              alignItems: 'center',
+              minWidth: 0,
+              flex: '1 1 320px',
+              cursor: 'pointer',
+              flexWrap: 'wrap',
+              rowGap: 1,
+            }}
             onClick={() => onSelect(roomSelection)}
           >
             <Box
@@ -677,8 +683,7 @@ export function RoomInventoryCard({
               <Stack
                 direction="row"
                 spacing={0.6}
-                alignItems="center"
-                sx={{ color: s.textSecondary, flexShrink: 0 }}
+                sx={{ alignItems: 'center', color: s.textSecondary, flexShrink: 0 }}
               >
                 <Users size={15} strokeWidth={2} />
                 <Typography
@@ -698,7 +703,7 @@ export function RoomInventoryCard({
             ) : null}
           </Stack>
 
-          <Stack direction="row" spacing={0.5} alignItems="center" sx={{ flexShrink: 0 }}>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexShrink: 0 }}>
             {canManage ? (
               <Tooltip title={t('accommodation.rooms.editTitle', { defaultValue: 'Edit Room' })}>
                 <IconButton
