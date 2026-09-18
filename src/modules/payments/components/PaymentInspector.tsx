@@ -47,6 +47,7 @@ import {
   paymentStatusTone,
 } from '../utils/paymentHelpers';
 import { ReceiptPreview } from './ReceiptPreview';
+import { StoredImagePreview } from '@/shared/components/files/StoredImagePreview';
 
 type PaymentInspectorProps = {
   spaceId: string;
@@ -473,20 +474,15 @@ export function PaymentInspector({
 
         <ReceiptPreview payment={payment} />
 
-        {payment.proofUrl ? (
+        {payment.proofUrl || payment.proofFileId ? (
           <InspectorCard title={t('paymentCollection.proof.title')}>
-            <Box
-              component="img"
-              src={payment.proofUrl}
+            <StoredImagePreview
+              fileId={payment.proofFileId}
+              imageUrl={payment.proofUrl}
               alt={t('paymentCollection.proof.title')}
-              sx={{
-                width: '100%',
-                maxHeight: 220,
-                objectFit: 'contain',
-                borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-                border: `1px solid ${s.border}`,
-                bgcolor: s.elevated,
-              }}
+              title={t('paymentCollection.proof.title')}
+              downloadFilename="payment-proof.jpg"
+              maxHeight={220}
             />
           </InspectorCard>
         ) : (

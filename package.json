@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "node scripts/check-otp-registration.mjs && node scripts/check-space-capabilities.mjs",
+    "test": "node scripts/check-otp-registration.mjs && node scripts/check-space-capabilities.mjs && node scripts/check-file-limits.mjs",
     "test:admin-activity": "node scripts/check-admin-activity-destination.mjs",
     "test:i18n": "node scripts/check-locale-coverage.mjs",
     "test:listing-detail": "node scripts/check-listing-location.mjs",

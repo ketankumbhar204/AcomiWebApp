@@ -21,7 +21,21 @@ export interface SpaceEnquiryResponse {
   sharedAt?: string | null;
   detailsShared: boolean;
   requesterEmail: string;
+  clientChannel?: 'WEB' | 'ANDROID' | null;
+  contactDelivery?: 'EMAIL' | 'IN_APP' | null;
+  contactEmailSentAt?: string | null;
+  contactEmailSent?: boolean;
+  ownerContact?: OwnerContactResponse | null;
   reusedExisting?: boolean;
+}
+
+export interface OwnerContactResponse {
+  ownerName?: string | null;
+  mobileNumber?: string | null;
+  alternateMobileNumber?: string | null;
+  additionalMobileNumber?: string | null;
+  email?: string | null;
+  available: boolean;
 }
 
 export interface CreateSpaceEnquiryRequest {
@@ -48,15 +62,6 @@ export interface UserNotificationListResponse {
   size?: number;
   totalElements?: number;
   totalPages?: number;
-}
-
-export interface OwnerContactResponse {
-  ownerName?: string | null;
-  mobileNumber?: string | null;
-  alternateMobileNumber?: string | null;
-  additionalMobileNumber?: string | null;
-  email?: string | null;
-  available: boolean;
 }
 
 export interface AdminSpaceEnquiryListItem {

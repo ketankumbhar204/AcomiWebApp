@@ -1,6 +1,7 @@
 import {
   AppBar,
   Avatar,
+  Badge,
   Box,
   Button,
   Container,
@@ -8,10 +9,12 @@ import {
   Toolbar,
   Typography,
 } from '@mui/material';
-import { Building2, ChefHat, LayoutDashboard, LogOut, MapPin, MessageCircle, Users } from 'lucide-react';
+import { Building2, ChefHat, CreditCard, LayoutDashboard, LogOut, MapPin, MessageCircle, Receipt, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { AdminNotificationBell } from '@/modules/admin/components/AdminNotificationBell';
+import { inquiryCreditsAdminApi } from '@/modules/admin/api/inquiryCreditsAdminApi';
 import { ROUTES } from '@/routes/paths';
 import { useAuthStore } from '@/store/authStore';
 import { useAdminStore } from '@/store/adminStore';
@@ -28,14 +31,24 @@ export function AdminLayout() {
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
   const setAdminMode = useAdminStore((state) => state.setAdminMode);
+  const [pendingCredits, setPendingCredits] = useState(0);
+
+  useEffect(() => {
+    inquiryCreditsAdminApi
+      .getPurchasesSummary()
+      .then((s) => setPendingCredits(s.pendingCount))
+      .catch(() => { /* non-critical */ });
+  }, []);
 
   const navItems = [
-    { to: ROUTES.adminDashboard, label: t('admin.nav.dashboard'), icon: LayoutDashboard },
-    { to: ROUTES.adminEnquiries, label: t('admin.nav.enquiries'), icon: MessageCircle },
-    { to: ROUTES.adminRegisteredUsers, label: t('admin.nav.users'), icon: Users },
-    { to: ROUTES.adminProperties, label: t('admin.nav.properties'), icon: Building2 },
-    { to: ROUTES.adminMess, label: t('admin.nav.mess'), icon: ChefHat },
-    { to: ROUTES.adminSavedAddresses, label: t('admin.nav.addresses'), icon: MapPin },
+    { to: ROUTES.adminDashboard, label: t('admin.nav.dashboard'), icon: LayoutDashboard, badge: 0 },
+    { to: ROUTES.adminEnquiries, label: t('admin.nav.enquiries'), icon: MessageCircle, badge: 0 },
+    { to: ROUTES.adminRegisteredUsers, label: t('admin.nav.users'), icon: Users, badge: 0 },
+    { to: ROUTES.adminProperties, label: t('admin.nav.properties'), icon: Building2, badge: 0 },
+    { to: ROUTES.adminMess, label: t('admin.nav.mess'), icon: ChefHat, badge: 0 },
+    { to: ROUTES.adminSavedAddresses, label: t('admin.nav.addresses'), icon: MapPin, badge: 0 },
+    { to: ROUTES.adminInquiryCredits, label: 'Credits config', icon: CreditCard, badge: 0 },
+    { to: ROUTES.adminInquiryPayments, label: 'Credit payments', icon: Receipt, badge: pendingCredits },
   ];
 
   async function handleLogout() {
@@ -87,31 +100,37 @@ export function AdminLayout() {
               overflowX: 'auto',
               py: 0.5,
             }}>
-            {navItems.map(({ to, label, icon: Icon }) => (
-              <Button
+            {navItems.map(({ to, label, icon: Icon, badge }) => (
+              <Badge
                 key={to}
-                component={NavLink}
-                to={to}
-                startIcon={<Icon size={16} />}
-                end={to === ROUTES.adminDashboard}
-                sx={{
-                  color: 'text.secondary',
-                  fontWeight: 600,
-                  fontSize: 13.5,
-                  flexShrink: 0,
-                  whiteSpace: 'nowrap',
-                  borderRadius: '999px',
-                  px: 1.75,
-                  py: 0.75,
-                  minHeight: 36,
-                  '&.active': {
-                    color: '#15803D',
-                    bgcolor: '#DCFCE7',
-                    '& .MuiButton-startIcon': { color: '#16A34A' },
-                  },
-                }}>
-                {label}
-              </Button>
+                badgeContent={badge || null}
+                color="error"
+                sx={{ '& .MuiBadge-badge': { fontSize: 10, minWidth: 16, height: 16, px: 0.5 } }}
+              >
+                <Button
+                  component={NavLink}
+                  to={to}
+                  startIcon={<Icon size={16} />}
+                  end={to === ROUTES.adminDashboard}
+                  sx={{
+                    color: 'text.secondary',
+                    fontWeight: 600,
+                    fontSize: 13.5,
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap',
+                    borderRadius: '999px',
+                    px: 1.75,
+                    py: 0.75,
+                    minHeight: 36,
+                    '&.active': {
+                      color: '#15803D',
+                      bgcolor: '#DCFCE7',
+                      '& .MuiButton-startIcon': { color: '#16A34A' },
+                    },
+                  }}>
+                  {label}
+                </Button>
+              </Badge>
             ))}
           </Stack>
 

@@ -4,7 +4,7 @@ import { LoadingFallback } from '@/shared/components/LoadingBoundary';
 import { useAuthSession } from '@/shared/hooks/useAuthSession';
 import { authenticatedEntryPath } from '@/shared/utils/authenticatedEntryPath';
 import { returnPathFromLocation } from '@/shared/utils/safeReturnPath';
-import { useAdminStore } from '@/store/adminStore';
+import { isPlatformAdmin } from '@/store/adminStore';
 
 type ProtectedRouteProps = {
   redirectTo?: string;
@@ -29,7 +29,6 @@ export function ProtectedRoute({ redirectTo = ROUTES.login }: ProtectedRouteProp
 /** Redirects authenticated users away from login/register. */
 export function GuestRoute({ redirectTo = ROUTES.root }: { redirectTo?: string }) {
   const { isAuthenticated, isBootstrapping, user } = useAuthSession();
-  const adminMode = useAdminStore((state) => state.adminMode);
   const location = useLocation();
 
   if (isBootstrapping) {
@@ -37,10 +36,14 @@ export function GuestRoute({ redirectTo = ROUTES.root }: { redirectTo?: string }
   }
 
   if (isAuthenticated) {
+    // Platform admins always enter the admin console — never restore a space deep-link.
+    if (isPlatformAdmin(user?.systemRole)) {
+      return <Navigate to={authenticatedEntryPath(user)} replace />;
+    }
     const safeFrom = returnPathFromLocation(location);
     return (
       <Navigate
-        to={safeFrom || authenticatedEntryPath(user, adminMode) || redirectTo}
+        to={safeFrom || authenticatedEntryPath(user) || redirectTo}
         replace
       />
     );

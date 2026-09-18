@@ -31,6 +31,9 @@ import type {
   MealComboResponse,
 } from '@/shared/types/meals';
 import { useMealMutations } from '../hooks/useMeals';
+import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
+import { canEditEntityPhoto } from '@/shared/files/entityPhoto';
+import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import {
   buildItemQuantitiesPayload,
   normalizeComboItemQuantity,
@@ -93,6 +96,8 @@ export function MealComboFormDrawer({
   const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const mutations = useMealMutations(spaceId);
+  const permissions = useSpacePermissions(spaceId);
+  const canEditPhoto = canEditEntityPhoto(permissions.membershipRole);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -261,6 +266,42 @@ export function MealComboFormDrawer({
 
         <Box sx={{ p: `${DASHBOARD_UX.cardPadding}px`, flex: 1, overflow: 'auto' }}>
           <Stack spacing={2}>
+            {isEdit && combo ? (
+              <EntityPhoto
+                spaceId={spaceId}
+                entityId={combo.comboId}
+                kind="combo"
+                fileId={combo.photoFileId}
+                canEdit={canEditPhoto}
+                height={120}
+                title={combo.name}
+                label={t('files.viewerTitle', { defaultValue: 'Photo' })}
+                hint={
+                  canEditPhoto
+                    ? t('files.addHint', {
+                        defaultValue: 'Tap the image or use Add photo to upload.',
+                      })
+                    : undefined
+                }
+                fallback={
+                  <Box
+                    sx={{
+                      height: 120,
+                      display: 'grid',
+                      placeItems: 'center',
+                      bgcolor: s.elevated,
+                      borderRadius: `${DASHBOARD_UX.tileRadius}px`,
+                      color: colors.primaryDark,
+                    }}
+                  >
+                    {(() => {
+                      const Icon = itemIcon(combo.foodType);
+                      return <Icon size={32} />;
+                    })()}
+                  </Box>
+                }
+              />
+            ) : null}
             <TextField
               label={t('meals.library.comboNameLabel')}
               placeholder={t('meals.library.comboNamePlaceholder')}

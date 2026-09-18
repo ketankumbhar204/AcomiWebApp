@@ -111,6 +111,10 @@ function normalizePayment(paymentRaw: Record<string, unknown>): MemberMealActivi
       (paymentRaw.proofImageUrl as string | null | undefined) ??
       (paymentRaw.proof_image_url as string | null | undefined) ??
       null,
+    proofFileId:
+      (paymentRaw.proofFileId as string | null | undefined) ??
+      (paymentRaw.proof_file_id as string | null | undefined) ??
+      null,
     referenceNumber:
       (paymentRaw.referenceNumber as string | null | undefined) ??
       (paymentRaw.reference_number as string | null | undefined) ??

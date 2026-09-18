@@ -48,6 +48,8 @@ export const ROUTES = {
   adminActivity: '/admin/activity',
   adminSavedAddresses: '/admin/saved-addresses',
   adminEnquiries: '/admin/enquiries',
+  adminInquiryCredits: '/admin/inquiry-credits',
+  adminInquiryPayments: '/admin/inquiry-credits/payments',
   myEnquiries: '/my-enquiries',
 } as const;
 

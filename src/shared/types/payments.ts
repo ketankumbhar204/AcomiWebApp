@@ -82,6 +82,7 @@ export type SpacePaymentResponse = {
   /** Legacy alias some clients may still surface */
   status?: string;
   proofUrl?: string | null;
+  proofFileId?: string | null;
   referenceNumber?: string | null;
   remarks?: string | null;
   rejectionReason?: string | null;

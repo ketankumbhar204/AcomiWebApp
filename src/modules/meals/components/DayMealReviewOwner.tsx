@@ -29,6 +29,7 @@ import { SidePanel } from '@/shared/components/SidePanel';
 import { StatusChip, type StatusChipTone } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { StoredImagePreview } from '@/shared/components/files/StoredImagePreview';
 import type { MealHeadcountMember, MealPollPaymentStatus, MealType } from '@/shared/types/meals';
 import { spacePaymentsPath } from '@/routes/paths';
 import { mealsApi } from '../api/mealsApi';
@@ -279,7 +280,7 @@ function DayMealReviewInspector({
           </Box>
         </Box>
 
-        {member.paymentProofImageUrl ? (
+        {member.paymentProofImageUrl || member.paymentProofFileId ? (
           <Box
             sx={{
               p: `${DASHBOARD_UX.metricPadding}px`,
@@ -291,18 +292,13 @@ function DayMealReviewInspector({
             <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary, mb: 1 }}>
               {t('paymentCollection.proof.title', { defaultValue: 'Payment proof' })}
             </Typography>
-            <Box
-              component="img"
-              src={member.paymentProofImageUrl}
+            <StoredImagePreview
+              fileId={member.paymentProofFileId}
+              imageUrl={member.paymentProofImageUrl}
               alt={t('paymentCollection.proof.title', { defaultValue: 'Proof' })}
-              sx={{
-                width: '100%',
-                maxHeight: 220,
-                objectFit: 'contain',
-                borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-                border: `1px solid ${s.border}`,
-                bgcolor: s.elevated,
-              }}
+              title={t('paymentCollection.proof.title', { defaultValue: 'Payment proof' })}
+              downloadFilename="meal-payment-proof.jpg"
+              maxHeight={220}
             />
           </Box>
         ) : null}

@@ -34,6 +34,7 @@ type AccommodationPathBarProps = {
   selection: TreeSelection | null;
   buildings: BuildingResponse[];
   onSelect: (next: TreeSelection) => void;
+  onEdit?: (next: TreeSelection) => void;
 };
 
 /**
@@ -45,6 +46,7 @@ export function AccommodationPathBar({
   selection,
   buildings,
   onSelect,
+  onEdit,
 }: AccommodationPathBarProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -105,10 +107,10 @@ export function AccommodationPathBar({
     });
   }
 
-  if (unitId) {
+  if (unitId && unit) {
     crumbs.push({
       id: 'unit',
-      label: unit?.name ?? t('accommodation.units.title'),
+      label: unit.name,
       icon: <House size={14} />,
       selection: { type: 'unit', buildingId, unitId, floorId },
     });
@@ -171,7 +173,10 @@ export function AccommodationPathBar({
               <ChevronRight size={14} color={s.textMuted} aria-hidden />
             ) : null}
             <ButtonBase
-              onClick={() => onSelect(crumb.selection)}
+              onClick={() => {
+                onSelect(crumb.selection);
+                onEdit?.(crumb.selection);
+              }}
               aria-current={isLast ? 'page' : undefined}
               sx={{
                 display: 'inline-flex',
@@ -180,12 +185,12 @@ export function AccommodationPathBar({
                 px: 1,
                 py: 0.5,
                 borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-                color: isLast ? colors.primaryDark : s.textSecondary,
-                borderBottom: isLast ? `2px solid ${colors.primary}` : '2px solid transparent',
+                color: colors.info,
+                borderBottom: isLast ? `2px solid ${colors.info}` : '2px solid transparent',
                 transition: DASHBOARD_UX.transition,
                 '&:hover': {
-                  bgcolor: theme.palette.mode === 'dark' ? s.elevated : 'rgba(37, 211, 102, 0.08)',
-                  color: colors.primaryDark,
+                  bgcolor: theme.palette.mode === 'dark' ? s.elevated : 'rgba(37, 99, 235, 0.08)',
+                  color: colors.info,
                 },
               }}
             >
@@ -198,6 +203,8 @@ export function AccommodationPathBar({
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   maxWidth: { xs: 140, sm: 'none' },
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '3px',
                 }}
               >
                 {crumb.label}

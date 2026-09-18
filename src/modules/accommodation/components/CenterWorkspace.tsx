@@ -39,6 +39,9 @@ import {
 import { commitBedPricingField } from '../utils/commitBedPricing';
 import type { PricingField } from '../setup-preview/setupPricingAutofill';
 import { LayoutIllustration } from '../illustrations/LayoutIllustration';
+import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
+import type { EntityPhotoKind } from '@/shared/files/entityPhoto';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   getBedIllustration,
   getFloorIllustration,
@@ -165,6 +168,7 @@ export function CenterWorkspace({
   const theme = useTheme();
   const surfaces = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
   const mutations = useAccommodationMutations(spaceId);
   const [bulkOpen, setBulkOpen] = useState(false);
   const buildingId = selection && 'buildingId' in selection ? selection.buildingId : undefined;
@@ -211,6 +215,41 @@ export function CenterWorkspace({
     buildingId,
     selection?.type === 'unit' ? selection.floorId : undefined,
     selection?.type === 'unit' && Boolean(selection.floorId),
+  );
+
+  const refreshPhotos = () => {
+    void queryClient.invalidateQueries({ queryKey: ['building', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['floor', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['unit', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['building-summary', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['buildings', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['floors', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['units', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['rooms', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['beds', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['room', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['bed', spaceId] });
+  };
+
+  const wrapPhoto = (
+    kind: EntityPhotoKind,
+    entityId: string,
+    fileId: string | null | undefined,
+    title: string,
+    fallback: ReactNode,
+    height: number,
+  ) => (
+    <EntityPhoto
+      spaceId={spaceId}
+      entityId={entityId}
+      kind={kind}
+      fileId={fileId}
+      canEdit={canDeactivate}
+      title={title}
+      height={height}
+      onChanged={refreshPhotos}
+      fallback={fallback}
+    />
   );
 
   if (!selection) {
@@ -398,14 +437,19 @@ export function CenterWorkspace({
                               floor.name,
                               { isInactive: floor.active === false },
                             )}
-                            illustration={
+                            illustration={wrapPhoto(
+                              'floor',
+                              floor.floorId,
+                              floor.photoFileId,
+                              floor.name,
                               <LayoutIllustration
                                 src={getFloorIllustration(layoutMode)}
                                 size="floor"
                                 wide={corridorFloors}
                                 alt=""
-                              />
-                            }
+                              />,
+                              corridorFloors ? 72 : 120,
+                            )}
                             onClick={() =>
                               onSelect({
                                 type: 'floor',
@@ -507,13 +551,18 @@ export function CenterWorkspace({
                               occupied: occ,
                               total: unit.bedCount,
                             })}
-                            illustration={
+                            illustration={wrapPhoto(
+                              'unit',
+                              unit.unitId,
+                              unit.photoFileId,
+                              unit.name,
                               <LayoutIllustration
                                 src={getUnitIllustration(unit.roomCount, unit.bedCount)}
                                 size="unit"
                                 alt=""
-                              />
-                            }
+                              />,
+                              110,
+                            )}
                             trailing={<StatusChip label={t(`accommodation.status.${unit.status}`)} />}
                             menu={entityMenu(
                               {
@@ -660,13 +709,18 @@ export function CenterWorkspace({
                           occupied: occ,
                           total: unit.bedCount,
                         })}
-                        illustration={
+                        illustration={wrapPhoto(
+                          'unit',
+                          unit.unitId,
+                          unit.photoFileId,
+                          unit.name,
                           <LayoutIllustration
                             src={getUnitIllustration(unit.roomCount, unit.bedCount)}
                             size="unit"
                             alt=""
-                          />
-                        }
+                          />,
+                          110,
+                        )}
                         menu={entityMenu(
                           {
                             type: 'unit',
@@ -775,13 +829,18 @@ export function CenterWorkspace({
                           occupied: occ,
                           total: room.bedCount,
                         })}
-                        illustration={
+                        illustration={wrapPhoto(
+                          'room',
+                          room.roomId,
+                          room.photoFileId,
+                          room.name,
                           <LayoutIllustration
                             src={getRoomIllustration(Math.max(room.bedCount, 1))}
                             size="room"
                             alt=""
-                          />
-                        }
+                          />,
+                          120,
+                        )}
                         menu={entityMenu(
                           {
                             type: 'room',
@@ -950,13 +1009,18 @@ export function CenterWorkspace({
                             occupied: occ,
                             total: room.bedCount,
                           })}
-                          illustration={
+                          illustration={wrapPhoto(
+                            'room',
+                            room.roomId,
+                            room.photoFileId,
+                            room.name,
                             <LayoutIllustration
                               src={getRoomIllustration(Math.max(room.bedCount, 1))}
                               size="room"
                               alt=""
-                            />
-                          }
+                            />,
+                            120,
+                          )}
                           menu={entityMenu(
                             {
                               type: 'room',
@@ -1177,9 +1241,14 @@ export function CenterWorkspace({
                           total={1}
                           occupancyLabel={t(`accommodation.status.${bed.status}`)}
                           selected={selection.type === 'bed' && selection.bedId === bed.bedId}
-                          illustration={
-                            <LayoutIllustration src={getBedIllustration(bed.status)} size="bed" alt="" />
-                          }
+                          illustration={wrapPhoto(
+                            'bed',
+                            bed.bedId,
+                            bed.photoFileId,
+                            formatBedDisplayLabel(bed.label, t),
+                            <LayoutIllustration src={getBedIllustration(bed.status)} size="bed" alt="" />,
+                            96,
+                          )}
                           trailing={<StatusChip label={t(`accommodation.status.${bed.status}`)} />}
                           footer={
                             <BedCardPricingFields

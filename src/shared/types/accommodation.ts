@@ -70,6 +70,7 @@ export type BuildingResponse = {
   createdAt: string;
   updatedAt?: string;
   actions?: AccommodationActionMetadata;
+  photoFileId?: string | null;
 };
 
 export type BuildingSummaryResponse = {
@@ -92,6 +93,7 @@ export type BuildingSummaryResponse = {
   blocked?: number;
   active?: boolean;
   actions?: AccommodationActionMetadata;
+  photoFileId?: string | null;
 };
 
 export type FloorResponse = {
@@ -104,6 +106,7 @@ export type FloorResponse = {
   createdAt: string;
   updatedAt?: string;
   actions?: AccommodationActionMetadata;
+  photoFileId?: string | null;
 };
 
 export type FloorListItemResponse = {
@@ -114,6 +117,7 @@ export type FloorListItemResponse = {
   available: number;
   occupied: number;
   active?: boolean;
+  photoFileId?: string | null;
 };
 
 export type UnitResponse = {
@@ -131,6 +135,7 @@ export type UnitResponse = {
   defaultRent?: number | null;
   defaultDeposit?: number | null;
   actions?: AccommodationActionMetadata;
+  photoFileId?: string | null;
 };
 
 export type UnitListItemResponse = {
@@ -144,6 +149,7 @@ export type UnitListItemResponse = {
   synthetic?: boolean;
   unitKind?: UnitKind | null;
   active?: boolean;
+  photoFileId?: string | null;
 };
 
 export type RoomResponse = {
@@ -162,6 +168,7 @@ export type RoomResponse = {
   defaultRent?: number | null;
   defaultDeposit?: number | null;
   actions?: AccommodationActionMetadata;
+  photoFileId?: string | null;
 };
 
 export type RoomListItemResponse = {
@@ -172,6 +179,7 @@ export type RoomListItemResponse = {
   availableBeds: number;
   occupiedBeds: number;
   active?: boolean;
+  photoFileId?: string | null;
 };
 
 export type BedOccupantSummary = {
@@ -194,6 +202,7 @@ export type BedResponse = {
   defaultDeposit?: number | null;
   actions?: AccommodationActionMetadata;
   occupant?: BedOccupantSummary | null;
+  photoFileId?: string | null;
 };
 
 export type BedListItemResponse = {
@@ -203,6 +212,7 @@ export type BedListItemResponse = {
   active?: boolean;
   defaultRent?: number | null;
   defaultDeposit?: number | null;
+  photoFileId?: string | null;
 };
 
 export type BedSpaceListItemResponse = {

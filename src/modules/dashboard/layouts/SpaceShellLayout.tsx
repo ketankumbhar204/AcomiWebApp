@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLayout } from '@/layouts/AppLayout';
 import type { AppNavSection } from '@/layouts/navTypes';
 import { useLogout } from '@/modules/auth/hooks/useLogout';
@@ -47,6 +47,8 @@ import {
 } from '@/routes/paths';
 import { canManageNotifications } from '@/shared/utils/spaceOperator';
 import { canRaiseComplaint } from '@/modules/complaints/utils/complaintHelpers';
+import { isPlatformAdmin } from '@/store/adminStore';
+import { useSpaceStore } from '@/store/spaceStore';
 
 export function SpaceShellLayout() {
   const { t } = useTranslation();
@@ -54,6 +56,8 @@ export function SpaceShellLayout() {
   const navigate = useNavigate();
   const logout = useLogout();
   const { user } = useAuthSession();
+  const mySpaces = useSpaceStore((state) => state.mySpaces);
+  const spacesBootstrapped = useSpaceStore((state) => state.bootstrapped);
   const permissions = useSpacePermissions(spaceId);
   const isOperator = canManageNotifications(permissions);
   const { getCapability } = useSpaceProgressiveAccess(isOperator ? spaceId : null);
@@ -73,6 +77,11 @@ export function SpaceShellLayout() {
     location.pathname === `/spaces/${spaceId}` ||
     location.pathname === `/spaces/${spaceId}/`;
 
+  const adminRedirectToConsole =
+    spacesBootstrapped &&
+    isPlatformAdmin(user?.systemRole) &&
+    Boolean(spaceId) &&
+    !mySpaces.some((s) => s.spaceId === spaceId);
   const navSections: AppNavSection[] = useMemo(() => {
     // Customer / tenant chrome — matches approved consumer mock.
     if (isConsumer && !isOperator) {
@@ -328,6 +337,11 @@ export function SpaceShellLayout() {
   // Dashboard + My Orders + meal poll + menu editor own their page padding; other pages use ContentLayout.
   const useFullBleedContent =
     isDashboardRoute || isCustomerMealsHome || isMealPollPage || isMealMenuEditorPage;
+
+  // Platform admins who are not members of this space belong in /admin, not the owner shell.
+  if (adminRedirectToConsole) {
+    return <Navigate to={ROUTES.adminDashboard} replace />;
+  }
 
   return (
     <AppLayout

@@ -12,9 +12,13 @@ import {
   useTheme,
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type { UniversalPaymentMethod } from '@/shared/types/payments';
+import { FileImageViewer } from '@/shared/components/files/FileImageViewer';
+import { FileUploadUserError } from '@/shared/utils/fileLimits';
+import { prepareFileForUpload } from '@/shared/utils/optimizeImageFile';
 import {
   EMPTY_PAYMENT_PROOF,
   UNIVERSAL_PAYMENT_METHODS,
@@ -47,6 +51,8 @@ export function UniversalPaymentProofForm({
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const payload = { ...EMPTY_PAYMENT_PROOF, ...value };
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [pickError, setPickError] = useState<string | null>(null);
   const method = payload.paymentMethod ?? 'UPI';
   const hasProof = Boolean(
     payload.localFile || payload.proofFileId?.trim() || payload.proofImageBase64?.trim(),
@@ -76,13 +82,25 @@ export function UniversalPaymentProofForm({
       clearProof();
       return;
     }
-    revokePreview(payload.previewUrl);
-    patch({
-      localFile: file,
-      previewUrl: URL.createObjectURL(file),
-      proofImageBase64: undefined,
-      proofFileId: undefined,
-    });
+    void (async () => {
+      try {
+        const prepared = await prepareFileForUpload(file, 'PAYMENT_PROOF');
+        revokePreview(payload.previewUrl);
+        setPickError(null);
+        patch({
+          localFile: prepared,
+          previewUrl: URL.createObjectURL(prepared),
+          proofImageBase64: undefined,
+          proofFileId: undefined,
+        });
+      } catch (error) {
+        setPickError(
+          error instanceof FileUploadUserError
+            ? error.message
+            : t('files.uploadFailed', { defaultValue: 'Unable to upload the file. Please try again.' }),
+        );
+      }
+    })();
   };
 
   return (
@@ -98,6 +116,7 @@ export function UniversalPaymentProofForm({
           component="img"
           src={previewSrc}
           alt={t('paymentCollection.proof.selected')}
+          onClick={() => setViewerOpen(true)}
           sx={{
             width: '100%',
             maxHeight: 180,
@@ -105,8 +124,12 @@ export function UniversalPaymentProofForm({
             borderRadius: 1.5,
             border: `1px solid ${s.border}`,
             bgcolor: s.elevated,
+            cursor: 'zoom-in',
           }}
         />
+      ) : null}
+      {pickError ? (
+        <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: 'error.main' }}>{pickError}</Typography>
       ) : null}
 
       <Button
@@ -120,7 +143,7 @@ export function UniversalPaymentProofForm({
           : t('paymentCollection.proof.uploadScreenshot')}
         <input
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           hidden
           onChange={(e) => {
             const file = e.target.files?.[0] ?? null;
@@ -214,6 +237,14 @@ export function UniversalPaymentProofForm({
         minRows={2}
         size="small"
         disabled={disabled}
+      />
+      <FileImageViewer
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        fileId={payload.proofFileId}
+        imageUrl={previewSrc}
+        title={t('paymentCollection.proof.title', { defaultValue: 'Payment proof' })}
+        downloadFilename="payment-proof.jpg"
       />
     </Stack>
   );

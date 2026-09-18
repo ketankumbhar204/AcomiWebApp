@@ -10,7 +10,16 @@ export type FilePurpose =
   | 'PAYMENT_PROOF'
   | 'MEAL_PAYMENT_PROOF'
   | 'SUBSCRIPTION_PAYMENT_PROOF'
-  | 'COMPLAINT_ATTACHMENT';
+  | 'COMPLAINT_ATTACHMENT'
+  | 'BUILDING_PHOTO'
+  | 'FLOOR_PHOTO'
+  | 'UNIT_PHOTO'
+  | 'ROOM_PHOTO'
+  | 'BED_PHOTO'
+  | 'MENU_ITEM_PHOTO'
+  | 'COMBO_PHOTO'
+  | 'SPACE_PHOTO'
+  | 'INQUIRY_PAYMENT_QR';
 
 export type FileStatus = 'PENDING' | 'ACTIVE' | 'PENDING_DELETE' | 'DELETED' | 'FAILED';
 
@@ -50,6 +59,8 @@ export type ContentUrlResponse = {
   fileId: string;
   contentUrl: string;
   contentType: string;
+  originalFilename?: string | null;
+  downloadFilename?: string | null;
   expiresAt: string;
 };
 

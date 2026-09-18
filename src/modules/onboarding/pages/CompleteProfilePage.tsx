@@ -28,7 +28,11 @@ import { useNavigate, useSearchParams, Link as RouterLink } from 'react-router-d
 import { useSnackbar } from 'notistack';
 import { OnboardingLayout } from '@/layouts/OnboardingLayout';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
-import { uploadLocalFile } from '@/shared/services/fileUploadService';
+import { uploadLocalFile, mapFileUploadError } from '@/shared/services/fileUploadService';
+import { ImageFilePickerField } from '@/shared/components/files/ImageFilePickerField';
+import { FileImageViewer } from '@/shared/components/files/FileImageViewer';
+import { FileUploadUserError } from '@/shared/utils/fileLimits';
+import { prepareFileForUpload } from '@/shared/utils/optimizeImageFile';
 import { useCompleteProfile } from '@/modules/onboarding/hooks/useCompleteProfile';
 import {
   isGenericUserName,
@@ -57,7 +61,6 @@ const DOCUMENT_TYPES: MemberDocumentType[] = [
   'OTHER',
 ];
 const RELATIONS = ['Mother', 'Father', 'Spouse', 'Sibling', 'Guardian', 'Friend', 'Other'] as const;
-const PHOTO_MAX_BYTES = 2 * 1024 * 1024;
 
 function httpUrlOrNull(value: string): string | null {
   const trimmed = value.trim();
@@ -483,6 +486,8 @@ export function CompleteProfilePage() {
   const [email, setEmail] = useState(user?.email ?? '');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(user?.profilePhotoUrl ?? '');
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const [removeProfilePhoto, setRemoveProfilePhoto] = useState(false);
+  const [profileViewerOpen, setProfileViewerOpen] = useState(false);
   const [permanentAddress, setPermanentAddress] = useState(user?.permanentAddress ?? '');
   const [city, setCity] = useState(user?.city ?? '');
   const [stateName, setStateName] = useState(user?.state ?? '');
@@ -495,6 +500,9 @@ export function CompleteProfilePage() {
   const [addressProofFileUrl, setAddressProofFileUrl] = useState('');
   const [identityProofFileUrl, setIdentityProofFileUrl] = useState('');
   const [additionalDocumentFileUrl, setAdditionalDocumentFileUrl] = useState('');
+  const [identityProofFile, setIdentityProofFile] = useState<File | null>(null);
+  const [addressProofFile, setAddressProofFile] = useState<File | null>(null);
+  const [additionalDocumentFile, setAdditionalDocumentFile] = useState<File | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -510,6 +518,7 @@ export function CompleteProfilePage() {
     setEmail(current.email ?? '');
     setProfilePhotoUrl(current.profilePhotoUrl ?? '');
     setProfilePhotoFile(null);
+    setRemoveProfilePhoto(false);
     setPermanentAddress(current.permanentAddress ?? '');
     setCity(current.city ?? '');
     setStateName(current.state ?? '');
@@ -563,10 +572,30 @@ export function CompleteProfilePage() {
     if (profilePhotoFile) {
       try {
         profilePhotoFileId = await uploadLocalFile(profilePhotoFile, { purpose: 'PROFILE_PHOTO' });
-      } catch {
-        setFieldError(t('profileCompletion.errors.submitFailed', { defaultValue: 'Upload failed.' }));
+      } catch (err) {
+        setFieldError(mapFileUploadError(err));
         return;
       }
+    }
+
+    let identityProofFileId: string | undefined;
+    let addressProofFileId: string | undefined;
+    let additionalDocumentFileId: string | undefined;
+    try {
+      if (identityProofFile) {
+        identityProofFileId = await uploadLocalFile(identityProofFile, { purpose: 'IDENTITY_DOCUMENT' });
+      }
+      if (addressProofFile) {
+        addressProofFileId = await uploadLocalFile(addressProofFile, { purpose: 'ADDRESS_PROOF' });
+      }
+      if (additionalDocumentFile) {
+        additionalDocumentFileId = await uploadLocalFile(additionalDocumentFile, {
+          purpose: 'MEMBER_DOCUMENT',
+        });
+      }
+    } catch (err) {
+      setFieldError(mapFileUploadError(err));
+      return;
     }
 
     const ok = await completeProfile({
@@ -575,6 +604,7 @@ export function CompleteProfilePage() {
       dateOfBirth: toIsoDate(dateOfBirth) || null,
       email: email.trim() || null,
       profilePhotoFileId: profilePhotoFileId ?? undefined,
+      profilePhotoUrl: removeProfilePhoto && !profilePhotoFile ? '' : undefined,
       permanentAddress: permanentAddress.trim(),
       city: city.trim(),
       state: stateName.trim(),
@@ -587,6 +617,9 @@ export function CompleteProfilePage() {
       addressProofFileUrl: httpUrlOrNull(addressProofFileUrl),
       identityProofFileUrl: httpUrlOrNull(identityProofFileUrl),
       additionalDocumentFileUrl: httpUrlOrNull(additionalDocumentFileUrl),
+      identityProofFileId,
+      addressProofFileId,
+      additionalDocumentFileId,
     });
 
     if (!ok) return;
@@ -613,18 +646,24 @@ export function CompleteProfilePage() {
     }
   };
 
-  const onPickPhoto = (file: File | undefined) => {
+  const onPickPhoto = async (file: File | undefined) => {
     if (!file) return;
-    if (file.size > PHOTO_MAX_BYTES) {
-      setFieldError(t('profileCompletion.errors.photoTooLarge'));
-      return;
+    try {
+      const prepared = await prepareFileForUpload(file, 'PROFILE_PHOTO');
+      if (profilePhotoUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(profilePhotoUrl);
+      }
+      setProfilePhotoFile(prepared);
+      setProfilePhotoUrl(URL.createObjectURL(prepared));
+      setRemoveProfilePhoto(false);
+      setFieldError(null);
+    } catch (error) {
+      if (error instanceof FileUploadUserError) {
+        setFieldError(error.message);
+      } else {
+        setFieldError(t('files.uploadFailed', { defaultValue: 'Unable to upload the file. Please try again.' }));
+      }
     }
-    if (profilePhotoUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(profilePhotoUrl);
-    }
-    setProfilePhotoFile(file);
-    setProfilePhotoUrl(URL.createObjectURL(file));
-    setFieldError(null);
   };
 
   const stepTitle = t(`profileCompletion.wizard.sections.${STEPS[stepIndex]}`);
@@ -771,14 +810,11 @@ export function CompleteProfilePage() {
                 accept="image/jpeg,image/png,image/webp"
                 hidden
                 onChange={(event) => {
-                  onPickPhoto(event.target.files?.[0]);
+                  void onPickPhoto(event.target.files?.[0]);
                   event.target.value = '';
                 }}
               />
               <Box
-                component="button"
-                type="button"
-                onClick={() => photoInputRef.current?.click()}
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
@@ -790,11 +826,16 @@ export function CompleteProfilePage() {
                   bgcolor: s.surface,
                   p: 2,
                   minHeight: 88,
-                  cursor: 'pointer',
-                  '&:hover': { borderColor: colors.primary, bgcolor: colors.mintSubtle },
                 }}
               >
                 <Box
+                  onClick={() => {
+                    if (profilePhotoUrl) {
+                      setProfileViewerOpen(true);
+                    } else {
+                      photoInputRef.current?.click();
+                    }
+                  }}
                   sx={{
                     width: 56,
                     height: 56,
@@ -805,6 +846,7 @@ export function CompleteProfilePage() {
                     placeItems: 'center',
                     flexShrink: 0,
                     overflow: 'hidden',
+                    cursor: 'pointer',
                   }}
                 >
                   {profilePhotoUrl ? (
@@ -818,7 +860,7 @@ export function CompleteProfilePage() {
                     <ImageIcon size={26} />
                   )}
                 </Box>
-                <Box>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
                     {profilePhotoUrl
                       ? t('profileCompletion.wizard.replacePhoto')
@@ -827,8 +869,52 @@ export function CompleteProfilePage() {
                   <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted }}>
                     {t('profileCompletion.fields.photoHint')}
                   </Typography>
+                  <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mt: 1 }}>
+                    <Button
+                      size="small"
+                      onClick={() => photoInputRef.current?.click()}
+                      sx={dashOutlinedButtonSx}
+                    >
+                      {profilePhotoUrl
+                        ? t('files.replace', { defaultValue: 'Replace photo' })
+                        : t('files.add', { defaultValue: 'Add photo' })}
+                    </Button>
+                    {profilePhotoUrl ? (
+                      <Button
+                        size="small"
+                        onClick={() => setProfileViewerOpen(true)}
+                        sx={dashOutlinedButtonSx}
+                      >
+                        {t('files.view', { defaultValue: 'View photo' })}
+                      </Button>
+                    ) : null}
+                    {profilePhotoUrl ? (
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          if (profilePhotoUrl.startsWith('blob:')) {
+                            URL.revokeObjectURL(profilePhotoUrl);
+                          }
+                          setProfilePhotoFile(null);
+                          setProfilePhotoUrl('');
+                          setRemoveProfilePhoto(true);
+                        }}
+                        sx={dashOutlinedButtonSx}
+                      >
+                        {t('files.remove', { defaultValue: 'Remove photo' })}
+                      </Button>
+                    ) : null}
+                  </Stack>
                 </Box>
               </Box>
+              <FileImageViewer
+                open={profileViewerOpen}
+                onClose={() => setProfileViewerOpen(false)}
+                fileId={profilePhotoFile ? undefined : user?.profilePhotoFileId}
+                imageUrl={profilePhotoUrl || undefined}
+                title={t('profileCompletion.fields.profilePhoto')}
+                downloadFilename="profile-photo.jpg"
+              />
             </Stack>
           ) : null}
 
@@ -951,27 +1037,56 @@ export function CompleteProfilePage() {
                   placeholder={t('profileCompletion.fields.documentNumberPlaceholder')}
                   icon={<FileText size={16} />}
                 />
-                <IconField
-                  label={t('profileCompletion.fields.identityProof')}
-                  value={identityProofFileUrl}
-                  onChange={setIdentityProofFileUrl}
-                  placeholder={t('profileCompletion.fields.identityProofPlaceholder')}
-                  icon={<FileText size={16} />}
-                />
-                <IconField
-                  label={t('profileCompletion.fields.addressProof')}
-                  value={addressProofFileUrl}
-                  onChange={setAddressProofFileUrl}
-                  placeholder={t('profileCompletion.fields.addressProofPlaceholder')}
-                  icon={<FileText size={16} />}
-                />
                 <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
-                  <IconField
+                  <ImageFilePickerField
+                    purpose="IDENTITY_DOCUMENT"
+                    label={t('profileCompletion.fields.identityProof')}
+                    hint={t('files.sizeHint', {
+                      defaultValue: 'JPEG, PNG, or WebP. Maximum {{maxMb}} MB after compression.',
+                      maxMb: 5,
+                    })}
+                    file={identityProofFile}
+                    previewUrl={identityProofFileUrl || undefined}
+                    onFile={(next) => {
+                      setIdentityProofFile(next);
+                      if (!next) {
+                        setIdentityProofFileUrl('');
+                      }
+                    }}
+                    onError={setFieldError}
+                    disabled={isSubmitting}
+                  />
+                </Box>
+                <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
+                  <ImageFilePickerField
+                    purpose="ADDRESS_PROOF"
+                    label={t('profileCompletion.fields.addressProof')}
+                    file={addressProofFile}
+                    previewUrl={addressProofFileUrl || undefined}
+                    onFile={(next) => {
+                      setAddressProofFile(next);
+                      if (!next) {
+                        setAddressProofFileUrl('');
+                      }
+                    }}
+                    onError={setFieldError}
+                    disabled={isSubmitting}
+                  />
+                </Box>
+                <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
+                  <ImageFilePickerField
+                    purpose="MEMBER_DOCUMENT"
                     label={t('profileCompletion.fields.additionalDocument')}
-                    value={additionalDocumentFileUrl}
-                    onChange={setAdditionalDocumentFileUrl}
-                    placeholder={t('profileCompletion.fields.additionalDocumentPlaceholder')}
-                    icon={<FileText size={16} />}
+                    file={additionalDocumentFile}
+                    previewUrl={additionalDocumentFileUrl || undefined}
+                    onFile={(next) => {
+                      setAdditionalDocumentFile(next);
+                      if (!next) {
+                        setAdditionalDocumentFileUrl('');
+                      }
+                    }}
+                    onError={setFieldError}
+                    disabled={isSubmitting}
                   />
                 </Box>
               </Box>

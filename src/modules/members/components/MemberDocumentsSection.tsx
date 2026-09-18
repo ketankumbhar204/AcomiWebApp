@@ -24,6 +24,9 @@ import type { MemberDocumentType } from '@/shared/types/member';
 import { PENDING_UPLOAD_FILE_URL } from '../api/memberApi';
 import { useMemberDocuments } from '../hooks/useMemberDetailData';
 import { useMemberMutations } from '../hooks/useMembers';
+import { StoredImagePreview } from '@/shared/components/files/StoredImagePreview';
+import { FileUploadUserError } from '@/shared/utils/fileLimits';
+import { prepareFileForUpload } from '@/shared/utils/optimizeImageFile';
 
 const DOCUMENT_TYPES: MemberDocumentType[] = [
   'AADHAAR',
@@ -181,9 +184,19 @@ export function MemberDocumentsSection({
                 value={
                   isPendingFileUrl(doc.fileUrl)
                     ? t('membership.documents.pendingUpload')
-                    : doc.fileUrl
+                    : t('files.attached', { defaultValue: 'Attached' })
                 }
               />
+              {!isPendingFileUrl(doc.fileUrl) || doc.fileId ? (
+                <StoredImagePreview
+                  fileId={doc.fileId}
+                  imageUrl={isPendingFileUrl(doc.fileUrl) ? undefined : doc.fileUrl}
+                  alt={t('membership.documents.fileLabel')}
+                  title={t(`membership.documents.types.${doc.documentType}`)}
+                  downloadFilename="member-document.jpg"
+                  maxHeight={160}
+                />
+              ) : null}
               {canEdit ? (
                 <Button
                   size="small"
@@ -256,8 +269,31 @@ export function MemberDocumentsSection({
                 accept="image/jpeg,image/png,image/webp"
                 hidden
                 onChange={(e) => {
-                  setDocumentFile(e.target.files?.[0] ?? null);
+                  const selected = e.target.files?.[0] ?? null;
                   e.target.value = '';
+                  if (!selected) {
+                    setDocumentFile(null);
+                    return;
+                  }
+                  void (async () => {
+                    try {
+                      const prepared = await prepareFileForUpload(
+                        selected,
+                        documentType === 'OTHER' ? 'MEMBER_DOCUMENT' : 'IDENTITY_DOCUMENT',
+                      );
+                      setDocumentFile(prepared);
+                      setFormError(null);
+                    } catch (error) {
+                      setDocumentFile(null);
+                      setFormError(
+                        error instanceof FileUploadUserError
+                          ? error.message
+                          : t('files.uploadFailed', {
+                              defaultValue: 'Unable to upload the file. Please try again.',
+                            }),
+                      );
+                    }
+                  })();
                 }}
               />
             </Button>

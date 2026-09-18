@@ -15,11 +15,14 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
+import { useQueryClient } from '@tanstack/react-query';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StickyFooter } from '@/shared/components/StickyFooter';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
+import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
+import { canEditEntityPhoto, type EntityPhotoKind } from '@/shared/files/entityPhoto';
 import type {
   AccommodationStatus,
   PropertyLayoutMode,
@@ -38,6 +41,15 @@ import { accommodationApi } from '../api/accommodationApi';
 import { useAccommodationMutations, useBuildings } from '../hooks/useAccommodation';
 import type { TreeSelection } from './HierarchyTree';
 import { PropertyLayoutModePicker } from '../illustrations/PropertyLayoutModePicker';
+import { LayoutIllustration } from '../illustrations/LayoutIllustration';
+import {
+  getBedIllustration,
+  getBuildingIllustration,
+  getFloorIllustration,
+  getRoomIllustration,
+  getUnitIllustration,
+  isWideFloorIllustration,
+} from '../illustrations/illustrationAssets';
 
 export type EntityFormMode =
   | { kind: 'create'; parent: TreeSelection | null }
@@ -69,6 +81,21 @@ const fieldSx = {
     bgcolor: 'background.paper',
   },
 } as const;
+
+function photoEntityId(selection: TreeSelection): string {
+  switch (selection.type) {
+    case 'building':
+      return selection.buildingId;
+    case 'floor':
+      return selection.floorId;
+    case 'unit':
+      return selection.unitId;
+    case 'room':
+      return selection.roomId;
+    case 'bed':
+      return selection.bedId;
+  }
+}
 
 function childEntityType(
   parent: TreeSelection | null,
@@ -120,9 +147,11 @@ function EntityFormBody({
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
   const mutations = useAccommodationMutations(spaceId);
   const permissions = useSpacePermissions(spaceId);
   const spaceName = permissions.space?.spaceName ?? '';
+  const canEditPhoto = canEditEntityPhoto(permissions.membershipRole);
 
   const createParent = mode.kind === 'create' ? mode.parent : null;
   const editSelection = mode.kind === 'edit' ? mode.selection : null;
@@ -157,6 +186,48 @@ function EntityFormBody({
   const [defaultRent, setDefaultRent] = useState('');
   const [defaultDeposit, setDefaultDeposit] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [photoFileId, setPhotoFileId] = useState<string | null>(null);
+
+  const refreshPhotos = (nextFileId: string | null) => {
+    setPhotoFileId(nextFileId);
+    void queryClient.invalidateQueries({ queryKey: ['building', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['floor', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['unit', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['building-summary', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['buildings', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['floors', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['units', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['rooms', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['beds', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['room', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['bed', spaceId] });
+  };
+
+  const photoKind: EntityPhotoKind | null =
+    mode.kind === 'edit' ? (entityType as EntityPhotoKind) : null;
+  const photoId = editSelection ? photoEntityId(editSelection) : null;
+
+  const photoFallback =
+    entityType === 'building' ? (
+      <LayoutIllustration src={getBuildingIllustration()} size="building" alt="" />
+    ) : entityType === 'floor' ? (
+      <LayoutIllustration
+        src={getFloorIllustration(layoutMode)}
+        size="floor"
+        wide={isWideFloorIllustration(layoutMode)}
+        alt=""
+      />
+    ) : entityType === 'unit' ? (
+      <LayoutIllustration src={getUnitIllustration(0, 0)} size="unit" alt="" />
+    ) : entityType === 'room' ? (
+      <LayoutIllustration
+        src={getRoomIllustration(Math.max(Number.parseInt(capacity, 10) || 1, 1))}
+        size="room"
+        alt=""
+      />
+    ) : (
+      <LayoutIllustration src={getBedIllustration(status)} size="bed" alt="" />
+    );
 
   useEffect(() => {
     if (
@@ -183,6 +254,7 @@ function EntityFormBody({
 
     void (async () => {
       try {
+        setPhotoFileId(null);
         if (editSelection.type === 'building') {
           const building = await accommodationApi.getBuilding(spaceId, editSelection.buildingId);
           if (cancelled) return;
@@ -191,11 +263,13 @@ function EntityFormBody({
           if (building.layoutMode) {
             setLayoutMode(building.layoutMode);
           }
+          setPhotoFileId(building.photoFileId ?? null);
         } else if (editSelection.type === 'floor') {
           const floor = await accommodationApi.getFloor(spaceId, editSelection.floorId);
           if (cancelled) return;
           setName(floor.name ?? '');
           setFloorNumber(String(floor.floorNumber ?? 0));
+          setPhotoFileId(floor.photoFileId ?? null);
         } else if (editSelection.type === 'unit') {
           const unit = await accommodationApi.getUnit(spaceId, editSelection.unitId);
           if (cancelled) return;
@@ -204,6 +278,7 @@ function EntityFormBody({
           if (unit.status) setStatus(unit.status);
           setDefaultRent(unit.defaultRent != null ? String(unit.defaultRent) : '');
           setDefaultDeposit(unit.defaultDeposit != null ? String(unit.defaultDeposit) : '');
+          setPhotoFileId(unit.photoFileId ?? null);
         } else if (editSelection.type === 'room') {
           const room = await accommodationApi.getRoom(spaceId, editSelection.roomId);
           if (cancelled) return;
@@ -214,6 +289,7 @@ function EntityFormBody({
           if (room.status) setStatus(room.status);
           setDefaultRent(room.defaultRent != null ? String(room.defaultRent) : '');
           setDefaultDeposit(room.defaultDeposit != null ? String(room.defaultDeposit) : '');
+          setPhotoFileId(room.photoFileId ?? null);
         } else if (editSelection.type === 'bed') {
           const bed = await accommodationApi.getBed(spaceId, editSelection.bedId);
           if (cancelled) return;
@@ -222,10 +298,12 @@ function EntityFormBody({
           if (bed.status) setStatus(bed.status);
           setDefaultRent(bed.defaultRent != null ? String(bed.defaultRent) : '');
           setDefaultDeposit(bed.defaultDeposit != null ? String(bed.defaultDeposit) : '');
+          setPhotoFileId(bed.photoFileId ?? null);
         }
       } catch {
         if (!cancelled) {
           enqueueSnackbar(t('common.errors.generic'), { variant: 'error' });
+          onClose();
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -433,6 +511,27 @@ function EntityFormBody({
               boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
             }}
           >
+            {mode.kind === 'edit' && photoKind && photoId ? (
+              <EntityPhoto
+                spaceId={spaceId}
+                entityId={photoId}
+                kind={photoKind}
+                fileId={photoFileId}
+                canEdit={canEditPhoto}
+                height={160}
+                title={name}
+                label={t('files.viewerTitle', { defaultValue: 'Photo' })}
+                hint={
+                  canEditPhoto
+                    ? t('files.addHint', {
+                        defaultValue: 'Tap the image or use Add photo to upload.',
+                      })
+                    : undefined
+                }
+                onChanged={refreshPhotos}
+                fallback={photoFallback}
+              />
+            ) : null}
             {entityType === 'building' ? (
               <>
                 <TextField

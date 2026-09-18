@@ -64,16 +64,50 @@ export function groupBedsByRoom(beds: BedSpaceListItemResponse[]): BedRoomGroup[
   return result;
 }
 
+export type RoomPathLevel = 'building' | 'floor' | 'unit' | 'room';
+
+export type RoomPathCrumb = {
+  level: RoomPathLevel;
+  label: string;
+};
+
+/** Building › Floor › Unit › Room crumbs used as edit links in inventory headers. */
+export function roomInventoryPathCrumbs(
+  group: BedRoomGroup,
+  options?: { includeUnit?: boolean },
+): RoomPathCrumb[] {
+  const includeUnit = options?.includeUnit ?? Boolean(group.unitId);
+  const crumbs: RoomPathCrumb[] = [];
+  const building = group.buildingName?.trim();
+  if (building) {
+    crumbs.push({ level: 'building', label: building });
+  }
+  const floor = group.floorName?.trim();
+  if (group.floorId && floor) {
+    crumbs.push({ level: 'floor', label: floor });
+  }
+  const unit = group.unitName?.trim();
+  if (includeUnit && group.unitId && unit) {
+    crumbs.push({ level: 'unit', label: unit });
+  }
+  const room = group.roomName?.trim();
+  if (room) {
+    crumbs.push({ level: 'room', label: room });
+  }
+  return crumbs;
+}
+
 /** Building-scoped path for room cards (matches mock: B1 > Floor 1 > Room 101). */
 export function formatRoomInventoryPath(group: BedRoomGroup): string {
   return roomInventoryPathSegments(group).join(' > ');
 }
 
 /** Path segments for icon separators in the inventory UI. */
-export function roomInventoryPathSegments(group: BedRoomGroup): string[] {
-  return [group.buildingName, group.floorName, group.unitName, group.roomName]
-    .map((part) => part?.trim())
-    .filter((part): part is string => Boolean(part));
+export function roomInventoryPathSegments(
+  group: BedRoomGroup,
+  options?: { includeUnit?: boolean },
+): string[] {
+  return roomInventoryPathCrumbs(group, options).map((crumb) => crumb.label);
 }
 
 export function roomGroupAvailableCount(group: BedRoomGroup): number {

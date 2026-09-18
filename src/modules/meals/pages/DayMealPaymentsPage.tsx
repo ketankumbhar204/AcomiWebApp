@@ -41,6 +41,7 @@ import { PeriodMonthNav } from '@/shared/components/PeriodMonthNav';
 import { SidePanel } from '@/shared/components/SidePanel';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { StickyFooter, StickyFooterClearance } from '@/shared/components/StickyFooter';
+import { StoredImagePreview } from '@/shared/components/files/StoredImagePreview';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { memberApi } from '@/modules/members/api/memberApi';
@@ -363,23 +364,18 @@ function DayMealTenantInspector({
             </Box>
           ) : null}
 
-          {payment?.proofImageUrl ? (
+          {payment?.proofImageUrl || payment?.proofFileId ? (
             <Box>
               <Typography sx={{ fontSize: 14, fontWeight: 700, color: s.textPrimary, mb: 1 }}>
                 {t('paymentCollection.proof.title', { defaultValue: 'Payment proof' })}
               </Typography>
-              <Box
-                component="img"
-                src={payment.proofImageUrl}
+              <StoredImagePreview
+                fileId={payment.proofFileId}
+                imageUrl={payment.proofImageUrl}
                 alt={t('paymentCollection.proof.title', { defaultValue: 'Proof' })}
-                sx={{
-                  width: '100%',
-                  maxHeight: 200,
-                  objectFit: 'contain',
-                  borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-                  border: `1px solid ${s.border}`,
-                  bgcolor: s.elevated,
-                }}
+                title={t('paymentCollection.proof.title', { defaultValue: 'Payment proof' })}
+                downloadFilename="meal-payment-proof.jpg"
+                maxHeight={200}
               />
             </Box>
           ) : null}

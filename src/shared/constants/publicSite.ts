@@ -12,3 +12,10 @@ export const PUBLIC_SITE = {
   places: `${PUBLIC_SITE_ORIGIN}/places`,
   meals: `${PUBLIC_SITE_ORIGIN}/meals`,
 } as const;
+
+/** Re-export Play Store / app-open helpers used by enquiry CTAs. */
+export {
+  ACOMI_ANDROID_APP_URL,
+  ACOMI_PLAY_STORE_URL,
+  openAcomiAndroidApp,
+} from '@/shared/utils/openAcomiAndroidApp';

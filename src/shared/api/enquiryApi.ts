@@ -20,6 +20,13 @@ export const enquiryApi = {
       apiClient.post<ApiResponse<SpaceEnquiryResponse>>(`/spaces/${spaceId}/enquiries`, payload),
     ),
 
+  deliverContactByEmail: async (enquiryId: string, email: string): Promise<SpaceEnquiryResponse> =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<SpaceEnquiryResponse>>(`/enquiries/${enquiryId}/email-contact`, {
+        email,
+      }),
+    ),
+
   listMine: async (params?: { page?: number; size?: number }): Promise<PagedResponse<SpaceEnquiryResponse>> =>
     unwrapApiResponse(
       apiClient.get<ApiResponse<PagedResponse<SpaceEnquiryResponse>>>('/enquiries/me', { params }),

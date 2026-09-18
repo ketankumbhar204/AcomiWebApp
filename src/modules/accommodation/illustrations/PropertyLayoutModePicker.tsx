@@ -56,7 +56,7 @@ export function PropertyLayoutModePicker({
       )}
 
       <Stack
-        direction={{ xs: 'column', sm: 'row' }}
+        direction={featured ? { xs: 'column', sm: 'row' } : 'column'}
         spacing={featured ? 2 : 1.5}
         sx={{ alignItems: 'stretch' }}
       >
@@ -79,8 +79,8 @@ export function PropertyLayoutModePicker({
                 cursor: 'pointer',
                 position: 'relative',
                 display: 'flex',
-                flexDirection: 'row',
-                flex: 1,
+                flexDirection: featured ? 'row' : 'column',
+                flex: featured ? 1 : '0 0 auto',
                 minWidth: 0,
                 boxSizing: 'border-box',
                 overflow: 'hidden',
@@ -97,16 +97,17 @@ export function PropertyLayoutModePicker({
             >
               <Box
                 sx={{
-                  flex: { xs: '0 0 46%', sm: '0 0 52%' },
-                  minWidth: featured ? 180 : 128,
-                  minHeight: featured ? 168 : 112,
+                  flex: featured ? { xs: '0 0 46%', sm: '0 0 52%' } : '0 0 auto',
+                  width: featured ? undefined : '100%',
+                  minWidth: featured ? 180 : 0,
+                  minHeight: featured ? 168 : 128,
                   alignSelf: 'stretch',
                   bgcolor: selected ? colors.lightGreen : s.elevated,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   overflow: 'hidden',
-                  p: featured ? 1.5 : 1,
+                  p: featured ? 1.5 : 1.25,
                 }}
               >
                 <Box
@@ -117,7 +118,7 @@ export function PropertyLayoutModePicker({
                     display: 'block',
                     width: '100%',
                     height: 'auto',
-                    maxHeight: featured ? 188 : 120,
+                    maxHeight: featured ? 188 : 140,
                     objectFit: 'contain',
                     objectPosition: 'center',
                     borderRadius: 1.5,
@@ -134,7 +135,7 @@ export function PropertyLayoutModePicker({
                   justifyContent: 'center',
                   px: featured ? 2.25 : 1.5,
                   py: featured ? 2 : 1.25,
-                  pr: selected ? 4.5 : undefined,
+                  pr: featured && selected ? 4.5 : undefined,
                 }}
               >
                 <Typography

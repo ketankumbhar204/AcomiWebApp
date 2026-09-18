@@ -78,6 +78,7 @@ export interface MySpaceResponse {
   address?: string | null;
   ownerId?: string | null;
   permissions?: SpacePermissionsResponse;
+  photoFileId?: string | null;
 }
 
 export interface DefaultSpaceResponse {
@@ -103,6 +104,7 @@ export interface SpaceResponse {
   ownerId: string;
   ownerName: string;
   createdAt: string;
+  photoFileId?: string | null;
 }
 
 export interface SpaceDetailsResponse {
@@ -121,6 +123,7 @@ export interface SpaceDetailsResponse {
   amenities?: AmenityAssignment[];
   createdAt: string;
   updatedAt: string;
+  photoFileId?: string | null;
 }
 
 export interface CreateSpaceRequest {

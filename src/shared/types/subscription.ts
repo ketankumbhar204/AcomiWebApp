@@ -51,6 +51,7 @@ export interface SubscriptionActivationRequestResponse {
   status: SubscriptionActivationRequestStatus;
   paymentReference?: string | null;
   paymentProofImageUrl?: string | null;
+  paymentProofFileId?: string | null;
   customerNotes?: string | null;
   ownerNotes?: string | null;
   createdAt: string;

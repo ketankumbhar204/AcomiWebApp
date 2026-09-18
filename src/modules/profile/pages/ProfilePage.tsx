@@ -46,6 +46,7 @@ import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dash
 import { useAuthStore } from '@/store/authStore';
 import { useSpaceStore } from '@/store/spaceStore';
 import { useAppStore } from '@/store/appStore';
+import { FileImageViewer } from '@/shared/components/files/FileImageViewer';
 
 function CardWatermark({ children }: { children: ReactNode }) {
   return (
@@ -117,6 +118,7 @@ export function ProfilePage() {
   const [mobileChanged, setMobileChanged] = useState(
     Boolean((location.state as { mobileChanged?: boolean } | null)?.mobileChanged),
   );
+  const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
 
   useEffect(() => {
     document.title = `${t('navigation.profile')} · ${t('common.appName')}`;
@@ -216,11 +218,17 @@ export function ProfilePage() {
                 <Avatar
                   src={user.profilePhotoUrl ?? undefined}
                   alt={user.fullName ?? user.mobileNumber}
+                  onClick={() => {
+                    if (user.profilePhotoUrl || user.profilePhotoFileId) {
+                      setPhotoViewerOpen(true);
+                    }
+                  }}
                   sx={{
                     width: 88,
                     height: 88,
                     bgcolor: colors.primary,
                     color: '#fff',
+                    cursor: user.profilePhotoUrl || user.profilePhotoFileId ? 'zoom-in' : 'default',
                   }}
                 >
                   <UserRound size={36} />
@@ -521,6 +529,14 @@ export function ProfilePage() {
           </Box>
         </Box>
       </Stack>
+      <FileImageViewer
+        open={photoViewerOpen}
+        onClose={() => setPhotoViewerOpen(false)}
+        fileId={user.profilePhotoFileId}
+        imageUrl={user.profilePhotoUrl}
+        title={t('profileCompletion.fields.profilePhoto', { defaultValue: 'Profile photo' })}
+        downloadFilename="profile-photo.jpg"
+      />
     </PageContainer>
   );
 }

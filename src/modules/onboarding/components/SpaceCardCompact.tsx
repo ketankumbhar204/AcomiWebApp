@@ -31,6 +31,8 @@ import { useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
+import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
+import { canEditEntityPhoto } from '@/shared/files/entityPhoto';
 import type { MembershipRole, MySpaceResponse, SpaceType } from '@/shared/types/space';
 
 export const SPACE_CARD_COMPACT_WIDTH = { min: 360, max: 420 } as const;
@@ -127,6 +129,7 @@ export function SpaceCardCompact({
   const soft = SOFT_CHIP[status.tone];
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const canEdit = space.membershipRole === 'OWNER' || space.membershipRole === 'MANAGER';
+  const canEditPhoto = canEditEntityPhoto(space.membershipRole);
   const total = Math.max(capacityTotal, 1);
   const used = Math.max(0, capacityUsed);
   const pct = Math.min(100, Math.round((used / total) * 100));
@@ -178,27 +181,38 @@ export function SpaceCardCompact({
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
         {/* Header */}
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, minWidth: 0 }}>
-          <Box
-            sx={{
-              width: DASHBOARD_UX.iconWell,
-              height: DASHBOARD_UX.iconWell,
-              borderRadius: '50%',
-              bgcolor: theme.palette.mode === 'dark' ? s.elevated : `${colors.primaryDark}14`,
-              color: colors.primaryDark,
-              display: 'grid',
-              placeItems: 'center',
-              flexShrink: 0,
-              mt: 0.15,
-              '& svg': {
-                width: DASHBOARD_UX.iconSize,
-                height: DASHBOARD_UX.iconSize,
-                strokeWidth: 1.75,
-              },
-            }}
-            aria-hidden
-          >
-            <TypeIcon />
-          </Box>
+          <EntityPhoto
+            spaceId={space.spaceId}
+            entityId={space.spaceId}
+            kind="space"
+            fileId={space.photoFileId}
+            canEdit={canEditPhoto}
+            compact
+            height={DASHBOARD_UX.iconWell}
+            title={space.spaceName}
+            fallback={
+              <Box
+                sx={{
+                  width: DASHBOARD_UX.iconWell,
+                  height: DASHBOARD_UX.iconWell,
+                  borderRadius: '50%',
+                  bgcolor: theme.palette.mode === 'dark' ? s.elevated : `${colors.primaryDark}14`,
+                  color: colors.primaryDark,
+                  display: 'grid',
+                  placeItems: 'center',
+                  flexShrink: 0,
+                  '& svg': {
+                    width: DASHBOARD_UX.iconSize,
+                    height: DASHBOARD_UX.iconSize,
+                    strokeWidth: 1.75,
+                  },
+                }}
+                aria-hidden
+              >
+                <TypeIcon />
+              </Box>
+            }
+          />
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.75 }}>
               <Typography

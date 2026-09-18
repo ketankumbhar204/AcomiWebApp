@@ -1,4 +1,5 @@
 import { Box, Button, Stack, Typography } from '@mui/material';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowRightLeft,
   BedDouble,
@@ -22,7 +23,6 @@ import {
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { SidePanel } from '@/shared/components/SidePanel';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { LoadingState } from '@/shared/components/LoadingState';
@@ -44,6 +44,7 @@ import {
 import { accommodationApi } from '../api/accommodationApi';
 import { occupancyApi } from '../api/occupancyApi';
 import { LayoutIllustration } from '../illustrations/LayoutIllustration';
+import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
 import {
   getBedIllustration,
   getBuildingIllustration,
@@ -93,6 +94,20 @@ export function EntityInspector({
 }: EntityInspectorProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const refreshPhotos = () => {
+    void queryClient.invalidateQueries({ queryKey: ['building', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['floor', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['unit', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['building-summary', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['buildings', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['floors', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['units', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['rooms', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['beds', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['room', spaceId] });
+    void queryClient.invalidateQueries({ queryKey: ['bed', spaceId] });
+  };
 
   const buildingId = selection && 'buildingId' in selection ? selection.buildingId : undefined;
   const floorId = selection && 'floorId' in selection ? selection.floorId : undefined;
@@ -186,7 +201,16 @@ export function EntityInspector({
       isInactive = (s?.active ?? buildingQuery.data?.active) === false;
       body = (
         <Stack spacing={1.5}>
-          <LayoutIllustration src={getBuildingIllustration()} size="building" alt="" />
+          <EntityPhoto
+            spaceId={spaceId}
+            entityId={buildingId ?? ''}
+            kind="building"
+            fileId={s?.photoFileId ?? buildingQuery.data?.photoFileId}
+            canEdit={canDeactivateAccommodation}
+            title={title}
+            onChanged={refreshPhotos}
+            fallback={<LayoutIllustration src={getBuildingIllustration()} size="building" alt="" />}
+          />
           <DetailTable
             rows={[
               {
@@ -237,13 +261,24 @@ export function EntityInspector({
       isInactive = floor?.active === false;
       body = (
         <Stack spacing={1.5}>
-          <LayoutIllustration
-            src={getFloorIllustration(summary.summary?.layoutMode ?? buildingQuery.data?.layoutMode)}
-            size="floor"
-            wide={isWideFloorIllustration(
-              summary.summary?.layoutMode ?? buildingQuery.data?.layoutMode,
-            )}
-            alt=""
+          <EntityPhoto
+            spaceId={spaceId}
+            entityId={floorId ?? ''}
+            kind="floor"
+            fileId={floor?.photoFileId}
+            canEdit={canDeactivateAccommodation}
+            title={title}
+            onChanged={refreshPhotos}
+            fallback={
+              <LayoutIllustration
+                src={getFloorIllustration(summary.summary?.layoutMode ?? buildingQuery.data?.layoutMode)}
+                size="floor"
+                wide={isWideFloorIllustration(
+                  summary.summary?.layoutMode ?? buildingQuery.data?.layoutMode,
+                )}
+                alt=""
+              />
+            }
           />
           <DetailTable
             rows={[
@@ -271,7 +306,16 @@ export function EntityInspector({
       lifecycleActions = unit?.actions;
       body = (
         <Stack spacing={1.5}>
-          <LayoutIllustration src={getUnitIllustration(0, 0)} size="unit" alt="" />
+          <EntityPhoto
+            spaceId={spaceId}
+            entityId={unitId ?? ''}
+            kind="unit"
+            fileId={unit?.photoFileId}
+            canEdit={canDeactivateAccommodation}
+            title={title}
+            onChanged={refreshPhotos}
+            fallback={<LayoutIllustration src={getUnitIllustration(0, 0)} size="unit" alt="" />}
+          />
           {unit?.status ? <StatusChip label={t(`accommodation.status.${unit.status}`)} /> : null}
           <DetailTable
             rows={[
@@ -323,10 +367,21 @@ export function EntityInspector({
       isInactive = r?.active === false;
       body = (
         <Stack spacing={1.5}>
-          <LayoutIllustration
-            src={getRoomIllustration(Math.max(r?.capacity ?? 1, 1))}
-            size="room"
-            alt=""
+          <EntityPhoto
+            spaceId={spaceId}
+            entityId={roomId ?? ''}
+            kind="room"
+            fileId={r?.photoFileId}
+            canEdit={canDeactivateAccommodation}
+            title={title}
+            onChanged={refreshPhotos}
+            fallback={
+              <LayoutIllustration
+                src={getRoomIllustration(Math.max(r?.capacity ?? 1, 1))}
+                size="room"
+                alt=""
+              />
+            }
           />
           {r?.status ? <StatusChip label={t(`accommodation.status.${r.status}`)} /> : null}
           <DetailTable
@@ -382,7 +437,17 @@ export function EntityInspector({
               }}
             >
               {b?.status ? (
-                <LayoutIllustration src={getBedIllustration(b.status)} size="bed" alt="" />
+                <EntityPhoto
+                  spaceId={spaceId}
+                  entityId={bedId ?? ''}
+                  kind="bed"
+                  fileId={b.photoFileId}
+                  canEdit={canDeactivateAccommodation}
+                  title={title}
+                  onChanged={refreshPhotos}
+                  height={88}
+                  fallback={<LayoutIllustration src={getBedIllustration(b.status)} size="bed" alt="" />}
+                />
               ) : null}
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>

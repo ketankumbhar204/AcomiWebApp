@@ -49,6 +49,8 @@ import { Pagination } from '@/shared/components/Pagination';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
+import { canEditEntityPhoto, type EntityPhotoKind } from '@/shared/files/entityPhoto';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { spaceMealsPath } from '@/routes/paths';
 import type {
@@ -271,25 +273,45 @@ function ItemRowActions({
   );
 }
 
-function NameCell({
+function LibraryPhotoCell({
   name,
   accent,
   Icon,
+  spaceId,
+  entityId,
+  kind,
+  fileId,
+  canEditPhoto,
+  onChanged,
 }: {
   name: string;
   accent: string;
   Icon: LucideIcon;
+  spaceId: string;
+  entityId: string;
+  kind: EntityPhotoKind;
+  fileId?: string | null;
+  canEditPhoto: boolean;
+  onChanged?: () => void;
 }) {
-  const theme = useTheme();
-  const s = dashSurfaces(theme.palette.mode);
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, py: 0.5 }}>
-      <IconBadge accent={accent}>
-        <Icon />
-      </IconBadge>
-      <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }} noWrap>
-        {name}
-      </Typography>
+    <Box sx={{ display: 'flex', alignItems: 'center', py: 0.5 }}>
+      <EntityPhoto
+        spaceId={spaceId}
+        entityId={entityId}
+        kind={kind}
+        fileId={fileId}
+        canEdit={canEditPhoto}
+        compact
+        height={32}
+        title={name}
+        onChanged={onChanged}
+        fallback={
+          <IconBadge accent={accent}>
+            <Icon />
+          </IconBadge>
+        }
+      />
     </Box>
   );
 }
@@ -302,6 +324,7 @@ function LibraryCard({
   chips,
   footer,
   actions,
+  photo,
 }: {
   title: string;
   accent: string;
@@ -310,6 +333,7 @@ function LibraryCard({
   chips?: ReactNode;
   footer?: ReactNode;
   actions?: ReactNode;
+  photo?: ReactNode;
 }) {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
@@ -330,9 +354,11 @@ function LibraryCard({
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, minWidth: 0 }}>
-        <IconBadge accent={accent}>
-          <Icon />
-        </IconBadge>
+        {photo ?? (
+          <IconBadge accent={accent}>
+            <Icon />
+          </IconBadge>
+        )}
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography
             sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}
@@ -369,6 +395,7 @@ export function MenuLibraryPage() {
   const enableItemQuantities = showExtras;
   const canManage = permissions.canManageMeals === true;
   const canView = permissions.canViewMeals === true || canManage;
+  const canEditPhoto = canEditEntityPhoto(permissions.membershipRole);
 
   const [tab, setTab] = useState<LibraryTab>('items');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
@@ -468,14 +495,30 @@ export function MenuLibraryPage() {
 
   const itemColumns: DataTableColumn<FoodItemResponse & { id: string }>[] = [
     {
-      id: 'name',
-      header: t('meals.library.itemName'),
+      id: 'photo',
+      header: '',
+      width: 52,
       accessor: (row) => (
-        <NameCell
+        <LibraryPhotoCell
           name={row.name}
           accent={itemAccent(row.foodType)}
           Icon={itemIcon(row.foodType)}
+          spaceId={spaceId}
+          entityId={row.itemId}
+          kind="menuItem"
+          fileId={row.photoFileId}
+          canEditPhoto={canEditPhoto}
+          onChanged={() => void items.reload()}
         />
+      ),
+    },
+    {
+      id: 'name',
+      header: t('meals.library.itemName'),
+      accessor: (row) => (
+        <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }} noWrap>
+          {row.name}
+        </Typography>
       ),
       primary: true,
     },
@@ -535,10 +578,30 @@ export function MenuLibraryPage() {
 
   const comboColumns: DataTableColumn<MealComboResponse & { id: string }>[] = [
     {
+      id: 'photo',
+      header: '',
+      width: 52,
+      accessor: (row) => (
+        <LibraryPhotoCell
+          name={row.name}
+          accent="#7C3AED"
+          Icon={Layers}
+          spaceId={spaceId}
+          entityId={row.comboId}
+          kind="combo"
+          fileId={row.photoFileId}
+          canEditPhoto={canEditPhoto}
+          onChanged={() => void combos.reload()}
+        />
+      ),
+    },
+    {
       id: 'name',
       header: t('meals.library.comboName'),
       accessor: (row) => (
-        <NameCell name={row.name} accent="#7C3AED" Icon={Layers} />
+        <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }} noWrap>
+          {row.name}
+        </Typography>
       ),
       primary: true,
     },
@@ -768,6 +831,27 @@ export function MenuLibraryPage() {
               title={row.name}
               accent={itemAccent(row.foodType)}
               Icon={itemIcon(row.foodType)}
+              photo={
+                <EntityPhoto
+                  spaceId={spaceId}
+                  entityId={row.itemId}
+                  kind="menuItem"
+                  fileId={row.photoFileId}
+                  canEdit={canEditPhoto}
+                  compact
+                  height={40}
+                  title={row.name}
+                  onChanged={() => void items.reload()}
+                  fallback={
+                    <IconBadge accent={itemAccent(row.foodType)}>
+                      {(() => {
+                        const Icon = itemIcon(row.foodType);
+                        return <Icon />;
+                      })()}
+                    </IconBadge>
+                  }
+                />
+              }
               meta={row.categoryName ?? undefined}
               actions={
                 canManage ? (
@@ -869,6 +953,24 @@ export function MenuLibraryPage() {
                 title={row.name}
                 accent="#7C3AED"
                 Icon={Layers}
+                photo={
+                  <EntityPhoto
+                    spaceId={spaceId}
+                    entityId={row.comboId}
+                    kind="combo"
+                    fileId={row.photoFileId}
+                    canEdit={canEditPhoto}
+                    compact
+                    height={40}
+                    title={row.name}
+                    onChanged={() => void combos.reload()}
+                    fallback={
+                      <IconBadge accent="#7C3AED">
+                        <Layers />
+                      </IconBadge>
+                    }
+                  />
+                }
                 meta={row.price != null ? `₹${row.price}` : undefined}
                 actions={
                   canManage ? (

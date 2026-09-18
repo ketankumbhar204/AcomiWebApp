@@ -165,7 +165,7 @@ export const memberApi = {
     body: CreateMemberDocumentRequest & { localFile?: File },
   ): Promise<MemberDocumentResponse> => {
     const fileId = await ensureUploadedFileId(body.fileId ?? undefined, body.localFile, {
-      purpose: 'MEMBER_DOCUMENT',
+      purpose: body.documentType === 'OTHER' ? 'MEMBER_DOCUMENT' : 'IDENTITY_DOCUMENT',
       spaceId,
       memberId,
     });

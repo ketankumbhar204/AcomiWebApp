@@ -43,6 +43,7 @@ import { PageHeader } from '@/shared/components/PageHeader';
 import { SidePanel } from '@/shared/components/SidePanel';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { StickyFooter } from '@/shared/components/StickyFooter';
+import { StoredImagePreview } from '@/shared/components/files/StoredImagePreview';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
@@ -679,16 +680,13 @@ export function SubscriptionPlansWorkspacePage() {
         </Typography>
       ) : null}
       {request.customerNotes ? <Alert severity="info">{request.customerNotes}</Alert> : null}
-      {request.paymentProofImageUrl ? (
-        <Box
-          component="img"
-          src={request.paymentProofImageUrl}
+      {request.paymentProofImageUrl || request.paymentProofFileId ? (
+        <StoredImagePreview
+          fileId={request.paymentProofFileId}
+          imageUrl={request.paymentProofImageUrl}
           alt={t('meals.subscriptionPlans.viewPaymentProof')}
-          sx={{
-            maxWidth: '100%',
-            borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-            border: `1px solid ${s.border}`,
-          }}
+          title={t('meals.subscriptionPlans.viewPaymentProof')}
+          downloadFilename="subscription-payment-proof.jpg"
         />
       ) : null}
       <TextFieldNotes value={ownerNotes} onChange={setOwnerNotes} />

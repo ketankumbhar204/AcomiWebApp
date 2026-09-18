@@ -71,6 +71,7 @@ export interface FoodItemResponse {
   currencyCode?: string | null;
   /** Mess Menu Library: item can be enabled as a meal extra. */
   isExtra?: boolean;
+  photoFileId?: string | null;
 }
 
 export interface UpdateFoodItemDefaultPriceRequest {
@@ -132,6 +133,7 @@ export interface MealComboResponse {
   currencyCode?: string | null;
   foodType?: FoodType;
   items?: Array<{ itemId: string; name: string; foodType?: FoodType; quantity?: number }>;
+  photoFileId?: string | null;
 }
 
 export type MenuHistoryEntryType = 'COMBO' | 'ITEM';
@@ -410,6 +412,7 @@ export interface MealHeadcountMember {
   quantity?: number;
   paymentStatus?: MealPollPaymentStatus | null;
   paymentProofImageUrl?: string | null;
+  paymentProofFileId?: string | null;
   deliveryLocationId?: string | null;
   deliveryLocationName?: string | null;
 }
@@ -533,6 +536,7 @@ export interface MemberMealActivityDayPayment {
   paymentBatchId?: string | null;
   paymentReference?: string | null;
   proofImageUrl?: string | null;
+  proofFileId?: string | null;
   referenceNumber?: string | null;
   remarks?: string | null;
   rejectionReason?: string | null;

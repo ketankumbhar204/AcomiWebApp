@@ -16,8 +16,9 @@ import { commitBedPricingField } from '../utils/commitBedPricing';
 import { formatBedDisplayLabel } from '../utils/formatBedDisplayLabel';
 import {
   roomGroupAvailableCount,
-  roomInventoryPathSegments,
+  roomInventoryPathCrumbs,
   type BedRoomGroup,
+  type RoomPathLevel,
 } from '../utils/groupBedsByRoom';
 import type { PricingField } from '../setup-preview/setupPricingAutofill';
 
@@ -97,6 +98,7 @@ type RoomInventoryBedCardProps = {
   group: BedRoomGroup;
   bed: BedSpaceListItemResponse;
   canManage: boolean;
+  showUnit?: boolean;
   onSelect: (selection: TreeSelection) => void;
   onEdit: (selection: TreeSelection) => void;
   onPricingSaved?: () => void;
@@ -107,6 +109,7 @@ function RoomInventoryBedCard({
   group,
   bed,
   canManage,
+  showUnit = false,
   onSelect,
   onEdit,
   onPricingSaved,
@@ -226,6 +229,7 @@ function RoomInventoryBedCard({
                   <HierarchyEditMenu
                     group={group}
                     canEdit={canManage}
+                    showUnit={showUnit}
                     bedId={bed.bedId}
                     onEdit={onEdit}
                   />
@@ -438,6 +442,7 @@ type RoomInventoryCardProps = {
   spaceId: string;
   group: BedRoomGroup;
   canManage: boolean;
+  showUnits?: boolean;
   showTipCard?: boolean;
   onSelect: (selection: TreeSelection) => void;
   onEditEntity: (selection: TreeSelection) => void;
@@ -445,10 +450,43 @@ type RoomInventoryCardProps = {
   onPricingSaved?: () => void;
 };
 
+function selectionForPathCrumb(group: BedRoomGroup, level: RoomPathLevel): TreeSelection | null {
+  switch (level) {
+    case 'building':
+      return { type: 'building', buildingId: group.buildingId };
+    case 'floor':
+      if (!group.floorId) {
+        return null;
+      }
+      return { type: 'floor', buildingId: group.buildingId, floorId: group.floorId };
+    case 'unit':
+      if (!group.unitId) {
+        return null;
+      }
+      return {
+        type: 'unit',
+        buildingId: group.buildingId,
+        unitId: group.unitId,
+        floorId: group.floorId ?? undefined,
+      };
+    case 'room':
+      return {
+        type: 'room',
+        buildingId: group.buildingId,
+        roomId: group.roomId,
+        floorId: group.floorId ?? undefined,
+        unitId: group.unitId ?? undefined,
+      };
+    default:
+      return null;
+  }
+}
+
 export function RoomInventoryCard({
   spaceId,
   group,
   canManage,
+  showUnits = false,
   showTipCard = false,
   onSelect,
   onEditEntity,
@@ -463,7 +501,7 @@ export function RoomInventoryCard({
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   const available = roomGroupAvailableCount(group);
-  const pathSegments = roomInventoryPathSegments(group);
+  const pathCrumbs = roomInventoryPathCrumbs(group, { includeUnit: showUnits && Boolean(group.unitId) });
   const roomTypeLabel = group.roomType
     ? t(`accommodation.roomType.${group.roomType}`, { defaultValue: String(group.roomType) })
     : null;
@@ -571,15 +609,15 @@ export function RoomInventoryCard({
                 overflow: 'hidden',
               }}
             >
-              {pathSegments.map((segment, index) => (
+              {pathCrumbs.map((crumb, index) => (
                 <Box
-                  key={`${segment}-${index}`}
+                  key={`${crumb.level}-${crumb.label}`}
                   sx={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 0.75,
                     minWidth: 0,
-                    flexShrink: index === pathSegments.length - 1 ? 1 : 0,
+                    flexShrink: index === pathCrumbs.length - 1 ? 1 : 0,
                   }}
                 >
                   {index > 0 ? (
@@ -591,19 +629,38 @@ export function RoomInventoryCard({
                     />
                   ) : null}
                   <Typography
-                    component="span"
+                    component="button"
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      event.preventDefault();
+                      const selection = selectionForPathCrumb(group, crumb.level);
+                      if (!selection) {
+                        return;
+                      }
+                      if (canManage) {
+                        onEditEntity(selection);
+                        return;
+                      }
+                      onSelect(selection);
+                    }}
                     sx={{
+                      all: 'unset',
+                      cursor: 'pointer',
                       fontSize: { xs: 15, md: 16 },
                       fontWeight: 700,
                       letterSpacing: '-0.015em',
-                      color: s.textPrimary,
+                      color: colors.info,
                       lineHeight: 1.3,
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
+                      textDecoration: 'underline',
+                      textUnderlineOffset: '3px',
+                      '&:hover': { color: colors.primaryDark },
                     }}
                   >
-                    {segment}
+                    {crumb.label}
                   </Typography>
                 </Box>
               ))}
@@ -666,7 +723,12 @@ export function RoomInventoryCard({
               </Tooltip>
             ) : null}
             {canManage ? (
-              <HierarchyEditMenu group={group} canEdit={canManage} onEdit={onEditEntity} />
+              <HierarchyEditMenu
+                group={group}
+                canEdit={canManage}
+                showUnit={showUnits && Boolean(group.unitId)}
+                onEdit={onEditEntity}
+              />
             ) : null}
           </Stack>
         </Stack>
@@ -731,6 +793,7 @@ export function RoomInventoryCard({
                 group={group}
                 bed={bed}
                 canManage={canManage}
+                showUnit={showUnits}
                 onSelect={onSelect}
                 onEdit={onEditEntity}
                 onPricingSaved={onPricingSaved}

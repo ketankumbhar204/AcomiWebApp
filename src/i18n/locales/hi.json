@@ -4623,7 +4623,7 @@
       "addressProofRequired": "पते का प्रमाण अपलोड करें।",
       "pickFailed": "फोटो लाइब्रेरी नहीं खुल सकी। ऐप की अनुमतियां जांचें और पुनः प्रयास करें।",
       "submitFailed": "Could not save your profile. Please try again.",
-      "photoTooLarge": "Photo must be 2MB or smaller."
+      "photoTooLarge": "Photo must be 2 MB or smaller."
     }
   },
   "progressiveWorkflow": {
@@ -5089,5 +5089,26 @@
       "step2": "Follow this recommendation to complete your setup.",
       "step3": "Your setup progress updates automatically."
     }
+  },
+  "files": {
+    "tooLarge": "File size must be {{maxMb}} MB or less.",
+    "tooLargeAbsolute": "File size must be 5 MB or less.",
+    "compressFailed": "This image is too large to upload. Please choose a smaller image.",
+    "unsupportedType": "This file type is not supported.",
+    "uploadFailed": "Unable to upload the file. Please try again.",
+    "downloadFailed": "Unable to download the file. Please try again.",
+    "previewUnavailable": "No photo to display.",
+    "viewerTitle": "Photo",
+    "download": "Download",
+    "share": "Share",
+    "view": "View photo",
+    "remove": "Remove photo",
+    "replace": "Replace photo",
+    "add": "Add photo",
+    "addHint": "Tap the image or use Add photo to upload.",
+    "takePhoto": "Take photo",
+    "chooseGallery": "Choose from gallery",
+    "attached": "Attached",
+    "sizeHint": "JPEG, PNG, or WebP. Maximum {{maxMb}} MB after compression."
   }
 }

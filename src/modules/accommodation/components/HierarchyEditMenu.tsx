@@ -16,6 +16,8 @@ import type { TreeSelection } from './HierarchyTree';
 type HierarchyEditMenuProps = {
   group: BedRoomGroup;
   canEdit: boolean;
+  /** Visible apartments exist in this layout (not corridor synthetic units). */
+  showUnit?: boolean;
   /** When set, also offers Edit bed. */
   bedId?: string;
   onEdit: (selection: TreeSelection) => void;
@@ -28,6 +30,7 @@ type HierarchyEditMenuProps = {
 export function HierarchyEditMenu({
   group,
   canEdit,
+  showUnit = false,
   bedId,
   onEdit,
   size = 'small',
@@ -116,7 +119,7 @@ export function HierarchyEditMenu({
           </MenuItem>
         ) : null}
 
-        {group.unitId ? (
+        {showUnit && group.unitId ? (
           <MenuItem
             onClick={() =>
               choose({

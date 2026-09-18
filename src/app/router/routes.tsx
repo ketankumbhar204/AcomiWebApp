@@ -356,6 +356,16 @@ const AdminEnquiryListPage = lazyPage(() =>
     default: m.AdminEnquiryListPage,
   })),
 );
+const AdminInquiryPaymentConfigPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminInquiryPaymentConfigPage').then((m) => ({
+    default: m.AdminInquiryPaymentConfigPage,
+  })),
+);
+const AdminInquiryPurchaseListPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminInquiryPurchaseListPage').then((m) => ({
+    default: m.AdminInquiryPurchaseListPage,
+  })),
+);
 const MyEnquiriesPage = lazyPage(() =>
   import('@/modules/onboarding/pages/MyEnquiriesPage').then((m) => ({
     default: m.MyEnquiriesPage,
@@ -567,6 +577,22 @@ export const appRoutes = [
                 element: (
                   <L>
                     <AdminMessDetailPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.adminInquiryCredits,
+                element: (
+                  <L>
+                    <AdminInquiryPaymentConfigPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.adminInquiryPayments,
+                element: (
+                  <L>
+                    <AdminInquiryPurchaseListPage />
                   </L>
                 ),
               },

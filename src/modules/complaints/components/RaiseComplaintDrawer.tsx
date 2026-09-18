@@ -17,6 +17,9 @@ import { AppDrawer } from '@/shared/components/AppDrawer';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StickyFooter } from '@/shared/components/StickyFooter';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { FileImageViewer } from '@/shared/components/files/FileImageViewer';
+import { FileUploadUserError } from '@/shared/utils/fileLimits';
+import { prepareFileForUpload } from '@/shared/utils/optimizeImageFile';
 import type { MealType } from '@/shared/types/meals';
 import type {
   ComplaintCategory,
@@ -65,6 +68,7 @@ export function RaiseComplaintDrawer({
   const [mealDate, setMealDate] = useState('');
   const [mealType, setMealType] = useState<MealType>('BREAKFAST');
   const [photos, setPhotos] = useState<File[]>([]);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   const foodRelated = isFoodCategory(category);
 
@@ -87,8 +91,25 @@ export function RaiseComplaintDrawer({
       enqueueSnackbar(t('complaints.errors.maxPhotos'), { variant: 'warning' });
       return;
     }
-    const selected = Array.from(files).slice(0, remaining);
-    setPhotos((prev) => [...prev, ...selected].slice(0, MAX_PHOTOS));
+    void (async () => {
+      const selected = Array.from(files).slice(0, remaining);
+      const prepared: File[] = [];
+      for (const file of selected) {
+        try {
+          prepared.push(await prepareFileForUpload(file, 'COMPLAINT_ATTACHMENT'));
+        } catch (error) {
+          enqueueSnackbar(
+            error instanceof FileUploadUserError
+              ? error.message
+              : t('files.uploadFailed', { defaultValue: 'Unable to upload the file. Please try again.' }),
+            { variant: 'error' },
+          );
+        }
+      }
+      if (prepared.length) {
+        setPhotos((prev) => [...prev, ...prepared].slice(0, MAX_PHOTOS));
+      }
+    })();
   };
 
   const handleSubmit = async () => {
@@ -214,16 +235,35 @@ export function RaiseComplaintDrawer({
               {t('complaints.actions.addPhoto')}
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 multiple
                 hidden
-                onChange={(e) => onFiles(e.target.files)}
+                onChange={(e) => {
+                  onFiles(e.target.files);
+                  e.target.value = '';
+                }}
               />
             </Button>
             {photos.length > 0 ? (
-              <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textSecondary, display: 'block', mt: 1 }}>
-                {t('complaints.photos.selected', { count: photos.length })}
-              </Typography>
+              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mt: 1 }}>
+                {photos.map((photo, index) => (
+                  <Box
+                    key={`${photo.name}-${index}`}
+                    component="img"
+                    src={URL.createObjectURL(photo)}
+                    alt=""
+                    onClick={() => setViewerIndex(index)}
+                    sx={{
+                      width: 72,
+                      height: 72,
+                      objectFit: 'cover',
+                      borderRadius: `${DASHBOARD_UX.tileRadius}px`,
+                      border: `1px solid ${s.border}`,
+                      cursor: 'zoom-in',
+                    }}
+                  />
+                ))}
+              </Stack>
             ) : null}
           </Box>
         </Stack>
@@ -241,6 +281,13 @@ export function RaiseComplaintDrawer({
           </Stack>
         </StickyFooter>
       </Box>
+      <FileImageViewer
+        open={viewerIndex != null}
+        onClose={() => setViewerIndex(null)}
+        imageUrl={viewerIndex != null && photos[viewerIndex] ? URL.createObjectURL(photos[viewerIndex]) : null}
+        title={t('complaints.fields.photos')}
+        downloadFilename="complaint-photo.jpg"
+      />
     </AppDrawer>
   );
 }

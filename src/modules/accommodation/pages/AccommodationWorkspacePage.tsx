@@ -278,6 +278,7 @@ export function AccommodationWorkspacePage() {
     <RoomInventoryPanel
       spaceId={spaceId}
       canManage={permissions.canManageAccommodation}
+      showUnits={Boolean(profile?.showUnits || profile?.showUnitsOnFloor)}
       onSelect={handleSelect}
       onEditEntity={(sel) => setFormMode({ kind: 'edit', selection: sel })}
       onAddBed={(roomSelection) =>
@@ -404,6 +405,11 @@ export function AccommodationWorkspacePage() {
               selection={selection}
               buildings={buildingsQuery.buildings}
               onSelect={handleSelect}
+              onEdit={
+                permissions.canManageAccommodation
+                  ? (next) => setFormMode({ kind: 'edit', selection: next })
+                  : undefined
+              }
             />
             <Box
               sx={{

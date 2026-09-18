@@ -25,6 +25,8 @@ type AvailabilityFilter = 'ALL' | 'HAS_AVAILABLE' | 'FULL';
 type RoomInventoryPanelProps = {
   spaceId: string;
   canManage: boolean;
+  /** Visible apartments exist in this layout (not corridor synthetic units). */
+  showUnits?: boolean;
   onSelect: (selection: TreeSelection) => void;
   onEditEntity: (selection: TreeSelection) => void;
   onAddBed: (roomSelection: TreeSelection) => void;
@@ -47,6 +49,7 @@ function matchesAvailability(group: BedRoomGroup, filter: AvailabilityFilter): b
 export function RoomInventoryPanel({
   spaceId,
   canManage,
+  showUnits = false,
   onSelect,
   onEditEntity,
   onAddBed,
@@ -252,6 +255,7 @@ export function RoomInventoryPanel({
             group={group}
             canManage={canManage}
             showTipCard={index === 0 && canManage}
+            showUnits={showUnits}
             onSelect={onSelect}
             onEditEntity={onEditEntity}
             onAddBed={onAddBed}

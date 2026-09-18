@@ -25,6 +25,9 @@ import type {
   FoodType,
 } from '@/shared/types/meals';
 import { useMealMutations } from '../hooks/useMeals';
+import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
+import { canEditEntityPhoto } from '@/shared/files/entityPhoto';
+import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 
 const FOOD_TYPES: FoodType[] = ['VEG', 'NON_VEG', 'EGG'];
 
@@ -67,6 +70,8 @@ export function FoodItemFormDrawer({
   const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const mutations = useMealMutations(spaceId);
+  const permissions = useSpacePermissions(spaceId);
+  const canEditPhoto = canEditEntityPhoto(permissions.membershipRole);
 
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -142,6 +147,42 @@ export function FoodItemFormDrawer({
         </Box>
         <Box sx={{ p: `${DASHBOARD_UX.cardPadding}px`, flex: 1, overflow: 'auto' }}>
           <Stack spacing={2}>
+            {isEdit && item ? (
+              <EntityPhoto
+                spaceId={spaceId}
+                entityId={item.itemId}
+                kind="menuItem"
+                fileId={item.photoFileId}
+                canEdit={canEditPhoto}
+                height={120}
+                title={item.name}
+                label={t('files.viewerTitle', { defaultValue: 'Photo' })}
+                hint={
+                  canEditPhoto
+                    ? t('files.addHint', {
+                        defaultValue: 'Tap the image or use Add photo to upload.',
+                      })
+                    : undefined
+                }
+                fallback={
+                  <Box
+                    sx={{
+                      height: 120,
+                      display: 'grid',
+                      placeItems: 'center',
+                      bgcolor: s.elevated,
+                      borderRadius: `${DASHBOARD_UX.tileRadius}px`,
+                      color: colors.primaryDark,
+                    }}
+                  >
+                    {(() => {
+                      const Icon = itemIcon(item.foodType);
+                      return <Icon size={32} />;
+                    })()}
+                  </Box>
+                }
+              />
+            ) : null}
             <TextField
               label={t('meals.library.itemName')}
               value={name}

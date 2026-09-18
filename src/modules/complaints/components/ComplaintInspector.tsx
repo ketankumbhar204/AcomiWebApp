@@ -28,6 +28,9 @@ import { EmptyState } from '@/shared/components/EmptyState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { FileImageViewer } from '@/shared/components/files/FileImageViewer';
+import { prepareFileForUpload } from '@/shared/utils/optimizeImageFile';
+import { FileUploadUserError } from '@/shared/utils/fileLimits';
 import { useMembers } from '@/modules/members/hooks/useMembers';
 import type { ComplaintStatus } from '@/shared/types/complaints';
 import { useComplaintDetail, useComplaintMutations } from '../hooks/useComplaints';
@@ -140,6 +143,9 @@ export function ComplaintInspector({
   const [resolution, setResolution] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const commentsEndRef = useRef<HTMLDivElement>(null);
+  const [viewer, setViewer] = useState<{ fileId?: string | null; url?: string | null } | null>(
+    null,
+  );
 
   const assigneeOptions = useMemo(
     () =>
@@ -193,8 +199,13 @@ export function ComplaintInspector({
     try {
       await fn();
       enqueueSnackbar(t(successKey), { variant: 'success' });
-    } catch {
-      enqueueSnackbar(t('complaints.errors.action'), { variant: 'error' });
+    } catch (error) {
+      enqueueSnackbar(
+        error instanceof FileUploadUserError
+          ? error.message
+          : t('complaints.errors.action'),
+        { variant: 'error' },
+      );
     }
   };
 
@@ -221,15 +232,17 @@ export function ComplaintInspector({
       return;
     }
     void run(
-      () =>
-        mutations.addAttachment.mutateAsync({
+      async () => {
+        const prepared = await prepareFileForUpload(file, 'COMPLAINT_ATTACHMENT');
+        await mutations.addAttachment.mutateAsync({
           complaintId: complaint.complaintId,
           body: {
-            localFile: file,
-            fileName: file.name,
-            contentType: file.type || undefined,
+            localFile: prepared,
+            fileName: prepared.name,
+            contentType: prepared.type || undefined,
           },
-        }),
+        });
+      },
       'complaints.updated',
     );
   };
@@ -448,7 +461,7 @@ export function ComplaintInspector({
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   hidden
                   onChange={(e) => onPickPhoto(e.target.files?.[0] ?? null)}
                 />
@@ -476,12 +489,14 @@ export function ComplaintInspector({
                   component="img"
                   src={att.storageUrl}
                   alt={att.fileName ?? t('complaints.fields.photos')}
+                  onClick={() => setViewer({ fileId: att.fileId, url: att.storageUrl })}
                   sx={{
                     width: 88,
                     height: 88,
                     objectFit: 'cover',
                     borderRadius: `${DASHBOARD_UX.tileRadius}px`,
                     border: `1px solid ${s.border}`,
+                    cursor: 'zoom-in',
                   }}
                 />
               ))}
@@ -620,6 +635,14 @@ export function ComplaintInspector({
           )}
         </InspectorCard>
       </Stack>
+      <FileImageViewer
+        open={Boolean(viewer)}
+        onClose={() => setViewer(null)}
+        fileId={viewer?.fileId}
+        imageUrl={viewer?.url}
+        title={t('complaints.fields.photos')}
+        downloadFilename="complaint-photo.jpg"
+      />
     </SidePanel>
   );
 }

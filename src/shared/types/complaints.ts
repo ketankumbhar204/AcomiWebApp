@@ -53,6 +53,7 @@ export type ComplaintComment = {
 
 export type ComplaintAttachment = {
   attachmentId: string;
+  fileId?: string | null;
   storageUrl: string;
   contentType?: string | null;
   fileName?: string | null;

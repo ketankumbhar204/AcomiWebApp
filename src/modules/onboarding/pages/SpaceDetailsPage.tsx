@@ -37,6 +37,8 @@ import { useSpaceDashboard } from '@/modules/dashboard/hooks/useSpaceDashboard';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { spaceApi } from '@/modules/onboarding/api/spaceApi';
 import { isSpaceOwner } from '@/modules/onboarding/utils/spaceOwnership';
+import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
+import { canEditEntityPhoto } from '@/shared/files/entityPhoto';
 import { genderPolicyLabelKey } from '@/modules/onboarding/utils/spacePropertyCategory';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { ContentCard } from '@/shared/components/ContentCard';
@@ -351,15 +353,35 @@ export function SpaceDetailsPage() {
                   width: 52,
                   height: 52,
                   borderRadius: '50%',
-                  bgcolor: theme.palette.mode === 'dark' ? s.elevated : `${colors.primaryDark}14`,
-                  color: colors.primaryDark,
-                  display: 'grid',
-                  placeItems: 'center',
+                  overflow: 'hidden',
                   flexShrink: 0,
                   border: `1px solid ${s.border}`,
                 }}
               >
-                <TypeIcon size={24} strokeWidth={2} />
+                <EntityPhoto
+                  spaceId={spaceId}
+                  entityId={spaceId}
+                  kind="space"
+                  fileId={details.photoFileId}
+                  canEdit={canEditEntityPhoto(mySpace?.membershipRole)}
+                  compact
+                  height={52}
+                  title={details.name}
+                  fallback={
+                    <Box
+                      sx={{
+                        width: 52,
+                        height: 52,
+                        display: 'grid',
+                        placeItems: 'center',
+                        bgcolor: theme.palette.mode === 'dark' ? s.elevated : `${colors.primaryDark}14`,
+                        color: colors.primaryDark,
+                      }}
+                    >
+                      <TypeIcon size={24} strokeWidth={2} />
+                    </Box>
+                  }
+                />
               </Box>
               <Box sx={{ minWidth: 0 }}>
                 <Typography

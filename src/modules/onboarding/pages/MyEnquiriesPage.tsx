@@ -6,17 +6,22 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { enquiryApi } from '@/shared/api/enquiryApi';
 import { ROUTES } from '@/routes/paths';
 import { PageHeader } from '@/shared/components/PageHeader';
-import type { SpaceEnquiryStatus } from '@/shared/types/enquiry';
+import type { SpaceEnquiryResponse, SpaceEnquiryStatus } from '@/shared/types/enquiry';
+import { contactWasEmailed } from '@/modules/onboarding/utils/enquiryContactDelivery';
 
 function statusKey(status: SpaceEnquiryStatus): string {
   return `spaces.enquiries.status.${status}`;
 }
 
-function hintKey(status: SpaceEnquiryStatus): string | null {
-  if (status === 'SHARED') return 'spaces.enquiries.sharedHint';
-  if (status === 'PENDING') return 'spaces.enquiries.pendingHint';
-  if (status === 'REJECTED') return 'spaces.enquiries.rejectedHint';
-  if (status === 'EXPIRED') return 'spaces.enquiries.expiredHint';
+function hintKey(enquiry: { status: SpaceEnquiryStatus } & Partial<SpaceEnquiryResponse>): string | null {
+  if (enquiry.status === 'SHARED') {
+    return contactWasEmailed(enquiry as SpaceEnquiryResponse)
+      ? 'spaces.enquiries.sharedHint'
+      : 'spaces.enquiries.sharedInAppHint';
+  }
+  if (enquiry.status === 'PENDING') return 'spaces.enquiries.pendingHint';
+  if (enquiry.status === 'REJECTED') return 'spaces.enquiries.rejectedHint';
+  if (enquiry.status === 'EXPIRED') return 'spaces.enquiries.expiredHint';
   return null;
 }
 
@@ -52,7 +57,7 @@ export function MyEnquiriesPage() {
       ) : (
         <Stack spacing={1.5}>
           {rows.map((row) => {
-            const hint = hintKey(row.status);
+            const hint = hintKey(row);
             return (
               <Box
                 id={`enquiry-${row.enquiryId}`}

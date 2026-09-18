@@ -77,6 +77,8 @@ import type { MealBillingType, PrepaidBalanceUnit } from '@/shared/types/dashboa
 import { useAuthStore } from '@/store/authStore';
 import { useSpaceStore } from '@/store/spaceStore';
 import { isDuplicateSpaceName } from '@/shared/utils/suggestBuildingDefaults';
+import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
+import { canEditEntityPhoto } from '@/shared/files/entityPhoto';
 
 type EditTab = 'general' | 'billing' | 'meals' | 'polls';
 
@@ -181,6 +183,8 @@ function EditSpaceForm({
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [photoFileId, setPhotoFileId] = useState(details.photoFileId ?? null);
+  const membershipRole = mySpaces.find((entry) => entry.spaceId === spaceId)?.membershipRole;
 
   const [billingType, setBillingType] = useState<MealBillingType>(
     billing?.billingType ?? details.mealBillingType ?? 'PAY_PER_MEAL',
@@ -481,6 +485,41 @@ function EditSpaceForm({
               <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary, mb: 2 }}>
                 {t('spaces.editSpace.generalInformation')}
               </Typography>
+
+              <Box sx={{ mb: 2, maxWidth: 280 }}>
+                <EntityPhoto
+                  spaceId={spaceId}
+                  entityId={spaceId}
+                  kind="space"
+                  fileId={photoFileId}
+                  canEdit={canEditEntityPhoto(membershipRole)}
+                  height={140}
+                  title={details.name}
+                  label={t('files.viewerTitle', { defaultValue: 'Photo' })}
+                  hint={
+                    canEditEntityPhoto(membershipRole)
+                      ? t('files.addHint', {
+                          defaultValue: 'Tap the image or use Add photo to upload.',
+                        })
+                      : undefined
+                  }
+                  onChanged={setPhotoFileId}
+                  fallback={
+                    <Box
+                      sx={{
+                        height: 140,
+                        display: 'grid',
+                        placeItems: 'center',
+                        bgcolor: theme.palette.mode === 'dark' ? s.elevated : `${colors.primaryDark}14`,
+                        color: colors.primaryDark,
+                        borderRadius: `${DASHBOARD_UX.tileRadius}px`,
+                      }}
+                    >
+                      <Building2 size={36} />
+                    </Box>
+                  }
+                />
+              </Box>
 
               <Box
                 sx={{
