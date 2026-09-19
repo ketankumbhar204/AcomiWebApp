@@ -5046,7 +5046,11 @@
         "label": "Date range",
         "7d": "Last 7 days",
         "30d": "Last 30 days",
-        "90d": "Last 90 days"
+        "60d": "Last 60 days",
+        "90d": "Last 90 days",
+        "custom": "Custom range",
+        "from": "From",
+        "to": "To"
       },
       "sectionRegistration": "Registration",
       "sectionLeadsSpaces": "Lead sources",
@@ -5071,6 +5075,9 @@
         "loadError": "Unable to load recent activity."
       },
       "charts": {
+        "activityTrend": "Activity Trend",
+        "activityTrendHint": "{{metric}} over the selected range.",
+        "activityTrendHintRange": "{{metric}} over the {{range}}",
         "enquiriesTrend": "Enquiries Trend",
         "enquiriesTrendHint": "New enquiries received over the selected range.",
         "enquiriesTrendHintRange": "New enquiries received over the {{range}}",
@@ -5081,7 +5088,29 @@
         "enquiriesShort": "enquiries",
         "totalLabel": "Total",
         "totalInRange": "{{count}} enquiries in range",
-        "noData": "No data for this range"
+        "noData": "No data for this range",
+        "metrics": {
+          "ENQUIRIES": "Enquiries",
+          "REGISTERED_USERS": "User registrations",
+          "PROPERTY_REGISTRATIONS": "Property leads",
+          "MESS_REGISTRATIONS": "Mess leads",
+          "PROPERTY_SPACES": "Active properties",
+          "MESS_SPACES": "Active messes",
+          "OWNERS": "Owners",
+          "SAVED_ADDRESSES": "Saved addresses",
+          "CREDIT_PAYMENTS": "Credit payments"
+        },
+        "metricUnits": {
+          "ENQUIRIES": "enquiries",
+          "REGISTERED_USERS": "users",
+          "PROPERTY_REGISTRATIONS": "leads",
+          "MESS_REGISTRATIONS": "leads",
+          "PROPERTY_SPACES": "spaces",
+          "MESS_SPACES": "spaces",
+          "OWNERS": "owners",
+          "SAVED_ADDRESSES": "addresses",
+          "CREDIT_PAYMENTS": "payments"
+        }
       },
       "stats": {
         "registeredUsers": "Registered Users",
@@ -5142,7 +5171,9 @@
       "addMess": "Add mess",
       "addresses": "Addresses",
       "savedAddresses": "Saved addresses",
-      "enquiries": "Enquiries"
+      "enquiries": "Enquiries",
+      "creditsConfig": "Credits config",
+      "creditPayments": "Credit payments"
     },
     "notifications": {
       "title": "Notifications",
@@ -5260,7 +5291,7 @@
     },
     "users": {
       "title": "Registered Users",
-      "hint": "Phone-verified accounts. Owner/Member selection and property or mess creation are not required.",
+      "hint": "Registered accounts. Click a stat card to filter the list. Owner/Member selection and property or mess creation are not required.",
       "empty": "No registered users found.",
       "export": "Export Users",
       "invite": "Invite User (Link)",
@@ -5314,6 +5345,7 @@
       "view": "View",
       "searchPlaceholder": "Search by name, phone number...",
       "showing": "Showing {{from}}–{{to}} of {{total}} users",
+      "loadFailed": "Could not load registered users.",
       "stats": {
         "total": "Total Users",
         "verified": "Verified Users",

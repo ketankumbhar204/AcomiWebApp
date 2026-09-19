@@ -7,6 +7,8 @@ export type AppNavItem = {
   icon?: ReactNode;
   badgeCount?: number;
   disabled?: boolean;
+  /** When true, only exact path matches (e.g. admin dashboard `/admin`). */
+  end?: boolean;
 };
 
 export type AppNavSection = {

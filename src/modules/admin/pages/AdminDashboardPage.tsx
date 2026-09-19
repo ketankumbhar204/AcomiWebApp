@@ -9,6 +9,7 @@ import {
   MenuItem,
   Select,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material';
 import {
@@ -34,7 +35,9 @@ import { AdminRecentActivityPanel } from '@/modules/admin/components/AdminRecent
 import { AdminUserRegistrationBreakdownChart } from '@/modules/admin/components/AdminUserRegistrationBreakdownChart';
 import {
   adminDashboardDateRange,
+  defaultCustomDashboardRange,
   type AdminDashboardDateRangeKey,
+  type AdminDashboardTrendMetric,
 } from '@/modules/admin/utils/adminActivityUi';
 import { adminListPath } from '@/modules/admin/utils/adminListFilters';
 import {
@@ -67,8 +70,23 @@ export function AdminDashboardPage() {
   const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
   const [rangeKey, setRangeKey] = useState<AdminDashboardDateRangeKey>('7d');
-  const range = useMemo(() => adminDashboardDateRange(rangeKey), [rangeKey]);
-  const rangeLabel = t(`admin.dashboard.range.${rangeKey}`);
+  const [customFrom, setCustomFrom] = useState(() => defaultCustomDashboardRange().from);
+  const [customTo, setCustomTo] = useState(() => defaultCustomDashboardRange().to);
+  const [trendMetric, setTrendMetric] = useState<AdminDashboardTrendMetric>('ENQUIRIES');
+
+  const range = useMemo(() => {
+    if (rangeKey === 'custom') {
+      const from = customFrom <= customTo ? customFrom : customTo;
+      const to = customFrom <= customTo ? customTo : customFrom;
+      return { from, to };
+    }
+    return adminDashboardDateRange(rangeKey);
+  }, [customFrom, customTo, rangeKey]);
+
+  const rangeLabel =
+    rangeKey === 'custom'
+      ? `${range.from} → ${range.to}`
+      : t(`admin.dashboard.range.${rangeKey}`);
 
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
   const [activity, setActivity] = useState<AdminActivityItem[]>([]);
@@ -78,14 +96,20 @@ export function AdminDashboardPage() {
   const [activityLoading, setActivityLoading] = useState(true);
   const [chartsLoading, setChartsLoading] = useState(true);
   const [activityError, setActivityError] = useState(false);
-  const [activeRangeKey, setActiveRangeKey] = useState(rangeKey);
+  const [activeFiltersKey, setActiveFiltersKey] = useState(`${range.from}|${range.to}`);
+  const [activeChartsKey, setActiveChartsKey] = useState(`${range.from}|${range.to}|${trendMetric}`);
+  const filtersKey = `${range.from}|${range.to}`;
+  const chartsKey = `${filtersKey}|${trendMetric}`;
 
-  if (activeRangeKey !== rangeKey) {
-    setActiveRangeKey(rangeKey);
+  if (activeFiltersKey !== filtersKey) {
+    setActiveFiltersKey(filtersKey);
     setSummaryLoading(true);
-    setChartsLoading(true);
     setActivityLoading(true);
     setActivityError(false);
+  }
+  if (activeChartsKey !== chartsKey) {
+    setActiveChartsKey(chartsKey);
+    setChartsLoading(true);
   }
 
   const loadActivity = useCallback(async () => {
@@ -152,7 +176,7 @@ export function AdminDashboardPage() {
   useEffect(() => {
     let active = true;
     void Promise.all([
-      adminApi.getEnquiriesTrend({ from: range.from, to: range.to }),
+      adminApi.getDashboardTrend({ metric: trendMetric, from: range.from, to: range.to }),
       adminApi.getUserRegistrationBreakdown({ from: range.from, to: range.to }),
     ])
       .then(([trendData, breakdownData]) => {
@@ -160,17 +184,23 @@ export function AdminDashboardPage() {
         setTrend(trendData);
         setBreakdown(breakdownData);
       })
+      .catch(() => {
+        if (!active) return;
+        setTrend(null);
+        setBreakdown(null);
+      })
       .finally(() => {
         if (active) setChartsLoading(false);
       });
     return () => {
       active = false;
     };
-  }, [range.from, range.to]);
+  }, [range.from, range.to, trendMetric]);
 
   const enquirySparkline = useMemo(
-    () => trend?.points.map((point) => point.count) ?? null,
-    [trend],
+    () =>
+      trendMetric === 'ENQUIRIES' ? (trend?.points.map((point) => point.count) ?? null) : null,
+    [trend, trendMetric],
   );
 
   const hour = new Date().getHours();
@@ -328,27 +358,72 @@ export function AdminDashboardPage() {
             {t('admin.dashboard.subtitle')}
           </Typography>
         </Box>
-        <FormControl size="small" sx={{ minWidth: 176 }}>
-          <Select
-            value={rangeKey}
-            onChange={(event) => setRangeKey(event.target.value as AdminDashboardDateRangeKey)}
-            renderValue={(value) => (
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <CalendarDays size={16} color="#64748B" />
-                <span>{t(`admin.dashboard.range.${value}`)}</span>
-              </Stack>
-            )}
-            sx={{
-              borderRadius: '10px',
-              bgcolor: '#FFFFFF',
-              fontWeight: 600,
-              boxShadow: '0 1px 2px rgb(15 23 42 / 0.04)',
-            }}>
-            <MenuItem value="7d">{t('admin.dashboard.range.7d')}</MenuItem>
-            <MenuItem value="30d">{t('admin.dashboard.range.30d')}</MenuItem>
-            <MenuItem value="90d">{t('admin.dashboard.range.90d')}</MenuItem>
-          </Select>
-        </FormControl>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.25}
+          sx={{ alignItems: { xs: 'stretch', sm: 'center' }, flexWrap: 'wrap' }}>
+          <FormControl size="small" sx={{ minWidth: 176 }}>
+            <Select
+              value={rangeKey}
+              onChange={(event) => {
+                const next = event.target.value as AdminDashboardDateRangeKey;
+                setRangeKey(next);
+                if (next === 'custom') {
+                  const preset = defaultCustomDashboardRange();
+                  setCustomFrom(preset.from);
+                  setCustomTo(preset.to);
+                }
+              }}
+              renderValue={(value) => (
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <CalendarDays size={16} color="#64748B" />
+                  <span>{t(`admin.dashboard.range.${value}`)}</span>
+                </Stack>
+              )}
+              sx={{
+                borderRadius: '10px',
+                bgcolor: '#FFFFFF',
+                fontWeight: 600,
+                boxShadow: '0 1px 2px rgb(15 23 42 / 0.04)',
+              }}>
+              <MenuItem value="7d">{t('admin.dashboard.range.7d')}</MenuItem>
+              <MenuItem value="30d">{t('admin.dashboard.range.30d')}</MenuItem>
+              <MenuItem value="60d">{t('admin.dashboard.range.60d')}</MenuItem>
+              <MenuItem value="90d">{t('admin.dashboard.range.90d')}</MenuItem>
+              <MenuItem value="custom">{t('admin.dashboard.range.custom')}</MenuItem>
+            </Select>
+          </FormControl>
+          {rangeKey === 'custom' ? (
+            <>
+              <TextField
+                size="small"
+                type="date"
+                label={t('admin.dashboard.range.from')}
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+                sx={{
+                  minWidth: 150,
+                  bgcolor: '#FFFFFF',
+                  '& .MuiOutlinedInput-root': { borderRadius: '10px' },
+                }}
+              />
+              <TextField
+                size="small"
+                type="date"
+                label={t('admin.dashboard.range.to')}
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+                sx={{
+                  minWidth: 150,
+                  bgcolor: '#FFFFFF',
+                  '& .MuiOutlinedInput-root': { borderRadius: '10px' },
+                }}
+              />
+            </>
+          ) : null}
+        </Stack>
       </Stack>
 
       <Grid container spacing={2.5}>
@@ -377,6 +452,8 @@ export function AdminDashboardPage() {
                 trend={trend}
                 loading={chartsLoading}
                 rangeLabel={rangeLabel}
+                metric={trendMetric}
+                onMetricChange={setTrendMetric}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>

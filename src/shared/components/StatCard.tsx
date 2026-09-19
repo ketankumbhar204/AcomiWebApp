@@ -14,6 +14,8 @@ type StatCardProps = {
   dense?: boolean;
   accentColor?: string;
   tone?: SemanticTone;
+  /** Active filter selection highlight. */
+  selected?: boolean;
 };
 
 export function StatCard({
@@ -25,6 +27,7 @@ export function StatCard({
   dense = false,
   accentColor,
   tone,
+  selected = false,
 }: StatCardProps) {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
@@ -47,11 +50,13 @@ export function StatCard({
           : undefined
       }
       aria-label={onClick ? `${label}: ${String(value)}` : undefined}
+      aria-pressed={onClick ? selected : undefined}
       sx={{
         p: dense ? `${DASHBOARD_UX.metricPadding}px` : `${DASHBOARD_UX.cardPadding}px`,
         borderRadius: `${DASHBOARD_UX.radius}px`,
         height: '100%',
-        border: `1px solid ${surface?.border ?? s.border}`,
+        border: `1px solid ${selected ? colors.primary : surface?.border ?? s.border}`,
+        borderWidth: selected ? 2 : 1,
         bgcolor: surface?.bg ?? s.surface,
         boxShadow: s.shadow,
         cursor: onClick ? 'pointer' : 'default',

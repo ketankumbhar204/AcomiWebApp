@@ -77,11 +77,15 @@ export interface AdminEnquiriesTrendPoint {
 }
 
 export interface AdminEnquiriesTrend {
+  metric?: string;
   from: string;
   to: string;
   points: AdminEnquiriesTrendPoint[];
   total: number;
 }
+
+/** Alias for multi-metric dashboard trends (same payload shape). */
+export type AdminDashboardTrend = AdminEnquiriesTrend;
 
 export interface AdminUserRegistrationBreakdownSlice {
   role: string;

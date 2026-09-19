@@ -362,8 +362,8 @@ export function AdminEnquiryListPage() {
         sx={{ mb: 3, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'flex-start' } }}>
         <Box>
           <Typography sx={{ fontWeight: 800, fontSize: { xs: 26, md: 30 }, letterSpacing: -0.5 }}>
-            {t('admin.enquiries.title')}
-          </Typography>
+        {t('admin.enquiries.title')}
+      </Typography>
           <Typography sx={{ color: 'text.secondary', mt: 0.5 }}>
             {t('admin.enquiries.subtitle')}
           </Typography>
@@ -555,7 +555,7 @@ export function AdminEnquiryListPage() {
         }}>
         <Box sx={{ overflowX: 'auto' }}>
           <Table sx={{ minWidth: 1080 }}>
-            <TableHead>
+          <TableHead>
               <TableRow sx={{ bgcolor: '#FAFBFC' }}>
                 <TableCell padding="checkbox">
                   <Checkbox checked={allSelected} onChange={toggleAll} />
@@ -574,9 +574,9 @@ export function AdminEnquiryListPage() {
                 <TableCell sx={{ fontWeight: 700 }}>{t('admin.enquiries.columns.status')}</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>{t('admin.common.testLead')}</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>{t('admin.enquiries.columns.action')}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
+            </TableRow>
+          </TableHead>
+          <TableBody>
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={8}>
@@ -645,7 +645,7 @@ export function AdminEnquiryListPage() {
                           {row.requesterEmail || t('admin.labels.emDash')}
                         </Typography>
                       </TableCell>
-                      <TableCell>
+                <TableCell>
                         <Box
                           sx={{
                             display: 'inline-flex',
@@ -657,21 +657,21 @@ export function AdminEnquiryListPage() {
                             fontWeight: 700,
                             color: '#475569',
                           }}>
-                          {row.requesterType === 'OWNER'
-                            ? t('admin.labels.owner')
-                            : t('admin.labels.member')}
+                  {row.requesterType === 'OWNER'
+                    ? t('admin.labels.owner')
+                    : t('admin.labels.member')}
                         </Box>
-                      </TableCell>
-                      <TableCell>
+                </TableCell>
+                <TableCell>
                         <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{requested.date}</Typography>
                         <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
                           {requested.time}
                         </Typography>
-                      </TableCell>
-                      <TableCell>
+                </TableCell>
+                <TableCell>
                         <AdminEnquiryStatusChip status={row.status} />
-                      </TableCell>
-                      <TableCell>
+                </TableCell>
+                <TableCell>
                         {row.testLead ? (
                           <Box
                             sx={{
@@ -694,8 +694,8 @@ export function AdminEnquiryListPage() {
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                          <Button
-                            size="small"
+                  <Button
+                    size="small"
                             startIcon={<Eye size={14} />}
                             onClick={() => openEnquiry(row.enquiryId)}
                             sx={{
@@ -707,8 +707,8 @@ export function AdminEnquiryListPage() {
                               px: 1.5,
                               '&:hover': { bgcolor: '#BBF7D0' },
                             }}>
-                            {t('admin.enquiries.view')}
-                          </Button>
+                    {t('admin.enquiries.view')}
+                  </Button>
                           <Button
                             size="small"
                             onClick={() =>
@@ -727,13 +727,13 @@ export function AdminEnquiryListPage() {
                             {t('admin.common.delete')}
                           </Button>
                         </Stack>
-                      </TableCell>
-                    </TableRow>
+                </TableCell>
+              </TableRow>
                   );
                 })
               )}
-            </TableBody>
-          </Table>
+          </TableBody>
+        </Table>
         </Box>
 
         <Stack

@@ -109,6 +109,7 @@ export function ComplaintsWorkspacePage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [raiseOpen, setRaiseOpen] = useState(false);
+  const [highPriorityOnly, setHighPriorityOnly] = useState(false);
 
   const listParams: ListComplaintsParams = {
     status: statusFilter || undefined,
@@ -143,6 +144,9 @@ export function ComplaintsWorkspacePage() {
 
   const setFilter = (key: string, value: string) => {
     setPage(0);
+    if (key === 'status' || key === 'priority') {
+      setHighPriorityOnly(false);
+    }
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
       if (value) {
@@ -150,6 +154,33 @@ export function ComplaintsWorkspacePage() {
       } else {
         p.delete(key);
       }
+      return p;
+    });
+  };
+
+  const applyComplaintKpi = (next: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'HIGH_PRIORITY') => {
+    setPage(0);
+    if (next === 'HIGH_PRIORITY') {
+      const clearing = highPriorityOnly;
+      setHighPriorityOnly(!clearing);
+      setSearchParams((prev) => {
+        const p = new URLSearchParams(prev);
+        p.delete('status');
+        p.delete('priority');
+        return p;
+      });
+      return;
+    }
+    const clearing = !highPriorityOnly && statusFilter === next;
+    setHighPriorityOnly(false);
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      if (clearing) {
+        p.delete('status');
+      } else {
+        p.set('status', next);
+      }
+      p.delete('priority');
       return p;
     });
   };
@@ -179,11 +210,15 @@ export function ComplaintsWorkspacePage() {
   };
 
   const filtered = useMemo(() => {
+    let rows = list.complaints;
+    if (highPriorityOnly) {
+      rows = rows.filter((c) => c.priority === 'URGENT' || c.priority === 'HIGH');
+    }
     const q = search.trim().toLowerCase();
     if (!q) {
-      return list.complaints;
+      return rows;
     }
-    return list.complaints.filter((c) => {
+    return rows.filter((c) => {
       const hay = [
         c.title,
         c.description,
@@ -197,7 +232,7 @@ export function ComplaintsWorkspacePage() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [list.complaints, search]);
+  }, [list.complaints, search, highPriorityOnly]);
 
   const urgentCount = useMemo(
     () =>
@@ -503,7 +538,8 @@ export function ComplaintsWorkspacePage() {
               tone="warning"
               label={t('complaints.kpi.open')}
               value={String(list.openCount)}
-              onClick={() => setFilter('status', 'OPEN')}
+              selected={!highPriorityOnly && statusFilter === 'OPEN'}
+              onClick={() => applyComplaintKpi('OPEN')}
               icon={
                 <IconBadge tone="warning">
                   <CircleDot />
@@ -517,7 +553,8 @@ export function ComplaintsWorkspacePage() {
               tone="info"
               label={t('complaints.kpi.inProgress')}
               value={String(list.inProgressCount)}
-              onClick={() => setFilter('status', 'IN_PROGRESS')}
+              selected={!highPriorityOnly && statusFilter === 'IN_PROGRESS'}
+              onClick={() => applyComplaintKpi('IN_PROGRESS')}
               icon={
                 <IconBadge tone="info">
                   <Clock3 />
@@ -531,7 +568,8 @@ export function ComplaintsWorkspacePage() {
               tone="success"
               label={t('complaints.kpi.resolved')}
               value={String(list.resolvedCount)}
-              onClick={() => setFilter('status', 'RESOLVED')}
+              selected={!highPriorityOnly && statusFilter === 'RESOLVED'}
+              onClick={() => applyComplaintKpi('RESOLVED')}
               icon={
                 <IconBadge tone="success">
                   <CheckCircle2 />
@@ -546,6 +584,8 @@ export function ComplaintsWorkspacePage() {
               label={t('complaints.kpi.highPriority')}
               value={String(urgentCount)}
               hint={t('complaints.kpi.total', { count: list.totalCount })}
+              selected={highPriorityOnly}
+              onClick={() => applyComplaintKpi('HIGH_PRIORITY')}
               icon={
                 <IconBadge tone="danger">
                   <TriangleAlert />

@@ -2,18 +2,17 @@ import { Box, IconButton, Paper, Stack, Tooltip, Typography, useTheme } from '@m
 import { ChevronLeft, ChevronRight, DoorOpen, Pencil, Plus, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSnackbar } from 'notistack';
 import { dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
 import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
-import { getErrorMessage } from '@/shared/api/errors';
 import type { AccommodationStatus, BedSpaceListItemResponse } from '@/shared/types/accommodation';
 import { BedCardPricingFields } from './BedCardPricingFields';
 import { HierarchyEditMenu } from './HierarchyEditMenu';
 import type { TreeSelection } from './HierarchyTree';
 import { getBedIllustration } from '../illustrations/illustrationAssets';
-import { commitBedPricingField } from '../utils/commitBedPricing';
 import { formatBedDisplayLabel } from '../utils/formatBedDisplayLabel';
+import { BedPricingConfirmDialog } from './BedPricingConfirmDialog';
+import { useConfirmBedPricingCommit } from '../hooks/useConfirmBedPricingCommit';
 import {
   roomGroupAvailableCount,
   roomInventoryPathCrumbs,
@@ -117,16 +116,13 @@ function RoomInventoryBedCard({
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
-  const { enqueueSnackbar } = useSnackbar();
-  const [rent, setRent] = useState(bed.defaultRent);
-  const [deposit, setDeposit] = useState(bed.defaultDeposit);
+  const rent = bed.defaultRent;
+  const deposit = bed.defaultDeposit;
   const tone = statusTone(bed.status);
   const surface = semanticSurface(tone, theme.palette.mode);
-
-  useEffect(() => {
-    setRent(bed.defaultRent);
-    setDeposit(bed.defaultDeposit);
-  }, [bed.bedId, bed.defaultDeposit, bed.defaultRent]);
+  const pricingCommit = useConfirmBedPricingCommit({
+    onSuccess: () => onPricingSaved?.(),
+  });
 
   const bedSelection: TreeSelection = {
     type: 'bed',
@@ -137,29 +133,21 @@ function RoomInventoryBedCard({
     unitId: bed.unitId ?? undefined,
   };
 
-  async function handlePricing(field: PricingField, value: number | null) {
-    if (field === 'defaultRent') {
-      setRent(value);
-    } else {
-      setDeposit(value);
-    }
-    try {
-      await commitBedPricingField({
-        spaceId,
-        roomId: bed.roomId,
-        bedId: bed.bedId,
-        field,
-        value,
-      });
-      onPricingSaved?.();
-    } catch (error) {
-      enqueueSnackbar(getErrorMessage(error, t('common.errors.generic')), { variant: 'error' });
-      setRent(bed.defaultRent);
-      setDeposit(bed.defaultDeposit);
-    }
+  function handlePricing(field: PricingField, value: number | null) {
+    pricingCommit.request({
+      spaceId,
+      roomId: bed.roomId,
+      bedId: bed.bedId,
+      bedLabel: formatBedDisplayLabel(bed.label, t),
+      currentRent: bed.defaultRent,
+      currentDeposit: bed.defaultDeposit,
+      field,
+      value,
+    });
   }
 
   return (
+    <>
     <Paper
       elevation={0}
       onClick={() => onSelect(bedSelection)}
@@ -243,7 +231,8 @@ function RoomInventoryBedCard({
           <BedCardPricingFields
             rent={rent}
             deposit={deposit}
-            onCommit={(field, value) => void handlePricing(field, value)}
+            disabled={pricingCommit.busy}
+            onCommit={(field, value) => handlePricing(field, value)}
           />
         ) : (
           <Stack
@@ -311,6 +300,13 @@ function RoomInventoryBedCard({
         )}
       </Stack>
     </Paper>
+    <BedPricingConfirmDialog
+      pending={pricingCommit.pending}
+      confirming={pricingCommit.confirming}
+      onConfirm={() => void pricingCommit.confirm()}
+      onClose={pricingCommit.close}
+    />
+    </>
   );
 }
 

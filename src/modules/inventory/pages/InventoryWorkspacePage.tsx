@@ -506,6 +506,7 @@ export function InventoryWorkspacePage() {
               tone="info"
               label={t('inventory.kpi.items')}
               value={String(dashboard.dashboard?.totalItems ?? itemsQuery.items.length)}
+              selected={tab === 'catalog' && stockFilter === 'ALL'}
               icon={
                 <IconBadge tone="info">
                   <Package />
@@ -523,6 +524,7 @@ export function InventoryWorkspacePage() {
               tone="warning"
               label={t('inventory.kpi.low')}
               value={String(dashboard.dashboard?.lowStockCount ?? 0)}
+              selected={tab === 'catalog' && stockFilter === 'LOW'}
               icon={
                 <IconBadge tone="warning">
                   <ArrowDownCircle />
@@ -540,6 +542,7 @@ export function InventoryWorkspacePage() {
               tone="danger"
               label={t('inventory.kpi.out')}
               value={String(dashboard.dashboard?.outOfStockCount ?? 0)}
+              selected={tab === 'catalog' && stockFilter === 'CRITICAL'}
               icon={
                 <IconBadge tone="danger">
                   <BarChart3 />

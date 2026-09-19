@@ -76,6 +76,7 @@ import {
   defaultMemberListFilters,
   filterAndSortMembers,
   filterPendingInvitations,
+  isJoinedThisMonth,
   rolesForSpace,
   type MemberListFilterState,
   type MemberSortOption,
@@ -108,12 +109,7 @@ function initials(name: string): string {
     .join('');
 }
 
-function isJoinedThisMonth(iso: string): boolean {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return false;
-  const now = new Date();
-  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
-}
+type MembersKpiFocus = 'total' | 'active' | 'pending' | 'joinedThisMonth';
 
 function MemberRowActions({
   onView,
@@ -251,6 +247,7 @@ export function MembersWorkspacePage() {
   const [listTab, setListTab] = useState<ListTab>('members');
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<MemberListFilterState>(defaultMemberListFilters());
+  const [kpiFocus, setKpiFocus] = useState<MembersKpiFocus | null>(null);
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
   const [editTarget, setEditTarget] = useState<MemberResponse | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -297,6 +294,35 @@ export function MembersWorkspacePage() {
       }),
     [filters.roles, invitationsQuery.invitations, search, spaceType],
   );
+
+  const applyKpiFocus = (next: MembersKpiFocus) => {
+    const clearing = kpiFocus === next;
+    setKpiFocus(clearing ? null : next);
+    setPage(0);
+    if (clearing || next === 'total') {
+      setListTab('members');
+      setFilters(defaultMemberListFilters());
+      return;
+    }
+    if (next === 'pending') {
+      setListTab('pending');
+      setFilters(defaultMemberListFilters());
+      return;
+    }
+    if (next === 'active') {
+      setListTab('members');
+      setFilters({
+        ...defaultMemberListFilters(),
+        statuses: ['ACTIVE'],
+      });
+      return;
+    }
+    setListTab('members');
+    setFilters({
+      ...defaultMemberListFilters(),
+      joinedThisMonthOnly: true,
+    });
+  };
 
   const kpi = useMemo(() => {
     const all = membersQuery.members;
@@ -553,6 +579,7 @@ export function MembersWorkspacePage() {
           onClick={() => {
             setPage(0);
             setFilters(defaultMemberListFilters());
+            setKpiFocus(null);
           }}
           sx={dashOutlinedButtonSx}
         >
@@ -674,6 +701,8 @@ export function MembersWorkspacePage() {
               label={t('membership.kpi.total')}
               value={kpi.total}
               hint={t('membership.kpi.totalHint')}
+              selected={kpiFocus === 'total'}
+              onClick={() => applyKpiFocus('total')}
               icon={
                 <IconBadge tone="success">
                   <Users />
@@ -688,6 +717,8 @@ export function MembersWorkspacePage() {
               label={t('membership.kpi.active')}
               value={kpi.active}
               hint={t('membership.kpi.activeHint')}
+              selected={kpiFocus === 'active'}
+              onClick={() => applyKpiFocus('active')}
               icon={
                 <IconBadge tone="info">
                   <UserCheck />
@@ -702,15 +733,13 @@ export function MembersWorkspacePage() {
               label={t('membership.kpi.pending')}
               value={kpi.pending}
               hint={t('membership.kpi.pendingHint')}
+              selected={kpiFocus === 'pending'}
               icon={
                 <IconBadge tone="warning">
                   <Mail />
                 </IconBadge>
               }
-              onClick={() => {
-                setListTab('pending');
-                setPage(0);
-              }}
+              onClick={() => applyKpiFocus('pending')}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -720,6 +749,8 @@ export function MembersWorkspacePage() {
               label={t('membership.kpi.joinedThisMonth')}
               value={kpi.joinedThisMonth}
               hint={t('membership.kpi.joinedThisMonthHint')}
+              selected={kpiFocus === 'joinedThisMonth'}
+              onClick={() => applyKpiFocus('joinedThisMonth')}
               icon={
                 <IconBadge tone="purple">
                   <CalendarPlus />
@@ -734,6 +765,7 @@ export function MembersWorkspacePage() {
           onChange={(_, value: ListTab) => {
             setListTab(value);
             setPage(0);
+            setKpiFocus(value === 'pending' ? 'pending' : kpiFocus === 'pending' ? null : kpiFocus);
           }}
           aria-label={t('membership.tabs.members')}
           sx={{

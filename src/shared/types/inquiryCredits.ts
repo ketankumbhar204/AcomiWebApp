@@ -2,6 +2,10 @@
  * Inquiry-credits types aligned with backend inquirycredit DTOs (Jackson camelCase).
  */
 
+export type InquiryClientChannel = 'WEB' | 'ANDROID';
+
+export type AndroidInquiryBillingMode = 'FREE' | 'CREDITS';
+
 export type InquiryPackage = {
   id: string;
   name: string;
@@ -10,6 +14,8 @@ export type InquiryPackage = {
   credits: number;
   enabled: boolean;
   displayOrder: number;
+  /** WEB = email/web enquiry credits; ANDROID = mobile app. */
+  clientChannel: InquiryClientChannel;
 };
 
 export type InquiryPaymentConfig = {
@@ -20,6 +26,10 @@ export type InquiryPaymentConfig = {
   qrUrl?: string | null;
   whatsappNumber?: string | null;
   instructions?: string | null;
+  webFreeDailyLimit?: number;
+  androidBillingMode?: AndroidInquiryBillingMode;
+  androidFreeDailyLimit?: number;
+  androidHourlyRateLimit?: number;
   packages: InquiryPackage[];
 };
 
@@ -32,12 +42,14 @@ export type InquiryWallet = {
   updatedAt?: string;
 };
 
-/** WEB free daily enquiry quota + paid credits. */
+/** Channel free daily enquiry quota + paid credits. */
 export type InquiryQuota = {
+  channel?: InquiryClientChannel | string;
   dailyFreeLimit: number;
   freeUsedToday: number;
   freeRemainingToday: number;
   availableCredits: number;
+  androidBillingMode?: AndroidInquiryBillingMode | string | null;
 };
 
 export type InquiryPurchaseStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -79,6 +91,10 @@ export type UpdateInquiryPaymentConfigRequest = {
   whatsappNumber?: string | null;
   qrFileId?: string | null;
   instructions?: string | null;
+  webFreeDailyLimit?: number;
+  androidBillingMode?: AndroidInquiryBillingMode;
+  androidFreeDailyLimit?: number;
+  androidHourlyRateLimit?: number;
 };
 
 export type UpdateInquiryPackageRequest = {

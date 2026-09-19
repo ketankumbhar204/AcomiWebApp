@@ -54,20 +54,53 @@ export function formatAdminActivityCardTime(iso: string, now = new Date()): stri
   return `${day}, ${time}`;
 }
 
-export type AdminDashboardDateRangeKey = '7d' | '30d' | '90d';
+export type AdminDashboardDateRangeKey = '7d' | '30d' | '60d' | '90d' | 'custom';
 
-export function adminDashboardDateRange(key: AdminDashboardDateRangeKey): {
-  from: string;
-  to: string;
-} {
+export type AdminDashboardTrendMetric =
+  | 'ENQUIRIES'
+  | 'REGISTERED_USERS'
+  | 'PROPERTY_REGISTRATIONS'
+  | 'MESS_REGISTRATIONS'
+  | 'PROPERTY_SPACES'
+  | 'MESS_SPACES'
+  | 'OWNERS'
+  | 'SAVED_ADDRESSES'
+  | 'CREDIT_PAYMENTS';
+
+export const ADMIN_DASHBOARD_TREND_METRICS: AdminDashboardTrendMetric[] = [
+  'ENQUIRIES',
+  'REGISTERED_USERS',
+  'PROPERTY_REGISTRATIONS',
+  'MESS_REGISTRATIONS',
+  'PROPERTY_SPACES',
+  'MESS_SPACES',
+  'OWNERS',
+  'SAVED_ADDRESSES',
+  'CREDIT_PAYMENTS',
+];
+
+function toIsoDate(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+export function adminDashboardDateRange(
+  key: Exclude<AdminDashboardDateRangeKey, 'custom'>,
+): { from: string; to: string } {
   const to = new Date();
   const from = new Date();
-  const days = key === '7d' ? 6 : key === '30d' ? 29 : 89;
+  const days = key === '7d' ? 6 : key === '30d' ? 29 : key === '60d' ? 59 : 89;
   from.setHours(0, 0, 0, 0);
   from.setDate(from.getDate() - days);
   to.setHours(0, 0, 0, 0);
   return {
-    from: from.toISOString().slice(0, 10),
-    to: to.toISOString().slice(0, 10),
+    from: toIsoDate(from),
+    to: toIsoDate(to),
   };
+}
+
+export function defaultCustomDashboardRange(): { from: string; to: string } {
+  return adminDashboardDateRange('7d');
 }

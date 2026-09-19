@@ -155,6 +155,7 @@ export function PendingActionsPage() {
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [groupFilter, setGroupFilter] = useState<string>('all');
+  const [kpiFocus, setKpiFocus] = useState<'all' | 'critical' | 'today' | null>(null);
   const [page, setPage] = useState(0);
 
   useEffect(() => {
@@ -191,9 +192,24 @@ export function PendingActionsPage() {
     return [...titles].sort((a, b) => a.localeCompare(b));
   }, [allRows]);
 
+  const todayActionTypes = useMemo(
+    () =>
+      new Set([
+        'MOVE_IN_SCHEDULED_TODAY',
+        'MOVE_OUT_SCHEDULED_TODAY',
+        'RESERVATION_STARTING_TODAY',
+      ]),
+    [],
+  );
+
   const filteredRows = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return allRows.filter((row) => {
+      if (kpiFocus === 'critical') {
+        if (row.priority !== 'CRITICAL' && row.priority !== 'HIGH') return false;
+      } else if (kpiFocus === 'today') {
+        if (!todayActionTypes.has(row.actionType)) return false;
+      }
       if (priorityFilter !== 'all' && row.priority !== priorityFilter) return false;
       if (groupFilter !== 'all' && row.groupTitle !== groupFilter) return false;
       if (!matchesCategory(row.notificationType || row.actionType, categoryFilter)) {
@@ -205,7 +221,15 @@ export function PendingActionsPage() {
         .toLowerCase()
         .includes(needle);
     });
-  }, [allRows, search, priorityFilter, categoryFilter, groupFilter]);
+  }, [allRows, search, priorityFilter, categoryFilter, groupFilter, kpiFocus, todayActionTypes]);
+
+  const applyPendingKpi = (next: 'all' | 'critical' | 'today') => {
+    setKpiFocus((prev) => (prev === next ? null : next));
+    setPage(0);
+    if (next === 'all') {
+      setPriorityFilter('all');
+    }
+  };
 
   const pageRows = useMemo(() => {
     const start = page * PAGE_SIZE;
@@ -465,6 +489,8 @@ export function PendingActionsPage() {
                   dense
                   label={t('dashboard.pendingActions.kpi.pending')}
                   value={visibleTotalCount}
+                  selected={kpiFocus === 'all'}
+                  onClick={() => applyPendingKpi('all')}
                   icon={
                     <IconBadge accent={colors.success}>
                       <Clock3 />
@@ -477,6 +503,8 @@ export function PendingActionsPage() {
                   dense
                   label={t('dashboard.pendingActions.kpi.critical')}
                   value={criticalCount}
+                  selected={kpiFocus === 'critical'}
+                  onClick={() => applyPendingKpi('critical')}
                   icon={
                     <IconBadge accent={criticalCount > 0 ? colors.danger : colors.muted}>
                       <TriangleAlert />
@@ -489,6 +517,8 @@ export function PendingActionsPage() {
                   dense
                   label={t('dashboard.pendingActions.kpi.today')}
                   value={todayCount}
+                  selected={kpiFocus === 'today'}
+                  onClick={() => applyPendingKpi('today')}
                   icon={
                     <IconBadge accent={todayCount > 0 ? '#3B82F6' : colors.muted}>
                       <CalendarDays />

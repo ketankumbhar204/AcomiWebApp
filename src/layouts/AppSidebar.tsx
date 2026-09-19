@@ -145,6 +145,7 @@ function SidebarBody({
                   <ListItemButton
                     component={NavLink}
                     to={item.to}
+                    end={item.end}
                     disabled={item.disabled}
                     onClick={onNavigate}
                     sx={{

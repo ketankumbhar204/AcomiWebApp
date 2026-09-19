@@ -190,9 +190,12 @@ export function AdminRegisteredUsersPage() {
   const [role, setRole] = useState<AdminUserSelectedRole | ''>('');
   const [onboarding, setOnboarding] = useState<AdminUserOnboardingStatus | ''>('');
   const [spaceAssociation, setSpaceAssociation] = useState<'' | 'WITH_SPACE' | 'WITHOUT_SPACE'>('');
-  const [registeredDate, setRegisteredDate] = useState('');
+  const [verified, setVerified] = useState<boolean | null>(null);
+  const [registeredFrom, setRegisteredFrom] = useState('');
+  const [registeredTo, setRegisteredTo] = useState('');
+  const [activeStat, setActiveStat] = useState<'total' | 'verified' | 'new' | 'spaces' | null>(null);
 
-  const filterKey = `${debouncedQ}|${role}|${onboarding}|${spaceAssociation}|${registeredDate}`;
+  const filterKey = `${debouncedQ}|${role}|${onboarding}|${spaceAssociation}|${verified}|${registeredFrom}|${registeredTo}`;
   const [activeFilterKey, setActiveFilterKey] = useState(filterKey);
   if (activeFilterKey !== filterKey) {
     setActiveFilterKey(filterKey);
@@ -228,8 +231,9 @@ export function AdminRegisteredUsersPage() {
         role: role || undefined,
         onboarding: onboarding || undefined,
         spaceAssociation: spaceAssociation || undefined,
-        from: registeredDate || undefined,
-        to: registeredDate || undefined,
+        verified: verified === null ? undefined : verified,
+        from: registeredFrom || undefined,
+        to: registeredTo || undefined,
         page,
         size: PAGE_SIZE,
       })
@@ -244,11 +248,12 @@ export function AdminRegisteredUsersPage() {
         setTotalPages(result.totalPages);
         setTotalElements(result.totalElements);
       })
-      .catch(() => {
+      .catch((err) => {
         if (!active) return;
         setUsers([]);
         setTotalPages(0);
         setTotalElements(0);
+        enqueueSnackbar(getErrorMessage(err, t('admin.users.loadFailed')), { variant: 'error' });
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -256,7 +261,19 @@ export function AdminRegisteredUsersPage() {
     return () => {
       active = false;
     };
-  }, [debouncedQ, onboarding, page, registeredDate, role, sortDir, spaceAssociation]);
+  }, [
+    debouncedQ,
+    enqueueSnackbar,
+    onboarding,
+    page,
+    registeredFrom,
+    registeredTo,
+    role,
+    sortDir,
+    spaceAssociation,
+    t,
+    verified,
+  ]);
 
   const stats = useMemo(
     () => [
@@ -315,7 +332,61 @@ export function AdminRegisteredUsersPage() {
     setRole('');
     setOnboarding('');
     setSpaceAssociation('');
-    setRegisteredDate('');
+    setVerified(null);
+    setRegisteredFrom('');
+    setRegisteredTo('');
+    setActiveStat(null);
+  }
+
+  function isoDate(d: Date): string {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function applyStatFilter(key: 'total' | 'verified' | 'new' | 'spaces') {
+    setSearchInput('');
+    setDebouncedQ('');
+    setRole('');
+    setOnboarding('');
+    setPage(0);
+    setSelected(new Set());
+
+    if (activeStat === key) {
+      clearFilters();
+      return;
+    }
+
+    setActiveStat(key);
+    if (key === 'total') {
+      setVerified(null);
+      setSpaceAssociation('');
+      setRegisteredFrom('');
+      setRegisteredTo('');
+      return;
+    }
+    if (key === 'verified') {
+      setVerified(true);
+      setSpaceAssociation('');
+      setRegisteredFrom('');
+      setRegisteredTo('');
+      return;
+    }
+    if (key === 'new') {
+      const to = new Date();
+      const from = new Date();
+      from.setDate(from.getDate() - 30);
+      setVerified(null);
+      setSpaceAssociation('');
+      setRegisteredFrom(isoDate(from));
+      setRegisteredTo(isoDate(to));
+      return;
+    }
+    setVerified(null);
+    setSpaceAssociation('WITH_SPACE');
+    setRegisteredFrom('');
+    setRegisteredTo('');
   }
 
   function toggleAll() {
@@ -389,8 +460,9 @@ export function AdminRegisteredUsersPage() {
         role: role || undefined,
         onboarding: onboarding || undefined,
         spaceAssociation: spaceAssociation || undefined,
-        from: registeredDate || undefined,
-        to: registeredDate || undefined,
+        verified: verified === null ? undefined : verified,
+        from: registeredFrom || undefined,
+        to: registeredTo || undefined,
         page: 0,
         size: 100,
       });
@@ -560,16 +632,33 @@ export function AdminRegisteredUsersPage() {
         {stats.map((stat) => {
           const positive = (stat.delta ?? 0) > 0;
           const negative = (stat.delta ?? 0) < 0;
+          const selected = activeStat === stat.key;
           return (
             <Grid key={stat.key} size={{ xs: 12, sm: 6, md: 3 }}>
               <Card
                 elevation={0}
+                role="button"
+                tabIndex={0}
+                onClick={() => applyStatFilter(stat.key as 'total' | 'verified' | 'new' | 'spaces')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    applyStatFilter(stat.key as 'total' | 'verified' | 'new' | 'spaces');
+                  }
+                }}
                 sx={{
                   borderRadius: '14px',
                   border: '1px solid',
-                  borderColor: 'divider',
-                  boxShadow: '0 1px 2px rgb(15 23 42 / 0.04), 0 4px 12px rgb(15 23 42 / 0.04)',
+                  borderColor: selected ? 'primary.main' : 'divider',
+                  boxShadow: selected
+                    ? '0 0 0 2px rgb(15 118 110 / 0.2)'
+                    : '0 1px 2px rgb(15 23 42 / 0.04), 0 4px 12px rgb(15 23 42 / 0.04)',
                   height: '100%',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                  },
                 }}>
                 <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                   <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
@@ -634,7 +723,10 @@ export function AdminRegisteredUsersPage() {
               size="small"
               fullWidth
               value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                setActiveStat(null);
+              }}
               placeholder={t('admin.users.searchPlaceholder')}
               slotProps={{
                 input: {
@@ -651,7 +743,10 @@ export function AdminRegisteredUsersPage() {
               <Select
                 displayEmpty
                 value={role}
-                onChange={(e) => setRole(e.target.value as AdminUserSelectedRole | '')}
+                onChange={(e) => {
+                  setRole(e.target.value as AdminUserSelectedRole | '');
+                  setActiveStat(null);
+                }}
                 sx={{ borderRadius: '10px' }}>
                 <MenuItem value="">{t('admin.users.filters.allRoles')}</MenuItem>
                 <MenuItem value="OWNER">{t('admin.labels.owner')}</MenuItem>
@@ -664,7 +759,10 @@ export function AdminRegisteredUsersPage() {
               <Select
                 displayEmpty
                 value={onboarding}
-                onChange={(e) => setOnboarding(e.target.value as AdminUserOnboardingStatus | '')}
+                onChange={(e) => {
+                  setOnboarding(e.target.value as AdminUserOnboardingStatus | '');
+                  setActiveStat(null);
+                }}
                 sx={{ borderRadius: '10px' }}>
                 <MenuItem value="">{t('admin.users.filters.allOnboarding')}</MenuItem>
                 <MenuItem value="COMPLETE">{t('admin.labels.complete')}</MenuItem>
@@ -675,9 +773,10 @@ export function AdminRegisteredUsersPage() {
               <Select
                 displayEmpty
                 value={spaceAssociation}
-                onChange={(e) =>
-                  setSpaceAssociation(e.target.value as '' | 'WITH_SPACE' | 'WITHOUT_SPACE')
-                }
+                onChange={(e) => {
+                  setSpaceAssociation(e.target.value as '' | 'WITH_SPACE' | 'WITHOUT_SPACE');
+                  setActiveStat(null);
+                }}
                 sx={{ borderRadius: '10px' }}>
                 <MenuItem value="">{t('admin.users.filters.allSpace')}</MenuItem>
                 <MenuItem value="WITH_SPACE">{t('admin.users.filters.withSpace')}</MenuItem>
@@ -687,8 +786,13 @@ export function AdminRegisteredUsersPage() {
             <TextField
               size="small"
               type="date"
-              value={registeredDate}
-              onChange={(e) => setRegisteredDate(e.target.value)}
+              value={registeredFrom && registeredFrom === registeredTo ? registeredFrom : ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setRegisteredFrom(value);
+                setRegisteredTo(value);
+                setActiveStat(null);
+              }}
               label={t('admin.users.filters.registeredDate')}
               slotProps={{
                 inputLabel: { shrink: true },

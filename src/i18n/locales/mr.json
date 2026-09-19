@@ -1883,6 +1883,16 @@
       "createSuccess": "Bed added successfully.",
       "updateSuccess": "Bed updated successfully."
     },
+    "pricingConfirm": {
+      "title": "बेड किंमत अपडेट करायची?",
+      "current": "सध्याची",
+      "next": "नवीन",
+      "notSet": "सेट नाही",
+      "propagation": "यामुळे हा बेड अपडेट होईल आणि या इमारतीतील रिकाम्या समकक्ष बेड्सवर तीच किंमत भरली जाईल. विद्यमान बेड किंमती ओव्हरराइट होणार नाहीत.",
+      "confirm": "किंमत अपडेट करा",
+      "confirming": "किंमत अपडेट होत आहे...",
+      "success": "बेड किंमत अपडेट झाली."
+    },
     "lifecycle": {
       "menuTitle": "क्रिया",
       "deactivateTitle": "निष्क्रिय करा",

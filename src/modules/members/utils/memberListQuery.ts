@@ -33,6 +33,8 @@ export type MemberListFilterState = {
   roles: MembershipRole[];
   statuses: MemberStatus[];
   sort: MemberSortOption;
+  /** When true, only members whose createdAt falls in the current calendar month. */
+  joinedThisMonthOnly?: boolean;
 };
 
 export function defaultMemberListFilters(): MemberListFilterState {
@@ -40,7 +42,16 @@ export function defaultMemberListFilters(): MemberListFilterState {
     roles: [],
     statuses: [],
     sort: DEFAULT_MEMBER_SORT,
+    joinedThisMonthOnly: false,
   };
+}
+
+export function isJoinedThisMonth(iso?: string | null): boolean {
+  if (!iso) return false;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return false;
+  const now = new Date();
+  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
 }
 
 export function rolesForSpace(spaceType: SpaceType | undefined): MembershipRole[] {
@@ -105,6 +116,9 @@ export function filterAndSortMembers(
     if (!matchesStatusFilter(member.status ?? 'ACTIVE', options.filters.statuses)) {
       return false;
     }
+    if (options.filters.joinedThisMonthOnly && !isJoinedThisMonth(member.createdAt)) {
+      return false;
+    }
     return true;
   });
 
@@ -163,6 +177,9 @@ export function countMemberListFilters(
     count += 1;
   }
   if (filters.statuses.length > 0 && filters.statuses.length < MEMBER_STATUSES.length) {
+    count += 1;
+  }
+  if (filters.joinedThisMonthOnly) {
     count += 1;
   }
   if (filters.sort !== DEFAULT_MEMBER_SORT) {

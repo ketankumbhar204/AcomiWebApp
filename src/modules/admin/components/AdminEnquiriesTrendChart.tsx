@@ -8,25 +8,39 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  ADMIN_DASHBOARD_TREND_METRICS,
+  type AdminDashboardTrendMetric,
+} from '@/modules/admin/utils/adminActivityUi';
 import type { AdminEnquiriesTrend } from '@/shared/types/admin';
 
 type Props = {
   trend: AdminEnquiriesTrend | null;
   loading?: boolean;
   rangeLabel?: string;
+  metric: AdminDashboardTrendMetric;
+  onMetricChange: (metric: AdminDashboardTrendMetric) => void;
 };
 
-export function AdminEnquiriesTrendChart({ trend, loading, rangeLabel }: Props) {
+export function AdminEnquiriesTrendChart({
+  trend,
+  loading,
+  rangeLabel,
+  metric,
+  onMetricChange,
+}: Props) {
   const { t } = useTranslation();
-  const [metric, setMetric] = useState('enquiries');
   const width = 640;
   const height = 260;
   const padL = 36;
   const padR = 16;
   const padT = 20;
   const padB = 36;
+
+  const metricLabel = t(`admin.dashboard.charts.metrics.${metric}`);
+  const unitLabel = t(`admin.dashboard.charts.metricUnits.${metric}`);
 
   const path = useMemo(() => {
     if (!trend || trend.points.length === 0) return null;
@@ -68,28 +82,39 @@ export function AdminEnquiriesTrendChart({ trend, loading, rangeLabel }: Props) 
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1}
-          sx={{ justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'flex-start' }, mb: 2 }}>
+          sx={{
+            justifyContent: 'space-between',
+            alignItems: { xs: 'stretch', sm: 'flex-start' },
+            mb: 2,
+          }}>
           <Box>
             <Typography sx={{ fontWeight: 800, fontSize: 16, color: 'text.primary' }}>
-              {t('admin.dashboard.charts.enquiriesTrend')}
+              {t('admin.dashboard.charts.activityTrend')}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {rangeLabel
-                ? t('admin.dashboard.charts.enquiriesTrendHintRange', { range: rangeLabel })
-                : t('admin.dashboard.charts.enquiriesTrendHint')}
+                ? t('admin.dashboard.charts.activityTrendHintRange', {
+                    metric: metricLabel,
+                    range: rangeLabel,
+                  })
+                : t('admin.dashboard.charts.activityTrendHint', { metric: metricLabel })}
             </Typography>
           </Box>
-          <FormControl size="small" sx={{ minWidth: 120 }}>
+          <FormControl size="small" sx={{ minWidth: 180 }}>
             <Select
               value={metric}
-              onChange={(e) => setMetric(e.target.value)}
+              onChange={(e) => onMetricChange(e.target.value as AdminDashboardTrendMetric)}
               sx={{
                 borderRadius: 2,
                 bgcolor: 'background.paper',
                 fontWeight: 600,
                 fontSize: 13,
               }}>
-              <MenuItem value="enquiries">{t('admin.dashboard.charts.metricEnquiries')}</MenuItem>
+              {ADMIN_DASHBOARD_TREND_METRICS.map((key) => (
+                <MenuItem key={key} value={key}>
+                  {t(`admin.dashboard.charts.metrics.${key}`)}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
         </Stack>
@@ -104,7 +129,7 @@ export function AdminEnquiriesTrendChart({ trend, loading, rangeLabel }: Props) 
           <Box sx={{ width: '100%', position: 'relative' }}>
             <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={260} role="img">
               <defs>
-                <linearGradient id="enquiryArea" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="adminTrendArea" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#22C55E" stopOpacity="0.28" />
                   <stop offset="100%" stopColor="#22C55E" stopOpacity="0.02" />
                 </linearGradient>
@@ -124,7 +149,7 @@ export function AdminEnquiriesTrendChart({ trend, loading, rangeLabel }: Props) 
                   </text>
                 </g>
               ))}
-              <path d={path.area} fill="url(#enquiryArea)" />
+              <path d={path.area} fill="url(#adminTrendArea)" />
               <path d={path.line} fill="none" stroke="#22C55E" strokeWidth={3} strokeLinecap="round" />
               {path.coords.map((c) => (
                 <g key={c.date}>
@@ -137,21 +162,21 @@ export function AdminEnquiriesTrendChart({ trend, loading, rangeLabel }: Props) 
               {path.peak.count > 0 ? (
                 <g>
                   <rect
-                    x={Math.min(path.peak.x - 44, width - 100)}
+                    x={Math.min(path.peak.x - 48, width - 110)}
                     y={path.peak.y - 36}
-                    width={88}
+                    width={96}
                     height={26}
                     rx={8}
                     fill="#0F172A"
                   />
                   <text
-                    x={Math.min(path.peak.x - 44, width - 100) + 44}
+                    x={Math.min(path.peak.x - 48, width - 110) + 48}
                     y={path.peak.y - 19}
                     textAnchor="middle"
                     fontSize="11"
                     fontWeight="700"
                     fill="#FFFFFF">
-                    {path.peak.count} {t('admin.dashboard.charts.enquiriesShort')}
+                    {path.peak.count} {unitLabel}
                   </text>
                 </g>
               ) : null}

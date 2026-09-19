@@ -75,6 +75,17 @@ export const adminApi = {
       }),
     ),
 
+  getDashboardTrend: async (params: {
+    metric: string;
+    from?: string;
+    to?: string;
+  }): Promise<AdminEnquiriesTrend> =>
+    unwrapApiResponse(
+      apiClient.get<ApiResponse<AdminEnquiriesTrend>>('/admin/dashboard/trends', {
+        params,
+      }),
+    ),
+
   getUserRegistrationBreakdown: async (params?: {
     from?: string;
     to?: string;
@@ -258,6 +269,7 @@ export const adminApi = {
     role?: string;
     onboarding?: string;
     spaceAssociation?: string;
+    verified?: boolean;
     from?: string;
     to?: string;
     page?: number;
