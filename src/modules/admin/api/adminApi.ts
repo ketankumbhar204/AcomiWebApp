@@ -32,7 +32,7 @@ import type {
   PropertyBulkImportPreviewResponse,
   PropertyBulkImportResultResponse,
 } from '@/shared/types/adminBulkImport';
-import type { SpaceType } from '@/shared/types/space';
+import type { MembershipRole, SpaceType } from '@/shared/types/space';
 
 const BULK_IMPORT_BASE = '/admin/property-registrations/bulk-import';
 
@@ -277,6 +277,21 @@ export const adminApi = {
   getRegisteredUser: async (id: string): Promise<AdminRegisteredUser> =>
     unwrapApiResponse(
       apiClient.get<ApiResponse<AdminRegisteredUser>>(`/admin/registered-users/${id}`),
+    ),
+
+  createRegisteredUser: async (payload: {
+    fullName: string;
+    mobileNumber: string;
+    email?: string;
+    password: string;
+    confirmPassword: string;
+    spaceRole: MembershipRole;
+    spaceId?: string;
+    spaceName?: string;
+    spaceType?: SpaceType;
+  }): Promise<AdminRegisteredUser> =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<AdminRegisteredUser>>('/admin/registered-users', payload),
     ),
 
   setRegisteredUserTestFlag: async (

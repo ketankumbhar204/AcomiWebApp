@@ -1,12 +1,18 @@
 import {
   Avatar,
+  Autocomplete,
   Box,
   Button,
   Card,
   CardContent,
   Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   Grid,
+  IconButton,
   InputAdornment,
   MenuItem,
   Pagination,
@@ -26,6 +32,9 @@ import {
   Calendar,
   Check,
   Download,
+  Eye,
+  EyeOff,
+  FlaskConical,
   Link2,
   Phone,
   Search,
@@ -45,18 +54,52 @@ import {
   formatAdminUserRole,
 } from '@/modules/admin/utils/adminLabels';
 import { ROUTES, adminRegisteredUserDetailPath } from '@/routes/paths';
+import { getErrorMessage } from '@/shared/api/errors';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import type {
+  AdminActiveSpace,
   AdminRegisteredUser,
   AdminRegisteredUsersSummary,
   AdminUserOnboardingStatus,
   AdminUserSelectedRole,
 } from '@/shared/types/admin';
+import type { MembershipRole, SpaceType } from '@/shared/types/space';
 
 const PAGE_SIZE = 8;
+const MOBILE_RE = /^[6-9]\d{9}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const SPACE_ROLES: MembershipRole[] = ['OWNER', 'MANAGER', 'TENANT', 'CUSTOMER', 'STAFF'];
+const SPACE_TYPES: SpaceType[] = ['PG', 'MESS', 'HOSTEL', 'CO_LIVING', 'RENTAL'];
 
 type SortDir = 'asc' | 'desc';
 type DeleteTarget = { kind: 'one' | 'bulk'; ids: string[] };
+
+type CreateForm = {
+  fullName: string;
+  mobileNumber: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  spaceRole: MembershipRole | '';
+  spaceId: string;
+  spaceName: string;
+  spaceType: SpaceType | '';
+};
+
+type CreateFormErrors = Partial<Record<keyof CreateForm, string>>;
+
+const EMPTY_CREATE_FORM: CreateForm = {
+  fullName: '',
+  mobileNumber: '',
+  email: '',
+  password: '',
+  confirmPassword: '',
+  spaceRole: '',
+  spaceId: '',
+  spaceName: '',
+  spaceType: 'PG',
+};
 
 function initials(name?: string | null): string {
   const trimmed = name?.trim();
@@ -133,6 +176,14 @@ export function AdminRegisteredUsersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_CREATE_FORM);
+  const [createErrors, setCreateErrors] = useState<CreateFormErrors>({});
+  const [creating, setCreating] = useState(false);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showCreateConfirmPassword, setShowCreateConfirmPassword] = useState(false);
+  const [activeSpaces, setActiveSpaces] = useState<AdminActiveSpace[]>([]);
+  const [loadingSpaces, setLoadingSpaces] = useState(false);
 
   const [searchInput, setSearchInput] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
@@ -349,6 +400,103 @@ export function AdminRegisteredUsersPage() {
     }
   }
 
+  function openCreateDialog() {
+    setCreateForm(EMPTY_CREATE_FORM);
+    setCreateErrors({});
+    setShowCreatePassword(false);
+    setShowCreateConfirmPassword(false);
+    setCreateOpen(true);
+    setLoadingSpaces(true);
+    void adminApi
+      .listActiveSpaces()
+      .then((spaces) => setActiveSpaces(spaces))
+      .catch((err) => {
+        setActiveSpaces([]);
+        enqueueSnackbar(getErrorMessage(err, t('admin.users.createTestUserFailed')), {
+          variant: 'error',
+        });
+      })
+      .finally(() => setLoadingSpaces(false));
+  }
+
+  function closeCreateDialog() {
+    if (creating) return;
+    setCreateOpen(false);
+    setCreateForm(EMPTY_CREATE_FORM);
+    setCreateErrors({});
+    setShowCreatePassword(false);
+    setShowCreateConfirmPassword(false);
+  }
+
+  function validateCreateForm(): CreateFormErrors {
+    const next: CreateFormErrors = {};
+    if (!createForm.fullName.trim()) {
+      next.fullName = t('admin.users.createTestUserErrors.fullName');
+    }
+    if (!MOBILE_RE.test(createForm.mobileNumber.trim())) {
+      next.mobileNumber = t('admin.users.createTestUserErrors.mobile');
+    }
+    const email = createForm.email.trim();
+    if (email && !EMAIL_RE.test(email)) {
+      next.email = t('admin.users.createTestUserErrors.email');
+    }
+    if (createForm.password.length < 8 || createForm.password.length > 72) {
+      next.password = t('admin.users.createTestUserErrors.password');
+    }
+    if (!createForm.confirmPassword) {
+      next.confirmPassword = t('admin.users.createTestUserErrors.confirmPassword');
+    } else if (createForm.password !== createForm.confirmPassword) {
+      next.confirmPassword = t('admin.users.createTestUserErrors.passwordMismatch');
+    }
+    if (!createForm.spaceRole) {
+      next.spaceRole = t('admin.users.createTestUserErrors.spaceRole');
+    } else if (createForm.spaceRole === 'OWNER') {
+      if (!createForm.spaceType) {
+        next.spaceType = t('admin.users.createTestUserErrors.spaceType');
+      }
+    } else if (!createForm.spaceId) {
+      next.spaceId = t('admin.users.createTestUserErrors.space');
+    }
+    return next;
+  }
+
+  async function handleCreateTestUser() {
+    const errors = validateCreateForm();
+    setCreateErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+    if (!createForm.spaceRole) return;
+
+    setCreating(true);
+    try {
+      const email = createForm.email.trim();
+      const isOwner = createForm.spaceRole === 'OWNER';
+      const created = await adminApi.createRegisteredUser({
+        fullName: createForm.fullName.trim(),
+        mobileNumber: createForm.mobileNumber.trim(),
+        email: email || undefined,
+        password: createForm.password,
+        confirmPassword: createForm.confirmPassword,
+        spaceRole: createForm.spaceRole,
+        spaceId: isOwner ? undefined : createForm.spaceId || undefined,
+        spaceName: isOwner && createForm.spaceName.trim() ? createForm.spaceName.trim() : undefined,
+        spaceType: isOwner ? (createForm.spaceType as SpaceType) : undefined,
+      });
+      setUsers((prev) => [created, ...prev.filter((u) => u.id !== created.id)]);
+      setTotalElements((n) => n + 1);
+      loadSummary();
+      enqueueSnackbar(t('admin.users.createTestUserSuccess'), { variant: 'success' });
+      setCreateOpen(false);
+      setCreateForm(EMPTY_CREATE_FORM);
+      setCreateErrors({});
+    } catch (err) {
+      enqueueSnackbar(getErrorMessage(err, t('admin.users.createTestUserFailed')), {
+        variant: 'error',
+      });
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <Box>
       <Stack
@@ -377,6 +525,19 @@ export function AdminRegisteredUsersPage() {
               '&:hover': { borderColor: '#16A34A', bgcolor: '#F0FDF4' },
             }}>
             {t('admin.users.export')}
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<FlaskConical size={16} />}
+            onClick={openCreateDialog}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              bgcolor: '#0F766E',
+              borderRadius: '10px',
+              '&:hover': { bgcolor: '#0D9488' },
+            }}>
+            {t('admin.users.createTestUser')}
           </Button>
           <Button
             variant="contained"
@@ -872,6 +1033,210 @@ export function AdminRegisteredUsersPage() {
           ) : null}
         </Stack>
       </Card>
+
+      <Dialog open={createOpen} onClose={closeCreateDialog} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 800 }}>{t('admin.users.createTestUserTitle')}</DialogTitle>
+        <DialogContent sx={{ overflowY: 'auto', maxHeight: 'min(70vh, 640px)' }}>
+          <Typography sx={{ color: 'text.secondary', mb: 2, mt: 0.5 }}>
+            {t('admin.users.createTestUserHint')}
+          </Typography>
+          <Stack spacing={1.75}>
+            <TextField
+              label={t('admin.users.createTestUserFields.fullName')}
+              value={createForm.fullName}
+              onChange={(e) => setCreateForm((f) => ({ ...f, fullName: e.target.value }))}
+              error={Boolean(createErrors.fullName)}
+              helperText={createErrors.fullName}
+              fullWidth
+              autoFocus
+            />
+            <TextField
+              label={t('admin.users.createTestUserFields.mobile')}
+              value={createForm.mobileNumber}
+              onChange={(e) =>
+                setCreateForm((f) => ({
+                  ...f,
+                  mobileNumber: e.target.value.replace(/\D/g, '').slice(0, 10),
+                }))
+              }
+              error={Boolean(createErrors.mobileNumber)}
+              helperText={createErrors.mobileNumber}
+              fullWidth
+              slotProps={{
+                htmlInput: { inputMode: 'numeric', maxLength: 10 },
+              }}
+            />
+            <TextField
+              label={t('admin.users.createTestUserFields.email')}
+              value={createForm.email}
+              onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
+              error={Boolean(createErrors.email)}
+              helperText={createErrors.email}
+              fullWidth
+            />
+            <TextField
+              type={showCreatePassword ? 'text' : 'password'}
+              label={t('admin.users.createTestUserFields.password')}
+              value={createForm.password}
+              onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
+              error={Boolean(createErrors.password)}
+              helperText={createErrors.password}
+              fullWidth
+              autoComplete="new-password"
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        type="button"
+                        edge="end"
+                        aria-label={
+                          showCreatePassword ? t('auth.password.hide') : t('auth.password.show')
+                        }
+                        onClick={() => setShowCreatePassword((v) => !v)}
+                        disabled={creating}>
+                        {showCreatePassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+            <TextField
+              type={showCreateConfirmPassword ? 'text' : 'password'}
+              label={t('admin.users.createTestUserFields.confirmPassword')}
+              value={createForm.confirmPassword}
+              onChange={(e) => setCreateForm((f) => ({ ...f, confirmPassword: e.target.value }))}
+              error={Boolean(createErrors.confirmPassword)}
+              helperText={createErrors.confirmPassword}
+              fullWidth
+              autoComplete="new-password"
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        type="button"
+                        edge="end"
+                        aria-label={
+                          showCreateConfirmPassword
+                            ? t('auth.password.hide')
+                            : t('auth.password.show')
+                        }
+                        onClick={() => setShowCreateConfirmPassword((v) => !v)}
+                        disabled={creating}>
+                        {showCreateConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+            <TextField
+              select
+              label={t('admin.users.createTestUserFields.spaceRole')}
+              value={createForm.spaceRole}
+              onChange={(e) => {
+                const nextRole = e.target.value as MembershipRole | '';
+                setCreateForm((f) => ({
+                  ...f,
+                  spaceRole: nextRole,
+                  spaceId: nextRole === 'OWNER' ? '' : f.spaceId,
+                  spaceType: nextRole === 'OWNER' ? f.spaceType || 'PG' : f.spaceType,
+                }));
+              }}
+              error={Boolean(createErrors.spaceRole)}
+              helperText={
+                createErrors.spaceRole || t('admin.users.createTestUserFields.spaceRoleHint')
+              }
+              fullWidth>
+              <MenuItem value="" disabled>
+                {t('admin.users.createTestUserFields.spaceRolePlaceholder')}
+              </MenuItem>
+              {SPACE_ROLES.map((roleOption) => (
+                <MenuItem key={roleOption} value={roleOption}>
+                  {t(`admin.users.createTestUserRoles.${roleOption}`)}
+                </MenuItem>
+              ))}
+            </TextField>
+            {createForm.spaceRole === 'OWNER' ? (
+              <>
+                <TextField
+                  select
+                  label={t('admin.users.createTestUserFields.spaceType')}
+                  value={createForm.spaceType}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({
+                      ...f,
+                      spaceType: e.target.value as SpaceType | '',
+                    }))
+                  }
+                  error={Boolean(createErrors.spaceType)}
+                  helperText={createErrors.spaceType}
+                  fullWidth>
+                  {SPACE_TYPES.map((typeOption) => (
+                    <MenuItem key={typeOption} value={typeOption}>
+                      {t(`admin.users.createTestUserSpaceTypes.${typeOption}`)}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label={t('admin.users.createTestUserFields.spaceName')}
+                  value={createForm.spaceName}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, spaceName: e.target.value }))}
+                  helperText={t('admin.users.createTestUserFields.spaceNameHint')}
+                  fullWidth
+                />
+              </>
+            ) : (
+              <Autocomplete
+                options={activeSpaces}
+                loading={loadingSpaces}
+                disabled={!createForm.spaceRole || creating}
+                value={activeSpaces.find((s) => s.id === createForm.spaceId) ?? null}
+                onChange={(_, next) =>
+                  setCreateForm((f) => ({ ...f, spaceId: next?.id ?? '' }))
+                }
+                getOptionLabel={(option) =>
+                  `${option.name} (${option.type}) · ${option.ownerName}`
+                }
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label={t('admin.users.createTestUserFields.space')}
+                    error={Boolean(createErrors.spaceId)}
+                    helperText={
+                      createErrors.spaceId ||
+                      (!createForm.spaceRole
+                        ? t('admin.users.createTestUserFields.spacePickRoleFirst')
+                        : t('admin.users.createTestUserFields.spaceHint'))
+                    }
+                    required={Boolean(createForm.spaceRole && createForm.spaceRole !== 'OWNER')}
+                  />
+                )}
+              />
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={closeCreateDialog} disabled={creating} sx={{ textTransform: 'none' }}>
+            {t('admin.common.cancel')}
+          </Button>
+          <Button
+            variant="contained"
+            disabled={creating}
+            onClick={() => void handleCreateTestUser()}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              bgcolor: '#0F766E',
+              '&:hover': { bgcolor: '#0D9488' },
+            }}>
+            {creating ? t('admin.common.saving') : t('admin.users.createTestUser')}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <ConfirmDialog
         open={deleteTarget != null}
