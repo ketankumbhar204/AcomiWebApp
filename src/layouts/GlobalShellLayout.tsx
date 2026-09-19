@@ -77,7 +77,7 @@ function headerCopy(pathname: string, t: (key: string) => string) {
   if (pathname === ROUTES.globalAttention) return t('navigation.globalAttention');
   if (pathname === ROUTES.globalActivity) return t('navigation.globalActivity');
   if (pathname === ROUTES.myEnquiries) {
-    return t('navigation.enquiries', { defaultValue: 'Enquiries' });
+    return t('navigation.enquiries');
   }
   return t('navigation.mySpaces');
 }

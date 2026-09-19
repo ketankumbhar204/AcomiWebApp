@@ -114,14 +114,15 @@ function EnquiryInspector({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const s = dashSurfaces();
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
 
   if (!enquiry) {
     return (
       <Box
         sx={{
           height: '100%',
-          borderRadius: framed ? `${DASHBOARD_UX.cardRadius}px` : 0,
+          borderRadius: framed ? `${DASHBOARD_UX.radius}px` : 0,
           border: framed ? `1px solid ${s.border}` : 'none',
           bgcolor: s.surface,
           display: 'flex',
@@ -149,7 +150,7 @@ function EnquiryInspector({
     <Box
       sx={{
         height: '100%',
-        borderRadius: framed ? `${DASHBOARD_UX.cardRadius}px` : 0,
+        borderRadius: framed ? `${DASHBOARD_UX.radius}px` : 0,
         border: framed ? `1px solid ${s.border}` : 'none',
         bgcolor: s.surface,
         display: 'flex',
@@ -347,7 +348,7 @@ export function MyEnquiriesPage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isLgDown = useMediaQuery(theme.breakpoints.down('lg'));
-  const s = dashSurfaces();
+  const s = dashSurfaces(theme.palette.mode);
   const [params] = useSearchParams();
   const highlightId = UUID_RE.test(params.get('id') ?? '') ? params.get('id') : null;
   const [selectedId, setSelectedId] = useState<string | null>(highlightId);
@@ -380,7 +381,7 @@ export function MyEnquiriesPage() {
 
   useEffect(() => {
     if (!selectedId && !isLgDown && rows.length > 0) {
-      setSelectedId(rows[0].enquiryId);
+      setSelectedId(rows[0]!.enquiryId);
     }
   }, [isLgDown, rows, selectedId]);
 
@@ -476,14 +477,14 @@ export function MyEnquiriesPage() {
                     }}
                     sx={{
                       p: 2,
-                      borderRadius: `${DASHBOARD_UX.cardRadius}px`,
+                      borderRadius: `${DASHBOARD_UX.radius}px`,
                       border: `1px solid ${selectedRow ? colors.primary : s.border}`,
                       bgcolor: selectedRow ? colors.mintSubtle : s.surface,
                       cursor: 'pointer',
                       '&:hover': { borderColor: colors.primary },
                     }}
                   >
-                    <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
                       <Box
                         sx={{
                           width: 40,
@@ -532,8 +533,13 @@ export function MyEnquiriesPage() {
                           <Stack
                             direction="row"
                             spacing={0.5}
-                            alignItems="center"
-                            sx={{ mt: 1.25, color: colors.primary, fontWeight: 700, fontSize: 13 }}
+                            sx={{
+                              mt: 1.25,
+                              alignItems: 'center',
+                              color: colors.primary,
+                              fontWeight: 700,
+                              fontSize: 13,
+                            }}
                           >
                             <span>
                               {t('spaces.enquiries.viewContactDetails', {
