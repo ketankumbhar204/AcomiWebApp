@@ -6,6 +6,7 @@ import {
   Clock3,
   LayoutDashboard,
   LogOut,
+  MessageCircle,
   Package,
   TriangleAlert,
   Users,
@@ -127,6 +128,13 @@ export function SpaceShellLayout() {
           icon: <TriangleAlert size={16} />,
         });
       }
+
+      consumerItems.push({
+        id: 'enquiries',
+        label: t('navigation.enquiries', { defaultValue: 'Enquiries' }),
+        to: ROUTES.myEnquiries,
+        icon: <MessageCircle size={16} />,
+      });
 
       consumerItems.push({
         id: 'notifications',
@@ -294,6 +302,12 @@ export function SpaceShellLayout() {
             label: t('navigation.mySpaces'),
             to: ROUTES.mySpaces,
             icon: <Building2 size={16} />,
+          },
+          {
+            id: 'enquiries',
+            label: t('navigation.enquiries', { defaultValue: 'Enquiries' }),
+            to: ROUTES.myEnquiries,
+            icon: <MessageCircle size={16} />,
           },
           {
             id: 'profile',

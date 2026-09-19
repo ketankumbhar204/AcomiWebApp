@@ -5,6 +5,7 @@ import type {
   CreateInquiryPurchaseRequest,
   InquiryPaymentConfig,
   InquiryPurchaseResponse,
+  InquiryQuota,
   InquiryWallet,
 } from '@/shared/types/inquiryCredits';
 
@@ -16,6 +17,9 @@ export const inquiryCreditsApi = {
 
   getWallet: (): Promise<InquiryWallet> =>
     unwrapApiResponse(apiClient.get<ApiResponse<InquiryWallet>>('/inquiry-credits/wallet')),
+
+  getQuota: (): Promise<InquiryQuota> =>
+    unwrapApiResponse(apiClient.get<ApiResponse<InquiryQuota>>('/inquiry-credits/quota')),
 
   createPurchase: (body: CreateInquiryPurchaseRequest): Promise<InquiryPurchaseResponse> =>
     unwrapApiResponse(

@@ -25,6 +25,7 @@ import { inquiryCreditsApi } from '@/shared/api/inquiryCreditsApi';
 import { ApiError, getErrorMessage } from '@/shared/api/errors';
 import type { UserResponse } from '@/shared/types/auth';
 import type { SpaceEnquiryResponse } from '@/shared/types/enquiry';
+import type { InquiryQuota } from '@/shared/types/inquiryCredits';
 import { openAcomiAndroidApp } from '@/shared/utils/openAcomiAndroidApp';
 import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
 import { colors } from '@/shared/theme/colors';
@@ -105,46 +106,69 @@ export function EnquireDialog({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<SpaceEnquiryResponse | null>(null);
-  const [creditsFooter, setCreditsFooter] = useState<string | null>(null);
+  const [packageOffer, setPackageOffer] = useState<{ amount: string; credits: number } | null>(null);
+  const [quota, setQuota] = useState<InquiryQuota | null>(null);
   const submittingRef = useRef(false);
   const autoSubmitKeyRef = useRef<string | null>(null);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
 
+  const creditsFooter = useMemo(() => {
+    if (!quota) return null;
+    if (packageOffer) {
+      return t('spaces.findPlace.enquire.creditsFooterPackage', {
+        remaining: quota.freeRemainingToday,
+        limit: quota.dailyFreeLimit,
+        amount: packageOffer.amount,
+        credits: packageOffer.credits,
+      });
+    }
+    return t('spaces.findPlace.enquire.creditsFooterFallback', {
+      remaining: quota.freeRemainingToday,
+      limit: quota.dailyFreeLimit,
+    });
+  }, [packageOffer, quota, t]);
+
+  async function refreshQuota() {
+    try {
+      const next = await inquiryCreditsApi.getQuota();
+      setQuota(next);
+      return next;
+    } catch {
+      return null;
+    }
+  }
+
   useEffect(() => {
     if (!open) {
-      setCreditsFooter(null);
+      setPackageOffer(null);
+      setQuota(null);
       return;
     }
     let cancelled = false;
-    void inquiryCreditsApi
-      .getPaymentConfig()
-      .then((config) => {
+    void Promise.all([inquiryCreditsApi.getPaymentConfig(), inquiryCreditsApi.getQuota()])
+      .then(([config, nextQuota]) => {
         if (cancelled) return;
+        setQuota(nextQuota);
         const pkg = config.packages
           .filter((p) => p.enabled)
           .sort((a, b) => a.displayOrder - b.displayOrder)[0];
         if (pkg) {
           const amount =
             pkg.currency === 'INR' ? `₹${pkg.priceAmount}` : `${pkg.currency} ${pkg.priceAmount}`;
-          setCreditsFooter(
-            t('spaces.findPlace.enquire.creditsFooterPackage', {
-              amount,
-              credits: pkg.credits,
-            }),
-          );
+          setPackageOffer({ amount, credits: pkg.credits });
         } else {
-          setCreditsFooter(t('spaces.findPlace.enquire.creditsFooterFallback'));
+          setPackageOffer(null);
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setCreditsFooter(t('spaces.findPlace.enquire.creditsFooterFallback'));
+          setPackageOffer(null);
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [open, t]);
+  }, [open]);
 
   async function submit(options?: { emailOverride?: string }) {
     if (submittingRef.current) {
@@ -172,6 +196,10 @@ export function EnquireDialog({
       setSubmitted(created);
       setStep(resultStepFromEnquiry(created));
       void refreshUser();
+      // New WEB enquiry consumes free quota (unless reused). Refresh remaining count.
+      if (!created.reusedExisting) {
+        void refreshQuota();
+      }
     } catch (err) {
       if (err instanceof ApiError && err.errorCode === 'SELF_ENQUIRY_NOT_ALLOWED') {
         setStep('own');
@@ -215,6 +243,7 @@ export function EnquireDialog({
       setSubmitted(updated);
       setStep(updated.status === 'SHARED' && contactWasEmailed(updated) ? 'emailSent' : 'pending');
       void refreshUser();
+      void refreshQuota();
     } catch (err) {
       setError(getErrorMessage(err, t('spaces.findPlace.enquire.submitError')));
     } finally {
@@ -651,14 +680,62 @@ export function EnquireDialog({
                         '&:hover': { borderColor: `${colors.primary}66` },
                       }}
                     >
-                      <Mail size={20} color={colors.textSecondary} />
+                      <Box sx={{ position: 'relative', flexShrink: 0, width: 28, height: 28 }}>
+                        <Mail size={22} color={colors.textSecondary} style={{ marginTop: 3 }} />
+                        {quota != null ? (
+                          <Box
+                            aria-hidden
+                            sx={{
+                              position: 'absolute',
+                              top: -4,
+                              right: -6,
+                              minWidth: 18,
+                              height: 18,
+                              px: 0.5,
+                              borderRadius: 999,
+                              bgcolor: quota.freeRemainingToday > 0 ? '#DC2626' : colors.textSecondary,
+                              color: '#fff',
+                              fontSize: 10,
+                              fontWeight: 800,
+                              display: 'grid',
+                              placeItems: 'center',
+                              lineHeight: 1,
+                            }}
+                          >
+                            {quota.freeRemainingToday}
+                          </Box>
+                        ) : null}
+                      </Box>
                       <Box sx={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                         <Typography sx={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>
                           {detailsReady
                             ? t('spaces.findPlace.enquire.emailCtaReady')
                             : t('spaces.findPlace.enquire.emailCtaPending')}
                         </Typography>
+                        <Typography
+                          sx={{
+                            mt: 0.25,
+                            fontSize: 13,
+                            fontWeight: 800,
+                            color: quota != null && quota.freeRemainingToday <= 0 ? '#B45309' : '#C2410C',
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          {quota != null
+                            ? quota.freeRemainingToday > 0
+                              ? t('spaces.findPlace.enquire.emailQuotaRemaining', {
+                                  count: quota.freeRemainingToday,
+                                })
+                              : t('spaces.findPlace.enquire.emailQuotaExhausted')
+                            : t('spaces.findPlace.enquire.emailQuotaFallback')}
+                        </Typography>
+                        <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.3 }}>
+                          {detailsReady
+                            ? t('spaces.findPlace.enquire.emailHintReady')
+                            : t('spaces.findPlace.enquire.emailHintPending')}
+                        </Typography>
                       </Box>
+                      <ExternalLink size={16} color={colors.textSecondary} style={{ opacity: 0.5 }} />
                     </Button>
                   </>
                 ) : null}

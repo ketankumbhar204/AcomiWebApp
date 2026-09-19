@@ -32,6 +32,14 @@ export type InquiryWallet = {
   updatedAt?: string;
 };
 
+/** WEB free daily enquiry quota + paid credits. */
+export type InquiryQuota = {
+  dailyFreeLimit: number;
+  freeUsedToday: number;
+  freeRemainingToday: number;
+  availableCredits: number;
+};
+
 export type InquiryPurchaseStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export type InquiryPurchaseResponse = {

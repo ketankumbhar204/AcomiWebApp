@@ -2,9 +2,15 @@ import {
   Box,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Grid,
   IconButton,
+  InputAdornment,
   Stack,
+  TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -17,6 +23,8 @@ import {
   ChefHat,
   Clock3,
   Copy,
+  Eye,
+  EyeOff,
   FileText,
   KeyRound,
   LayoutDashboard,
@@ -47,8 +55,12 @@ import {
   formatAdminUserRole,
 } from '@/modules/admin/utils/adminLabels';
 import { ROUTES } from '@/routes/paths';
+import { getErrorMessage } from '@/shared/api/errors';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import type { AdminRegisteredUser } from '@/shared/types/admin';
+
+const MOBILE_RE = /^[6-9]\d{9}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type DetailSection =
   | 'overview'
@@ -57,6 +69,16 @@ type DetailSection =
   | 'mess'
   | 'addresses'
   | 'activity';
+
+type EditForm = {
+  fullName: string;
+  mobileNumber: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+};
+
+type EditFormErrors = Partial<Record<keyof EditForm, string>>;
 
 function displayUserCode(id: string): string {
   const compact = id.replace(/-/g, '').slice(-6).toUpperCase();
@@ -161,6 +183,18 @@ export function AdminRegisteredUserDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [savingTestFlag, setSavingTestFlag] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState<EditForm>({
+    fullName: '',
+    mobileNumber: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [editErrors, setEditErrors] = useState<EditFormErrors>({});
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [showEditConfirmPassword, setShowEditConfirmPassword] = useState(false);
 
   if (activeId !== id) {
     setActiveId(id);
@@ -222,6 +256,81 @@ export function AdminRegisteredUserDetailPage() {
       enqueueSnackbar(t('admin.users.detail.testUserUpdateFailed'), { variant: 'error' });
     } finally {
       setSavingTestFlag(false);
+    }
+  }
+
+  function openEditDialog() {
+    if (!user) return;
+    setEditForm({
+      fullName: user.fullName?.trim() || '',
+      mobileNumber: user.mobileNumber,
+      email: user.email?.trim() || '',
+      password: '',
+      confirmPassword: '',
+    });
+    setEditErrors({});
+    setShowEditPassword(false);
+    setShowEditConfirmPassword(false);
+    setEditOpen(true);
+  }
+
+  function closeEditDialog() {
+    if (savingEdit) return;
+    setEditOpen(false);
+  }
+
+  function validateEditForm(): EditFormErrors {
+    const next: EditFormErrors = {};
+    if (!editForm.fullName.trim()) {
+      next.fullName = t('admin.users.detail.editErrors.fullName');
+    }
+    if (!MOBILE_RE.test(editForm.mobileNumber.trim())) {
+      next.mobileNumber = t('admin.users.detail.editErrors.mobile');
+    }
+    const email = editForm.email.trim();
+    if (email && !EMAIL_RE.test(email)) {
+      next.email = t('admin.users.detail.editErrors.email');
+    }
+    if (editForm.password || editForm.confirmPassword) {
+      if (editForm.password.length < 8 || editForm.password.length > 72) {
+        next.password = t('admin.users.detail.editErrors.password');
+      }
+      if (!editForm.confirmPassword) {
+        next.confirmPassword = t('admin.users.detail.editErrors.confirmPassword');
+      } else if (editForm.password !== editForm.confirmPassword) {
+        next.confirmPassword = t('admin.users.detail.editErrors.passwordMismatch');
+      }
+    }
+    return next;
+  }
+
+  async function handleSaveEdit() {
+    if (!user) return;
+    const errors = validateEditForm();
+    setEditErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setSavingEdit(true);
+    try {
+      const email = editForm.email.trim();
+      const password = editForm.password;
+      const updated = await adminApi.updateRegisteredUser(user.id, {
+        fullName: editForm.fullName.trim(),
+        mobileNumber: editForm.mobileNumber.trim(),
+        email: email || undefined,
+        ...(password
+          ? { password, confirmPassword: editForm.confirmPassword }
+          : {}),
+      });
+      setUser(updated);
+      setEditOpen(false);
+      enqueueSnackbar(t('admin.users.detail.editSuccess'), { variant: 'success' });
+    } catch (err) {
+      enqueueSnackbar(getErrorMessage(err, t('admin.users.detail.editFailed')), {
+        variant: 'error',
+      });
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -443,11 +552,7 @@ export function AdminRegisteredUserDetailPage() {
                       sx={{ alignSelf: { xs: 'stretch', sm: 'flex-start' } }}>
                       <Button
                         startIcon={<Pencil size={15} />}
-                        onClick={() =>
-                          enqueueSnackbar(t('admin.users.detail.editUnavailable'), {
-                            variant: 'info',
-                          })
-                        }
+                        onClick={openEditDialog}
                         sx={{
                           textTransform: 'none',
                           fontWeight: 700,
@@ -768,6 +873,125 @@ export function AdminRegisteredUserDetailPage() {
           </Box>
         </Grid>
       </Grid>
+
+      <Dialog open={editOpen} onClose={closeEditDialog} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 800 }}>{t('admin.users.detail.editTitle')}</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: 'text.secondary', mb: 2, mt: 0.5 }}>
+            {t('admin.users.detail.editHint')}
+          </Typography>
+          <Stack spacing={1.75}>
+            <TextField
+              label={t('admin.users.detail.editFields.fullName')}
+              value={editForm.fullName}
+              onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))}
+              error={Boolean(editErrors.fullName)}
+              helperText={editErrors.fullName}
+              fullWidth
+              autoFocus
+            />
+            <TextField
+              label={t('admin.users.detail.editFields.mobile')}
+              value={editForm.mobileNumber}
+              onChange={(e) =>
+                setEditForm((f) => ({
+                  ...f,
+                  mobileNumber: e.target.value.replace(/\D/g, '').slice(0, 10),
+                }))
+              }
+              error={Boolean(editErrors.mobileNumber)}
+              helperText={editErrors.mobileNumber}
+              fullWidth
+              slotProps={{
+                htmlInput: { inputMode: 'numeric', maxLength: 10 },
+              }}
+            />
+            <TextField
+              label={t('admin.users.detail.editFields.email')}
+              value={editForm.email}
+              onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+              error={Boolean(editErrors.email)}
+              helperText={editErrors.email}
+              fullWidth
+            />
+            <TextField
+              type={showEditPassword ? 'text' : 'password'}
+              label={t('admin.users.detail.editFields.password')}
+              value={editForm.password}
+              onChange={(e) => setEditForm((f) => ({ ...f, password: e.target.value }))}
+              error={Boolean(editErrors.password)}
+              helperText={editErrors.password || t('admin.users.detail.editFields.passwordHint')}
+              fullWidth
+              autoComplete="new-password"
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        type="button"
+                        edge="end"
+                        aria-label={
+                          showEditPassword ? t('auth.password.hide') : t('auth.password.show')
+                        }
+                        onClick={() => setShowEditPassword((v) => !v)}
+                        disabled={savingEdit}>
+                        {showEditPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+            <TextField
+              type={showEditConfirmPassword ? 'text' : 'password'}
+              label={t('admin.users.detail.editFields.confirmPassword')}
+              value={editForm.confirmPassword}
+              onChange={(e) => setEditForm((f) => ({ ...f, confirmPassword: e.target.value }))}
+              error={Boolean(editErrors.confirmPassword)}
+              helperText={editErrors.confirmPassword}
+              fullWidth
+              autoComplete="new-password"
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        type="button"
+                        edge="end"
+                        aria-label={
+                          showEditConfirmPassword
+                            ? t('auth.password.hide')
+                            : t('auth.password.show')
+                        }
+                        onClick={() => setShowEditConfirmPassword((v) => !v)}
+                        disabled={savingEdit}>
+                        {showEditConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={closeEditDialog} disabled={savingEdit} sx={{ textTransform: 'none' }}>
+            {t('admin.common.cancel')}
+          </Button>
+          <Button
+            variant="contained"
+            disabled={savingEdit}
+            onClick={() => void handleSaveEdit()}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              bgcolor: '#0F766E',
+              '&:hover': { bgcolor: '#0D9488' },
+            }}>
+            {savingEdit ? t('admin.common.saving') : t('admin.users.detail.saveUser')}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <ConfirmDialog
         open={confirmDelete}

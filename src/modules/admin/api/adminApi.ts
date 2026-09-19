@@ -304,6 +304,20 @@ export const adminApi = {
       }),
     ),
 
+  updateRegisteredUser: async (
+    id: string,
+    payload: {
+      fullName: string;
+      mobileNumber: string;
+      email?: string;
+      password?: string;
+      confirmPassword?: string;
+    },
+  ): Promise<AdminRegisteredUser> =>
+    unwrapApiResponse(
+      apiClient.put<ApiResponse<AdminRegisteredUser>>(`/admin/registered-users/${id}`, payload),
+    ),
+
   deleteRegisteredUser: async (id: string): Promise<void> =>
     unwrapVoidResponse(apiClient.delete(`/admin/registered-users/${id}`)),
 

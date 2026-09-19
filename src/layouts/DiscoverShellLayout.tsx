@@ -13,7 +13,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { Bell, Home, LogOut, Moon, Search, Sun, UserRound } from 'lucide-react';
+import { Bell, Home, LogOut, MessageCircle, Moon, Search, Sun, UserRound } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -72,7 +72,13 @@ export function DiscoverShellLayout() {
       icon: Home,
     };
     const find = { id: 'find', label: t('navigation.findAPlace'), to: ROUTES.findAPlace, icon: Search };
-    return [home, find];
+    const enquiries = {
+      id: 'enquiries',
+      label: t('navigation.enquiries', { defaultValue: 'Enquiries' }),
+      to: ROUTES.myEnquiries,
+      icon: MessageCircle,
+    };
+    return [home, find, enquiries];
   }, [hasSpaces, t]);
 
   const pageBg = isDark ? colors.background : '#F4F7F8';
@@ -180,6 +186,7 @@ export function DiscoverShellLayout() {
               const active =
                 location.pathname === item.to ||
                 (item.to === ROUTES.findAPlace && location.pathname.startsWith(ROUTES.findAPlace)) ||
+                (item.to === ROUTES.myEnquiries && location.pathname.startsWith(ROUTES.myEnquiries)) ||
                 (item.to === ROUTES.memberHome &&
                   (location.pathname === ROUTES.memberHome || location.pathname === ROUTES.joinSpace));
               return (

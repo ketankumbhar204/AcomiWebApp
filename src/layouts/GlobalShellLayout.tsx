@@ -6,6 +6,7 @@ import {
   FileBarChart,
   LogOut,
   Megaphone,
+  MessageCircle,
   Search,
   UserRound,
   Users,
@@ -75,6 +76,9 @@ function headerCopy(pathname: string, t: (key: string) => string) {
   if (pathname === ROUTES.globalReports) return t('navigation.reports');
   if (pathname === ROUTES.globalAttention) return t('navigation.globalAttention');
   if (pathname === ROUTES.globalActivity) return t('navigation.globalActivity');
+  if (pathname === ROUTES.myEnquiries) {
+    return t('navigation.enquiries', { defaultValue: 'Enquiries' });
+  }
   return t('navigation.mySpaces');
 }
 
@@ -125,6 +129,12 @@ export function GlobalShellLayout() {
               icon: <Search size={16} />,
             },
             {
+              id: 'enquiries',
+              label: t('navigation.enquiries', { defaultValue: 'Enquiries' }),
+              to: ROUTES.myEnquiries,
+              icon: <MessageCircle size={16} />,
+            },
+            {
               id: 'profile',
               label: t('navigation.profile'),
               to: ROUTES.profile,
@@ -150,6 +160,12 @@ export function GlobalShellLayout() {
             label: t('navigation.findAPlace'),
             to: ROUTES.findAPlace,
             icon: <Search size={16} />,
+          },
+          {
+            id: 'enquiries',
+            label: t('navigation.enquiries', { defaultValue: 'Enquiries' }),
+            to: ROUTES.myEnquiries,
+            icon: <MessageCircle size={16} />,
           },
           ...(hasSpaces
             ? [

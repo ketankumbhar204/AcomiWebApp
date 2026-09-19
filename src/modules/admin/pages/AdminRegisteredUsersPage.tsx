@@ -454,8 +454,6 @@ export function AdminRegisteredUsersPage() {
       if (!createForm.spaceType) {
         next.spaceType = t('admin.users.createTestUserErrors.spaceType');
       }
-    } else if (!createForm.spaceId) {
-      next.spaceId = t('admin.users.createTestUserErrors.space');
     }
     return next;
   }
@@ -1146,10 +1144,10 @@ export function AdminRegisteredUsersPage() {
                 }));
               }}
               error={Boolean(createErrors.spaceRole)}
-              helperText={
-                createErrors.spaceRole || t('admin.users.createTestUserFields.spaceRoleHint')
-              }
-              fullWidth>
+                helperText={
+                  createErrors.spaceRole || t('admin.users.createTestUserFields.spaceRoleHint')
+                }
+                fullWidth>
               <MenuItem value="" disabled>
                 {t('admin.users.createTestUserFields.spaceRolePlaceholder')}
               </MenuItem>
@@ -1188,11 +1186,11 @@ export function AdminRegisteredUsersPage() {
                   fullWidth
                 />
               </>
-            ) : (
+            ) : createForm.spaceRole ? (
               <Autocomplete
                 options={activeSpaces}
                 loading={loadingSpaces}
-                disabled={!createForm.spaceRole || creating}
+                disabled={creating}
                 value={activeSpaces.find((s) => s.id === createForm.spaceId) ?? null}
                 onChange={(_, next) =>
                   setCreateForm((f) => ({ ...f, spaceId: next?.id ?? '' }))
@@ -1207,16 +1205,12 @@ export function AdminRegisteredUsersPage() {
                     label={t('admin.users.createTestUserFields.space')}
                     error={Boolean(createErrors.spaceId)}
                     helperText={
-                      createErrors.spaceId ||
-                      (!createForm.spaceRole
-                        ? t('admin.users.createTestUserFields.spacePickRoleFirst')
-                        : t('admin.users.createTestUserFields.spaceHint'))
+                      createErrors.spaceId || t('admin.users.createTestUserFields.spaceOptionalHint')
                     }
-                    required={Boolean(createForm.spaceRole && createForm.spaceRole !== 'OWNER')}
                   />
                 )}
               />
-            )}
+            ) : null}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
