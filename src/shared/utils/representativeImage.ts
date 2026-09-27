@@ -112,7 +112,7 @@ export function resolveListingCover(input: ListingCoverInput): ListingCover {
   const imageKey = representativeImageKey(category, variantIndex);
   const listingImageUrl = input.listingImageUrl?.trim();
 
-  if (isVerifiedListingImageUrl(listingImageUrl)) {
+  if (listingImageUrl && isVerifiedListingImageUrl(listingImageUrl)) {
     return {
       kind: 'listing',
       category,
