@@ -80,7 +80,8 @@ export function useConfirmBedPricingCommit(options?: {
         submitted.defaultRent,
         submitted.defaultDeposit,
       );
-      if (changedFields.length === 0) {
+      const primaryField = changedFields[0];
+      if (!primaryField) {
         return;
       }
       const next: PendingBedPricing = {
@@ -88,7 +89,7 @@ export function useConfirmBedPricingCommit(options?: {
         roomId: input.roomId,
         bedId: input.bedId,
         bedLabel: input.bedLabel,
-        field: changedFields[0],
+        field: primaryField,
         changedFields,
         name: input.name,
         bedNumber: input.bedNumber,
