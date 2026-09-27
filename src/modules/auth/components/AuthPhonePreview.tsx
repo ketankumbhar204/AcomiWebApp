@@ -21,7 +21,7 @@ function MealBar({ label, value, max, color }: { label: string; value: number; m
 
 /**
  * Decorative phone from the Figma mock.
- * Sample dashboard: Sunrise space occupancy (18 occupied / 6 vacant).
+ * Sample dashboard: Sunrise occupancy matches public OccupancyCard (96 / 18 / 6).
  */
 export function AuthPhonePreview() {
   const theme = useTheme();
@@ -84,27 +84,73 @@ export function AuthPhonePreview() {
             </Typography>
             <Typography sx={{ fontSize: 11, color: '#7A8B86', mt: 0.35 }}>Today · Open</Typography>
           </Box>
-          <Box sx={{ px: 1.5, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-            {[
-              { label: 'Occupied', value: '18' },
-              { label: 'Vacant', value: '6' },
-            ].map((item) => (
-              <Box
-                key={item.label}
-                sx={{
-                  bgcolor: '#FFFFFF',
-                  borderRadius: 2,
-                  px: 1.25,
-                  py: 1.15,
-                  boxShadow: '0 1px 8px rgba(15, 23, 42, 0.05)',
-                }}
-              >
-                <Typography sx={{ fontSize: 10, fontWeight: 500, color: '#7A8B86' }}>{item.label}</Typography>
-                <Typography sx={{ fontSize: 22, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.04em', mt: 0.25 }}>
-                  {item.value}
-                </Typography>
-              </Box>
-            ))}
+          <Box
+            sx={{
+              mx: 1.5,
+              bgcolor: '#FFFFFF',
+              borderRadius: 2,
+              px: 1.25,
+              py: 1.15,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 1,
+              boxShadow: '0 1px 8px rgba(15, 23, 42, 0.05)',
+            }}
+          >
+            <Box component="svg" viewBox="0 0 72 72" sx={{ width: 56, height: 56 }} aria-hidden>
+              <circle cx="36" cy="36" r="28" fill="none" stroke="#E8F0EC" strokeWidth="8" />
+              <circle
+                cx="36"
+                cy="36"
+                r="28"
+                fill="none"
+                stroke="#0F6B4C"
+                strokeWidth="8"
+                strokeDasharray={`${2 * Math.PI * 28 * (96 / 120)} ${2 * Math.PI * 28}`}
+                strokeLinecap="round"
+                transform="rotate(-90 36 36)"
+              />
+              <text x="36" y="40" textAnchor="middle" fontSize="13" fontWeight="700" fill="#0F6B4C">
+                96
+              </text>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 0.75, width: '100%' }}>
+              {[
+                { label: 'Occupied', value: '96', bg: '#E7F6EE', fg: '#0F6B4C' },
+                { label: 'Vacant', value: '18', bg: '#E8F1FF', fg: '#2563EB' },
+                { label: 'Reserved', value: '6', bg: '#FFF1E0', fg: '#D97706' },
+              ].map((item) => (
+                <Box
+                  key={item.label}
+                  sx={{
+                    minWidth: 0,
+                    borderRadius: '10px',
+                    px: 0.5,
+                    py: 0.75,
+                    textAlign: 'center',
+                    bgcolor: item.bg,
+                    color: item.fg,
+                  }}
+                >
+                  <Typography sx={{ fontSize: 14, fontWeight: 700, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                    {item.value}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      mt: 0.4,
+                      fontSize: 8,
+                      lineHeight: 1.2,
+                      fontWeight: 500,
+                      opacity: 0.8,
+                      overflowWrap: 'anywhere',
+                    }}
+                  >
+                    {item.label}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
           </Box>
           <Box
             sx={{

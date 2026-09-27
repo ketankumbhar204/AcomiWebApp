@@ -857,8 +857,13 @@
     },
     "accommodationOperations": {
       "title": "प्रॉपर्टी परिचालन",
+      "bedsSub": "जानें कौन रह रहा है",
+      "occupied": "भरा हुआ",
+      "vacant": "खाली",
+      "reserved": "आरक्षित",
       "occupiedBeds": "भरे हुए बिस्तर",
       "vacantBeds": "खाली बिस्तर",
+      "reservedBeds": "आरक्षित बिस्तर",
       "moveInsThisMonth": "इस महीने आए नए सदस्य",
       "pendingPayments": "लंबित भुगतान"
     },

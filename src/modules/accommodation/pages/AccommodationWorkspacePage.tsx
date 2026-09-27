@@ -143,6 +143,7 @@ export function AccommodationWorkspacePage() {
   const selectedOpsMetricId = useMemo((): AccommodationOpsMetricId | null => {
     if (opsFocus === 'OCCUPIED') return 'occupied';
     if (opsFocus === 'VACANT') return 'vacant';
+    if (opsFocus === 'RESERVED') return 'reserved';
     if (opsFocus === 'MOVE_INS_THIS_MONTH') return 'moveIns';
     if (opsFocus === 'PENDING_PAYMENTS') return 'pendingPay';
     return null;
@@ -154,9 +155,11 @@ export function AccommodationWorkspacePage() {
         ? 'OCCUPIED'
         : id === 'vacant'
           ? 'VACANT'
-          : id === 'moveIns'
-            ? 'MOVE_INS_THIS_MONTH'
-            : 'PENDING_PAYMENTS';
+          : id === 'reserved'
+            ? 'RESERVED'
+            : id === 'moveIns'
+              ? 'MOVE_INS_THIS_MONTH'
+              : 'PENDING_PAYMENTS';
     setOpsFocus((prev) => (prev === next ? null : next));
     setViewMode('cards');
   };

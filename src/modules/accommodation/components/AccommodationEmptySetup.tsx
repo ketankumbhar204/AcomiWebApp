@@ -1,11 +1,11 @@
 import { Box, Stack, Typography, useTheme } from '@mui/material';
-import { BedDouble, Building2, Sparkles, UserPlus, Users } from 'lucide-react';
+import { Building2, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { OccupancyStatusBoard } from '@/modules/dashboard/components/OccupancyStatusBoard';
 import { useSpaceDashboard } from '@/modules/dashboard/hooks/useSpaceDashboard';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { ContentCard } from '@/shared/components/ContentCard';
-import { StatCard } from '@/shared/components/StatCard';
 import { spaceBedInventoryPath, spaceOccupancyListPath } from '@/routes/paths';
 import type { SpaceType } from '@/shared/types/space';
 import { SetupActionCard } from './SetupActionCard';
@@ -94,50 +94,41 @@ export function AccommodationEmptySetup({
           <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted, mb: 1 }}>
             {t('accommodation.home.operationsGlance')}
           </Typography>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
-              gap: 1.25,
-            }}
-          >
-            <StatCard
-              dense
-              label={t('dashboard.accommodationOperations.occupiedBeds')}
-              value={operations.occupiedBeds}
-              accentColor="#128C7E"
-              icon={<Users size={16} color="#128C7E" />}
-              onClick={
-                canDrillOccupancy
+          <OccupancyStatusBoard
+            occupied={operations.occupiedBeds}
+            total={
+              operations.occupiedBeds + operations.vacantBeds + (operations.reservedBeds ?? 0)
+            }
+            statusChips={[
+              {
+                id: 'occupied',
+                label: t('dashboard.accommodationOperations.occupied'),
+                value: operations.occupiedBeds,
+                tone: 'occupied',
+                onClick: canDrillOccupancy
                   ? () => navigate(spaceOccupancyListPath(spaceId, 'active'))
-                  : undefined
-              }
-            />
-            <StatCard
-              dense
-              label={t('dashboard.accommodationOperations.vacantBeds')}
-              value={operations.vacantBeds}
-              accentColor="#6366F1"
-              icon={<BedDouble size={16} color="#6366F1" />}
-              onClick={
-                canDrillOccupancy
+                  : undefined,
+              },
+              {
+                id: 'vacant',
+                label: t('dashboard.accommodationOperations.vacant'),
+                value: operations.vacantBeds,
+                tone: 'vacant',
+                onClick: canDrillOccupancy
                   ? () => navigate(spaceBedInventoryPath(spaceId, 'AVAILABLE'))
-                  : undefined
-              }
-            />
-            <StatCard
-              dense
-              label={t('dashboard.accommodationOperations.moveInsThisMonth')}
-              value={operations.moveInsThisMonth}
-              accentColor="#D97706"
-              icon={<UserPlus size={16} color="#D97706" />}
-              onClick={
-                canDrillOccupancy
-                  ? () => navigate(spaceOccupancyListPath(spaceId, 'moveInsThisMonth'))
-                  : undefined
-              }
-            />
-          </Box>
+                  : undefined,
+              },
+              {
+                id: 'reserved',
+                label: t('dashboard.accommodationOperations.reserved'),
+                value: operations.reservedBeds ?? 0,
+                tone: 'reserved',
+                onClick: canDrillOccupancy
+                  ? () => navigate(spaceBedInventoryPath(spaceId, 'RESERVED'))
+                  : undefined,
+              },
+            ]}
+          />
         </Box>
       ) : null}
     </Stack>

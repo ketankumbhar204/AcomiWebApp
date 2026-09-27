@@ -32,6 +32,7 @@ export interface DashboardFinancialSummary {
 export interface DashboardAccommodationOperations {
   occupiedBeds: number;
   vacantBeds: number;
+  reservedBeds?: number;
   moveInsThisMonth: number;
   pendingPaymentsCount: number;
 }

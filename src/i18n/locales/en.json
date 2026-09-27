@@ -1090,8 +1090,13 @@
     },
     "accommodationOperations": {
       "title": "Property operations",
+      "bedsSub": "Know who's staying",
+      "occupied": "Occupied",
+      "vacant": "Vacant",
+      "reserved": "Reserved",
       "occupiedBeds": "Occupied beds",
       "vacantBeds": "Vacant beds",
+      "reservedBeds": "Reserved beds",
       "moveInsThisMonth": "Move-ins this month",
       "pendingPayments": "Pending payments"
     },

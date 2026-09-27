@@ -857,8 +857,13 @@
     },
     "accommodationOperations": {
       "title": "मालमत्ता परिचालन",
+      "bedsSub": "कोण राहत आहे ते जाणून घ्या",
+      "occupied": "भरलेले",
+      "vacant": "रिकामा",
+      "reserved": "राखीव",
       "occupiedBeds": "भरलेल्या जागा",
       "vacantBeds": "रिकाम्या जागा",
+      "reservedBeds": "राखीव जागा",
       "moveInsThisMonth": "या महिन्यातील नवीन प्रवेश",
       "pendingPayments": "प्रलंबित पेमेंट"
     },

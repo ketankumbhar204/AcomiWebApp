@@ -33,6 +33,7 @@ type AvailabilityFilter = 'ALL' | 'HAS_AVAILABLE' | 'FULL';
 export type RoomsOpsFocus =
   | 'OCCUPIED'
   | 'VACANT'
+  | 'RESERVED'
   | 'MOVE_INS_THIS_MONTH'
   | 'PENDING_PAYMENTS'
   | null;
@@ -80,6 +81,9 @@ function filterBedsByOpsFocus(
   if (opsFocus === 'VACANT') {
     return beds.filter((bed) => bed.status === 'AVAILABLE');
   }
+  if (opsFocus === 'RESERVED') {
+    return beds.filter((bed) => bed.status === 'RESERVED');
+  }
   return beds.filter((bed) => focusedBedIds.has(bed.bedId));
 }
 
@@ -92,6 +96,9 @@ function opsFocusLabel(
   }
   if (opsFocus === 'VACANT') {
     return t('dashboard.accommodationOperations.vacantBeds');
+  }
+  if (opsFocus === 'RESERVED') {
+    return t('dashboard.accommodationOperations.reservedBeds');
   }
   if (opsFocus === 'PENDING_PAYMENTS') {
     return t('dashboard.accommodationOperations.pendingPayments');
