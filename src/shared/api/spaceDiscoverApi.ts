@@ -1,36 +1,27 @@
 import apiClient from '@/shared/api/client';
 import { unwrapApiResponse } from '@/shared/api/apiRequest';
+import {
+  DISCOVER_PAGE_SIZE,
+  buildDiscoverSearchParams,
+  type DiscoverSpacesParams,
+} from '@/shared/api/discoverQuery';
 import type { ApiResponse, PagedResponse } from '@/shared/types/api';
-import type {
-  DiscoverSpaceCardResponse,
-  DiscoverSpaceDetailResponse,
-  SpaceType,
-} from '@/shared/types/space';
+import type { DiscoverSpaceCardResponse, DiscoverSpaceDetailResponse } from '@/shared/types/space';
 
-export type DiscoverSpacesParams = {
-  search?: string;
-  type?: SpaceType;
-  page?: number;
-  size?: number;
-  sort?: string;
-};
+export type { DiscoverSpacesParams } from '@/shared/api/discoverQuery';
 
 export const spaceDiscoverApi = {
   discoverSpaces: async (
     params: DiscoverSpacesParams = {},
   ): Promise<PagedResponse<DiscoverSpaceCardResponse>> => {
-    const { search, type, page = 0, size = 12, sort = 'newest' } = params;
-    const trimmed = search?.trim();
+    const query = buildDiscoverSearchParams({
+      ...params,
+      size: params.size ?? DISCOVER_PAGE_SIZE,
+    });
     return unwrapApiResponse(
-      apiClient.get<ApiResponse<PagedResponse<DiscoverSpaceCardResponse>>>('/spaces/discover', {
-        params: {
-          ...(trimmed ? { search: trimmed } : {}),
-          ...(type ? { type } : {}),
-          page,
-          size,
-          sort,
-        },
-      }),
+      apiClient.get<ApiResponse<PagedResponse<DiscoverSpaceCardResponse>>>(
+        `/spaces/discover?${query.toString()}`,
+      ),
     );
   },
 

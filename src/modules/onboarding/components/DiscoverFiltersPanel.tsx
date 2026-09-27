@@ -12,80 +12,17 @@ import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { spaceTypeLabelKey } from '@/modules/onboarding/components/createSpace/createSpaceVisuals';
+import {
+  DEFAULT_DISCOVER_AMENITIES,
+  PLACE_SPACE_TYPES,
+  type DiscoverCategory,
+  type DiscoverFilterState,
+} from '@/modules/onboarding/utils/discoverFilterModel';
 import { colors } from '@/shared/theme/colors';
-import type { SpaceType } from '@/shared/types/space';
-
-/** Stay listings (public /places) — excludes Mess. */
-export const PLACE_SPACE_TYPES: SpaceType[] = ['PG', 'HOSTEL', 'CO_LIVING', 'RENTAL'];
-
-/** Same Pune areas as public /places and /meals filter sidebars. */
-export const PUNE_DISCOVER_LOCALITIES = [
-  'Aundh',
-  'Balewadi',
-  'Baner',
-  'Hadapsar',
-  'Hinjawadi',
-  'Kharadi',
-  'Kothrud',
-  'Shivajinagar',
-  'Viman Nagar',
-  'Wakad',
-] as const;
-
-/** Same amenity list as public PropertyFilters when API returns none yet. */
-export const DEFAULT_DISCOVER_AMENITIES = [
-  { code: 'WIFI', label: 'Wi-Fi' },
-  { code: 'FOOD_INCLUDED', label: 'Meals' },
-  { code: 'WASHING_MACHINE', label: 'Laundry' },
-  { code: 'PARKING', label: 'Parking' },
-  { code: 'HOUSEKEEPING', label: 'Housekeeping' },
-  { code: 'POWER_BACKUP', label: 'Power backup' },
-  { code: 'CCTV', label: 'CCTV' },
-  { code: 'HOT_WATER', label: 'Hot water' },
-  { code: 'REFRIGERATOR', label: 'Refrigerator' },
-  { code: 'WARDROBE', label: 'Wardrobe' },
-] as const;
-
-export const RATING_PRESETS = [
-  { id: '45', label: '4.5+', value: 4.5 },
-  { id: '40', label: '4.0+', value: 4.0 },
-  { id: '35', label: '3.5+', value: 3.5 },
-] as const;
-
-export type DiscoverCategory = 'places' | 'mess';
-
-export type DiscoverFilterState = {
-  types: SpaceType[];
-  localities: string[];
-  amenities: string[];
-  /** Places monthly price bounds (null = unbound). */
-  minPrice: number | null;
-  maxPrice: number | null;
-  /** Mess monthly / per-meal bounds. */
-  minMonthly: number | null;
-  maxMonthly: number | null;
-  minMeal: number | null;
-  maxMeal: number | null;
-  minRating: number | null;
-};
-
-export const EMPTY_DISCOVER_FILTERS: DiscoverFilterState = {
-  types: [],
-  localities: [],
-  amenities: [],
-  minPrice: null,
-  maxPrice: null,
-  minMonthly: null,
-  maxMonthly: null,
-  minMeal: null,
-  maxMeal: null,
-  minRating: null,
-};
 
 type DiscoverFiltersPanelProps = {
   category: DiscoverCategory;
   value: DiscoverFilterState;
-  localities?: string[];
   amenityOptions: Array<{ code: string; label: string }>;
   onChange: (next: DiscoverFilterState) => void;
   onClear?: () => void;
@@ -166,10 +103,7 @@ function DualRangeSlider({
           const nextMin = range[0];
           const nextMax = range[1];
           if (nextMin === undefined || nextMax === undefined) return;
-          onChange(
-            nextMin <= minBound ? null : nextMin,
-            nextMax >= maxBound ? null : nextMax,
-          );
+          onChange(nextMin <= minBound ? null : nextMin, nextMax >= maxBound ? null : nextMax);
         }}
         valueLabelDisplay="off"
         sx={{
@@ -190,12 +124,11 @@ function DualRangeSlider({
 }
 
 /**
- * Public-website filters including price range + rating (UI parity with /places & /meals).
+ * Places filters that the discover API can apply. Mess uses location + search only.
  */
 export function DiscoverFiltersPanel({
   category,
   value,
-  localities = [],
   amenityOptions,
   onChange,
   onClear,
@@ -203,28 +136,14 @@ export function DiscoverFiltersPanel({
   const { t } = useTranslation();
   const hasActive =
     value.types.length > 0 ||
-    value.localities.length > 0 ||
     value.amenities.length > 0 ||
     value.minPrice != null ||
-    value.maxPrice != null ||
-    value.minMonthly != null ||
-    value.maxMonthly != null ||
-    value.minMeal != null ||
-    value.maxMeal != null ||
-    value.minRating != null;
-
-  const locationOptions = useMemo(() => {
-    const merged = new Set<string>([...PUNE_DISCOVER_LOCALITIES, ...localities]);
-    return [...merged].sort((a, b) => a.localeCompare(b));
-  }, [localities]);
+    value.maxPrice != null;
 
   const amenities = useMemo(() => {
     if (amenityOptions.length > 0) return amenityOptions;
-    if (category === 'places') {
-      return DEFAULT_DISCOVER_AMENITIES.map((item) => ({ code: item.code, label: item.label }));
-    }
-    return [];
-  }, [amenityOptions, category]);
+    return DEFAULT_DISCOVER_AMENITIES.map((item) => ({ code: item.code, label: item.label }));
+  }, [amenityOptions]);
 
   const checkSx = {
     py: 0,
@@ -242,121 +161,50 @@ export function DiscoverFiltersPanel({
     },
   } as const;
 
+  if (category === 'mess') {
+    return (
+      <Typography sx={{ fontSize: '0.8125rem', lineHeight: 1.6, color: colors.textSecondary }}>
+        {t('spaces.findPlace.tabs.messFiltersHint')}
+      </Typography>
+    );
+  }
+
   return (
     <Stack spacing={3}>
-      <FilterGroup legend={t('spaces.findPlace.filters.location')}>
+      <FilterGroup legend={t('spaces.findPlace.filters.propertyType')}>
         <Stack spacing={0.75}>
-          {locationOptions.map((locality) => (
+          {PLACE_SPACE_TYPES.map((type) => (
             <FormControlLabel
-              key={locality}
+              key={type}
               sx={checkSx}
               control={
                 <Checkbox
                   size="small"
-                  checked={value.localities.includes(locality)}
+                  checked={value.types.includes(type)}
                   onChange={() =>
                     onChange({
                       ...value,
-                      localities: toggleValue(value.localities, locality),
+                      types: toggleValue(value.types, type),
                     })
                   }
                 />
               }
-              label={locality}
+              label={t(spaceTypeLabelKey(type))}
             />
           ))}
         </Stack>
       </FilterGroup>
 
-      {category === 'places' ? (
-        <FilterGroup legend={t('spaces.findPlace.filters.propertyType')}>
-          <Stack spacing={0.75}>
-            {PLACE_SPACE_TYPES.map((type) => (
-              <FormControlLabel
-                key={type}
-                sx={checkSx}
-                control={
-                  <Checkbox
-                    size="small"
-                    checked={value.types.includes(type)}
-                    onChange={() =>
-                      onChange({
-                        ...value,
-                        types: toggleValue(value.types, type),
-                      })
-                    }
-                  />
-                }
-                label={t(spaceTypeLabelKey(type))}
-              />
-            ))}
-          </Stack>
-        </FilterGroup>
-      ) : null}
-
-      {category === 'places' ? (
-        <FilterGroup legend={t('spaces.findPlace.filters.priceRangeMonth')}>
-          <DualRangeSlider
-            minBound={2000}
-            maxBound={25000}
-            minValue={value.minPrice}
-            maxValue={value.maxPrice}
-            step={500}
-            format={formatInr}
-            onChange={(minPrice, maxPrice) => onChange({ ...value, minPrice, maxPrice })}
-          />
-        </FilterGroup>
-      ) : (
-        <>
-          <FilterGroup legend={t('spaces.findPlace.filters.monthlyPrice')}>
-            <DualRangeSlider
-              minBound={1000}
-              maxBound={6000}
-              minValue={value.minMonthly}
-              maxValue={value.maxMonthly}
-              step={100}
-              format={formatInr}
-              onChange={(minMonthly, maxMonthly) =>
-                onChange({ ...value, minMonthly, maxMonthly })
-              }
-            />
-          </FilterGroup>
-          <FilterGroup legend={t('spaces.findPlace.filters.perMealPrice')}>
-            <DualRangeSlider
-              minBound={40}
-              maxBound={200}
-              minValue={value.minMeal}
-              maxValue={value.maxMeal}
-              step={5}
-              format={(v) => `₹${v}`}
-              onChange={(minMeal, maxMeal) => onChange({ ...value, minMeal, maxMeal })}
-            />
-          </FilterGroup>
-        </>
-      )}
-
-      <FilterGroup legend={t('spaces.findPlace.filters.rating')}>
-        <Stack spacing={0.75}>
-          {RATING_PRESETS.map((preset) => (
-            <FormControlLabel
-              key={preset.id}
-              sx={checkSx}
-              control={
-                <Checkbox
-                  size="small"
-                  checked={value.minRating === preset.value}
-                  onChange={() =>
-                    onChange({
-                      ...value,
-                      minRating: value.minRating === preset.value ? null : preset.value,
-                    })
-                  }
-                />
-              }
-              label={preset.label}
-            />
-          ))}
-        </Stack>
+      <FilterGroup legend={t('spaces.findPlace.filters.priceRangeMonth')}>
+        <DualRangeSlider
+          minBound={2000}
+          maxBound={25000}
+          minValue={value.minPrice}
+          maxValue={value.maxPrice}
+          step={500}
+          format={formatInr}
+          onChange={(minPrice, maxPrice) => onChange({ ...value, minPrice, maxPrice })}
+        />
       </FilterGroup>
 
       {amenities.length > 0 ? (
@@ -414,6 +262,10 @@ export function ActiveDiscoverFilterChips({
   onClearAll,
 }: ActiveDiscoverFilterChipsProps) {
   const { t } = useTranslation();
+  if (category === 'mess') {
+    return null;
+  }
+
   const amenityLabel = (code: string) =>
     amenityOptions.find((item) => item.code === code)?.label ??
     DEFAULT_DISCOVER_AMENITIES.find((item) => item.code === code)?.label ??
@@ -421,55 +273,20 @@ export function ActiveDiscoverFilterChips({
 
   const chips: Array<{ key: string; label: string; onDelete: () => void }> = [];
 
-  if (category === 'places') {
-    for (const type of value.types) {
-      chips.push({
-        key: `type-${type}`,
-        label: t(spaceTypeLabelKey(type)),
-        onDelete: () => onChange({ ...value, types: value.types.filter((item) => item !== type) }),
-      });
-    }
-    if (value.minPrice != null || value.maxPrice != null) {
-      chips.push({
-        key: 'price',
-        label: `${formatInr(value.minPrice ?? 2000)} – ${formatInr(value.maxPrice ?? 25000)}`,
-        onDelete: () => onChange({ ...value, minPrice: null, maxPrice: null }),
-      });
-    }
-  } else {
-    if (value.minMonthly != null || value.maxMonthly != null) {
-      chips.push({
-        key: 'monthly',
-        label: `${formatInr(value.minMonthly ?? 1000)} – ${formatInr(value.maxMonthly ?? 6000)}/mo`,
-        onDelete: () => onChange({ ...value, minMonthly: null, maxMonthly: null }),
-      });
-    }
-    if (value.minMeal != null || value.maxMeal != null) {
-      chips.push({
-        key: 'meal',
-        label: `₹${value.minMeal ?? 40} – ₹${value.maxMeal ?? 200}/meal`,
-        onDelete: () => onChange({ ...value, minMeal: null, maxMeal: null }),
-      });
-    }
-  }
-
-  if (value.minRating != null) {
+  for (const type of value.types) {
     chips.push({
-      key: 'rating',
-      label: `${value.minRating}+`,
-      onDelete: () => onChange({ ...value, minRating: null }),
+      key: `type-${type}`,
+      label: t(spaceTypeLabelKey(type)),
+      onDelete: () => onChange({ ...value, types: value.types.filter((item) => item !== type) }),
     });
   }
-
-  for (const locality of value.localities) {
+  if (value.minPrice != null || value.maxPrice != null) {
     chips.push({
-      key: `loc-${locality}`,
-      label: locality,
-      onDelete: () =>
-        onChange({ ...value, localities: value.localities.filter((item) => item !== locality) }),
+      key: 'price',
+      label: `${formatInr(value.minPrice ?? 2000)} – ${formatInr(value.maxPrice ?? 25000)}`,
+      onDelete: () => onChange({ ...value, minPrice: null, maxPrice: null }),
     });
   }
-
   for (const code of value.amenities) {
     chips.push({
       key: `amenity-${code}`,

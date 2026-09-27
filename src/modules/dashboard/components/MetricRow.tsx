@@ -13,6 +13,8 @@ export type MetricCell = {
   icon?: ReactNode;
   accent?: string;
   tone?: SemanticTone;
+  /** Exact tile fill (e.g. Mobile pastels) — wins over `tone`. */
+  surface?: { bg: string; fg: string; iconBg?: string };
   onClick?: () => void;
   /** Visually marks an active filter/selection (not color-only: ring + aria-pressed). */
   selected?: boolean;
@@ -64,7 +66,11 @@ export function MetricRow({
       }}
     >
       {items.map((item) => {
-        const surface = item.tone ? semanticSurface(item.tone, mode) : null;
+        const surface = item.surface
+          ? item.surface
+          : item.tone
+            ? semanticSurface(item.tone, mode)
+            : null;
         const selected = Boolean(item.selected);
         return (
           <Box

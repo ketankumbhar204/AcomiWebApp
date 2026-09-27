@@ -9,6 +9,36 @@ type HealthScoreRingProps = {
   strokeWidth?: number;
 };
 
+/** Type that keeps "100%" inside compact dashboard rings (46px). */
+function ringPercentSx(size: number, score: number) {
+  const digits = score >= 100 ? 3 : score >= 10 ? 2 : 1;
+  if (size >= 88) {
+    return {
+      ...DASHBOARD_UX.largeNumber,
+      lineHeight: 1,
+      whiteSpace: 'nowrap' as const,
+      fontVariantNumeric: 'tabular-nums' as const,
+    };
+  }
+  if (size >= 72) {
+    return {
+      ...DASHBOARD_UX.counterValue,
+      lineHeight: 1,
+      whiteSpace: 'nowrap' as const,
+      fontVariantNumeric: 'tabular-nums' as const,
+    };
+  }
+  const fontSize = digits >= 3 ? 10 : digits === 2 ? 11 : 12;
+  return {
+    fontSize,
+    fontWeight: 800,
+    lineHeight: 1,
+    letterSpacing: digits >= 3 ? '-0.04em' : '-0.02em',
+    whiteSpace: 'nowrap' as const,
+    fontVariantNumeric: 'tabular-nums' as const,
+  };
+}
+
 /** DOM/SVG port of mobile HealthScoreRing. */
 export function HealthScoreRing({
   score,
@@ -62,15 +92,26 @@ export function HealthScoreRing({
           display: 'grid',
           placeItems: 'center',
           pointerEvents: 'none',
+          overflow: 'visible',
         }}
       >
         <Typography
           sx={{
-            ...(size >= 72 ? DASHBOARD_UX.largeNumber : DASHBOARD_UX.counterValue),
+            ...ringPercentSx(size, clamped),
             color,
           }}
         >
-          {`${clamped}%`}
+          {clamped}
+          <Box
+            component="span"
+            sx={{
+              fontSize: '0.68em',
+              fontWeight: 800,
+              letterSpacing: 0,
+            }}
+          >
+            %
+          </Box>
         </Typography>
       </Box>
     </Box>

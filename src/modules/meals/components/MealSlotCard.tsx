@@ -42,7 +42,7 @@ export function MealSlotCard({ mealType, menu, poll, canManage, onEdit }: MealSl
 
   const statusTone =
     !menu || !planned
-      ? 'neutral'
+      ? 'warning'
       : menu.status === 'PUBLISHED'
         ? 'success'
         : menu.status === 'DRAFT'

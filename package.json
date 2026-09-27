@@ -13,6 +13,7 @@
     "test:admin-activity": "node scripts/check-admin-activity-destination.mjs",
     "test:i18n": "node scripts/check-locale-coverage.mjs",
     "test:listing-detail": "node scripts/check-listing-location.mjs",
+    "test:find-place": "node scripts/check-find-a-place-discovery.mjs",
     "test:cookie-session": "node scripts/check-cookie-session.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

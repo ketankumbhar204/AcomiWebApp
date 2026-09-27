@@ -24,6 +24,15 @@ export interface DiscoverSpaceCardResponse {
   alreadyMember: boolean;
   /** Converted from a test-lead registration (shown in local discovery). */
   testSpace?: boolean;
+  listingImageUrl?: string | null;
+  coverImageUrl?: string | null;
+  imageUrl?: string | null;
+  startingPrice?: number | string | null;
+  monthlyPrice?: number | string | null;
+  mealPrice?: number | string | null;
+  mapUrl?: string | null;
+  hasContact?: boolean;
+  ownedByCurrentUser?: boolean;
 }
 
 export type ListingPriceBasis = 'PER_BED' | 'PER_ROOM' | 'PER_UNIT';

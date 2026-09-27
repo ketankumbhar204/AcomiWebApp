@@ -22,7 +22,8 @@ import {
 } from 'lucide-react';
 import { enquiryApi } from '@/shared/api/enquiryApi';
 import { inquiryCreditsApi } from '@/shared/api/inquiryCreditsApi';
-import { ApiError, getErrorMessage } from '@/shared/api/errors';
+import { enquiryErrorMessage } from '@/shared/api/enquiryErrors';
+import { ApiError } from '@/shared/api/errors';
 import type { UserResponse } from '@/shared/types/auth';
 import type { SpaceEnquiryResponse } from '@/shared/types/enquiry';
 import type { InquiryQuota } from '@/shared/types/inquiryCredits';
@@ -218,7 +219,13 @@ export function EnquireDialog({
         setError(null);
         return;
       }
-      setError(getErrorMessage(err, t('spaces.findPlace.enquire.submitError')));
+      setError(
+        enquiryErrorMessage(
+          err,
+          t('spaces.findPlace.enquire.submitError'),
+          t('spaces.findPlace.enquire.listingUnavailable'),
+        ),
+      );
       setStep(provided ? 'email' : 'error');
     } finally {
       submittingRef.current = false;
@@ -245,7 +252,13 @@ export function EnquireDialog({
       void refreshUser();
       void refreshQuota();
     } catch (err) {
-      setError(getErrorMessage(err, t('spaces.findPlace.enquire.submitError')));
+      setError(
+        enquiryErrorMessage(
+          err,
+          t('spaces.findPlace.enquire.submitError'),
+          t('spaces.findPlace.enquire.listingUnavailable'),
+        ),
+      );
     } finally {
       submittingRef.current = false;
       setSubmitting(false);

@@ -3,7 +3,6 @@ import {
   Button,
   Chip,
   IconButton,
-  Link,
   Skeleton,
   Stack,
   Typography,
@@ -12,7 +11,6 @@ import {
 } from '@mui/material';
 import {
   BedDouble,
-  ExternalLink,
   Lock,
   MapPin,
   UserCheck,
@@ -35,7 +33,6 @@ import {
   formatListingPriceInr,
   hasListingLocation,
   humanizeAmenityCode,
-  resolveListingMapsUrl,
 } from '@/modules/onboarding/utils/listingLocation';
 import { genderPolicyLabelKey } from '@/modules/onboarding/utils/spacePropertyCategory';
 import { getErrorMessage } from '@/shared/api/errors';
@@ -195,13 +192,6 @@ export function DiscoverSpaceDetailDrawer({
         address: detail.address,
       })
     : null;
-  const mapsUrl = detail
-    ? resolveListingMapsUrl({
-        latitude: detail.latitude,
-        longitude: detail.longitude,
-        mapUrl: detail.mapUrl,
-      })
-    : null;
   const showLocation = detail ? hasListingLocation(detail, { latitude: detail.latitude, longitude: detail.longitude, mapUrl: detail.mapUrl }) : false;
   const priceCopy = detail ? listingPriceCopy(detail, t) : { primary: null, meal: null };
   const description = detail?.description?.trim() || null;
@@ -301,7 +291,7 @@ export function DiscoverSpaceDetailDrawer({
                 }}
               >
                 <DiscoverListingImage
-                  src={discoverDefaultImageUrl(detail.type)}
+                  src={discoverDefaultImageUrl(detail.type, detail.spaceId)}
                   alt={detail.name}
                 />
               </Box>
@@ -429,40 +419,36 @@ export function DiscoverSpaceDetailDrawer({
                   <Box>
                     <SectionLabel>{t('spaces.findPlace.location')}</SectionLabel>
                     {formattedAddress ? (
-                      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'flex-start', mb: mapsUrl ? 1 : 0 }}>
+                      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'flex-start', mb: 1 }}>
                         <MapPin size={16} style={{ flexShrink: 0, marginTop: 2, color: colors.teal }} />
                         <Typography sx={{ fontSize: '0.95rem', color: textPrimary, whiteSpace: 'pre-wrap' }}>
                           {formattedAddress}
                         </Typography>
                       </Stack>
                     ) : (
-                      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'flex-start', mb: mapsUrl ? 1 : 0 }}>
+                      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'flex-start', mb: 1 }}>
                         <MapPin size={16} style={{ flexShrink: 0, marginTop: 2, color: colors.teal }} />
                         <Typography sx={{ fontSize: '0.95rem', color: textSecondary }}>
                           {t('spaces.findPlace.locationAvailable')}
                         </Typography>
                       </Stack>
                     )}
-                    {mapsUrl ? (
-                      <Link
-                        href={mapsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        underline="none"
-                        aria-label={t('spaces.findPlace.openInGoogleMapsAria', { name: detail.name })}
-                        sx={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 0.75,
-                          fontWeight: 700,
-                          fontSize: '0.92rem',
-                          color: colors.teal,
-                        }}
-                      >
-                        {t('spaces.findPlace.openInGoogleMaps')}
-                        <ExternalLink size={14} aria-hidden />
-                      </Link>
-                    ) : null}
+                    <Button
+                      onClick={() => setEnquireOpen(true)}
+                      aria-label={t('spaces.findPlace.openInGoogleMapsAria', { name: detail.name })}
+                      sx={{
+                        mt: 0.5,
+                        px: 0,
+                        minWidth: 0,
+                        justifyContent: 'flex-start',
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        fontSize: '0.92rem',
+                        color: colors.teal,
+                      }}
+                    >
+                      {t('spaces.findPlace.openInGoogleMaps')}
+                    </Button>
                   </Box>
                 ) : null}
 

@@ -150,7 +150,7 @@ export function MealOperationsTodayCard({
           const count = headcountByType[mealType];
 
           let statusLabel = t('meals.status.empty', { defaultValue: 'Empty' });
-          let statusTone: 'success' | 'warning' | 'neutral' = 'neutral';
+          let statusTone: 'success' | 'warning' | 'error' = 'warning';
           if (isShared) {
             statusLabel = t('meals.status.PUBLISHED', { defaultValue: 'Published' });
             statusTone = 'success';
@@ -179,7 +179,7 @@ export function MealOperationsTodayCard({
                 px: 1.1,
                 py: 1,
                 bgcolor: mealTheme.soft,
-                border: `1px solid #E5E7EB`,
+                border: `1px solid ${planned ? '#E5E7EB' : '#F5D9A8'}`,
                 borderRadius: `${DASHBOARD_UX.tileRadius}px`,
                 display: 'flex',
                 flexDirection: 'column',

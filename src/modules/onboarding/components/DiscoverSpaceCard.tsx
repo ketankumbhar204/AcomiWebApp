@@ -1,86 +1,47 @@
-import { Box, Stack, Typography, useTheme } from '@mui/material';
-import {
-  Car,
-  Cctv,
-  Droplets,
-  Heart,
-  MapPin,
-  Refrigerator,
-  Shirt,
-  Sparkles,
-  SquareStack,
-  UtensilsCrossed,
-  Wifi,
-  Zap,
-  type LucideIcon,
-} from 'lucide-react';
+import { Box, Button, Stack, Typography, useTheme } from '@mui/material';
+import { BadgeCheck, Heart, Map } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { spaceTypeLabelKey } from '@/modules/onboarding/components/createSpace/createSpaceVisuals';
 import { DiscoverListingImage } from '@/modules/onboarding/components/DiscoverListingImage';
+import { ListingInfoChips } from '@/modules/onboarding/components/ListingInfoChips';
 import { discoverDefaultImageUrl } from '@/modules/onboarding/utils/discoverDefaultImages';
+import { formatListingPriceInr } from '@/modules/onboarding/utils/listingLocation';
 import { colors } from '@/shared/theme/colors';
-import type { DiscoverSpaceCardResponse } from '@/shared/types/space';
+import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import type { DiscoverSpaceCardResponse, SpaceType } from '@/shared/types/space';
 
 type DiscoverSpaceCardProps = {
   space: DiscoverSpaceCardResponse;
   onViewDetails: (spaceId: string) => void;
+  onEnquire: (space: DiscoverSpaceCardResponse) => void;
 };
-
-const MAX_AMENITIES = 4;
-
-const AMENITY_ICONS: Record<string, LucideIcon> = {
-  WIFI: Wifi,
-  FOOD_INCLUDED: UtensilsCrossed,
-  WASHING_MACHINE: Shirt,
-  PARKING: Car,
-  HOUSEKEEPING: Sparkles,
-  POWER_BACKUP: Zap,
-  RO_WATER: Droplets,
-  CCTV: Cctv,
-  HOT_WATER: Droplets,
-  REFRIGERATOR: Refrigerator,
-  WARDROBE: SquareStack,
-};
-
-function amenityIcon(code: string): LucideIcon {
-  return AMENITY_ICONS[code] ?? Wifi;
-}
 
 /**
  * Public-website PropertyCard layout for authenticated discovery.
- * Uses type default photos (API has no images yet). Does not invent ratings/prices.
  */
-export function DiscoverSpaceCard({ space, onViewDetails }: DiscoverSpaceCardProps) {
+export function DiscoverSpaceCard({ space, onViewDetails, onEnquire }: DiscoverSpaceCardProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const address = space.address?.trim() || t('spaces.findPlace.addressNotSet');
-  const cover = discoverDefaultImageUrl(space.type);
-
-  const amenityItems: { key: string; label: string; Icon: LucideIcon }[] = [];
-  if (space.foodIncludedInRent) {
-    amenityItems.push({
-      key: 'food',
-      label: t('spaces.findPlace.mealsIncluded'),
-      Icon: UtensilsCrossed,
-    });
-  }
-  const codes = space.amenityCodes ?? [];
-  const labels = space.amenityLabels ?? [];
-  for (let i = 0; i < labels.length && amenityItems.length < MAX_AMENITIES; i += 1) {
-    const label = labels[i];
-    if (!label) continue;
-    amenityItems.push({
-      key: codes[i] ?? `label-${i}`,
-      label,
-      Icon: amenityIcon(codes[i] ?? ''),
-    });
-  }
+  const cover = discoverDefaultImageUrl(
+    space.type,
+    space.spaceId,
+    space.listingImageUrl || space.coverImageUrl || space.imageUrl,
+  );
+  const isMess = space.type === 'MESS';
+  const price = isMess
+    ? formatListingPriceInr(space.monthlyPrice)
+    : formatListingPriceInr(space.startingPrice);
+  const mealPrice = isMess ? formatListingPriceInr(space.mealPrice) : null;
+  const viewDetails = t('spaces.findPlace.viewDetails');
+  const contactCta = t('spaces.findPlace.getContactDetails', {
+    defaultValue: 'Get Contact Details',
+  });
 
   return (
     <Box
       component="article"
-      onClick={() => onViewDetails(space.spaceId)}
       sx={{
         display: 'flex',
         flexDirection: 'column',
@@ -91,7 +52,6 @@ export function DiscoverSpaceCard({ space, onViewDetails }: DiscoverSpaceCardPro
         bgcolor: isDark ? theme.palette.background.paper : '#fff',
         boxShadow: isDark ? 'none' : '0 1px 3px rgba(15, 23, 42, 0.06)',
         overflow: 'hidden',
-        cursor: 'pointer',
         transition: 'transform 160ms ease, box-shadow 160ms ease',
         '&:hover': {
           transform: 'translateY(-2px)',
@@ -99,7 +59,10 @@ export function DiscoverSpaceCard({ space, onViewDetails }: DiscoverSpaceCardPro
         },
       }}
     >
-      <Box sx={{ position: 'relative', aspectRatio: '4 / 3', overflow: 'hidden', bgcolor: colors.mintSubtle }}>
+      <Box
+        sx={{ position: 'relative', aspectRatio: '4 / 3', overflow: 'hidden', bgcolor: colors.mintSubtle, cursor: 'pointer' }}
+        onClick={() => onViewDetails(space.spaceId)}
+      >
         <DiscoverListingImage src={cover} alt={space.name} />
 
         <Box
@@ -189,25 +152,23 @@ export function DiscoverSpaceCard({ space, onViewDetails }: DiscoverSpaceCardPro
         ) : null}
       </Box>
 
-      <Stack spacing={0.75} sx={{ p: 2, flex: 1, textAlign: 'left' }}>
-        <Typography
-          sx={{
-            fontWeight: 700,
-            fontSize: '1rem',
-            letterSpacing: '-0.02em',
-            color: isDark ? theme.palette.text.primary : colors.textPrimary,
-            lineHeight: 1.25,
-          }}
-          noWrap
-          title={space.name}
-        >
-          {space.name}
-        </Typography>
-
-        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'flex-start', minWidth: 0 }}>
-          <MapPin size={14} style={{ flexShrink: 0, marginTop: 2, color: colors.muted }} />
+      <Stack spacing={1} sx={{ p: 1.75, flex: 1, textAlign: 'left' }}>
+        <Box sx={{ cursor: 'pointer' }} onClick={() => onViewDetails(space.spaceId)}>
           <Typography
             sx={{
+              fontWeight: 700,
+              fontSize: '1rem',
+              letterSpacing: '-0.02em',
+              color: isDark ? theme.palette.text.primary : colors.textPrimary,
+              lineHeight: 1.25,
+            }}
+            title={space.name}
+          >
+            {space.name}
+          </Typography>
+          <Typography
+            sx={{
+              mt: 0.5,
               fontSize: '0.8125rem',
               color: isDark ? theme.palette.text.secondary : colors.textSecondary,
               lineHeight: 1.35,
@@ -216,28 +177,105 @@ export function DiscoverSpaceCard({ space, onViewDetails }: DiscoverSpaceCardPro
           >
             {address}
           </Typography>
-        </Stack>
+          <Typography sx={{ mt: 1, fontWeight: 700, fontSize: '0.95rem', color: colors.textPrimary }}>
+            {price
+              ? `${price} ${t(`spaces.findPlace.priceSuffix.${space.type as SpaceType}`, { defaultValue: '/ month' })}`
+              : t('spaces.findPlace.priceOnRequest', { defaultValue: 'Price on request' })}
+          </Typography>
+          {mealPrice ? (
+            <Typography sx={{ mt: 0.25, fontWeight: 600, fontSize: '0.8125rem', color: colors.textPrimary }}>
+              {`${mealPrice} ${t('spaces.findPlace.mealPriceSuffix', { defaultValue: '/ meal' })}`}
+            </Typography>
+          ) : null}
+        </Box>
 
-        {amenityItems.length > 0 ? (
-          <Stack
-            direction="row"
-            spacing={1.25}
-            useFlexGap
-            sx={{ flexWrap: 'wrap', pt: 0.75, rowGap: 0.75 }}
+        <Box sx={{ mt: 0.5, borderRadius: '16px', bgcolor: '#EAF8F2', p: 1.25 }}>
+          <Box
+            component="button"
+            type="button"
+            onClick={() => onEnquire(space)}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              width: '100%',
+              border: 0,
+              borderRadius: '12px',
+              bgcolor: '#fff',
+              px: 1,
+              py: 1,
+              textAlign: 'left',
+              cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(11,28,22,0.04)',
+              '&:hover': { bgcolor: '#F3FBF7' },
+            }}
           >
-            {amenityItems.map(({ key, label, Icon }) => (
-              <Stack
-                key={key}
-                direction="row"
-                spacing={0.5}
-                sx={{ alignItems: 'center', color: colors.muted }}
-              >
-                <Icon size={14} />
-                <Typography sx={{ fontSize: '0.6875rem', color: colors.muted }}>{label}</Typography>
-              </Stack>
-            ))}
+            <Box
+              aria-hidden
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: '8px',
+                bgcolor: '#E8F8EF',
+                color: '#0F6B4C',
+                display: 'grid',
+                placeItems: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Map size={16} />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.12em', color: colors.muted, textTransform: 'uppercase' }}>
+                {t('spaces.findPlace.location')}
+              </Typography>
+              <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#0F6B4C' }}>
+                {t('spaces.findPlace.openInGoogleMaps')}
+              </Typography>
+            </Box>
+          </Box>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 1, mb: 0.75, color: '#0F6B4C' }}>
+            <BadgeCheck size={14} />
+            <Typography sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0F6B4C' }}>
+              {t('spaces.findPlace.infoAvailable', { defaultValue: 'Information available' })}
+            </Typography>
           </Stack>
-        ) : null}
+          <ListingInfoChips
+            listing={space}
+            variant="card"
+            surface={isMess ? 'meals' : 'places'}
+            onEnquire={() => onEnquire(space)}
+          />
+        </Box>
+
+        <Stack spacing={1} sx={{ mt: 'auto', pt: 0.5 }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            color="primary"
+            onClick={() => onViewDetails(space.spaceId)}
+            aria-label={`${viewDetails}: ${space.name}`}
+            sx={{ ...dashOutlinedButtonSx, minHeight: 40, borderRadius: '10px' }}
+          >
+            {viewDetails}
+          </Button>
+          <Button
+            fullWidth
+            variant="contained"
+            color="primary"
+            onClick={() => onEnquire(space)}
+            aria-label={`${contactCta}: ${space.name}`}
+            sx={{
+              ...dashContainedButtonSx,
+              minHeight: 40,
+              borderRadius: '10px',
+              bgcolor: colors.primaryDark,
+              '&:hover': { bgcolor: colors.primaryHover },
+            }}
+          >
+            {contactCta}
+          </Button>
+        </Stack>
       </Stack>
     </Box>
   );

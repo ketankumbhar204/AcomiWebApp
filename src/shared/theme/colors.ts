@@ -65,6 +65,18 @@ export const colors = {
   info: '#2563EB',
 } as const;
 
+/**
+ * Soft KPI tile fills — keep in lockstep with Mobile `pastels`.
+ * Payment Expected = mint, Collected = green.
+ */
+export const pastels = {
+  mint: { bg: '#E8F8EF', border: '#C6EBD7', fg: '#047857', iconBg: '#D4F3E2' },
+  green: { bg: '#ECFBF3', border: '#BFE8D4', fg: '#059669', iconBg: '#D4F5E4' },
+  blue: { bg: '#EEF4FF', border: '#D0E0F8', fg: '#1D4ED8', iconBg: '#DCE8FB' },
+  orange: { bg: '#FFF4EC', border: '#FED7AA', fg: '#C2410C', iconBg: '#FFEDD5' },
+  purple: { bg: '#F4F0FF', border: '#DDD6FE', fg: '#6D28D9', iconBg: '#EDE9FE' },
+} as const;
+
 /** Dedicated dark theme — not inverted light. Primary CTA stays recognizable. */
 export const darkColors = {
   primary: '#25D366',

@@ -3,9 +3,9 @@ import {
   Button,
   Drawer,
   FormControl,
+  IconButton,
   InputAdornment,
   MenuItem,
-  Pagination,
   Select,
   Skeleton,
   Stack,
@@ -16,39 +16,44 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { Building2, MapPin, Search, SlidersHorizontal, UtensilsCrossed } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
+import { Building2, MapPin, Search, SlidersHorizontal, UtensilsCrossed, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import {
   ActiveDiscoverFilterChips,
   DiscoverFiltersPanel,
+} from '@/modules/onboarding/components/DiscoverFiltersPanel';
+import {
   EMPTY_DISCOVER_FILTERS,
   PLACE_SPACE_TYPES,
   type DiscoverCategory,
   type DiscoverFilterState,
-} from '@/modules/onboarding/components/DiscoverFiltersPanel';
+} from '@/modules/onboarding/utils/discoverFilterModel';
+import { DiscoverInfiniteSentinel } from '@/modules/onboarding/components/DiscoverInfiniteSentinel';
 import { DiscoverSpaceCard } from '@/modules/onboarding/components/DiscoverSpaceCard';
 import { DiscoverSpaceDetailDrawer } from '@/modules/onboarding/components/DiscoverSpaceDetailDrawer';
-import { getErrorMessage } from '@/shared/api/errors';
+import { EnquireDialog } from '@/modules/onboarding/components/EnquireDialog';
+import { LocationSelectModal } from '@/modules/onboarding/components/LocationSelectModal';
+import {
+  buildDiscoverUrlParams,
+  formatDiscoverLocationLabel,
+  matchLocationRecord,
+  parseDiscoverUrlState,
+  shouldPromptDiscoverLocation,
+  toSelectedDiscoverLocation,
+  type SelectedDiscoverLocation,
+} from '@/modules/onboarding/utils/discoverLocation';
+import { DISCOVER_PAGE_SIZE, discoverFilterKey } from '@/shared/api/discoverQuery';
+import { locationsApi } from '@/shared/api/locationsApi';
 import { spaceDiscoverApi } from '@/shared/api/spaceDiscoverApi';
+import { getErrorMessage } from '@/shared/api/errors';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { colors } from '@/shared/theme/colors';
+import type { PagedResponse } from '@/shared/types/api';
 import type { DiscoverSpaceCardResponse, SpaceType } from '@/shared/types/space';
-
-const PAGE_SIZE = 12;
-const FETCH_SIZE = 50;
-
-const EMPTY_FILTERS: DiscoverFilterState = EMPTY_DISCOVER_FILTERS;
-
-function localityFromAddress(address?: string | null): string | null {
-  const trimmed = address?.trim();
-  if (!trimmed) return null;
-  const first = trimmed.split(',')[0]?.trim();
-  return first || trimmed;
-}
 
 function DiscoverCardSkeleton() {
   return (
@@ -70,29 +75,85 @@ function DiscoverCardSkeleton() {
   );
 }
 
+function mergeUnique(
+  current: DiscoverSpaceCardResponse[],
+  incoming: DiscoverSpaceCardResponse[],
+): DiscoverSpaceCardResponse[] {
+  const seen = new Set(current.map((item) => item.spaceId));
+  const next = [...current];
+  for (const item of incoming) {
+    if (seen.has(item.spaceId)) continue;
+    seen.add(item.spaceId);
+    next.push(item);
+  }
+  return next;
+}
+
 /**
- * Public site split: /places (stay) vs /meals (mess), with discovery API data.
+ * Authenticated Find a place — same location popup, location APIs,
+ * server-side discover filters, and infinite scroll as the public /places and /meals pages.
  */
 export function FindAPlacePage() {
   const { t } = useTranslation();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const isNarrow = useMediaQuery(theme.breakpoints.down('lg'));
-  const [category, setCategory] = useState<DiscoverCategory>('places');
-  const [search, setSearch] = useState('');
-  const [debounced, setDebounced] = useState('');
-  const [filters, setFilters] = useState<DiscoverFilterState>(EMPTY_FILTERS);
-  const [sort, setSort] = useState<'recommended' | 'newest'>('recommended');
-  const [page, setPage] = useState(1);
-  const [detailSpaceId, setDetailSpaceId] = useState<string | null>(null);
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
-  const [autoEnquire, setAutoEnquire] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const autoEnquireConsumed = useRef(false);
+  const parsed = useMemo(() => parseDiscoverUrlState(searchParams), [searchParams]);
+
+  const [category, setCategory] = useState<DiscoverCategory>(parsed.category);
+  const [search, setSearch] = useState(parsed.query);
+  const [debounced, setDebounced] = useState(parsed.query);
+  const [selectedLocation, setSelectedLocation] = useState<SelectedDiscoverLocation | null>(
+    parsed.selectedLocation,
+  );
+  const [filters, setFilters] = useState<DiscoverFilterState>(EMPTY_DISCOVER_FILTERS);
+  const [sort, setSort] = useState<'recommended' | 'newest'>('recommended');
+  const [detailSpaceId, setDetailSpaceId] = useState<string | null>(() =>
+    searchParams.get('enquire') === '1' ? searchParams.get('space')?.trim() || null : null,
+  );
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [autoEnquire, setAutoEnquire] = useState(
+    () => searchParams.get('enquire') === '1' && Boolean(searchParams.get('space')?.trim()),
+  );
+  const [enquireSpace, setEnquireSpace] = useState<DiscoverSpaceCardResponse | null>(null);
+  const [routeReady, setRouteReady] = useState(false);
+  const enquireUrlConsumed = useRef(searchParams.get('enquire') !== '1');
+  const locationPromptedFor = useRef<DiscoverCategory | null>(null);
+  const skipCategoryReset = useRef(true);
+  const appliedUrlKey = useRef<string | null>(null);
+
+  const enquireName = searchParams.get('name')?.trim() ?? '';
+  const enquireSpaceId = searchParams.get('space')?.trim() ?? '';
+  const shouldEnquire = searchParams.get('enquire') === '1';
 
   useEffect(() => {
     document.title = `${t('navigation.findAPlace')} · ${t('common.appName')}`;
   }, [t]);
+
+  useEffect(() => {
+    const key = searchParams.toString();
+    if (appliedUrlKey.current === key) {
+      setRouteReady(true);
+      return;
+    }
+    appliedUrlKey.current = key;
+    const next = parseDiscoverUrlState(searchParams);
+    setCategory((current) => {
+      if (current !== next.category) {
+        skipCategoryReset.current = true;
+      }
+      return next.category;
+    });
+    setSelectedLocation(next.selectedLocation);
+    if (next.query) {
+      setSearch(next.query);
+    } else if (enquireName) {
+      setSearch(enquireName);
+    }
+    setRouteReady(true);
+  }, [enquireName, searchParams]);
 
   useEffect(() => {
     const id = window.setTimeout(() => setDebounced(search.trim()), 300);
@@ -100,103 +161,209 @@ export function FindAPlacePage() {
   }, [search]);
 
   useEffect(() => {
-    setPage(1);
-    setFilters(EMPTY_FILTERS);
+    if (skipCategoryReset.current) {
+      skipCategoryReset.current = false;
+      return;
+    }
+    setFilters(EMPTY_DISCOVER_FILTERS);
+    setSearch('');
+    setDebounced('');
   }, [category]);
 
+  const writeUrl = useCallback(
+    (nextLocation: SelectedDiscoverLocation | null, nextQuery: string, nextCategory: DiscoverCategory) => {
+      const next = buildDiscoverUrlParams({
+        category: nextCategory,
+        selectedLocation: nextLocation,
+        query: nextQuery,
+        extras: searchParams,
+      });
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
   useEffect(() => {
-    setPage(1);
-  }, [debounced, filters, sort]);
-
-  const enquireTab = searchParams.get('tab');
-  const enquireName = searchParams.get('name')?.trim() ?? '';
-  const enquireSpaceId = searchParams.get('space')?.trim() ?? '';
-  const shouldEnquire = searchParams.get('enquire') === '1';
+    if (!routeReady) {
+      return;
+    }
+    const current = buildDiscoverUrlParams({
+      category,
+      selectedLocation,
+      query: debounced,
+      extras: searchParams,
+    }).toString();
+    if (current !== searchParams.toString()) {
+      setSearchParams(
+        buildDiscoverUrlParams({
+          category,
+          selectedLocation,
+          query: debounced,
+          extras: searchParams,
+        }),
+        { replace: true },
+      );
+    }
+  }, [category, debounced, routeReady, searchParams, selectedLocation, setSearchParams]);
 
   useEffect(() => {
-    if (enquireTab === 'mess' || enquireTab === 'places') {
-      setCategory(enquireTab);
+    if (
+      !shouldPromptDiscoverLocation({
+        routeReady,
+        hasLocation: Boolean(selectedLocation?.location),
+        category,
+        promptedFor: locationPromptedFor.current,
+        skip: shouldEnquire,
+      })
+    ) {
+      if (selectedLocation?.location || shouldEnquire) {
+        locationPromptedFor.current = category;
+      }
+      return;
     }
-    if (enquireName) {
-      setSearch(enquireName);
-    }
-  }, [enquireName, enquireTab]);
+    locationPromptedFor.current = category;
+    setLocationOpen(true);
+  }, [category, routeReady, selectedLocation?.location, shouldEnquire]);
 
-  const apiType: SpaceType | undefined =
-    category === 'mess'
-      ? 'MESS'
-      : filters.types.length === 1
-        ? filters.types[0]
+  useEffect(() => {
+    if (!selectedLocation?.location || selectedLocation.district) {
+      return;
+    }
+    let active = true;
+    const lookup = selectedLocation.pincode || selectedLocation.location;
+    locationsApi
+      .search(lookup, {
+        state: selectedLocation.state,
+        district: selectedLocation.district,
+        taluk: selectedLocation.cityTaluka,
+      })
+      .then((results) => {
+        if (!active) {
+          return;
+        }
+        const match = matchLocationRecord(results, selectedLocation);
+        if (!match?.district) {
+          return;
+        }
+        setSelectedLocation((current) => {
+          if (!current || current.district) {
+            return current;
+          }
+          return toSelectedDiscoverLocation({
+            ...match,
+            location: current.location,
+            pincode: current.pincode || match.pincode,
+          });
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [selectedLocation]);
+
+  const isMess = category === 'mess';
+  const placeTypes =
+    !isMess && filters.types.length === 0
+      ? PLACE_SPACE_TYPES
+      : !isMess && filters.types.length > 1
+        ? filters.types
         : undefined;
+  const apiType: SpaceType | undefined = isMess
+    ? 'MESS'
+    : filters.types.length === 1
+      ? filters.types[0]
+      : undefined;
 
-  const discoverQuery = useQuery({
-    queryKey: ['spaces-discover', category, debounced, apiType, sort],
-    queryFn: () =>
+  const discoverParams = useMemo(
+    () => ({
+      search: debounced || undefined,
+      location: selectedLocation?.location || undefined,
+      type: apiType,
+      types: placeTypes,
+      minRent: isMess ? null : filters.minPrice,
+      maxRent: isMess ? null : filters.maxPrice,
+      amenities: isMess || filters.amenities.length === 0 ? undefined : filters.amenities,
+      size: DISCOVER_PAGE_SIZE,
+      sort: 'newest' as const,
+    }),
+    [
+      apiType,
+      debounced,
+      filters.amenities,
+      filters.maxPrice,
+      filters.minPrice,
+      isMess,
+      placeTypes,
+      selectedLocation?.location,
+    ],
+  );
+  const filterKey = discoverFilterKey(discoverParams);
+
+  const discoverQuery = useInfiniteQuery<
+    PagedResponse<DiscoverSpaceCardResponse>,
+    Error,
+    InfiniteData<PagedResponse<DiscoverSpaceCardResponse>>,
+    readonly unknown[],
+    number
+  >({
+    queryKey: ['spaces-discover', filterKey],
+    queryFn: ({ pageParam }) =>
       spaceDiscoverApi.discoverSpaces({
-        search: debounced || undefined,
-        type: apiType,
-        page: 0,
-        size: FETCH_SIZE,
-        sort: 'newest',
+        ...discoverParams,
+        page: pageParam,
       }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => (lastPage.last ? undefined : lastPage.page + 1),
   });
 
   const rawContent = useMemo(() => {
-    const content = discoverQuery.data?.content ?? [];
+    const content = discoverQuery.data?.pages.flatMap((page) => page.content) ?? [];
     if (category === 'mess') {
       return content.filter((space) => space.type === 'MESS');
     }
-    // Places tab never mixes mess listings (same as public /places).
     return content.filter((space) => PLACE_SPACE_TYPES.includes(space.type));
-  }, [category, discoverQuery.data?.content]);
+  }, [category, discoverQuery.data?.pages]);
+
+  const listings = useMemo(() => mergeUnique([], rawContent), [rawContent]);
+  const totalElements = discoverQuery.data?.pages.at(-1)?.totalElements ?? listings.length;
+  const hasMore = Boolean(discoverQuery.hasNextPage);
+  const loadingMore = discoverQuery.isFetchingNextPage;
+  const loadMoreError = discoverQuery.isFetchNextPageError;
+  const loadMore = useCallback(() => {
+    void discoverQuery.fetchNextPage();
+  }, [discoverQuery]);
+  const reloadDiscover = useCallback(() => {
+    void discoverQuery.refetch();
+  }, [discoverQuery]);
+
+  const nameMatchedId = useMemo(() => {
+    if (!shouldEnquire || enquireSpaceId || !enquireName) {
+      return null;
+    }
+    return (
+      listings.find((space) => space.name.trim().toLowerCase() === enquireName.toLowerCase())?.spaceId ??
+      listings.find((space) => space.name.toLowerCase().includes(enquireName.toLowerCase()))?.spaceId ??
+      null
+    );
+  }, [enquireName, enquireSpaceId, listings, shouldEnquire]);
+
+  const activeDetailId = detailSpaceId ?? (shouldEnquire ? enquireSpaceId || nameMatchedId : null);
+  const activeAutoEnquire = autoEnquire || Boolean(shouldEnquire && activeDetailId);
 
   useEffect(() => {
-    if (!shouldEnquire || autoEnquireConsumed.current || discoverQuery.isLoading) {
+    if (!shouldEnquire || enquireUrlConsumed.current || !activeDetailId) {
       return;
     }
-    const match =
-      (enquireSpaceId
-        ? rawContent.find((space) => space.spaceId === enquireSpaceId)
-        : undefined) ??
-      (enquireName
-        ? rawContent.find(
-            (space) => space.name.trim().toLowerCase() === enquireName.toLowerCase(),
-          ) ??
-          rawContent.find((space) =>
-            space.name.toLowerCase().includes(enquireName.toLowerCase()),
-          )
-        : undefined);
-    if (!match) {
-      return;
-    }
-    autoEnquireConsumed.current = true;
-    setDetailSpaceId(match.spaceId);
-    setAutoEnquire(true);
+    enquireUrlConsumed.current = true;
     const next = new URLSearchParams(searchParams);
     next.delete('enquire');
     setSearchParams(next, { replace: true });
-  }, [
-    discoverQuery.isLoading,
-    enquireName,
-    enquireSpaceId,
-    rawContent,
-    searchParams,
-    setSearchParams,
-    shouldEnquire,
-  ]);
-
-  const localities = useMemo(() => {
-    const set = new Set<string>();
-    for (const space of rawContent) {
-      const locality = localityFromAddress(space.address);
-      if (locality) set.add(locality);
-    }
-    return [...set].sort((a, b) => a.localeCompare(b));
-  }, [rawContent]);
+  }, [activeDetailId, searchParams, setSearchParams, shouldEnquire]);
 
   const amenityOptions = useMemo(() => {
     const map = new Map<string, string>();
-    for (const space of rawContent) {
+    for (const space of listings) {
       const codes = space.amenityCodes ?? [];
       const labels = space.amenityLabels ?? [];
       codes.forEach((code, index) => {
@@ -208,42 +375,21 @@ export function FindAPlacePage() {
     return [...map.entries()]
       .map(([code, label]) => ({ code, label }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [rawContent]);
-
-  const filtered = useMemo(() => {
-    return rawContent.filter((space) => {
-      if (category === 'places' && filters.types.length > 0 && !filters.types.includes(space.type)) {
-        return false;
-      }
-      if (filters.localities.length > 0) {
-        const address = (space.address ?? '').toLowerCase();
-        const matchesLocality = filters.localities.some((locality) =>
-          address.includes(locality.toLowerCase()),
-        );
-        if (!matchesLocality) {
-          return false;
-        }
-      }
-      if (filters.amenities.length > 0) {
-        const codes = new Set(space.amenityCodes ?? []);
-        if (!filters.amenities.every((code) => codes.has(code))) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [category, filters, rawContent]);
-
-  const totalElements = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(totalElements / PAGE_SIZE));
-  const pageSafe = Math.min(page, totalPages);
-  const shown = filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
+  }, [listings]);
 
   const pageBg = isDark ? 'transparent' : '#F4F7F8';
   const textPrimary = isDark ? theme.palette.text.primary : colors.textPrimary;
   const textSecondary = isDark ? theme.palette.text.secondary : colors.textSecondary;
+  const locationLabel = selectedLocation
+    ? formatDiscoverLocationLabel(selectedLocation)
+    : t('spaces.findPlace.selectLocation');
 
-  const clearFilters = () => setFilters(EMPTY_FILTERS);
+  const clearFilters = () => setFilters(EMPTY_DISCOVER_FILTERS);
+  const isFiltering = Boolean(debounced) || Boolean(selectedLocation?.location) ||
+    filters.types.length > 0 ||
+    filters.amenities.length > 0 ||
+    filters.minPrice != null ||
+    filters.maxPrice != null;
 
   const eyebrow =
     category === 'mess' ? t('spaces.findPlace.tabs.messEyebrow') : t('spaces.findPlace.eyebrow');
@@ -258,23 +404,57 @@ export function FindAPlacePage() {
       ? t('spaces.findPlace.tabs.messSearchPlaceholder')
       : t('spaces.findPlace.searchPlaceholder');
 
+  const emptyTitle = selectedLocation
+    ? isMess
+      ? t('spaces.findPlace.tabs.messLocationEmptyTitle', { location: selectedLocation.location })
+      : t('spaces.findPlace.locationEmptyTitle', { location: selectedLocation.location })
+    : isFiltering
+      ? t('spaces.findPlace.searchEmptyTitle')
+      : isMess
+        ? t('spaces.findPlace.tabs.messEmptyTitle')
+        : t('spaces.findPlace.emptyTitle');
+  const emptyDescription = selectedLocation
+    ? isMess
+      ? t('spaces.findPlace.tabs.messLocationEmptyDescription')
+      : t('spaces.findPlace.locationEmptyDescription')
+    : isFiltering
+      ? t('spaces.findPlace.searchEmptyDescription')
+      : isMess
+        ? t('spaces.findPlace.tabs.messEmptyDescription')
+        : t('spaces.findPlace.emptyDescription');
+
   const filtersPanel = (
     <DiscoverFiltersPanel
       category={category}
       value={filters}
-      localities={localities}
       amenityOptions={amenityOptions}
       onChange={setFilters}
       onClear={clearFilters}
     />
   );
 
+  const handleCategoryChange = (_: unknown, next: DiscoverCategory) => {
+    setCategory(next);
+  };
+
+  const handleLocationConfirm = (record: Parameters<typeof toSelectedDiscoverLocation>[0]) => {
+    const next = toSelectedDiscoverLocation(record);
+    setSelectedLocation(next);
+    setLocationOpen(false);
+    writeUrl(next, search, category);
+  };
+
+  const handleLocationClear = () => {
+    setSelectedLocation(null);
+    writeUrl(null, search, category);
+  };
+
   return (
     <Box sx={{ flex: 1, bgcolor: pageBg, py: { xs: 2.5, sm: 3 } }}>
       <Box sx={{ width: '100%', px: { xs: 1.5, sm: 2 } }}>
         <Tabs
           value={category}
-          onChange={(_, next: DiscoverCategory) => setCategory(next)}
+          onChange={handleCategoryChange}
           sx={{
             minHeight: 44,
             mb: 2,
@@ -402,23 +582,40 @@ export function FindAPlacePage() {
                 spacing={1}
                 sx={{ alignItems: 'center', px: { sm: 0.5 }, flexShrink: 0 }}
               >
-                <Box
+                <Button
+                  onClick={() => setLocationOpen(true)}
+                  startIcon={<MapPin size={16} color={colors.primary} />}
+                  aria-label={locationLabel}
                   sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 0.75,
-                    px: 1.5,
-                    py: 1.25,
-                    borderRadius: '12px',
-                    bgcolor: colors.mintSubtle,
-                    fontSize: '0.8125rem',
+                    textTransform: 'none',
                     fontWeight: 600,
                     color: textPrimary,
+                    bgcolor: colors.mintSubtle,
+                    borderRadius: '12px',
+                    px: 1.5,
+                    py: 1,
+                    minHeight: 44,
+                    maxWidth: { xs: '100%', sm: 220 },
                   }}
                 >
-                  <MapPin size={16} color={colors.primary} />
-                  {t('spaces.findPlace.cityPune')}
-                </Box>
+                  <Typography noWrap sx={{ fontSize: '0.8125rem', fontWeight: 600 }}>
+                    {locationLabel}
+                  </Typography>
+                </Button>
+                {selectedLocation ? (
+                  <IconButton
+                    onClick={handleLocationClear}
+                    aria-label={t('spaces.findPlace.clearLocation')}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      border: `1px solid ${colors.border}`,
+                      bgcolor: colors.surface,
+                    }}
+                  >
+                    <X size={16} />
+                  </IconButton>
+                ) : null}
                 <FormControl size="small" sx={{ minWidth: 140 }}>
                   <Select
                     value={sort}
@@ -447,11 +644,13 @@ export function FindAPlacePage() {
               }}
             >
               <Typography sx={{ fontSize: '0.875rem', color: textSecondary }}>
-                {!discoverQuery.isLoading && !discoverQuery.isError
-                  ? category === 'mess'
-                    ? t('spaces.findPlace.tabs.messResultCount', { count: totalElements })
-                    : t('spaces.findPlace.resultCount', { count: totalElements })
-                  : ' '}
+                {discoverQuery.isPending
+                  ? t('spaces.findPlace.loading')
+                  : !discoverQuery.isError
+                    ? category === 'mess'
+                      ? t('spaces.findPlace.tabs.messResultCount', { count: totalElements })
+                      : t('spaces.findPlace.resultCount', { count: totalElements })
+                    : ' '}
               </Typography>
               <Button
                 variant="text"
@@ -478,7 +677,7 @@ export function FindAPlacePage() {
               />
             </Box>
 
-            {discoverQuery.isLoading ? (
+            {discoverQuery.isPending ? (
               <Box
                 sx={{
                   display: 'grid',
@@ -500,11 +699,11 @@ export function FindAPlacePage() {
             {discoverQuery.isError ? (
               <ErrorState
                 message={getErrorMessage(discoverQuery.error, t('spaces.findPlace.errorLoad'))}
-                onRetry={() => void discoverQuery.refetch()}
+                onRetry={reloadDiscover}
               />
             ) : null}
 
-            {!discoverQuery.isLoading && !discoverQuery.isError && shown.length === 0 ? (
+            {!discoverQuery.isPending && !discoverQuery.isError && listings.length === 0 ? (
               <EmptyState
                 icon={
                   category === 'mess' ? (
@@ -513,20 +712,12 @@ export function FindAPlacePage() {
                     <Building2 size={28} color={colors.textSecondary} />
                   )
                 }
-                title={
-                  category === 'mess'
-                    ? t('spaces.findPlace.tabs.messEmptyTitle')
-                    : t('spaces.findPlace.emptyTitle')
-                }
-                description={
-                  category === 'mess'
-                    ? t('spaces.findPlace.tabs.messEmptyDescription')
-                    : t('spaces.findPlace.emptyDescription')
-                }
+                title={emptyTitle}
+                description={emptyDescription}
               />
             ) : null}
 
-            {!discoverQuery.isLoading && !discoverQuery.isError && shown.length > 0 ? (
+            {!discoverQuery.isPending && !discoverQuery.isError && listings.length > 0 ? (
               <>
                 <Box
                   sx={{
@@ -540,32 +731,58 @@ export function FindAPlacePage() {
                     gap: 2,
                   }}
                 >
-                  {shown.map((space: DiscoverSpaceCardResponse) => (
+                  {listings.map((space: DiscoverSpaceCardResponse) => (
                     <DiscoverSpaceCard
                       key={space.spaceId}
                       space={space}
                       onViewDetails={setDetailSpaceId}
+                      onEnquire={setEnquireSpace}
                     />
                   ))}
                 </Box>
-
-                {totalPages > 1 ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', pt: 3 }}>
-                    <Pagination
-                      count={totalPages}
-                      page={pageSafe}
-                      onChange={(_, next) => setPage(next)}
-                      color="primary"
-                      shape="rounded"
-                      aria-label={t('spaces.findPlace.paginationAria')}
-                    />
+                {loadingMore ? (
+                  <Typography sx={{ mt: 3, textAlign: 'center', color: textSecondary, fontSize: '0.875rem' }}>
+                    {t('spaces.findPlace.loadingMore')}
+                  </Typography>
+                ) : null}
+                {loadMoreError ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                    <Button
+                      onClick={loadMore}
+                      sx={{ textTransform: 'none', fontWeight: 700 }}
+                    >
+                      {t('spaces.findPlace.retry')}
+                    </Button>
                   </Box>
                 ) : null}
+                <DiscoverInfiniteSentinel
+                  onVisible={() => {
+                    if (hasMore && !loadingMore && !loadMoreError) {
+                      loadMore();
+                    }
+                  }}
+                  disabled={!hasMore || loadingMore || loadMoreError || discoverQuery.isPending}
+                />
               </>
             ) : null}
           </Box>
         </Box>
       </Box>
+
+      <LocationSelectModal
+        open={locationOpen}
+        onClose={() => setLocationOpen(false)}
+        onConfirm={handleLocationConfirm}
+        rankingContext={
+          selectedLocation
+            ? {
+                state: selectedLocation.state,
+                district: selectedLocation.district,
+                taluk: selectedLocation.cityTaluka,
+              }
+            : undefined
+        }
+      />
 
       <Drawer
         anchor="bottom"
@@ -593,14 +810,23 @@ export function FindAPlacePage() {
       </Drawer>
 
       <DiscoverSpaceDetailDrawer
-        spaceId={detailSpaceId}
-        open={Boolean(detailSpaceId)}
-        autoEnquire={autoEnquire}
+        spaceId={activeDetailId}
+        open={Boolean(activeDetailId)}
+        autoEnquire={activeAutoEnquire}
         onClose={() => {
           setAutoEnquire(false);
           setDetailSpaceId(null);
         }}
       />
+      {enquireSpace ? (
+        <EnquireDialog
+          open
+          spaceId={enquireSpace.spaceId}
+          spaceName={enquireSpace.name}
+          ownedByCurrentUser={Boolean(enquireSpace.ownedByCurrentUser)}
+          onClose={() => setEnquireSpace(null)}
+        />
+      ) : null}
     </Box>
   );
 }

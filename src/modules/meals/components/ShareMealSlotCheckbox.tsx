@@ -49,7 +49,7 @@ export function ShareMealSlotCheckbox({
   const statusTone =
     statusKind === 'shared'
       ? 'success'
-      : statusKind === 'draft' || statusKind === 'needs_reshare'
+      : statusKind === 'draft' || statusKind === 'needs_reshare' || statusKind === 'empty'
         ? 'warning'
         : 'neutral';
 
