@@ -10,7 +10,6 @@ import {
   MenuItem,
   Select,
   Stack,
-  TextField,
   Typography,
   useTheme,
 } from '@mui/material';
@@ -19,6 +18,7 @@ import {
   BedDouble,
   Building2,
   ChevronDown,
+  ChevronRight,
   DoorOpen,
   Grid2x2,
   Trash2,
@@ -27,7 +27,22 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
-import { parseOptionalMoney, propagateBedPricing } from './setupPricingAutofill';
+import {
+  applySetupBedPricing,
+  previewSetupPricingImpact,
+  renameSetupBed,
+} from './setupPricingAutofill';
+import { BedInteractionDialog } from '../components/BedInteractionDialog';
+import { BedPricingConfirmDialog } from '../components/BedPricingConfirmDialog';
+import { BedPricingDisplay } from '../components/BedPricingDisplay';
+import {
+  hasBedPricingChange,
+  isBedDraftUnchanged,
+  type BedInteractionDraft,
+} from '../utils/bedInteractionDraft';
+import { formatBedDisplayLabel } from '../utils/formatBedDisplayLabel';
+import { changedPricingFields } from '../utils/commitBedPricing';
+import type { PendingBedPricing } from '../hooks/useConfirmBedPricingCommit';
 import { deleteBed, deleteFloor, deleteRoom, deleteUnit } from './setupStructureMutations';
 import type {
   EditableBed,
@@ -44,36 +59,6 @@ type SetupStructurePreviewProps = {
 };
 
 type ViewOption = 'all' | 'floors' | 'rooms';
-
-function moneyText(value: number | null | undefined): string {
-  return value == null ? '' : String(value);
-}
-
-function mapBed(
-  structure: EditableSetupStructure,
-  bedId: string,
-  mapper: (bed: EditableBed) => EditableBed,
-): EditableSetupStructure {
-  const mapRooms = (rooms: EditableSetupStructure['floors'][number]['rooms']) =>
-    rooms.map((room) => ({
-      ...room,
-      beds: room.beds.map((bed) => (bed.id === bedId ? mapper(bed) : bed)),
-    }));
-  const mapUnits = (units: EditableSetupStructure['units']) =>
-    units.map((unit) => ({ ...unit, rooms: mapRooms(unit.rooms) }));
-
-  if (structure.kind === 'building_units') {
-    return { ...structure, units: mapUnits(structure.units) };
-  }
-  return {
-    ...structure,
-    floors: structure.floors.map((floor) =>
-      structure.kind === 'floors_with_units'
-        ? { ...floor, units: mapUnits(floor.units) }
-        : { ...floor, rooms: mapRooms(floor.rooms) },
-    ),
-  };
-}
 
 function collectIds(structure: EditableSetupStructure) {
   const floors: string[] = [];
@@ -180,16 +165,10 @@ export function SetupStructurePreview({ structure, onChange }: SetupStructurePre
     return initial;
   });
 
-  function updateBedValue(bedId: string, field: 'defaultRent' | 'defaultDeposit', raw: string) {
-    const parsed = parseOptionalMoney(raw);
-    onChange(mapBed(structure, bedId, (bed) => ({ ...bed, [field]: parsed })));
-  }
-
-  function commitBedField(bedId: string, field: 'defaultRent' | 'defaultDeposit', raw: string) {
-    const parsed = parseOptionalMoney(raw);
-    const withValue = mapBed(structure, bedId, (bed) => ({ ...bed, [field]: parsed }));
-    onChange(propagateBedPricing(withValue, bedId, field));
-  }
+  const [editingBed, setEditingBed] = useState<EditableBed | null>(null);
+  const [setupDraft, setSetupDraft] = useState<BedInteractionDraft | null>(null);
+  const [setupPending, setSetupPending] = useState<PendingBedPricing | null>(null);
+  const [setupConfirming, setSetupConfirming] = useState(false);
 
   function expandAll() {
     setExpanded(new Set([...ids.floors, ...ids.units, ...ids.rooms]));
@@ -263,8 +242,7 @@ export function SetupStructurePreview({ structure, onChange }: SetupStructurePre
               onDeleteBed={(roomId, bedId) =>
                 onChange(deleteBed(structure, null, unit.id, roomId, bedId))
               }
-              onChangeBed={updateBedValue}
-              onCommitBed={commitBedField}
+              onEditBed={setEditingBed}
             />
           ))
         : structure.floors.map((floor) => (
@@ -282,10 +260,114 @@ export function SetupStructurePreview({ structure, onChange }: SetupStructurePre
               onDeleteBed={(unitId, roomId, bedId) =>
                 onChange(deleteBed(structure, floor.id, unitId, roomId, bedId))
               }
-              onChangeBed={updateBedValue}
-              onCommitBed={commitBedField}
+              onEditBed={setEditingBed}
             />
           ))}
+
+      <BedInteractionDialog
+        open={editingBed != null}
+        mode="preview"
+        label={
+          editingBed
+            ? formatBedDisplayLabel(editingBed.label, t)
+            : t('occupancy.section.bed', { defaultValue: 'Bed' })
+        }
+        bedNumber={editingBed?.label ?? ''}
+        status="AVAILABLE"
+        rent={editingBed?.defaultRent}
+        deposit={editingBed?.defaultDeposit}
+        canEdit
+        saving={setupConfirming}
+        onClose={() => {
+          if (!setupConfirming) {
+            setEditingBed(null);
+          }
+        }}
+        onSave={(draft) => {
+          if (
+            !editingBed ||
+            isBedDraftUnchanged(
+              {
+                bedNumber: editingBed.label,
+                rent: editingBed.defaultRent ?? null,
+                deposit: editingBed.defaultDeposit ?? null,
+              },
+              draft,
+            )
+          ) {
+            return;
+          }
+          if (
+            !hasBedPricingChange(
+              {
+                rent: editingBed.defaultRent ?? null,
+                deposit: editingBed.defaultDeposit ?? null,
+              },
+              draft,
+            )
+          ) {
+            onChange(
+              renameSetupBed(structure, editingBed.id, draft.bedNumber.trim() || editingBed.label),
+            );
+            setEditingBed(null);
+            return;
+          }
+          const impact = previewSetupPricingImpact(
+            structure,
+            editingBed.id,
+            draft.rent,
+            draft.deposit,
+          );
+          setSetupDraft(draft);
+          const changed = changedPricingFields(
+            editingBed.defaultRent,
+            editingBed.defaultDeposit,
+            draft.rent,
+            draft.deposit,
+          );
+          setSetupPending({
+            spaceId: 'preview',
+            roomId: 'preview',
+            bedId: editingBed.id,
+            bedLabel: formatBedDisplayLabel(draft.bedNumber || editingBed.label, t),
+            changedFields: changed,
+            field: changed[0] ?? 'defaultRent',
+            currentRent: editingBed.defaultRent ?? null,
+            currentDeposit: editingBed.defaultDeposit ?? null,
+            defaultRent: draft.rent,
+            defaultDeposit: draft.deposit,
+            affectedBedCount: impact.affectedBedCount,
+            affectedLocations: impact.affectedLocations,
+          });
+        }}
+      />
+      <BedPricingConfirmDialog
+        pending={setupPending}
+        confirming={setupConfirming}
+        onConfirm={() => {
+          if (!editingBed || !setupDraft) {
+            return;
+          }
+          setSetupConfirming(true);
+          onChange(
+            applySetupBedPricing(structure, editingBed.id, {
+              label: setupDraft.bedNumber.trim() || editingBed.label,
+              defaultRent: setupDraft.rent,
+              defaultDeposit: setupDraft.deposit,
+            }),
+          );
+          setSetupConfirming(false);
+          setSetupPending(null);
+          setSetupDraft(null);
+          setEditingBed(null);
+        }}
+        onClose={() => {
+          if (!setupConfirming) {
+            setSetupPending(null);
+            setSetupDraft(null);
+          }
+        }}
+      />
     </Stack>
   );
 }
@@ -351,8 +433,7 @@ function FloorAccordion({
   onDeleteUnit,
   onDeleteRoom,
   onDeleteBed,
-  onChangeBed,
-  onCommitBed,
+  onEditBed,
 }: {
   floor: EditableFloor;
   kind: StructureKind;
@@ -362,8 +443,7 @@ function FloorAccordion({
   onDeleteUnit: (unitId: string) => void;
   onDeleteRoom: (unitId: string | null, roomId: string) => void;
   onDeleteBed: (unitId: string | null, roomId: string, bedId: string) => void;
-  onChangeBed: (bedId: string, field: 'defaultRent' | 'defaultDeposit', raw: string) => void;
-  onCommitBed: (bedId: string, field: 'defaultRent' | 'defaultDeposit', raw: string) => void;
+  onEditBed: (bed: EditableBed) => void;
 }) {
   const { t } = useTranslation();
   const counts = floorCounts(floor, kind);
@@ -397,8 +477,7 @@ function FloorAccordion({
                   onDeleteUnit={() => onDeleteUnit(unit.id)}
                   onDeleteRoom={(roomId) => onDeleteRoom(unit.id, roomId)}
                   onDeleteBed={(roomId, bedId) => onDeleteBed(unit.id, roomId, bedId)}
-                  onChangeBed={onChangeBed}
-                  onCommitBed={onCommitBed}
+                  onEditBed={onEditBed}
                 />
               ))
             : floor.rooms.map((room) => (
@@ -409,8 +488,7 @@ function FloorAccordion({
                   onToggle={() => onToggle(room.id)}
                   onDeleteRoom={() => onDeleteRoom(null, room.id)}
                   onDeleteBed={(bedId) => onDeleteBed(null, room.id, bedId)}
-                  onChangeBed={onChangeBed}
-                  onCommitBed={onCommitBed}
+                  onEditBed={onEditBed}
                 />
               ))}
         </Stack>
@@ -426,8 +504,7 @@ function UnitAccordion({
   onDeleteUnit,
   onDeleteRoom,
   onDeleteBed,
-  onChangeBed,
-  onCommitBed,
+  onEditBed,
 }: {
   unit: EditableUnit;
   expanded: Set<string>;
@@ -435,8 +512,7 @@ function UnitAccordion({
   onDeleteUnit: () => void;
   onDeleteRoom: (roomId: string) => void;
   onDeleteBed: (roomId: string, bedId: string) => void;
-  onChangeBed: (bedId: string, field: 'defaultRent' | 'defaultDeposit', raw: string) => void;
-  onCommitBed: (bedId: string, field: 'defaultRent' | 'defaultDeposit', raw: string) => void;
+  onEditBed: (bed: EditableBed) => void;
 }) {
   const { t } = useTranslation();
   const counts = unitCounts(unit);
@@ -473,8 +549,7 @@ function UnitAccordion({
               onToggle={() => onToggle(room.id)}
               onDeleteRoom={() => onDeleteRoom(room.id)}
               onDeleteBed={(bedId) => onDeleteBed(room.id, bedId)}
-              onChangeBed={onChangeBed}
-              onCommitBed={onCommitBed}
+              onEditBed={onEditBed}
             />
           ))}
         </Stack>
@@ -489,16 +564,14 @@ function RoomAccordion({
   onToggle,
   onDeleteRoom,
   onDeleteBed,
-  onChangeBed,
-  onCommitBed,
+  onEditBed,
 }: {
   room: EditableRoom;
   expanded: boolean;
   onToggle: () => void;
   onDeleteRoom: () => void;
   onDeleteBed: (bedId: string) => void;
-  onChangeBed: (bedId: string, field: 'defaultRent' | 'defaultDeposit', raw: string) => void;
-  onCommitBed: (bedId: string, field: 'defaultRent' | 'defaultDeposit', raw: string) => void;
+  onEditBed: (bed: EditableBed) => void;
 }) {
   const { t } = useTranslation();
 
@@ -522,8 +595,7 @@ function RoomAccordion({
               key={bed.id}
               bed={bed}
               onDelete={() => onDeleteBed(bed.id)}
-              onChangeBed={onChangeBed}
-              onCommitBed={onCommitBed}
+              onEditBed={onEditBed}
             />
           ))}
         </Stack>
@@ -535,13 +607,11 @@ function RoomAccordion({
 function BedRow({
   bed,
   onDelete,
-  onChangeBed,
-  onCommitBed,
+  onEditBed,
 }: {
   bed: EditableBed;
   onDelete: () => void;
-  onChangeBed: (bedId: string, field: 'defaultRent' | 'defaultDeposit', raw: string) => void;
-  onCommitBed: (bedId: string, field: 'defaultRent' | 'defaultDeposit', raw: string) => void;
+  onEditBed: (bed: EditableBed) => void;
 }) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -551,39 +621,29 @@ function BedRow({
     <Stack
       direction={{ xs: 'column', sm: 'row' }}
       spacing={1.5}
-      sx={{ alignItems: { xs: 'stretch', sm: 'center' }, py: 1.25 }}
+      sx={{
+        alignItems: { xs: 'stretch', sm: 'center' },
+        py: 1.25,
+        cursor: 'pointer',
+      }}
+      onClick={() => onEditBed(bed)}
     >
-      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: { sm: 120 } }}>
+      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: { sm: 140 }, flex: 1 }}>
         <BedDouble size={20} color={colors.primary} strokeWidth={2} />
         <Typography sx={{ fontWeight: 600, color: s.textPrimary, fontSize: '0.9rem' }}>
           {formatBedName(bed.label, t)}
         </Typography>
       </Stack>
-      <TextField
-        label={t('accommodation.setup.fields.rentInr')}
-        size="small"
-        type="number"
-        value={moneyText(bed.defaultRent)}
-        onChange={(event) => onChangeBed(bed.id, 'defaultRent', event.target.value)}
-        onBlur={(event) => onCommitBed(bed.id, 'defaultRent', event.target.value)}
-        placeholder={t('accommodation.setup.enterRent')}
-        slotProps={{ htmlInput: { min: 0, step: 1 } }}
-        sx={moneyFieldSx}
-      />
-      <TextField
-        label={t('accommodation.setup.fields.depositInr')}
-        size="small"
-        type="number"
-        value={moneyText(bed.defaultDeposit)}
-        onChange={(event) => onChangeBed(bed.id, 'defaultDeposit', event.target.value)}
-        onBlur={(event) => onCommitBed(bed.id, 'defaultDeposit', event.target.value)}
-        placeholder={t('accommodation.setup.enterDeposit')}
-        slotProps={{ htmlInput: { min: 0, step: 1 } }}
-        sx={moneyFieldSx}
-      />
+      <Box sx={{ flex: 1, minWidth: { xs: '100%', sm: 220 } }}>
+        <BedPricingDisplay rent={bed.defaultRent} deposit={bed.defaultDeposit} />
+      </Box>
+      <ChevronRight size={18} color={s.textMuted} aria-hidden />
       <IconButton
         color="error"
-        onClick={onDelete}
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete();
+        }}
         aria-label={t('accommodation.setup.deleteBed')}
         sx={{ alignSelf: { xs: 'flex-end', sm: 'center' } }}
       >
@@ -599,12 +659,3 @@ const summarySx = {
   '& .MuiAccordionSummary-content': { my: 1.25, mr: 1 },
 } as const;
 
-const moneyFieldSx = {
-  flex: 1,
-  minWidth: { xs: '100%', sm: 160 },
-  '& input[type=number]': { MozAppearance: 'textfield' },
-  '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
-    WebkitAppearance: 'none',
-    margin: 0,
-  },
-} as const;

@@ -1,5 +1,7 @@
 import { Stack, Typography, useTheme } from '@mui/material';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { OccupancyActionButtons } from '@/modules/accommodation/components/OccupancyActionButtons';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -7,18 +9,29 @@ import { ErrorState } from '@/shared/components/ErrorState';
 import { InfoRow } from '@/shared/components/InfoRow';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { PageSection } from '@/shared/components/PageSection';
+import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
+import type { CurrentOccupancySummary } from '@/shared/types/member';
+import { spaceOccupancyWizardPath } from '@/routes/paths';
 import { useMemberOccupancies } from '../../hooks/useMemberDetailData';
 
 type MemberOccupancyPanelProps = {
   spaceId: string;
   memberId: string;
   mode: 'current' | 'history';
+  onViewHistory?: () => void;
 };
 
-export function MemberOccupancyPanel({ spaceId, memberId, mode }: MemberOccupancyPanelProps) {
+export function MemberOccupancyPanel({
+  spaceId,
+  memberId,
+  mode,
+  onViewHistory,
+}: MemberOccupancyPanelProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const navigate = useNavigate();
+  const permissions = useSpacePermissions(spaceId);
   const { data, loading, error, reload } = useMemberOccupancies(spaceId, memberId);
 
   if (loading && !data) {
@@ -36,18 +49,7 @@ export function MemberOccupancyPanel({ spaceId, memberId, mode }: MemberOccupanc
   }
 
   if (mode === 'current') {
-    const current = data?.currentOccupancy as
-      | {
-          buildingName?: string;
-          floorName?: string;
-          unitName?: string;
-          roomName?: string;
-          bedName?: string;
-          moveInDate?: string;
-          occupancyStatus?: string;
-        }
-      | null
-      | undefined;
+    const current = (data?.currentOccupancy ?? null) as CurrentOccupancySummary | null;
 
     if (!current) {
       return (
@@ -79,6 +81,38 @@ export function MemberOccupancyPanel({ spaceId, memberId, mode }: MemberOccupanc
           label={t('dashboard.drilldown.columns.moveIn')}
           value={current.moveInDate ?? '—'}
         />
+        {permissions.canManageOccupancy && current.occupancyId ? (
+          <OccupancyActionButtons
+            status={current.occupancyStatus === 'RESERVED' ? 'RESERVED' : 'OCCUPIED'}
+            occupancyId={current.occupancyId}
+            memberId={memberId}
+            onTransfer={() =>
+              navigate(
+                spaceOccupancyWizardPath(spaceId, 'TRANSFER', {
+                  occupancyId: current.occupancyId ?? undefined,
+                  memberId,
+                  bedId: current.bedId ?? undefined,
+                  roomId: current.roomId ?? undefined,
+                  unitId: current.unitId ?? undefined,
+                  buildingId: current.buildingId,
+                }),
+              )
+            }
+            onVacate={() =>
+              navigate(
+                spaceOccupancyWizardPath(spaceId, 'VACATE', {
+                  occupancyId: current.occupancyId ?? undefined,
+                  memberId,
+                  bedId: current.bedId ?? undefined,
+                  roomId: current.roomId ?? undefined,
+                  unitId: current.unitId ?? undefined,
+                  buildingId: current.buildingId,
+                }),
+              )
+            }
+            onViewHistory={onViewHistory}
+          />
+        ) : null}
       </PageSection>
     );
   }

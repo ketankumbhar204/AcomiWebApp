@@ -66,6 +66,34 @@ export function canReviewPayment(status: UniversalPaymentStatus | string | undef
   );
 }
 
+export function canOwnerMarkPaymentReceived(
+  status: UniversalPaymentStatus | string | null | undefined,
+): boolean {
+  return status === 'PENDING' || status === 'UNDER_REVIEW' || status === 'PROOF_UPLOADED';
+}
+
+export function canOwnerSendPaymentReminder(reminderEligible?: boolean | null): boolean {
+  return Boolean(reminderEligible);
+}
+
+export function memberRowShowsReceived(
+  status: MemberPaymentStatus | string | null | undefined,
+): boolean {
+  return status === 'PENDING' || status === 'UNDER_REVIEW';
+}
+
+export function memberRowShowsReminder(
+  status: MemberPaymentStatus | string | null | undefined,
+): boolean {
+  return status === 'PENDING' || status === 'REJECTED' || status === 'UPDATE_REQUESTED';
+}
+
+export function memberRowShowsOwnerPaymentActions(
+  status: MemberPaymentStatus | string | null | undefined,
+): boolean {
+  return memberRowShowsReceived(status) || memberRowShowsReminder(status);
+}
+
 export function shiftMonth(monthKey: string, delta: number): string {
   const parts = monthKey.split('-').map(Number);
   const y = parts[0] ?? 1970;

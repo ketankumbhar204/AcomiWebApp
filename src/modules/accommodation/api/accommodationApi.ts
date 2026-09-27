@@ -10,6 +10,7 @@ import type {
   AllocationTargetSearchResponse,
   AllocationTargetType,
   BedListItemResponse,
+  BedPricingPreviewResponse,
   BedResponse,
   BedSpaceListItemResponse,
   BuildingResponse,
@@ -242,6 +243,19 @@ export const accommodationApi = {
     unwrapApiResponse(
       apiClient.put<ApiResponse<BedResponse>>(
         `/spaces/${spaceId}/rooms/${roomId}/beds/${bedId}`,
+        body,
+      ),
+    ),
+
+  previewBedPricing: (
+    spaceId: string,
+    roomId: string,
+    bedId: string,
+    body: { defaultRent: number | null; defaultDeposit: number | null },
+  ) =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<BedPricingPreviewResponse>>(
+        `/spaces/${spaceId}/rooms/${roomId}/beds/${bedId}/pricing-preview`,
         body,
       ),
     ),

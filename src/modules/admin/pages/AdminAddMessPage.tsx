@@ -42,6 +42,8 @@ export function AdminAddMessPage() {
   const [state, setState] = useState('');
   const [pincode, setPincode] = useState('');
   const [mapUrl, setMapUrl] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
   const [monthlyPrice, setMonthlyPrice] = useState('');
   const [mealPrice, setMealPrice] = useState('');
   const [testLead, setTestLead] = useState(false);
@@ -75,6 +77,26 @@ export function AdminAddMessPage() {
     if (mapUrl.trim() && !isValidMapUrl(mapUrl)) {
       setError(t('admin.mess.errors.mapUrl'));
       return;
+    }
+    const latRaw = latitude.trim();
+    const lngRaw = longitude.trim();
+    let latValue: number | undefined;
+    let lngValue: number | undefined;
+    if (latRaw || lngRaw) {
+      if (!latRaw || !lngRaw) {
+        setError(t('admin.common.coordinatesPair'));
+        return;
+      }
+      latValue = Number(latRaw);
+      lngValue = Number(lngRaw);
+      if (!Number.isFinite(latValue) || latValue < -90 || latValue > 90) {
+        setError(t('admin.common.invalidLatitude'));
+        return;
+      }
+      if (!Number.isFinite(lngValue) || lngValue < -180 || lngValue > 180) {
+        setError(t('admin.common.invalidLongitude'));
+        return;
+      }
     }
 
     let monthly: number | undefined;
@@ -113,6 +135,8 @@ export function AdminAddMessPage() {
     if (stateValue) payload.state = stateValue;
     if (pincodeValue) payload.pincode = pincodeValue;
     if (map) payload.mapUrl = map;
+    if (latValue !== undefined) payload.latitude = latValue;
+    if (lngValue !== undefined) payload.longitude = lngValue;
     if (monthly !== undefined) payload.monthlyPrice = monthly;
     if (meal !== undefined) payload.mealPrice = meal;
     if (testLead) payload.testLead = true;
@@ -256,10 +280,31 @@ export function AdminAddMessPage() {
             slotProps={{ htmlInput: { maxLength: 6, inputMode: 'numeric' } }}
           />
           <TextField
+            label={t('admin.common.latitude')}
+            value={latitude}
+            onChange={(e) => setLatitude(e.target.value)}
+            placeholder={t('admin.common.latitudePlaceholder')}
+            fullWidth
+            size="small"
+            sx={fieldSx}
+            slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+          />
+          <TextField
+            label={t('admin.common.longitude')}
+            value={longitude}
+            onChange={(e) => setLongitude(e.target.value)}
+            placeholder={t('admin.common.longitudePlaceholder')}
+            fullWidth
+            size="small"
+            sx={fieldSx}
+            slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+          />
+          <TextField
             label={t('admin.common.mapLink')}
             value={mapUrl}
             onChange={(e) => setMapUrl(e.target.value)}
             placeholder={t('admin.common.mapLinkPlaceholder')}
+            helperText={t('admin.common.mapEitherHint')}
             fullWidth
             size="small"
             sx={{ ...fieldSx, gridColumn: { md: '1 / -1' } }}

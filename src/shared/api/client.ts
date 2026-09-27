@@ -47,8 +47,12 @@ function logResponse(status: number, method: string | undefined, url: string | u
 
 function normalizeApiError(error: AxiosError<ApiErrorBody>): ApiError {
   if (!error.response) {
+    const timedOut =
+      error.code === 'ECONNABORTED' || /timeout/i.test(error.message ?? '');
     return new ApiError(
-      'Network error. Please check your connection and try again.',
+      timedOut
+        ? 'This is taking longer than expected. The import may still be running — wait a moment, then check Properties before retrying.'
+        : 'Network error. Please check your connection and try again.',
       0,
       undefined,
       true,

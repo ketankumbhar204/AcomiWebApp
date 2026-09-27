@@ -37,6 +37,10 @@ import { EmptyState } from '@/shared/components/EmptyState';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import {
+  occupancyActionButtonSx,
+  occupancyActionTint,
+} from '../utils/occupancyActionTints';
 import { currentMonthKey } from '@/shared/utils/dashboardFinancial';
 import {
   spaceAccommodationQuickSetupPath,
@@ -346,6 +350,7 @@ export function AccommodationWorkspacePage() {
         profile={profile}
         viewMode={viewMode}
         canManage={permissions.canManageAccommodation}
+        canManageOccupancy={permissions.canManageOccupancy}
         canDeactivate={permissions.canDeactivateAccommodation === true}
         onSelect={handleSelect}
         onAdd={openCreate}
@@ -439,7 +444,7 @@ export function AccommodationWorkspacePage() {
                   size="small"
                   variant="outlined"
                   onClick={() => navigate(spaceOccupancyWizardPath(spaceId, 'ALLOCATE'))}
-                  sx={dashOutlinedButtonSx}
+                  sx={occupancyActionButtonSx(occupancyActionTint.allocate)}
                 >
                   {t('occupancy.actions.allocate')}
                 </Button>

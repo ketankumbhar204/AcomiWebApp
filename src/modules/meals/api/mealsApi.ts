@@ -267,12 +267,16 @@ export const mealsApi = {
     );
   },
 
-  getDailyMenu: (spaceId: string, menuDate: string, mealType: MealType) =>
-    unwrapApiResponse(
-      apiClient.get<ApiResponse<DailyMenuResponse>>(
-        `/spaces/${spaceId}/daily-menus/${menuDate}/${mealType}`,
-      ),
-    ),
+  getDailyMenu: async (spaceId: string, menuDate: string, mealType: MealType) => {
+    const response = await apiClient.get<ApiResponse<DailyMenuResponse>>(
+      `/spaces/${spaceId}/daily-menus/${menuDate}/${mealType}`,
+      { validateStatus: (status) => status === 200 || status === 404 },
+    );
+    if (response.status === 404) {
+      return null;
+    }
+    return unwrapApiResponse(Promise.resolve(response));
+  },
 
   upsertDailyMenu: (
     spaceId: string,
@@ -295,9 +299,14 @@ export const mealsApi = {
     ),
 
   deleteDailyMenu: async (spaceId: string, menuDate: string, mealType: MealType) => {
-    await unwrapVoidResponse(
-      apiClient.delete(`/spaces/${spaceId}/daily-menus/${menuDate}/${mealType}`),
+    const response = await apiClient.delete(
+      `/spaces/${spaceId}/daily-menus/${menuDate}/${mealType}`,
+      { validateStatus: (status) => status === 200 || status === 204 || status === 404 },
     );
+    if (response.status === 404) {
+      return;
+    }
+    await unwrapVoidResponse(Promise.resolve(response));
   },
 
   copyDailyMenu: (

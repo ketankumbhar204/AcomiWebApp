@@ -6,30 +6,20 @@ import { dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
 import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
 import type { AccommodationStatus, BedSpaceListItemResponse } from '@/shared/types/accommodation';
-import { BedCardPricingFields } from './BedCardPricingFields';
+import { BedPricingDisplay } from './BedPricingDisplay';
 import { HierarchyEditMenu } from './HierarchyEditMenu';
 import type { TreeSelection } from './HierarchyTree';
 import { getBedIllustration } from '../illustrations/illustrationAssets';
 import { formatBedDisplayLabel } from '../utils/formatBedDisplayLabel';
-import { BedPricingConfirmDialog } from './BedPricingConfirmDialog';
-import { useConfirmBedPricingCommit } from '../hooks/useConfirmBedPricingCommit';
 import {
   roomGroupAvailableCount,
   roomInventoryPathCrumbs,
   type BedRoomGroup,
   type RoomPathLevel,
 } from '../utils/groupBedsByRoom';
-import type { PricingField } from '../setup-preview/setupPricingAutofill';
 
 /** Mock bed card width — room for icon + status + rent/deposit columns. */
 const BED_CARD_MIN_WIDTH = 268;
-
-function formatRupee(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) {
-    return '—';
-  }
-  return `₹ ${value.toLocaleString('en-IN')}`;
-}
 
 function statusTone(status: AccommodationStatus | string): SemanticTone {
   switch (status) {
@@ -93,25 +83,23 @@ function StatusDotBadge({
 }
 
 type RoomInventoryBedCardProps = {
-  spaceId: string;
   group: BedRoomGroup;
   bed: BedSpaceListItemResponse;
   canManage: boolean;
   showUnit?: boolean;
   onSelect: (selection: TreeSelection) => void;
   onEdit: (selection: TreeSelection) => void;
-  onPricingSaved?: () => void;
+  onViewBed: (bed: BedSpaceListItemResponse) => void;
 };
 
 function RoomInventoryBedCard({
-  spaceId,
   group,
   bed,
   canManage,
   showUnit = false,
   onSelect,
   onEdit,
-  onPricingSaved,
+  onViewBed,
 }: RoomInventoryBedCardProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -120,9 +108,6 @@ function RoomInventoryBedCard({
   const deposit = bed.defaultDeposit;
   const tone = statusTone(bed.status);
   const surface = semanticSurface(tone, theme.palette.mode);
-  const pricingCommit = useConfirmBedPricingCommit({
-    onSuccess: () => onPricingSaved?.(),
-  });
 
   const bedSelection: TreeSelection = {
     type: 'bed',
@@ -133,24 +118,13 @@ function RoomInventoryBedCard({
     unitId: bed.unitId ?? undefined,
   };
 
-  function handlePricing(field: PricingField, value: number | null) {
-    pricingCommit.request({
-      spaceId,
-      roomId: bed.roomId,
-      bedId: bed.bedId,
-      bedLabel: formatBedDisplayLabel(bed.label, t),
-      currentRent: bed.defaultRent,
-      currentDeposit: bed.defaultDeposit,
-      field,
-      value,
-    });
-  }
-
   return (
-    <>
     <Paper
       elevation={0}
-      onClick={() => onSelect(bedSelection)}
+      onClick={() => {
+        onSelect(bedSelection);
+        onViewBed(bed);
+      }}
       sx={{
         minWidth: BED_CARD_MIN_WIDTH,
         width: BED_CARD_MIN_WIDTH,
@@ -212,101 +186,27 @@ function RoomInventoryBedCard({
                   />
                 </Box>
               </Box>
-              {canManage ? (
-                <Box onClick={(event) => event.stopPropagation()}>
-                  <HierarchyEditMenu
-                    group={group}
-                    canEdit={canManage}
-                    showUnit={showUnit}
-                    bedId={bed.bedId}
-                    onEdit={onEdit}
-                  />
-                </Box>
-              ) : null}
+              <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center', flexShrink: 0 }}>
+                {canManage ? (
+                  <Box onClick={(event) => event.stopPropagation()}>
+                    <HierarchyEditMenu
+                      group={group}
+                      canEdit={canManage}
+                      showUnit={showUnit}
+                      bedId={bed.bedId}
+                      onEdit={onEdit}
+                    />
+                  </Box>
+                ) : null}
+                <ChevronRight size={18} color={s.textMuted} strokeWidth={2.2} aria-hidden />
+              </Stack>
             </Stack>
           </Box>
         </Stack>
 
-        {canManage ? (
-          <BedCardPricingFields
-            rent={rent}
-            deposit={deposit}
-            disabled={pricingCommit.busy}
-            onCommit={(field, value) => handlePricing(field, value)}
-          />
-        ) : (
-          <Stack
-            direction="row"
-            spacing={2}
-            sx={{
-              pt: 1,
-              mt: 0.25,
-              px: 1,
-              py: 1,
-              borderRadius: 1.5,
-              bgcolor: theme.palette.mode === 'dark' ? 'rgba(15,23,42,0.35)' : 'rgba(255,255,255,0.72)',
-              border: `1px solid ${theme.palette.mode === 'dark' ? s.border : 'rgba(255,255,255,0.9)'}`,
-            }}
-          >
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography
-                sx={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: s.textMuted,
-                  letterSpacing: '0.02em',
-                  mb: 0.35,
-                }}
-              >
-                {t('accommodation.setup.fields.rent')}
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: s.textPrimary,
-                  letterSpacing: '-0.01em',
-                }}
-                noWrap
-              >
-                {formatRupee(rent)}
-              </Typography>
-            </Box>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography
-                sx={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: s.textMuted,
-                  letterSpacing: '0.02em',
-                  mb: 0.35,
-                }}
-              >
-                {t('accommodation.setup.fields.deposit')}
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: s.textPrimary,
-                  letterSpacing: '-0.01em',
-                }}
-                noWrap
-              >
-                {formatRupee(deposit)}
-              </Typography>
-            </Box>
-          </Stack>
-        )}
+        <BedPricingDisplay rent={rent} deposit={deposit} />
       </Stack>
     </Paper>
-    <BedPricingConfirmDialog
-      pending={pricingCommit.pending}
-      confirming={pricingCommit.confirming}
-      onConfirm={() => void pricingCommit.confirm()}
-      onClose={pricingCommit.close}
-    />
-    </>
   );
 }
 
@@ -443,7 +343,7 @@ type RoomInventoryCardProps = {
   onSelect: (selection: TreeSelection) => void;
   onEditEntity: (selection: TreeSelection) => void;
   onAddBed: (selection: TreeSelection) => void;
-  onPricingSaved?: () => void;
+  onViewBed: (bed: BedSpaceListItemResponse) => void;
 };
 
 function selectionForPathCrumb(group: BedRoomGroup, level: RoomPathLevel): TreeSelection | null {
@@ -479,7 +379,7 @@ function selectionForPathCrumb(group: BedRoomGroup, level: RoomPathLevel): TreeS
 }
 
 export function RoomInventoryCard({
-  spaceId,
+  spaceId: _spaceId,
   group,
   canManage,
   showUnits = false,
@@ -487,7 +387,7 @@ export function RoomInventoryCard({
   onSelect,
   onEditEntity,
   onAddBed,
-  onPricingSaved,
+  onViewBed,
 }: RoomInventoryCardProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -790,14 +690,13 @@ export function RoomInventoryCard({
             {group.beds.map((bed) => (
               <RoomInventoryBedCard
                 key={bed.bedId}
-                spaceId={spaceId}
                 group={group}
                 bed={bed}
                 canManage={canManage}
                 showUnit={showUnits}
                 onSelect={onSelect}
                 onEdit={onEditEntity}
-                onPricingSaved={onPricingSaved}
+                onViewBed={onViewBed}
               />
             ))}
             {canManage ? <AddBedCard onClick={() => onAddBed(roomSelection)} /> : null}

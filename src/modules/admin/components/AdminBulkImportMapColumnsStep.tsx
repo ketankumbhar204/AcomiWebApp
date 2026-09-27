@@ -27,12 +27,14 @@ import {
   RefreshCw,
   Sparkles,
 } from 'lucide-react';
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AdminTestLeadOption } from '@/modules/admin/components/AdminTestLeadOption';
 import { colors } from '@/shared/theme/colors';
 import {
   PROPERTY_BULK_IMPORT_FIELDS,
+  applyExcelHeaderFallbacks,
+  isExactExcelHeaderMatch,
   type PropertyBulkImportAnalyzeResponse,
   type PropertyBulkImportFieldKey,
   type PropertyBulkImportMapping,
@@ -75,10 +77,13 @@ function classifyRow(
   header: string,
   field: PropertyBulkImportFieldKey | null,
   suggested: PropertyBulkImportAnalyzeResponse['suggestedMapping'],
+  fieldLabel: string,
 ): SuggestionKind {
   if (!field) return 'unused';
   if (LISTING_INFO_FIELDS.has(field)) return 'listing';
-  if (suggested[field] === header) return 'exact';
+  if (suggested[field] === header || isExactExcelHeaderMatch(header, field, fieldLabel)) {
+    return 'exact';
+  }
   return 'listing';
 }
 
@@ -101,10 +106,15 @@ export function AdminBulkImportMapColumnsStep({
       return {
         header,
         field,
-        kind: classifyRow(header, field, analyze.suggestedMapping),
+        kind: classifyRow(
+          header,
+          field,
+          analyze.suggestedMapping,
+          field ? t(`admin.propertyBulk.fields.${field}`) : '',
+        ),
       };
     });
-  }, [analyze.headers, analyze.suggestedMapping, mapping]);
+  }, [analyze.headers, analyze.suggestedMapping, mapping, t]);
 
   const stats = useMemo(() => {
     let exact = 0;
@@ -128,6 +138,19 @@ export function AdminBulkImportMapColumnsStep({
     return used;
   }, [mapping]);
 
+  useEffect(() => {
+    const next = applyExcelHeaderFallbacks(
+      mapping,
+      analyze.headers,
+      (field) => t(`admin.propertyBulk.fields.${field}`),
+    );
+    if (PROPERTY_BULK_IMPORT_FIELDS.some((field) => next[field] !== mapping[field])) {
+      onMappingChange(next);
+    }
+    // Only rematch when analysis changes or this step remounts. Manual unmaps stay put.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analyze.headers, analyze.suggestedMapping]);
+
   function handleExcelFieldChange(header: string, fieldValue: string) {
     const next = { ...mapping };
     // Clear any field currently mapped to this Excel column.
@@ -147,7 +170,11 @@ export function AdminBulkImportMapColumnsStep({
       acc[field] = value && value.trim().length > 0 ? value : null;
       return acc;
     }, {} as PropertyBulkImportMapping);
-    onMappingChange(next);
+    onMappingChange(
+      applyExcelHeaderFallbacks(next, analyze.headers, (field) =>
+        t(`admin.propertyBulk.fields.${field}`),
+      ),
+    );
   }
 
   function handleReset() {

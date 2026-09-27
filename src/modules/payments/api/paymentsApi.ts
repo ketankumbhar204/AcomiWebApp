@@ -59,6 +59,14 @@ export const paymentsApi = {
       ),
     ),
 
+  markPaymentReceived: (spaceId: string, paymentId: string, body?: { remarks?: string }) =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<SpacePaymentResponse>>(
+        `/spaces/${spaceId}/payments/${paymentId}/received`,
+        body ?? {},
+      ),
+    ),
+
   getPaymentTimeline: (spaceId: string, paymentId: string) =>
     unwrapApiResponse(
       apiClient.get<ApiResponse<PaymentTimelineResponse>>(

@@ -17,9 +17,14 @@ import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardU
 import { EmptyState } from '@/shared/components/EmptyState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import type { BedSpaceListItemResponse } from '@/shared/types/accommodation';
+import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
+import { spaceAccommodationPath } from '@/routes/paths';
 import { useSpaceBedSearch } from '../hooks/useAccommodation';
+import { usePersistedBedInteraction } from '../hooks/usePersistedBedInteraction';
+import { formatBedDisplayLabel } from '../utils/formatBedDisplayLabel';
 import { groupBedsByRoom, type BedRoomGroup } from '../utils/groupBedsByRoom';
 import type { TreeSelection } from './HierarchyTree';
+import { PersistedBedInteractionHost } from './PersistedBedInteractionHost';
 import { RoomInventoryCard } from './RoomInventoryCard';
 
 type AvailabilityFilter = 'ALL' | 'HAS_AVAILABLE' | 'FULL';
@@ -109,6 +114,7 @@ export function RoomInventoryPanel({
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const permissions = useSpacePermissions(spaceId);
   const [query, setQuery] = useState('');
   const [buildingFilter, setBuildingFilter] = useState('ALL');
   const [floorFilter, setFloorFilter] = useState('ALL');
@@ -119,6 +125,13 @@ export function RoomInventoryPanel({
     spaceId,
     query,
     enabled: Boolean(spaceId),
+  });
+  const bedInteraction = usePersistedBedInteraction({
+    spaceId,
+    canEditStructure: canManage,
+    canManageOccupancy: permissions.canManageOccupancy,
+    returnTo: spaceAccommodationPath(spaceId),
+    onSuccess: () => void bedsQuery.reload(),
   });
 
   const focusedBeds = useMemo(
@@ -343,10 +356,27 @@ export function RoomInventoryPanel({
             onSelect={onSelect}
             onEditEntity={onEditEntity}
             onAddBed={onAddBed}
-            onPricingSaved={() => void bedsQuery.reload()}
+            onViewBed={(bed) =>
+              bedInteraction.open({
+                bedId: bed.bedId,
+                roomId: bed.roomId,
+                buildingId: bed.buildingId,
+                floorId: bed.floorId,
+                unitId: bed.unitId,
+                label: formatBedDisplayLabel(bed.label, t),
+                bedNumber: bed.label,
+                status: bed.status,
+                rent: bed.defaultRent,
+                deposit: bed.defaultDeposit,
+                locationLine: [bed.buildingName, bed.floorName, bed.unitName, bed.roomName]
+                  .filter(Boolean)
+                  .join(' · '),
+              })
+            }
           />
         ))
       )}
+      <PersistedBedInteractionHost interaction={bedInteraction} />
     </Stack>
   );
 }

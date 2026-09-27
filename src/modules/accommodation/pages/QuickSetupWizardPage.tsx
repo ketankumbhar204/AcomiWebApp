@@ -56,6 +56,9 @@ import { SetupStructurePreview } from '../setup-preview/SetupStructurePreview';
 import { computeStructureTotals, expandToEditableStructure } from '../setup-preview/setupStructureModel';
 import type { EditableSetupStructure } from '../setup-preview/setupStructureTypes';
 import { toSetupStructureInput } from '../setup-preview/toSetupStructureInput';
+import { summarizeSetupPricing } from '../setup-preview/summarizeSetupPricing';
+import { formatPricingMoney } from '../utils/commitBedPricing';
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 
 const STEPS = ['layout', 'building', 'structure', 'preview'] as const;
 
@@ -98,6 +101,8 @@ export function QuickSetupWizardPage() {
   const [editableStructure, setEditableStructure] = useState<EditableSetupStructure | null>(null);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [createConfirmOpen, setCreateConfirmOpen] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const creatingRef = useRef(false);
 
   useEffect(() => {
@@ -157,6 +162,7 @@ export function QuickSetupWizardPage() {
 
   const isStructurePg = layoutMode === 'CORRIDOR_PG' || layoutMode === 'APARTMENT_PG';
   const previewTotals = editableStructure ? computeStructureTotals(editableStructure) : preview;
+  const createSummary = editableStructure ? summarizeSetupPricing(editableStructure) : null;
 
   const canAdvance = useMemo(() => {
     const step = STEPS[stepIndex];
@@ -248,30 +254,40 @@ export function QuickSetupWizardPage() {
       return;
     }
     if (step === 'preview') {
-      if (!editableStructure) {
+      if (!editableStructure || creatingRef.current) {
         return;
       }
-      creatingRef.current = true;
-      setCreating(true);
-      try {
-        const key =
-          typeof crypto !== 'undefined' && 'randomUUID' in crypto
-            ? crypto.randomUUID()
-            : `setup-${Date.now()}`;
-        await accommodationApi.executeSetup(spaceId, buildRequest(), key);
-        enqueueSnackbar(t('accommodation.setup.success'), { variant: 'success' });
-        navigate(spaceAccommodationPath(spaceId));
-      } catch (error) {
-        enqueueSnackbar(getErrorMessage(error, t('accommodation.setup.errors.execute')), {
-          variant: 'error',
-        });
-      } finally {
-        creatingRef.current = false;
-        setCreating(false);
-      }
+      setCreateError(null);
+      setCreateConfirmOpen(true);
       return;
     }
     setStepIndex((index) => index + 1);
+  };
+
+  const handleCreateBuilding = async () => {
+    if (!editableStructure || creatingRef.current) {
+      return;
+    }
+    creatingRef.current = true;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const key =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `setup-${Date.now()}`;
+      await accommodationApi.executeSetup(spaceId, buildRequest(), key);
+      enqueueSnackbar(t('accommodation.setup.success'), { variant: 'success' });
+      setCreateConfirmOpen(false);
+      navigate(spaceAccommodationPath(spaceId));
+    } catch (error) {
+      const message = getErrorMessage(error, t('accommodation.setup.errors.execute'));
+      setCreateError(message);
+      enqueueSnackbar(message, { variant: 'error' });
+    } finally {
+      creatingRef.current = false;
+      setCreating(false);
+    }
   };
 
   if (!permissions.canManageAccommodation) {
@@ -586,6 +602,110 @@ export function QuickSetupWizardPage() {
           </Button>
         </Box>
       </StickyFooter>
+      <ConfirmDialog
+        open={createConfirmOpen}
+        title={t('accommodation.setup.createConfirm.title')}
+        confirmLabel={t('accommodation.setup.createConfirm.confirm')}
+        confirmingLabel={t('accommodation.setup.createConfirm.creating')}
+        cancelLabel={t('accommodation.setup.back')}
+        confirming={creating}
+        maxWidth="sm"
+        onConfirm={() => void handleCreateBuilding()}
+        onClose={() => {
+          if (!creating) {
+            setCreateConfirmOpen(false);
+            setCreateError(null);
+          }
+        }}
+        content={
+          createSummary ? (
+            <Stack spacing={1.25}>
+              <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted, fontWeight: 700 }}>
+                {t('accommodation.setup.createConfirm.building')}
+              </Typography>
+              <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary }}>
+                {createSummary.buildingName}
+              </Typography>
+              <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted, fontWeight: 700, pt: 0.5 }}>
+                {t('accommodation.setup.createConfirm.structure')}
+              </Typography>
+              {createSummary.totals.floors > 0 ? (
+                <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary }}>
+                  {t('accommodation.setup.totals.floors', { count: createSummary.totals.floors })}
+                </Typography>
+              ) : null}
+              {createSummary.totals.units > 0 ? (
+                <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary }}>
+                  {t('accommodation.setup.totals.units', { count: createSummary.totals.units })}
+                </Typography>
+              ) : null}
+              <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary }}>
+                {t('accommodation.setup.totals.rooms', { count: createSummary.totals.rooms })}
+              </Typography>
+              <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary }}>
+                {t('accommodation.setup.totals.beds', { count: createSummary.totals.beds })}
+              </Typography>
+              <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted, fontWeight: 700, pt: 0.5 }}>
+                {t('accommodation.setup.createConfirm.pricing')}
+              </Typography>
+              {createSummary.pricingGroups.length === 0 ? (
+                <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary }}>
+                  {t('accommodation.setup.createConfirm.noPricing')}
+                </Typography>
+              ) : createSummary.pricingGroups.length === 1 ? (
+                <>
+                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary }}>
+                    {t('accommodation.setup.fields.rent')}:{' '}
+                    {formatPricingMoney(
+                      createSummary.pricingGroups[0]?.rent ?? null,
+                      t('accommodation.pricingConfirm.notSet'),
+                    )}
+                  </Typography>
+                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary }}>
+                    {t('accommodation.setup.fields.deposit')}:{' '}
+                    {formatPricingMoney(
+                      createSummary.pricingGroups[0]?.deposit ?? null,
+                      t('accommodation.pricingConfirm.notSet'),
+                    )}
+                  </Typography>
+                </>
+              ) : (
+                createSummary.pricingGroups.map((group, index) => (
+                  <Box key={group.key}>
+                    <Typography sx={{ ...DASHBOARD_UX.body, fontWeight: 700, color: s.textPrimary }}>
+                      {t('accommodation.setup.createConfirm.pattern', {
+                        index: index + 1,
+                        count: group.bedCount,
+                      })}
+                    </Typography>
+                    <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary }}>
+                      {t('accommodation.setup.fields.rent')}:{' '}
+                      {formatPricingMoney(group.rent, t('accommodation.pricingConfirm.notSet'))}
+                    </Typography>
+                    <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary }}>
+                      {t('accommodation.setup.fields.deposit')}:{' '}
+                      {formatPricingMoney(group.deposit, t('accommodation.pricingConfirm.notSet'))}
+                    </Typography>
+                  </Box>
+                ))
+              )}
+              <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary, pt: 0.5 }}>
+                {t('accommodation.setup.createConfirm.footnote', {
+                  count: createSummary.totals.beds,
+                })}
+              </Typography>
+              <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textSecondary }}>
+                {t('accommodation.setup.createConfirm.continue')}
+              </Typography>
+              {createError ? (
+                <Typography sx={{ ...DASHBOARD_UX.body, color: colors.danger }}>
+                  {createError}
+                </Typography>
+              ) : null}
+            </Stack>
+          ) : null
+        }
+      />
     </PageContainer>
   );
 }

@@ -28,6 +28,7 @@ import type {
 } from '@/shared/types/admin';
 import type {
   PropertyBulkImportAnalyzeResponse,
+  PropertyBulkImportFieldOverrides,
   PropertyBulkImportMapping,
   PropertyBulkImportPreviewResponse,
   PropertyBulkImportResultResponse,
@@ -35,12 +36,15 @@ import type {
 import type { MembershipRole, SpaceType } from '@/shared/types/space';
 
 const BULK_IMPORT_BASE = '/admin/property-registrations/bulk-import';
+const BULK_IMPORT_ANALYZE_TIMEOUT_MS = 10 * 60 * 1000;
+const BULK_IMPORT_TIMEOUT_MS = 30 * 60 * 1000;
 
 function toBulkImportFormData(
   file: File,
   mapping?: PropertyBulkImportMapping,
   markAsTestLead?: boolean,
   keepDuplicateRowNumbers?: number[],
+  fieldOverrides?: PropertyBulkImportFieldOverrides,
 ): FormData {
   const formData = new FormData();
   formData.append('file', file);
@@ -52,6 +56,9 @@ function toBulkImportFormData(
   }
   if (keepDuplicateRowNumbers) {
     formData.append('keepDuplicateRowNumbers', JSON.stringify(keepDuplicateRowNumbers));
+  }
+  if (fieldOverrides && Object.keys(fieldOverrides).length > 0) {
+    formData.append('fieldOverrides', JSON.stringify(fieldOverrides));
   }
   return formData;
 }
@@ -183,7 +190,7 @@ export const adminApi = {
       apiClient.post<ApiResponse<PropertyBulkImportAnalyzeResponse>>(
         `${BULK_IMPORT_BASE}/analyze`,
         toBulkImportFormData(file),
-        { headers: { 'Content-Type': 'multipart/form-data' } },
+        { headers: { 'Content-Type': 'multipart/form-data' }, timeout: BULK_IMPORT_ANALYZE_TIMEOUT_MS },
       ),
     ),
 
@@ -196,7 +203,7 @@ export const adminApi = {
       apiClient.post<ApiResponse<PropertyBulkImportPreviewResponse>>(
         `${BULK_IMPORT_BASE}/preview`,
         toBulkImportFormData(file, mapping, markAsTestLead),
-        { headers: { 'Content-Type': 'multipart/form-data' } },
+        { headers: { 'Content-Type': 'multipart/form-data' }, timeout: BULK_IMPORT_TIMEOUT_MS },
       ),
     ),
 
@@ -205,12 +212,13 @@ export const adminApi = {
     mapping: PropertyBulkImportMapping,
     markAsTestLead = false,
     keepDuplicateRowNumbers: number[] = [],
+    fieldOverrides: PropertyBulkImportFieldOverrides = {},
   ): Promise<PropertyBulkImportResultResponse> =>
     unwrapApiResponse(
       apiClient.post<ApiResponse<PropertyBulkImportResultResponse>>(
         BULK_IMPORT_BASE,
-        toBulkImportFormData(file, mapping, markAsTestLead, keepDuplicateRowNumbers),
-        { headers: { 'Content-Type': 'multipart/form-data' } },
+        toBulkImportFormData(file, mapping, markAsTestLead, keepDuplicateRowNumbers, fieldOverrides),
+        { headers: { 'Content-Type': 'multipart/form-data' }, timeout: BULK_IMPORT_TIMEOUT_MS },
       ),
     ),
 

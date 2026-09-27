@@ -205,6 +205,11 @@ export type BedResponse = {
   photoFileId?: string | null;
 };
 
+export type BedPricingPreviewResponse = {
+  affectedBedCount: number;
+  affectedLocations: string[];
+};
+
 export type BedListItemResponse = {
   bedId: string;
   label: string;

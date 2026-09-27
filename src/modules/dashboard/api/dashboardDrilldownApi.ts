@@ -33,6 +33,8 @@ export type BedSpaceListItem = {
   unitName?: string | null;
   roomId?: string;
   roomName?: string | null;
+  defaultRent?: number | null;
+  defaultDeposit?: number | null;
 };
 
 export const dashboardDrilldownApi = {

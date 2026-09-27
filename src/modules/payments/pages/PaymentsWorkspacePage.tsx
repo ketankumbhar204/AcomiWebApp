@@ -53,17 +53,18 @@ import {
   type PaymentSummaryFilter,
   type PaymentsOwnerFilter,
 } from '../components/PaymentsSummaryFilters';
+import { usePaymentMutations, usePaymentsHistory, usePaymentsMembers, usePaymentsReview, usePaymentsSummary, useSpacePaymentsList } from '../hooks/usePayments';
+import { useOwnerPaymentCardActions } from '../hooks/useOwnerPaymentCardActions';
+import { OwnerPaymentRowActions } from '../components/OwnerPaymentRowActions';
+import { PaymentReceivedConfirmDialog } from '../components/PaymentReceivedConfirmDialog';
 import {
-  usePaymentMutations,
-  usePaymentsHistory,
-  usePaymentsMembers,
-  usePaymentsReview,
-  usePaymentsSummary,
-  useSpacePaymentsList,
-} from '../hooks/usePayments';
-import {
+  canOwnerMarkPaymentReceived,
+  canOwnerSendPaymentReminder,
   formatMonthLabel,
   memberLedgerStatusTone,
+  memberRowShowsOwnerPaymentActions,
+  memberRowShowsReceived,
+  memberRowShowsReminder,
   paymentStatusLabelKey,
   paymentStatusTone,
   shiftMonth,
@@ -247,6 +248,7 @@ function OwnerPaymentsWorkspace({
     memberScoped,
   );
   const mutations = usePaymentMutations(spaceId);
+  const cardActions = useOwnerPaymentCardActions(spaceId, month);
 
   useEffect(() => {
     document.title = `${t('navigation.payments')} · ${t('common.appName')}`;
@@ -415,15 +417,29 @@ function OwnerPaymentsWorkspace({
       },
       {
         id: 'actions',
-        header: '',
-        width: 40,
+        header: t('paymentCollection.fields.actions', { defaultValue: '' }),
+        width: 260,
         align: 'right',
-        accessor: () => (
-          <ChevronRight size={16} color={s.textMuted} aria-hidden />
-        ),
+        accessor: (row) =>
+          filter !== 'collected' && memberRowShowsOwnerPaymentActions(row.status) ? (
+            <OwnerPaymentRowActions
+              showReceived={memberRowShowsReceived(row.status)}
+              showReminder={memberRowShowsReminder(row.status)}
+              receivedLoading={cardActions.isProcessing(`member:${row.memberId}`, 'received')}
+              reminderLoading={cardActions.isProcessing(`member:${row.memberId}`, 'reminder')}
+              onReceived={() => {
+                void cardActions.requestReceivedForMember(row.memberId, row.memberName);
+              }}
+              onReminder={() => {
+                void cardActions.sendReminderForMember(row.memberId);
+              }}
+            />
+          ) : (
+            <ChevronRight size={16} color={s.textMuted} aria-hidden />
+          ),
       },
     ],
-    [s.textMuted, s.textPrimary, s.textSecondary, t],
+    [cardActions, filter, s.textMuted, s.textPrimary, s.textSecondary, t],
   );
 
   const reviewColumns: DataTableColumn<SpacePaymentResponse & { id: string }>[] = useMemo(
@@ -503,12 +519,27 @@ function OwnerPaymentsWorkspace({
       {
         id: 'actions',
         header: '',
-        width: 40,
+        width: 260,
         align: 'right',
-        accessor: () => <ChevronRight size={16} color={s.textMuted} aria-hidden />,
+        accessor: (row) => {
+          const status = row.paymentStatus ?? row.status ?? 'PENDING';
+          return canOwnerMarkPaymentReceived(status) ||
+            canOwnerSendPaymentReminder(row.reminderEligible) ? (
+            <OwnerPaymentRowActions
+              showReceived={canOwnerMarkPaymentReceived(status)}
+              showReminder={canOwnerSendPaymentReminder(row.reminderEligible)}
+              receivedLoading={cardActions.isProcessing(row.paymentId, 'received')}
+              reminderLoading={cardActions.isProcessing(row.paymentId, 'reminder')}
+              onReceived={() => cardActions.requestReceivedForPayment(row)}
+              onReminder={() => cardActions.sendReminderForPayment(row)}
+            />
+          ) : (
+            <ChevronRight size={16} color={s.textMuted} aria-hidden />
+          );
+        },
       },
     ],
-    [s.textMuted, s.textPrimary, s.textSecondary, t],
+    [cardActions, s.textMuted, s.textPrimary, s.textSecondary, t],
   );
 
   const historyColumns: DataTableColumn<SpacePaymentResponse & { id: string }>[] = useMemo(
@@ -994,6 +1025,13 @@ function OwnerPaymentsWorkspace({
           framed={false}
         />
       </AppDrawer>
+      <PaymentReceivedConfirmDialog
+        open={cardActions.confirmPayments.length > 0}
+        payments={cardActions.confirmPayments}
+        confirming={cardActions.receivedConfirmLoading}
+        onConfirm={cardActions.confirmReceived}
+        onClose={cardActions.cancelConfirm}
+      />
     </PageContainer>
   );
 }

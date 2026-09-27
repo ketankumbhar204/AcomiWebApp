@@ -872,9 +872,12 @@ export function MealMenuEditorPage() {
   };
 
   const clearDraft = async () => {
-    if (!mealType || !canManage || menu?.status !== 'DRAFT') return;
+    if (!mealType || !canManage) return;
+    if (menu && menu.status !== 'DRAFT') return;
     try {
-      await mutations.deleteDailyMenu.mutateAsync({ menuDate, mealType });
+      if (menu) {
+        await mutations.deleteDailyMenu.mutateAsync({ menuDate, mealType });
+      }
       enqueueSnackbar(t('meals.success.draftDeleted'), { variant: 'success' });
       goBack();
     } catch {

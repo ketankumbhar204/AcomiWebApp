@@ -1,11 +1,10 @@
-import { Box, Button, Stack, Typography, useTheme } from '@mui/material';
-import { BedDouble, Bookmark, Building2, CalendarCheck, UserPlus } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Box, IconButton, Stack, Typography, useTheme } from '@mui/material';
+import { BedDouble, Building2, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { BedPricingDisplay } from '@/modules/accommodation/components/BedPricingDisplay';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StatusChip, type StatusChipTone } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type { BedSpaceListItem } from '../api/dashboardDrilldownApi';
 
 function statusTone(status: string): StatusChipTone {
@@ -26,68 +25,20 @@ function statusTone(status: string): StatusChipTone {
 
 type BedInventoryCardProps = {
   bed: BedSpaceListItem;
-  canManageOccupancy: boolean;
-  onAllocate?: () => void;
-  onReserve?: () => void;
-  onMoveIn?: () => void;
+  onViewBed?: () => void;
 };
 
-/** Modern vacant-bed card — Allocate / Reserve (AVAILABLE) or Move-in (RESERVED). */
-export function BedInventoryCard({
-  bed,
-  canManageOccupancy,
-  onAllocate,
-  onReserve,
-  onMoveIn,
-}: BedInventoryCardProps) {
+/** View-only vacant/occupied bed card — open the shared bed dialog to act. */
+export function BedInventoryCard({ bed, onViewBed }: BedInventoryCardProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
 
   const location = [bed.floorName, bed.unitName, bed.roomName].filter(Boolean).join(' · ');
-  const isAvailable = bed.status === 'AVAILABLE';
-  const isReserved = bed.status === 'RESERVED';
-
-  let actions: ReactNode = null;
-  if (canManageOccupancy && isAvailable && onAllocate && onReserve) {
-    actions = (
-      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-        <Button
-          size="small"
-          variant="contained"
-          startIcon={<UserPlus size={14} />}
-          onClick={onAllocate}
-          sx={dashContainedButtonSx}
-        >
-          {t('occupancy.actions.allocate')}
-        </Button>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<Bookmark size={14} />}
-          onClick={onReserve}
-          sx={dashOutlinedButtonSx}
-        >
-          {t('occupancy.actions.reserve')}
-        </Button>
-      </Stack>
-    );
-  } else if (canManageOccupancy && isReserved && onMoveIn) {
-    actions = (
-      <Button
-        size="small"
-        variant="contained"
-        startIcon={<CalendarCheck size={14} />}
-        onClick={onMoveIn}
-        sx={dashContainedButtonSx}
-      >
-        {t('occupancy.actions.moveIn')}
-      </Button>
-    );
-  }
 
   return (
     <Box
+      onClick={onViewBed}
       sx={{
         height: '100%',
         borderRadius: `${DASHBOARD_UX.radius}px`,
@@ -97,6 +48,7 @@ export function BedInventoryCard({
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
+        cursor: onViewBed ? 'pointer' : 'default',
         transition: DASHBOARD_UX.transition,
         '&:hover': { boxShadow: s.shadowHover, borderColor: colors.primary },
       }}
@@ -129,6 +81,19 @@ export function BedInventoryCard({
               tone={statusTone(bed.status)}
             />
           </Box>
+          {onViewBed ? (
+            <IconButton
+              size="small"
+              aria-label={t('accommodation.beds.viewBed', { defaultValue: 'View bed' })}
+              onClick={(event) => {
+                event.stopPropagation();
+                onViewBed();
+              }}
+              sx={{ color: s.textMuted }}
+            >
+              <ChevronRight size={18} />
+            </IconButton>
+          ) : null}
         </Stack>
 
         <Stack spacing={0.5}>
@@ -147,7 +112,7 @@ export function BedInventoryCard({
           ) : null}
         </Stack>
 
-        {actions ? <Box sx={{ mt: 'auto', pt: 0.5 }}>{actions}</Box> : null}
+        <BedPricingDisplay rent={bed.defaultRent} deposit={bed.defaultDeposit} />
       </Stack>
     </Box>
   );

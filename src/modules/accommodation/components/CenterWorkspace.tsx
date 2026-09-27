@@ -7,7 +7,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { Plus } from 'lucide-react';
+import { ChevronRight, Plus } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
@@ -18,8 +18,11 @@ import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type { TreeSelection } from './HierarchyTree';
 import { BulkCreateDialog } from './BulkCreateDialog';
-import { BedCardPricingFields, BedPricingField } from './BedCardPricingFields';
+import { BedPricingDisplay } from './BedPricingDisplay';
 import { formatBedDisplayLabel } from '../utils/formatBedDisplayLabel';
+import { formatPricingMoney } from '../utils/commitBedPricing';
+import { PersistedBedInteractionHost } from './PersistedBedInteractionHost';
+import { usePersistedBedInteraction } from '../hooks/usePersistedBedInteraction';
 import { EntityOccupancyCard } from './EntityOccupancyCard';
 import { EntityActionsMenu } from './EntityActionsMenu';
 import { WorkspaceSummaryStrip } from './AccommodationOverviewMetrics';
@@ -34,11 +37,9 @@ import {
   useUnits,
   useUnitsByFloor,
 } from '../hooks/useAccommodation';
-import type { PricingField } from '../setup-preview/setupPricingAutofill';
 import { LayoutIllustration } from '../illustrations/LayoutIllustration';
 import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
-import { BedPricingConfirmDialog } from './BedPricingConfirmDialog';
-import { useConfirmBedPricingCommit } from '../hooks/useConfirmBedPricingCommit';
+import { spaceAccommodationPath } from '@/routes/paths';
 import type { EntityPhotoKind } from '@/shared/files/entityPhoto';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -60,6 +61,7 @@ type CenterWorkspaceProps = {
   profile: AccommodationUiProfile;
   viewMode: 'cards' | 'table';
   canManage: boolean;
+  canManageOccupancy?: boolean;
   canDeactivate?: boolean;
   onSelect: (selection: TreeSelection) => void;
   onAdd: () => void;
@@ -157,6 +159,7 @@ export function CenterWorkspace({
   profile,
   viewMode,
   canManage,
+  canManageOccupancy = false,
   canDeactivate = false,
   onSelect,
   onAdd,
@@ -168,7 +171,11 @@ export function CenterWorkspace({
   const surfaces = dashSurfaces(theme.palette.mode);
   const queryClient = useQueryClient();
   const mutations = useAccommodationMutations(spaceId);
-  const bedPricing = useConfirmBedPricingCommit({
+  const bedInteraction = usePersistedBedInteraction({
+    spaceId,
+    canEditStructure: canManage,
+    canManageOccupancy,
+    returnTo: spaceAccommodationPath(spaceId),
     onSuccess: () => mutations.invalidate(),
   });
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -260,12 +267,7 @@ export function CenterWorkspace({
           title={t('accommodation.workspace.selectTitle')}
           description={t('accommodation.workspace.selectBody')}
         />
-        <BedPricingConfirmDialog
-          pending={bedPricing.pending}
-          confirming={bedPricing.confirming}
-          onConfirm={() => void bedPricing.confirm()}
-          onClose={bedPricing.close}
-        />
+        <PersistedBedInteractionHost interaction={bedInteraction} />
       </>
     );
   }
@@ -336,12 +338,7 @@ export function CenterWorkspace({
     <>
       {node}
       {bulkDialog}
-      <BedPricingConfirmDialog
-        pending={bedPricing.pending}
-        confirming={bedPricing.confirming}
-        onConfirm={() => void bedPricing.confirm()}
-        onClose={bedPricing.close}
-      />
+      <PersistedBedInteractionHost interaction={bedInteraction} />
     </>
   );
 
@@ -1155,23 +1152,30 @@ export function CenterWorkspace({
       roomMeta?.availableBeds ?? beds.beds.filter((b) => b.status === 'AVAILABLE').length;
     const bedOcc = Math.max(0, bedTotal - bedAvail);
 
-    const saveBedPricing = (
-      bed: { bedId: string; label: string; defaultRent?: number | null; defaultDeposit?: number | null },
-      field: PricingField,
-      value: number | null,
-    ) => {
+    const openBed = (bed: {
+      bedId: string;
+      label: string;
+      status: (typeof beds.beds)[number]['status'];
+      defaultRent?: number | null;
+      defaultDeposit?: number | null;
+      active?: boolean;
+    }) => {
       if (!roomId) {
         return;
       }
-      bedPricing.request({
-        spaceId,
-        roomId,
+      bedInteraction.open({
         bedId: bed.bedId,
-        bedLabel: formatBedDisplayLabel(bed.label, t),
-        currentRent: bed.defaultRent,
-        currentDeposit: bed.defaultDeposit,
-        field,
-        value,
+        roomId,
+        buildingId: selection.buildingId,
+        floorId: 'floorId' in selection ? selection.floorId : undefined,
+        unitId: 'unitId' in selection ? selection.unitId : undefined,
+        label: formatBedDisplayLabel(bed.label, t),
+        bedNumber: bed.label,
+        status: bed.status,
+        rent: bed.defaultRent,
+        deposit: bed.defaultDeposit,
+        inactive: bed.active === false,
+        locationLine: roomMeta?.name,
       });
     };
 
@@ -1191,47 +1195,52 @@ export function CenterWorkspace({
       {
         id: 'rent',
         header: t('accommodation.setup.fields.rent'),
-        accessor: (row) => (
-          <BedPricingField
-            field="defaultRent"
-            value={row.defaultRent}
-            hideLabel
-            disabled={!canManage || row.active === false || bedPricing.busy}
-            onCommit={(field, value) => saveBedPricing(row, field, value)}
-          />
-        ),
+        accessor: (row) => formatPricingMoney(row.defaultRent, t('accommodation.pricingConfirm.notSet')),
       },
       {
         id: 'deposit',
         header: t('accommodation.setup.fields.deposit'),
-        accessor: (row) => (
-          <BedPricingField
-            field="defaultDeposit"
-            value={row.defaultDeposit}
-            hideLabel
-            disabled={!canManage || row.active === false || bedPricing.busy}
-            onCommit={(field, value) => saveBedPricing(row, field, value)}
-          />
-        ),
+        accessor: (row) => formatPricingMoney(row.defaultDeposit, t('accommodation.pricingConfirm.notSet')),
       },
       {
         id: 'actions',
         header: '',
-        width: 52,
+        width: 88,
         align: 'right',
-        accessor: (row) =>
-          entityMenu(
-            {
-              type: 'bed',
-              buildingId: selection.buildingId,
-              roomId: roomId!,
-              bedId: row.bedId,
-              floorId: 'floorId' in selection ? selection.floorId : undefined,
-              unitId: 'unitId' in selection ? selection.unitId : undefined,
-            },
-            formatBedDisplayLabel(row.label, t),
-            { isInactive: row.active === false, status: row.status },
-          ),
+        accessor: (row) => (
+          <Stack direction="row" spacing={0.5} sx={{ justifyContent: 'flex-end', alignItems: 'center' }}>
+            {entityMenu(
+              {
+                type: 'bed',
+                buildingId: selection.buildingId,
+                roomId: roomId!,
+                bedId: row.bedId,
+                floorId: 'floorId' in selection ? selection.floorId : undefined,
+                unitId: 'unitId' in selection ? selection.unitId : undefined,
+              },
+              formatBedDisplayLabel(row.label, t),
+              { isInactive: row.active === false, status: row.status },
+            )}
+            <Box
+              component="button"
+              type="button"
+              aria-label={t('accommodation.beds.viewBed', { defaultValue: 'View bed' })}
+              onClick={(event) => {
+                event.stopPropagation();
+                openBed(row);
+              }}
+              sx={{
+                all: 'unset',
+                display: 'grid',
+                placeItems: 'center',
+                cursor: 'pointer',
+                color: surfaces.textMuted,
+              }}
+            >
+              <ChevronRight size={18} />
+            </Box>
+          </Stack>
+        ),
       },
     ];
 
@@ -1272,15 +1281,13 @@ export function CenterWorkspace({
                             <LayoutIllustration src={getBedIllustration(bed.status)} size="bed" alt="" />,
                             96,
                           )}
-                          trailing={<StatusChip label={t(`accommodation.status.${bed.status}`)} />}
-                          footer={
-                            <BedCardPricingFields
-                              rent={bed.defaultRent}
-                              deposit={bed.defaultDeposit}
-                              disabled={!canManage || bed.active === false || bedPricing.busy}
-                              onCommit={(field, value) => saveBedPricing(bed, field, value)}
-                            />
+                          trailing={
+                            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                              <StatusChip label={t(`accommodation.status.${bed.status}`)} />
+                              <ChevronRight size={18} color={surfaces.textMuted} />
+                            </Stack>
                           }
+                          footer={<BedPricingDisplay rent={bed.defaultRent} deposit={bed.defaultDeposit} />}
                           menu={entityMenu(
                             {
                               type: 'bed',
@@ -1299,7 +1306,7 @@ export function CenterWorkspace({
                             formatBedDisplayLabel(bed.label, t),
                             { isInactive: bed.active === false, status: bed.status },
                           )}
-                          onClick={() =>
+                          onClick={() => {
                             onSelect({
                               type: 'bed',
                               buildingId: selection.buildingId,
@@ -1313,8 +1320,9 @@ export function CenterWorkspace({
                                 selection.type === 'room' || selection.type === 'bed'
                                   ? selection.unitId
                                   : undefined,
-                            })
-                          }
+                            });
+                            openBed(bed);
+                          }}
                         />
                       </Grid>
                     );
@@ -1330,7 +1338,7 @@ export function CenterWorkspace({
               columns={columns}
               rows={bedRows}
               loading={beds.loading}
-              onRowClick={(row) =>
+              onRowClick={(row) => {
                 onSelect({
                   type: 'bed',
                   buildingId: selection.buildingId,
@@ -1338,8 +1346,9 @@ export function CenterWorkspace({
                   bedId: row.bedId,
                   floorId: 'floorId' in selection ? selection.floorId : undefined,
                   unitId: 'unitId' in selection ? selection.unitId : undefined,
-                })
-              }
+                });
+                openBed(row);
+              }}
               emptyTitle={t('accommodation.beds.emptyTitle')}
             />
             {bottomAdd}

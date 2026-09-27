@@ -57,6 +57,8 @@ export function useSpaceBedInventory(
         unitName: bed.unitName,
         roomId: bed.roomId,
         roomName: bed.roomName,
+        defaultRent: bed.defaultRent,
+        defaultDeposit: bed.defaultDeposit,
       })),
     [listQuery.data?.content],
   );

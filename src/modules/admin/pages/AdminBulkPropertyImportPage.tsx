@@ -31,7 +31,9 @@ import { getErrorMessage } from '@/shared/api/errors';
 import { colors } from '@/shared/theme/colors';
 import {
   PROPERTY_BULK_IMPORT_FIELDS,
+  applyExcelHeaderFallbacks,
   type PropertyBulkImportAnalyzeResponse,
+  type PropertyBulkImportFieldOverrides,
   type PropertyBulkImportMapping,
   type PropertyBulkImportPreviewResponse,
   type PropertyBulkImportResultResponse,
@@ -139,6 +141,7 @@ export function AdminBulkPropertyImportPage() {
   const [duplicateDecisions, setDuplicateDecisions] = useState<Record<string, 'KEEP' | 'SKIP'>>(
     {},
   );
+  const [fieldOverrides, setFieldOverrides] = useState<PropertyBulkImportFieldOverrides>({});
   const [result, setResult] = useState<PropertyBulkImportResultResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,6 +154,7 @@ export function AdminBulkPropertyImportPage() {
     setMarkAsTestLead(false);
     setPreview(null);
     setDuplicateDecisions({});
+    setFieldOverrides({});
     setResult(null);
     setError(null);
     if (fileInputRef.current) {
@@ -179,12 +183,19 @@ export function AdminBulkPropertyImportPage() {
     setError(null);
     setPreview(null);
     setDuplicateDecisions({});
+    setFieldOverrides({});
     setResult(null);
     try {
       const data = await adminApi.analyzePropertyBulkImport(nextFile);
       setFile(nextFile);
       setAnalyze(data);
-      setMapping(mappingFromSuggested(data.suggestedMapping));
+      setMapping(
+        applyExcelHeaderFallbacks(
+          mappingFromSuggested(data.suggestedMapping),
+          data.headers,
+          (field) => t(`admin.propertyBulk.fields.${field}`),
+        ),
+      );
       setMarkAsTestLead(false);
       setActiveStep(1);
       enqueueSnackbar(
@@ -226,6 +237,7 @@ export function AdminBulkPropertyImportPage() {
         }
       }
       setDuplicateDecisions(decisions);
+      setFieldOverrides({});
       setPreview(data);
       setActiveStep(2);
     } catch (err) {
@@ -251,6 +263,7 @@ export function AdminBulkPropertyImportPage() {
         mapping,
         markAsTestLead,
         keepDuplicateRowNumbers,
+        fieldOverrides,
       );
       setResult(data);
       setActiveStep(4);
@@ -276,9 +289,14 @@ export function AdminBulkPropertyImportPage() {
       }
     } catch (err) {
       setActiveStep(2);
-      const message = getErrorMessage(err, t('admin.propertyBulk.importFailed'));
+      const timedOut =
+        (err instanceof Error && /taking longer than expected|timeout/i.test(err.message))
+        || (typeof err === 'object' && err !== null && 'isNetworkError' in err && Boolean((err as { isNetworkError?: boolean }).isNetworkError));
+      const message = timedOut
+        ? t('admin.propertyBulk.importTimeout')
+        : getErrorMessage(err, t('admin.propertyBulk.importFailed'));
       setError(message);
-      enqueueSnackbar(message, { variant: 'error' });
+      enqueueSnackbar(message, { variant: timedOut ? 'warning' : 'error' });
     } finally {
       setBusy(false);
     }
@@ -420,6 +438,19 @@ export function AdminBulkPropertyImportPage() {
             preview={preview}
             mapping={mapping}
             busy={busy}
+            fieldOverrides={fieldOverrides}
+            onFieldOverrideChange={(rowNumber, field, value) => {
+              setFieldOverrides((prev) => {
+                const key = String(rowNumber);
+                const nextRow = { ...(prev[key] ?? {}) };
+                if (value) nextRow[field] = value;
+                else delete nextRow[field];
+                const next = { ...prev };
+                if (Object.keys(nextRow).length === 0) delete next[key];
+                else next[key] = nextRow;
+                return next;
+              });
+            }}
             duplicateDecisions={duplicateDecisions}
             onDuplicateDecisionChange={(rowNumber, decision) => {
               setDuplicateDecisions((prev) => ({

@@ -17,6 +17,8 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        timeout: 30 * 60 * 1000,
+        proxyTimeout: 30 * 60 * 1000,
         // The browser call is same-origin; forwarding its Origin makes the API
         // treat this proxy hop as cross-origin and reject any unlisted dev port.
         configure: (proxy) => {

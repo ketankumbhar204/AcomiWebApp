@@ -1,7 +1,7 @@
 import {
   Box,
-  Button,
   Grid,
+  IconButton,
   InputAdornment,
   MenuItem,
   Stack,
@@ -13,22 +13,18 @@ import {
 } from '@mui/material';
 import {
   BedDouble,
-  Bookmark,
   Building2,
-  CalendarCheck,
+  ChevronRight,
   Columns3,
   Filter,
   LayoutGrid,
   Layers,
   List,
   Search,
-  UserPlus,
 } from 'lucide-react';
-import { useSnackbar } from 'notistack';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { accommodationApi } from '@/modules/accommodation/api/accommodationApi';
+import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   useBuildings,
   useFloors,
@@ -45,13 +41,12 @@ import { PageHeader } from '@/shared/components/PageHeader';
 import { StatusChip, type StatusChipTone } from '@/shared/components/StatusChip';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
-import {
-  ROUTES,
-  spaceBedInventoryPath,
-  spaceDashboardPath,
-  spaceOccupancyWizardPath,
-} from '@/routes/paths';
+import { dashFilterControlSx } from '@/shared/theme/dashButtonSx';
+import { PersistedBedInteractionHost } from '@/modules/accommodation/components/PersistedBedInteractionHost';
+import { usePersistedBedInteraction } from '@/modules/accommodation/hooks/usePersistedBedInteraction';
+import { formatBedDisplayLabel } from '@/modules/accommodation/utils/formatBedDisplayLabel';
+import { formatPricingMoney } from '@/modules/accommodation/utils/commitBedPricing';
+import { ROUTES, spaceBedInventoryPath, spaceDashboardPath } from '@/routes/paths';
 import type { BedSpaceListItem } from '../api/dashboardDrilldownApi';
 import { BedInventoryCard } from '../components/BedInventoryCard';
 import { useSpaceBedInventory } from '../hooks/useSpaceBedInventory';
@@ -119,8 +114,6 @@ export function BedInventoryPage() {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
-  const navigate = useNavigate();
-  const { enqueueSnackbar } = useSnackbar();
   const { spaceId = '' } = useParams<{ spaceId: string }>();
   const permissions = useSpacePermissions(spaceId);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -132,7 +125,6 @@ export function BedInventoryPage() {
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
     status === 'AVAILABLE' || status === 'RESERVED' ? 'table' : 'cards',
   );
-  const [moveInBusyId, setMoveInBusyId] = useState<string | null>(null);
 
   const buildings = useBuildings(spaceId, Boolean(spaceId));
   const floors = useFloors(spaceId, buildingId || undefined, Boolean(buildingId));
@@ -151,6 +143,13 @@ export function BedInventoryPage() {
   const canManage = permissions.canManageOccupancy === true;
   const copy = pageCopy(status, t);
   const returnTo = spaceBedInventoryPath(spaceId, status);
+  const bedInteraction = usePersistedBedInteraction({
+    spaceId,
+    canEditStructure: permissions.canManageAccommodation === true,
+    canManageOccupancy: canManage,
+    returnTo,
+    onSuccess: () => void beds.reload(),
+  });
 
   useEffect(() => {
     document.title = `${copy.title} · ${t('common.appName')}`;
@@ -161,52 +160,22 @@ export function BedInventoryPage() {
     [beds.items],
   );
 
-  const openWizard = (
-    mode: 'ALLOCATE' | 'RESERVE' | 'MOVE_IN',
-    bed: BedSpaceListItem,
-    extra?: { occupancyId?: string; memberId?: string },
-  ) => {
-    navigate(
-      spaceOccupancyWizardPath(spaceId, mode, {
-        bedId: bed.bedId,
-        roomId: bed.roomId,
-        unitId: bed.unitId ?? undefined,
-        buildingId: bed.buildingId,
-        occupancyId: extra?.occupancyId,
-        memberId: extra?.memberId,
-        returnTo,
-      }),
-    );
-  };
-
-  const handleAllocate = (bed: BedSpaceListItem) => openWizard('ALLOCATE', bed);
-  const handleReserve = (bed: BedSpaceListItem) => openWizard('RESERVE', bed);
-
-  const handleMoveIn = async (bed: BedSpaceListItem) => {
-    setMoveInBusyId(bed.bedId);
-    try {
-      const detail = await accommodationApi.getBed(spaceId, bed.bedId);
-      const occupancyId = detail.occupant?.occupancyId;
-      if (!occupancyId) {
-        enqueueSnackbar(
-          t('occupancy.errors.moveInMissing', {
-            defaultValue: 'No reservation found for this bed.',
-          }),
-          { variant: 'warning' },
-        );
-        return;
-      }
-      openWizard('MOVE_IN', bed, {
-        occupancyId,
-        memberId: detail.occupant?.memberId,
-      });
-    } catch (err) {
-      enqueueSnackbar(err instanceof Error ? err.message : t('common.errors.generic'), {
-        variant: 'error',
-      });
-    } finally {
-      setMoveInBusyId(null);
-    }
+  const openBed = (bed: BedSpaceListItem) => {
+    bedInteraction.open({
+      bedId: bed.bedId,
+      roomId: bed.roomId ?? '',
+      buildingId: bed.buildingId,
+      floorId: bed.floorId,
+      unitId: bed.unitId,
+      label: formatBedDisplayLabel(bed.label, t),
+      bedNumber: bed.label,
+      status: bed.status as never,
+      rent: bed.defaultRent,
+      deposit: bed.defaultDeposit,
+      locationLine: [bed.buildingName, bed.floorName, bed.unitName, bed.roomName]
+        .filter(Boolean)
+        .join(' · '),
+    });
   };
 
   const setStatus = (next: string) => {
@@ -310,62 +279,19 @@ export function BedInventoryPage() {
     </>
   );
 
-  const actionButtons = (row: BedSpaceListItem) => {
-    if (!canManage) return null;
-    if (row.status === 'AVAILABLE') {
-      return (
-        <Stack
-          direction="row"
-          spacing={0.75}
-          useFlexGap
-          sx={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}
-        >
-          <Button
-            size="small"
-            variant="contained"
-            startIcon={<UserPlus size={14} />}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleAllocate(row);
-            }}
-            sx={dashContainedButtonSx}
-          >
-            {t('occupancy.actions.allocate')}
-          </Button>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<Bookmark size={14} />}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleReserve(row);
-            }}
-            sx={dashOutlinedButtonSx}
-          >
-            {t('occupancy.actions.reserve')}
-          </Button>
-        </Stack>
-      );
-    }
-    if (row.status === 'RESERVED') {
-      return (
-        <Button
-          size="small"
-          variant="contained"
-          startIcon={<CalendarCheck size={14} />}
-          disabled={moveInBusyId === row.bedId}
-          onClick={(e) => {
-            e.stopPropagation();
-            void handleMoveIn(row);
-          }}
-          sx={dashContainedButtonSx}
-        >
-          {t('occupancy.actions.moveIn')}
-        </Button>
-      );
-    }
-    return null;
-  };
+  const actionButtons = (row: BedSpaceListItem) => (
+    <IconButton
+      size="small"
+      aria-label={t('accommodation.beds.viewBed', { defaultValue: 'View bed' })}
+      onClick={(event) => {
+        event.stopPropagation();
+        openBed(row);
+      }}
+      sx={{ color: s.textMuted }}
+    >
+      <ChevronRight size={18} />
+    </IconButton>
+  );
 
   const columns: DataTableColumn<BedRow>[] = [
     {
@@ -399,10 +325,20 @@ export function BedInventoryPage() {
       ),
     },
     {
+      id: 'rent',
+      header: t('accommodation.setup.fields.rent'),
+      accessor: (row) => formatPricingMoney(row.defaultRent, t('accommodation.pricingConfirm.notSet')),
+    },
+    {
+      id: 'deposit',
+      header: t('accommodation.setup.fields.deposit'),
+      accessor: (row) => formatPricingMoney(row.defaultDeposit, t('accommodation.pricingConfirm.notSet')),
+    },
+    {
       id: 'actions',
       header: t('common.actions'),
       align: 'right',
-      width: 280,
+      width: 52,
       accessor: (row) => actionButtons(row),
     },
   ];
@@ -561,6 +497,7 @@ export function BedInventoryPage() {
             columns={columns}
             rows={rows}
             loading={beds.loading}
+            onRowClick={(row) => openBed(row)}
             emptyTitle={copy.empty}
             emptyDescription={t('dashboard.drilldown.emptyBedsDescription')}
           />
@@ -576,18 +513,13 @@ export function BedInventoryPage() {
           <Grid container spacing={1.5}>
             {beds.items.map((bed) => (
               <Grid key={bed.bedId} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-                <BedInventoryCard
-                  bed={bed}
-                  canManageOccupancy={canManage}
-                  onAllocate={() => handleAllocate(bed)}
-                  onReserve={() => handleReserve(bed)}
-                  onMoveIn={() => void handleMoveIn(bed)}
-                />
+                <BedInventoryCard bed={bed} onViewBed={() => openBed(bed)} />
               </Grid>
             ))}
           </Grid>
         )}
       </Stack>
+      <PersistedBedInteractionHost interaction={bedInteraction} />
     </PageContainer>
   );
 }

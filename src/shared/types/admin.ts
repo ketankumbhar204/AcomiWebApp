@@ -227,6 +227,8 @@ export interface AdminCreatePropertyRegistrationRequest {
   state?: string;
   pincode?: string;
   mapUrl?: string;
+  latitude?: number;
+  longitude?: number;
   startingPrice?: number;
   capacityEstimate?: number;
   testLead?: boolean;
@@ -249,6 +251,8 @@ export interface AdminCreateMessRegistrationRequest {
   state?: string;
   pincode?: string;
   mapUrl?: string;
+  latitude?: number;
+  longitude?: number;
   monthlyPrice?: number;
   mealPrice?: number;
   capacityEstimate?: number;

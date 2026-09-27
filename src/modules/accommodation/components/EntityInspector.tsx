@@ -1,21 +1,16 @@
 import { Box, Button, Stack, Typography } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowRightLeft,
   BedDouble,
   Building2,
   CalendarDays,
-  CircleCheck,
   DoorOpen,
   Hash,
   Heart,
-  History,
   House,
   Layers,
-  LogOut,
   Power,
   SquarePen,
-  UserPlus,
   UserRound,
   Users,
   Wallet,
@@ -29,12 +24,16 @@ import { LoadingState } from '@/shared/components/LoadingState';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { DASHBOARD_UX } from '@/modules/dashboard/theme/dashboardUx';
 import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
-import { colors } from '@/shared/theme/colors';
 import { spaceMemberPath, spaceOccupancyWizardPath } from '@/routes/paths';
 import type { TreeSelection } from './HierarchyTree';
 import { AccommodationLifecycleActions } from './AccommodationLifecycleActions';
 import { EntityActionsMenu } from './EntityActionsMenu';
-import { InspectorDetailsList, PastelQuickActions } from './InspectorDetailsList';
+import { InspectorDetailsList } from './InspectorDetailsList';
+import { OccupancyActionButtons } from './OccupancyActionButtons';
+import { PersistedBedInteractionHost } from './PersistedBedInteractionHost';
+import { usePersistedBedInteraction } from '../hooks/usePersistedBedInteraction';
+import { formatBedDisplayLabel } from '../utils/formatBedDisplayLabel';
+import { spaceAccommodationPath } from '@/routes/paths';
 import type { AccommodationActionMetadata } from '@/shared/types/accommodation';
 import {
   useBedDetail,
@@ -53,7 +52,6 @@ import {
   getUnitIllustration,
   isWideFloorIllustration,
 } from '../illustrations/illustrationAssets';
-import { ACC_ACCENTS } from '../utils/accommodationAccents';
 
 type EntityInspectorProps = {
   spaceId: string;
@@ -143,6 +141,16 @@ export function EntityInspector({
   const room = useRoomDetail(spaceId, roomId, selection?.type === 'room' || selection?.type === 'bed');
   const bed = useBedDetail(spaceId, bedId, selection?.type === 'bed');
 
+  const bedInteraction = usePersistedBedInteraction({
+    spaceId,
+    canEditStructure: canManageAccommodation,
+    canManageOccupancy,
+    returnTo: spaceAccommodationPath(spaceId),
+    onSuccess: () => {
+      void bed.reload();
+      void room.reload();
+    },
+  });
   const occupancyId = bed.bed?.occupant?.occupancyId;
   const occupancyQuery = useQuery({
     queryKey: ['occupancy', spaceId, occupancyId],
@@ -340,22 +348,12 @@ export function EntityInspector({
       );
       if (canManageOccupancy && unit?.status === 'AVAILABLE') {
         footer = (
-          <Stack spacing={1}>
-            <Button
-              variant="contained"
-              startIcon={<CircleCheck size={16} />}
-              onClick={() => openWizard('ALLOCATE')}
-            >
-              {t('occupancy.actions.allocate')}
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<CalendarDays size={16} />}
-              onClick={() => openWizard('RESERVE')}
-            >
-              {t('occupancy.actions.reserve')}
-            </Button>
-          </Stack>
+          <OccupancyActionButtons
+            status="AVAILABLE"
+            title={t('accommodation.workspace.quickActions', { defaultValue: 'Quick Actions' })}
+            onAllocate={() => openWizard('ALLOCATE')}
+            onReserve={() => openWizard('RESERVE')}
+          />
         );
       }
     }
@@ -419,6 +417,27 @@ export function EntityInspector({
       const floorName = floorQuery.data?.name;
       const buildingName = buildingQuery.data?.name ?? summary.summary?.name;
       const locationLine = [roomName, unitName].filter(Boolean).join(' • ');
+      const openBedSheet = () => {
+        if (!b) {
+          return;
+        }
+        bedInteraction.open({
+          bedId: b.bedId,
+          roomId: b.roomId,
+          buildingId,
+          floorId,
+          unitId,
+          label: formatBedDisplayLabel(b.name || b.bedNumber, t),
+          bedNumber: b.bedNumber,
+          status: b.status,
+          rent: b.defaultRent,
+          deposit: b.defaultDeposit,
+          locationLine,
+          occupancyId,
+          memberId: b.occupant?.memberId,
+          inactive: b.active === false,
+        });
+      };
 
       body = (
         <Stack spacing={1.5}>
@@ -517,86 +536,39 @@ export function EntityInspector({
               },
             ]}
           />
+          {canManageAccommodation && b ? (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={openBedSheet}
+              sx={dashOutlinedButtonSx}
+            >
+              {t('accommodation.beds.changePricing', {
+                defaultValue: 'Change rent / deposit',
+              })}
+            </Button>
+          ) : null}
         </Stack>
       );
 
       if (canManageOccupancy && b) {
-        const pastelActions = [];
-        if (b.status === 'AVAILABLE') {
-          pastelActions.push(
-            {
-              id: 'allocate',
-              label: t('occupancy.actions.allocate'),
-              icon: <UserPlus size={18} />,
-              color: ACC_ACCENTS.allocate,
-              bgcolor: ACC_ACCENTS.allocateBg,
-              onClick: () => openWizard('ALLOCATE'),
-            },
-            {
-              id: 'reserve',
-              label: t('occupancy.actions.reserve'),
-              icon: <CalendarDays size={18} />,
-              color: ACC_ACCENTS.reserve,
-              bgcolor: ACC_ACCENTS.reserveBg,
-              onClick: () => openWizard('RESERVE'),
-            },
-          );
-        }
-        if (b.status === 'RESERVED' && occupancyId) {
-          pastelActions.push(
-            {
-              id: 'movein',
-              label: t('occupancy.actions.moveIn'),
-              icon: <CircleCheck size={18} />,
-              color: ACC_ACCENTS.allocate,
-              bgcolor: ACC_ACCENTS.allocateBg,
-              onClick: () => openWizard('MOVE_IN', { occupancyId }),
-            },
-            {
-              id: 'cancel',
-              label: t('occupancy.actions.cancelReservation'),
-              icon: <LogOut size={18} />,
-              color: '#DD6B20',
-              bgcolor: colors.warningTint,
-              onClick: () => openWizard('VACATE', { occupancyId }),
-            },
-          );
-        }
-        if (b.status === 'OCCUPIED' && occupancyId) {
-          pastelActions.push(
-            {
-              id: 'transfer',
-              label: t('occupancy.actions.transfer'),
-              icon: <ArrowRightLeft size={18} />,
-              color: ACC_ACCENTS.reserve,
-              bgcolor: ACC_ACCENTS.reserveBg,
-              onClick: () => openWizard('TRANSFER', { occupancyId }),
-            },
-            {
-              id: 'vacate',
-              label: t('occupancy.actions.vacate'),
-              icon: <LogOut size={18} />,
-              color: '#E53E3E',
-              bgcolor: colors.errorTint,
-              onClick: () => openWizard('VACATE', { occupancyId }),
-            },
-          );
-        }
-        if (b.occupant?.memberId) {
-          pastelActions.push({
-            id: 'history',
-            label: t('accommodation.workspace.viewHistory', { defaultValue: 'View History' }),
-            icon: <History size={18} />,
-            color: ACC_ACCENTS.history,
-            bgcolor: ACC_ACCENTS.historyBg,
-            onClick: () => navigate(spaceMemberPath(spaceId, b.occupant!.memberId)),
-          });
-        }
-
         footer = (
-          <PastelQuickActions
+          <OccupancyActionButtons
+            status={b.status}
+            occupancyId={occupancyId}
+            memberId={b.occupant?.memberId}
             title={t('accommodation.workspace.quickActions', { defaultValue: 'Quick Actions' })}
-            actions={pastelActions}
+            onAllocate={openBedSheet}
+            onReserve={openBedSheet}
+            onMoveIn={() => openWizard('MOVE_IN', { occupancyId: occupancyId ?? undefined })}
+            onCancel={() => openWizard('VACATE', { occupancyId: occupancyId ?? undefined })}
+            onTransfer={() => openWizard('TRANSFER', { occupancyId: occupancyId ?? undefined })}
+            onVacate={() => openWizard('VACATE', { occupancyId: occupancyId ?? undefined })}
+            onViewHistory={
+              b.occupant?.memberId
+                ? () => navigate(spaceMemberPath(spaceId, b.occupant!.memberId))
+                : undefined
+            }
           />
         );
       }
@@ -640,6 +612,7 @@ export function EntityInspector({
     ) : null;
 
   return (
+    <>
     <SidePanel
       framed
       title={title}
@@ -693,5 +666,7 @@ export function EntityInspector({
     >
       {body}
     </SidePanel>
+    <PersistedBedInteractionHost interaction={bedInteraction} />
+    </>
   );
 }

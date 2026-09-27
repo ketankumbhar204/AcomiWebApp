@@ -41,11 +41,13 @@ import type {
 } from '@/shared/types/payments';
 import { usePaymentDetail, usePaymentMutations, usePaymentTimeline } from '../hooks/usePayments';
 import {
+  canOwnerMarkPaymentReceived,
   canReviewPayment,
   canSubmitProof,
   paymentStatusLabelKey,
   paymentStatusTone,
 } from '../utils/paymentHelpers';
+import { PaymentReceivedConfirmDialog } from './PaymentReceivedConfirmDialog';
 import { ReceiptPreview } from './ReceiptPreview';
 import { StoredImagePreview } from '@/shared/components/files/StoredImagePreview';
 
@@ -179,6 +181,7 @@ export function PaymentInspector({
   const mutations = usePaymentMutations(spaceId);
   const [rejectCode, setRejectCode] = useState<PaymentRejectionReason>('OTHER');
   const [remarks, setRemarks] = useState('');
+  const [receivedOpen, setReceivedOpen] = useState(false);
 
   if (!paymentId) {
     return (
@@ -240,6 +243,18 @@ export function PaymentInspector({
     }
   };
 
+  const runMarkReceived = async () => {
+    try {
+      await mutations.markReceived.mutateAsync(payment.paymentId);
+      enqueueSnackbar(t('paymentCollection.received.success'), { variant: 'success' });
+      setReceivedOpen(false);
+    } catch {
+      enqueueSnackbar(t('paymentCollection.received.failed'), { variant: 'error' });
+    }
+  };
+
+  const canMarkReceived = canManage && canOwnerMarkPaymentReceived(status);
+
   const runSendReminder = async () => {
     try {
       const result = await mutations.sendReminder.mutateAsync(payment.paymentId);
@@ -271,14 +286,30 @@ export function PaymentInspector({
   };
 
   return (
+    <>
     <SidePanel
       title={payment.title || t('payments.inspector.title')}
       subtitle={payment.memberName}
       onClose={onClose}
       framed={framed}
       footer={
-        canManage && (canReviewPayment(status) || payment.reminderEligible) ? (
+        canManage &&
+        (canReviewPayment(status) || payment.reminderEligible || canMarkReceived) ? (
           <Stack spacing={1}>
+            {canMarkReceived ? (
+              <Button
+                variant="contained"
+                sx={{
+                  ...dashContainedButtonSx,
+                  bgcolor: colors.primaryDark,
+                  '&:hover': { bgcolor: colors.primaryHover },
+                }}
+                onClick={() => setReceivedOpen(true)}
+                disabled={mutations.markReceived.isPending || mutations.reviewPayment.isPending}
+              >
+                {t('paymentCollection.received.action')}
+              </Button>
+            ) : null}
             {payment.reminderEligible ? (
               <Button
                 variant="outlined"
@@ -585,6 +616,14 @@ export function PaymentInspector({
         </InspectorCard>
       </Stack>
     </SidePanel>
+    <PaymentReceivedConfirmDialog
+      open={receivedOpen}
+      payments={[payment]}
+      confirming={mutations.markReceived.isPending}
+      onConfirm={() => void runMarkReceived()}
+      onClose={() => setReceivedOpen(false)}
+    />
+    </>
   );
 }
 

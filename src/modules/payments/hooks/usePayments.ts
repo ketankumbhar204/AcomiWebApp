@@ -201,6 +201,10 @@ export function usePaymentMutations(spaceId: string | undefined) {
       mutationFn: (paymentId: string) => paymentsApi.sendPaymentReminder(spaceId!, paymentId),
       onSuccess: invalidate,
     }),
+    markReceived: useMutation({
+      mutationFn: (paymentId: string) => paymentsApi.markPaymentReceived(spaceId!, paymentId),
+      onSuccess: invalidate,
+    }),
     processReminders: useMutation({
       mutationFn: () => paymentsApi.processPaymentReminders(spaceId!),
       onSuccess: invalidate,

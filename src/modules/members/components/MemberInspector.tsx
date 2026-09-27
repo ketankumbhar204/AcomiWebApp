@@ -272,7 +272,12 @@ export function MemberInspector({
             />
           ) : null}
           {tab === 'accommodation' ? (
-            <MemberOccupancyPanel spaceId={spaceId} memberId={memberId} mode="current" />
+            <MemberOccupancyPanel
+              spaceId={spaceId}
+              memberId={memberId}
+              mode="current"
+              onViewHistory={() => setTab('occupancy')}
+            />
           ) : null}
           {tab === 'payments' ? (
             <MemberPaymentsPanel spaceId={spaceId} memberId={memberId} />
