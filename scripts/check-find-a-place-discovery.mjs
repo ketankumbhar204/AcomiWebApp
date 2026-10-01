@@ -162,6 +162,11 @@ test('Find a place sources stay aligned with the public website', () => {
 
   assert.match(modal, /locationsApi/);
   assert.match(modal, /rankingContext/);
+  assert.match(modal, /\.autocomplete\(/);
+  assert.match(modal, /listStates/);
+  assert.doesNotMatch(modal, /api\.geoapify\.com/);
+  assert.match(locations, /\/locations\/autocomplete/);
+  assert.doesNotMatch(locations, /api\.geoapify\.com/);
   assert.doesNotMatch(filters, /PUNE_DISCOVER_LOCALITIES/);
   assert.doesNotMatch(filters, /minMeal/);
   assert.doesNotMatch(filters, /minRating/);

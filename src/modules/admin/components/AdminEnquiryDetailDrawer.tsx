@@ -114,7 +114,12 @@ export function AdminEnquiryDetailDrawer({
       const updated = await adminEnquiryApi.share(enquiryId);
       setDetail(updated);
       onUpdated?.(updated);
-      enqueueSnackbar(t('admin.enquiries.shareSuccess'), { variant: 'success' });
+      enqueueSnackbar(
+        updated.clientChannel === 'ANDROID'
+          ? t('admin.enquiries.shareSuccessApp')
+          : t('admin.enquiries.shareSuccess'),
+        { variant: 'success' },
+      );
     } catch (err) {
       enqueueSnackbar(getErrorMessage(err, t('admin.enquiries.shareFailed')), { variant: 'error' });
     } finally {
@@ -430,7 +435,7 @@ export function AdminEnquiryDetailDrawer({
                         bgcolor: '#22C55E',
                         '&:hover': { bgcolor: '#16A34A' },
                       }}>
-                      {t('admin.enquiries.share')}
+                      {t('admin.enquiries.sendDetails')}
                     </Button>
                     <Button
                       disabled={busy}
@@ -447,6 +452,24 @@ export function AdminEnquiryDetailDrawer({
 
             <Divider />
             <Stack spacing={1.25} sx={{ p: 2 }}>
+              {pending ? (
+                <Button
+                  disabled={busy}
+                  variant="contained"
+                  startIcon={<Share2 size={16} />}
+                  onClick={() => void share()}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    bgcolor: '#22C55E',
+                    color: '#FFFFFF',
+                    borderRadius: '10px',
+                    py: 1.1,
+                    '&:hover': { bgcolor: '#16A34A' },
+                  }}>
+                  {t('admin.enquiries.sendDetails')}
+                </Button>
+              ) : null}
               <Button
                 component="a"
                 href={mailto}

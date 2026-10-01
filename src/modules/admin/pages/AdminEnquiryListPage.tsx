@@ -39,6 +39,7 @@ import { AdminEnquiryDetailDrawer } from '@/modules/admin/components/AdminEnquir
 import { AdminEnquiryStatusChip } from '@/modules/admin/components/AdminEnquiryStatusChip';
 import { discoverDefaultImageUrl } from '@/modules/onboarding/utils/discoverDefaultImages';
 import { adminEnquiryApi } from '@/shared/api/enquiryApi';
+import { getErrorMessage } from '@/shared/api/errors';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { adminEnquiryDetailPath, ROUTES } from '@/routes/paths';
 import type {
@@ -118,6 +119,8 @@ export function AdminEnquiryListPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [expireTarget, setExpireTarget] = useState<AdminSpaceEnquiryListItem | null>(null);
+  const [expiring, setExpiring] = useState(false);
 
   const [searchInput, setSearchInput] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
@@ -272,6 +275,21 @@ export function AdminEnquiryListPage() {
       ),
     );
     loadSummary();
+  }
+
+  async function handleExpireConfirm() {
+    if (!expireTarget || expiring) return;
+    setExpiring(true);
+    try {
+      const updated = await adminEnquiryApi.expire(expireTarget.enquiryId);
+      handleUpdated(updated);
+      enqueueSnackbar(t('admin.enquiries.expireSuccess'), { variant: 'success' });
+      setExpireTarget(null);
+    } catch (err) {
+      enqueueSnackbar(getErrorMessage(err, t('admin.enquiries.expireFailed')), { variant: 'error' });
+    } finally {
+      setExpiring(false);
+    }
   }
 
   function handleDeleted(enquiryId: string) {
@@ -709,6 +727,24 @@ export function AdminEnquiryListPage() {
                             }}>
                     {t('admin.enquiries.view')}
                   </Button>
+                          {row.status === 'PENDING' || row.status === 'SHARED' ? (
+                            <Button
+                              size="small"
+                              disabled={expiring}
+                              onClick={() => setExpireTarget(row)}
+                              sx={{
+                                textTransform: 'none',
+                                fontWeight: 700,
+                                color: '#C2410C',
+                                bgcolor: '#FFEDD5',
+                                borderRadius: '8px',
+                                px: 1.5,
+                                minWidth: 0,
+                                '&:hover': { bgcolor: '#FED7AA' },
+                              }}>
+                              {t('admin.enquiries.expireAction')}
+                            </Button>
+                          ) : null}
                           <Button
                             size="small"
                             onClick={() =>
@@ -800,6 +836,20 @@ export function AdminEnquiryListPage() {
         confirming={deleting}
         onConfirm={() => void handleDeleteConfirm()}
         onClose={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={expireTarget != null}
+        title={t('admin.enquiries.expire')}
+        description={t('admin.enquiries.expireConfirm')}
+        confirmLabel={t('admin.enquiries.expireAction')}
+        cancelLabel={t('admin.common.cancel')}
+        destructive
+        confirming={expiring}
+        onConfirm={() => void handleExpireConfirm()}
+        onClose={() => {
+          if (!expiring) setExpireTarget(null);
+        }}
       />
     </Box>
   );

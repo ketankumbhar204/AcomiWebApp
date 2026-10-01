@@ -93,6 +93,7 @@ export interface AdminSpaceEnquiryDetail extends AdminSpaceEnquiryListItem {
   rejectedAt?: string | null;
   rejectionReason?: string | null;
   ownerContact: OwnerContactResponse;
+  clientChannel?: 'WEB' | 'ANDROID' | null;
 }
 
 export interface AdminEnquirySummary {

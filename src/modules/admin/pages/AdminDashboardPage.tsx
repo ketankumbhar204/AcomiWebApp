@@ -12,22 +12,11 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import {
-  Building2,
-  CalendarDays,
-  ChefHat,
-  FileText,
-  Home,
-  MapPin,
-  Plus,
-  Soup,
-  UserPlus,
-  UserRound,
-  Users,
-} from 'lucide-react';
+import { Building2, CalendarDays, ChefHat, CreditCard, FileText, Home, MapPin, Plus, Soup, UserPlus, UserRound, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
+import { inquiryCreditsAdminApi } from '@/modules/admin/api/inquiryCreditsAdminApi';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import { AdminEnquiriesTrendChart } from '@/modules/admin/components/AdminEnquiriesTrendChart';
 import { AdminMetricCard } from '@/modules/admin/components/AdminMetricCard';
@@ -89,6 +78,7 @@ export function AdminDashboardPage() {
       : t(`admin.dashboard.range.${rangeKey}`);
 
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
+  const [creditPayments, setCreditPayments] = useState({ pending: 0, approved: 0 });
   const [activity, setActivity] = useState<AdminActivityItem[]>([]);
   const [trend, setTrend] = useState<AdminEnquiriesTrend | null>(null);
   const [breakdown, setBreakdown] = useState<AdminUserRegistrationBreakdown | null>(null);
@@ -133,10 +123,16 @@ export function AdminDashboardPage() {
 
   useEffect(() => {
     let active = true;
-    void adminApi
-      .getDashboardSummary({ from: range.from, to: range.to })
-      .then((data) => {
-        if (active) setSummary(data);
+    void Promise.all([
+      adminApi.getDashboardSummary({ from: range.from, to: range.to }),
+      inquiryCreditsAdminApi.getPurchasesSummary().catch(() => null),
+    ])
+      .then(([data, credits]) => {
+        if (!active) return;
+        setSummary(data);
+        if (credits) {
+          setCreditPayments({ pending: credits.pendingCount, approved: credits.approvedCount });
+        }
       })
       .finally(() => {
         if (active) setSummaryLoading(false);
@@ -286,6 +282,17 @@ export function AdminDashboardPage() {
       sparkline: null as number[] | null,
     },
     {
+      key: 'creditPayments',
+      label: t('admin.dashboard.stats.creditPayments'),
+      value: creditPayments.pending,
+      to: ROUTES.adminInquiryPayments,
+      icon: CreditCard,
+      accentBg: '#DCFCE7',
+      accentFg: '#16A34A',
+      deltaPercent: null as number | null,
+      sparkline: null as number[] | null,
+    },
+    {
       key: 'addresses',
       label: t('admin.dashboard.stats.savedAddresses'),
       value: summary?.savedAddressesCount ?? 0,
@@ -322,6 +329,14 @@ export function AdminDashboardPage() {
       hint: t('admin.dashboard.quickActions.addUserHint'),
       color: '#2563EB',
       bg: '#DBEAFE',
+    },
+    {
+      to: ROUTES.adminInquiryPayments,
+      icon: CreditCard,
+      title: t('admin.dashboard.quickActions.creditPayments'),
+      hint: t('admin.dashboard.quickActions.creditPaymentsHint'),
+      color: '#16A34A',
+      bg: '#DCFCE7',
     },
     {
       to: ROUTES.adminSavedAddresses,

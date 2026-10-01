@@ -10,6 +10,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   AlertCircle,
@@ -21,7 +22,7 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { enquiryApi } from '@/shared/api/enquiryApi';
-import { inquiryCreditsApi } from '@/shared/api/inquiryCreditsApi';
+import { inquiryCreditsApi, needsInquiryPayment, isUnlimitedQuota, paidCreditsOf } from '@/shared/api/inquiryCreditsApi';
 import { enquiryErrorMessage } from '@/shared/api/enquiryErrors';
 import { ApiError } from '@/shared/api/errors';
 import type { UserResponse } from '@/shared/types/auth';
@@ -31,8 +32,10 @@ import { openAcomiAndroidApp } from '@/shared/utils/openAcomiAndroidApp';
 import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
 import { colors } from '@/shared/theme/colors';
 import { useAuthStore } from '@/store/authStore';
+import { inquirySentViaFromEnquiry, markInquiredListing } from '@/shared/hooks/useAlreadyInquired';
 import { InquiryLimitDialog } from './InquiryLimitDialog';
 import { contactWasEmailed } from '@/modules/onboarding/utils/enquiryContactDelivery';
+import { env } from '@/shared/config/env';
 
 type EnquireDialogProps = {
   open: boolean;
@@ -99,6 +102,7 @@ export function EnquireDialog({
   onClose,
 }: EnquireDialogProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const refreshUser = useAuthStore((state) => state.refreshUser);
   const savedEmails = useMemo(() => savedEnquiryEmails(user), [user]);
@@ -114,7 +118,11 @@ export function EnquireDialog({
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
 
   const creditsFooter = useMemo(() => {
-    if (!quota) return null;
+    if (!quota || isUnlimitedQuota(quota)) return null;
+    const paid = paidCreditsOf(quota);
+    if (quota.freeRemainingToday <= 0 && paid > 0) {
+      return t('spaces.findPlace.enquire.creditsFooterPaid', { count: paid });
+    }
     if (packageOffer) {
       return t('spaces.findPlace.enquire.creditsFooterPackage', {
         remaining: quota.freeRemainingToday,
@@ -136,6 +144,16 @@ export function EnquireDialog({
       return next;
     } catch {
       return null;
+    }
+  }
+
+  async function onResetLocalQuota() {
+    try {
+      const next = await inquiryCreditsApi.resetQuota();
+      setQuota(next);
+      setLimitDialogOpen(false);
+    } catch {
+      /* local-only helper */
     }
   }
 
@@ -171,6 +189,13 @@ export function EnquireDialog({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (step === 'email' && needsInquiryPayment(quota)) {
+      setLimitDialogOpen(true);
+      setStep('limit');
+    }
+  }, [step, quota]);
+
   async function submit(options?: { emailOverride?: string }) {
     if (submittingRef.current) {
       return;
@@ -195,6 +220,7 @@ export function EnquireDialog({
       // Empty payload → backend uses authenticated account email.
       const created = await enquiryApi.create(spaceId, provided ? { email: provided } : {});
       setSubmitted(created);
+      markInquiredListing(queryClient, created.spaceId || spaceId, inquirySentViaFromEnquiry(created));
       setStep(resultStepFromEnquiry(created));
       void refreshUser();
       // New WEB enquiry consumes free quota (unless reused). Refresh remaining count.
@@ -300,6 +326,18 @@ export function EnquireDialog({
   }
 
   function openEmailStep() {
+    if (needsInquiryPayment(quota)) {
+      setLimitDialogOpen(true);
+      setStep('limit');
+      return;
+    }
+    setError(null);
+    setEmail(savedEmails[0] ?? user?.email?.trim() ?? email);
+    setStep('email');
+  }
+
+  function continueWithPaidCredits() {
+    setLimitDialogOpen(false);
     setError(null);
     setEmail(savedEmails[0] ?? user?.email?.trim() ?? email);
     setStep('email');
@@ -342,6 +380,11 @@ export function EnquireDialog({
           setLimitDialogOpen(false);
           onClose();
         }}
+        onQuotaReset={env.isDevelopment ? () => void onResetLocalQuota() : undefined}
+        availableCredits={paidCreditsOf(quota)}
+        onContinueWithCredits={
+          paidCreditsOf(quota) > 0 ? continueWithPaidCredits : undefined
+        }
       />
       <Dialog
         open={open && !limitDialogOpen}
@@ -349,7 +392,14 @@ export function EnquireDialog({
         fullWidth
         maxWidth="xs"
         slotProps={{
-          paper: { sx: { position: 'relative', overflow: 'hidden' } },
+          paper: {
+            sx: {
+              position: 'relative',
+              m: { xs: 1.5, sm: 2 },
+              maxHeight: { xs: 'calc(100dvh - 24px)', sm: '90vh' },
+              overflow: 'auto',
+            },
+          },
         }}
       >
         {step === 'own' ? (
@@ -695,7 +745,7 @@ export function EnquireDialog({
                     >
                       <Box sx={{ position: 'relative', flexShrink: 0, width: 28, height: 28 }}>
                         <Mail size={22} color={colors.textSecondary} style={{ marginTop: 3 }} />
-                        {quota != null ? (
+                        {quota != null && !isUnlimitedQuota(quota) ? (
                           <Box
                             aria-hidden
                             sx={{
@@ -706,7 +756,10 @@ export function EnquireDialog({
                               height: 18,
                               px: 0.5,
                               borderRadius: 999,
-                              bgcolor: quota.freeRemainingToday > 0 ? '#DC2626' : colors.textSecondary,
+                              bgcolor:
+                                quota.freeRemainingToday > 0 || paidCreditsOf(quota) > 0
+                                  ? '#DC2626'
+                                  : colors.textSecondary,
                               color: '#fff',
                               fontSize: 10,
                               fontWeight: 800,
@@ -715,7 +768,9 @@ export function EnquireDialog({
                               lineHeight: 1,
                             }}
                           >
-                            {quota.freeRemainingToday}
+                            {quota.freeRemainingToday > 0
+                              ? quota.freeRemainingToday
+                              : paidCreditsOf(quota)}
                           </Box>
                         ) : null}
                       </Box>
@@ -730,17 +785,27 @@ export function EnquireDialog({
                             mt: 0.25,
                             fontSize: 13,
                             fontWeight: 800,
-                            color: quota != null && quota.freeRemainingToday <= 0 ? '#B45309' : '#C2410C',
+                            color:
+                              quota != null &&
+                              !isUnlimitedQuota(quota) &&
+                              quota.freeRemainingToday <= 0 &&
+                              paidCreditsOf(quota) <= 0
+                                ? '#B45309'
+                                : '#C2410C',
                             lineHeight: 1.3,
                           }}
                         >
-                          {quota != null
+                          {quota != null && !isUnlimitedQuota(quota)
                             ? quota.freeRemainingToday > 0
                               ? t('spaces.findPlace.enquire.emailQuotaRemaining', {
                                   count: quota.freeRemainingToday,
                                 })
-                              : t('spaces.findPlace.enquire.emailQuotaExhausted')
-                            : t('spaces.findPlace.enquire.emailQuotaFallback')}
+                              : paidCreditsOf(quota) > 0
+                                ? t('spaces.findPlace.enquire.emailQuotaPaid', {
+                                    count: paidCreditsOf(quota),
+                                  })
+                                : t('spaces.findPlace.enquire.emailQuotaExhausted')
+                            : null}
                         </Typography>
                         <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.3 }}>
                           {detailsReady
@@ -762,10 +827,15 @@ export function EnquireDialog({
                 </Typography>
               ) : null}
             </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 3 }}>
+            <DialogActions sx={{ px: 3, pb: 3, flexDirection: 'column', gap: 1 }}>
               <Button fullWidth onClick={resetAndClose} sx={ghostButtonSx}>
                 {t('spaces.findPlace.enquire.done')}
               </Button>
+              {env.isDevelopment ? (
+                <Button fullWidth onClick={() => void onResetLocalQuota()} sx={ghostButtonSx}>
+                  Reset today's limit (local only)
+                </Button>
+              ) : null}
             </DialogActions>
           </>
         ) : (

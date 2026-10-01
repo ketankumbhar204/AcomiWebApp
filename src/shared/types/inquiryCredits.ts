@@ -50,6 +50,8 @@ export type InquiryQuota = {
   freeRemainingToday: number;
   availableCredits: number;
   androidBillingMode?: AndroidInquiryBillingMode | string | null;
+  purchasesEnabled?: boolean;
+  unlimited?: boolean;
 };
 
 export type InquiryPurchaseStatus = 'PENDING' | 'APPROVED' | 'REJECTED';

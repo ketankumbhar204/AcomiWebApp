@@ -24,6 +24,7 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { inquiryCreditsApi } from '@/shared/api/inquiryCreditsApi';
 import { getErrorMessage } from '@/shared/api/errors';
 import { filesApi } from '@/shared/api/filesApi';
@@ -68,14 +69,25 @@ function CopyButton({ text }: { text: string }) {
 type Props = {
   open: boolean;
   onClose: () => void;
+  onQuotaReset?: () => void;
+  availableCredits?: number;
+  onContinueWithCredits?: () => void;
 };
 
 type View = 'main' | 'buy';
 
-export function InquiryLimitDialog({ open, onClose }: Props) {
+export function InquiryLimitDialog({
+  open,
+  onClose,
+  onQuotaReset,
+  availableCredits = 0,
+  onContinueWithCredits,
+}: Props) {
+  const { t } = useTranslation();
   const [view, setView] = useState<View>('main');
   const [config, setConfig] = useState<InquiryPaymentConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(false);
+  const [configError, setConfigError] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [selectedPkg, setSelectedPkg] = useState<InquiryPackage | null>(null);
   const [utr, setUtr] = useState('');
@@ -92,10 +104,13 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
       setSubmitting(false);
       setSubmitError(null);
       setSubmitted(false);
+      setConfigError(false);
       submittingRef.current = false;
       return;
     }
+    setView('main');
     setConfigLoading(true);
+    setConfigError(false);
     inquiryCreditsApi
       .getPaymentConfig()
       .then((cfg) => {
@@ -104,7 +119,10 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
           setSelectedPkg(cfg.packages[0] ?? null);
         }
       })
-      .catch(() => setConfig(null))
+      .catch(() => {
+        setConfig(null);
+        setConfigError(true);
+      })
       .finally(() => setConfigLoading(false));
   }, [open]);
 
@@ -124,18 +142,20 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
   }, [config?.qrUrl, config?.qrFileId]);
 
   async function handleSubmitPurchase() {
-    if (submittingRef.current || !selectedPkg || !utr.trim()) return;
+    if (submittingRef.current || !selectedPkg) return;
     submittingRef.current = true;
     setSubmitting(true);
     setSubmitError(null);
     try {
       await inquiryCreditsApi.createPurchase({
         packageId: selectedPkg.id,
-        utr: utr.trim(),
+        utr: utr.trim() || undefined,
       });
       setSubmitted(true);
     } catch (err) {
-      setSubmitError(getErrorMessage(err, 'Unable to submit request. Please try again.'));
+      setSubmitError(
+        getErrorMessage(err, t('spaces.findPlace.enquire.limitPaymentSubmitError')),
+      );
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -144,12 +164,15 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
 
   const primaryPkg = selectedPkg ?? config?.packages[0] ?? null;
   const creditsLabel = primaryPkg
-    ? `Get ${primaryPkg.credits} more enquiries`
-    : 'Get 30 more enquiries';
-  const priceLabel = primaryPkg ? `₹${primaryPkg.priceAmount}` : '₹9';
-  const buyCtaLabel = primaryPkg
-    ? `Get ${primaryPkg.credits} enquiries · ₹${primaryPkg.priceAmount}`
-    : 'Get 30 enquiries · ₹9';
+    ? t('spaces.findPlace.enquire.limitCreditsCta', {
+        count: primaryPkg.credits,
+        amount: primaryPkg.priceAmount,
+      })
+    : t('spaces.findPlace.enquire.limitCreditsCtaDefault');
+  const priceLabel = primaryPkg
+    ? t('spaces.findPlace.enquire.limitCreditsJust', { amount: primaryPkg.priceAmount })
+    : t('spaces.findPlace.enquire.limitCreditsJust', { amount: 9 });
+  const buyCtaLabel = creditsLabel;
 
   if (submitted) {
     return (
@@ -170,14 +193,16 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
           >
             <CheckCircle2 size={24} />
           </Box>
-          <Typography sx={{ mt: 2, fontWeight: 800, fontSize: 20 }}>Request submitted!</Typography>
+          <Typography sx={{ mt: 2, fontWeight: 800, fontSize: 20 }}>
+            {t('spaces.findPlace.enquire.limitPaymentPendingTitle')}
+          </Typography>
           <Typography color="text.secondary" sx={{ mt: 1, fontSize: 14 }}>
-            Credits will be added after payment verification.
+            {t('spaces.findPlace.enquire.limitPaymentPendingBody')}
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button fullWidth onClick={onClose} sx={dashContainedButtonSx}>
-            Done
+            {t('spaces.findPlace.enquire.limitDismiss')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -197,7 +222,7 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
           .join('\n')
       : null;
     const waUrl = waLink(config.whatsappNumber, waMessage);
-    const canSubmit = Boolean(selectedPkg && utr.trim());
+    const canSubmit = Boolean(selectedPkg);
 
     return (
       <Dialog
@@ -205,13 +230,24 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
         onClose={submitting ? undefined : onClose}
         fullWidth
         maxWidth="sm"
+        scroll="paper"
+        slotProps={{
+          paper: {
+            sx: {
+              m: { xs: 1.5, sm: 2 },
+              maxHeight: { xs: 'calc(100dvh - 24px)', sm: '90vh' },
+            },
+          },
+        }}
       >
-        <DialogTitle sx={{ fontWeight: 800 }}>Get more enquiries</DialogTitle>
-        <DialogContent dividers>
+        <DialogTitle sx={{ fontWeight: 800, pr: 2 }}>
+          {t('spaces.findPlace.enquire.limitBuyTitle')}
+        </DialogTitle>
+        <DialogContent dividers sx={{ px: { xs: 2, sm: 3 } }}>
           {config.packages.length > 0 ? (
             <Box sx={{ mb: 2.5 }}>
               <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-                Select package
+                {t('spaces.findPlace.enquire.limitSelectPackage')}
               </Typography>
               <Select
                 fullWidth
@@ -233,7 +269,7 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
           ) : null}
 
           <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-            Pay via UPI
+            {t('spaces.findPlace.enquire.limitPayViaUpi')}
           </Typography>
 
           {config.upiId ? (
@@ -253,15 +289,25 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
               <Typography sx={{ fontWeight: 700, flex: 1, fontSize: 15 }}>{config.upiId}</Typography>
               <CopyButton text={config.upiId} />
             </Box>
-          ) : null}
+          ) : (
+            <Typography color="warning.main" variant="body2" sx={{ mt: 1, mb: 2 }}>
+              {t('spaces.findPlace.enquire.limitUpiMissing')}
+            </Typography>
+          )}
 
           {qrUrl ? (
             <Box sx={{ mb: 2, textAlign: 'center' }}>
               <Box
                 component="img"
                 src={qrUrl}
-                alt="Payment QR code"
-                sx={{ maxWidth: 200, borderRadius: 2, border: `1px solid ${colors.border}` }}
+                alt={t('spaces.findPlace.enquire.limitQrAlt')}
+                sx={{
+                  width: '100%',
+                  maxWidth: 200,
+                  height: 'auto',
+                  borderRadius: 2,
+                  border: `1px solid ${colors.border}`,
+                }}
               />
             </Box>
           ) : null}
@@ -283,10 +329,14 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
                   '&:hover': { bgcolor: '#F0FDF4', borderColor: '#25D366' },
                 }}
               >
-                Message us on WhatsApp
+                {t('spaces.findPlace.enquire.limitWhatsappCta')}
               </Button>
             </Box>
-          ) : null}
+          ) : (
+            <Typography color="warning.main" variant="body2" sx={{ mb: 2 }}>
+              {t('spaces.findPlace.enquire.limitWhatsappMissing')}
+            </Typography>
+          )}
 
           {config.instructions ? (
             <Box
@@ -308,41 +358,50 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
           <Divider sx={{ my: 2 }} />
 
           <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-            Enter UTR / transaction reference
+            {t('spaces.findPlace.enquire.limitUtrLabel')}
           </Typography>
           <TextField
             fullWidth
             size="small"
-            placeholder="e.g. 406123456789"
+            placeholder={t('spaces.findPlace.enquire.limitUtrPlaceholder')}
             value={utr}
             disabled={submitting}
             onChange={(e) => setUtr(e.target.value)}
             sx={{ mt: 1, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
           />
           {submitError ? (
-            <Typography color="error" variant="body2" sx={{ mt: 1 }}>
+            <Typography color="error" variant="body2" sx={{ mt: 1 }} role="alert">
               {submitError}
             </Typography>
           ) : null}
         </DialogContent>
-        <DialogActions>
+        <DialogActions
+          sx={{
+            px: { xs: 2, sm: 3 },
+            pb: { xs: 2, sm: 2.5 },
+            flexDirection: { xs: 'column-reverse', sm: 'row' },
+            gap: 1,
+          }}
+        >
           <Button
             disabled={submitting}
+            fullWidth
             onClick={() => {
               setView('main');
               setSubmitError(null);
             }}
-            sx={dashOutlinedButtonSx}
+            sx={{ ...dashOutlinedButtonSx, width: { xs: '100%', sm: 'auto' } }}
           >
-            Back
+            {t('spaces.findPlace.enquire.back')}
           </Button>
           <Button
             disabled={submitting || !canSubmit}
+            fullWidth
             onClick={() => void handleSubmitPurchase()}
-            sx={dashContainedButtonSx}
+            sx={{ ...dashContainedButtonSx, width: { xs: '100%', sm: 'auto' } }}
           >
             {submitting ? <CircularProgress size={18} sx={{ mr: 1 }} /> : null}
-            Submit payment request
+            {t('spaces.findPlace.enquire.limitPaymentSubmit')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -350,8 +409,22 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
   }
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogContent sx={{ pt: 3.5, pb: 1, textAlign: 'center' }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="xs"
+      scroll="paper"
+      slotProps={{
+        paper: {
+          sx: {
+            m: { xs: 1.5, sm: 2 },
+            maxHeight: { xs: 'calc(100dvh - 24px)', sm: '90vh' },
+          },
+        },
+      }}
+    >
+      <DialogContent sx={{ pt: 3.5, pb: 1, textAlign: 'center', px: { xs: 2, sm: 3 } }}>
         <Box
           sx={{
             width: 48,
@@ -369,11 +442,25 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
           <AlertCircle size={24} />
         </Box>
         <Typography sx={{ fontWeight: 800, fontSize: 20, lineHeight: 1.25 }}>
-          Your 5 free enquiries are used
+          {config?.webFreeDailyLimit
+            ? t('spaces.findPlace.enquire.limitTitleWithCount', {
+                count: config.webFreeDailyLimit,
+              })
+            : t('spaces.findPlace.enquire.limitTitle')}
         </Typography>
         <Typography color="text.secondary" sx={{ mt: 0.75, fontSize: 14 }}>
-          Choose how to continue.
+          {t('spaces.findPlace.enquire.limitBody')}
         </Typography>
+
+        {availableCredits > 0 && onContinueWithCredits ? (
+          <Button
+            fullWidth
+            onClick={onContinueWithCredits}
+            sx={{ ...dashContainedButtonSx, mt: 2 }}
+          >
+            {t('spaces.findPlace.enquire.limitContinueWithCredits', { count: availableCredits })}
+          </Button>
+        ) : null}
 
         <Box
           sx={{
@@ -401,10 +488,10 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
           >
             <Smartphone size={20} color={colors.primary} />
             <Typography sx={{ mt: 1, fontWeight: 700, fontSize: 13, lineHeight: 1.3 }}>
-              Unlimited enquiries in ACOMI
+              {t('spaces.findPlace.enquire.limitAndroidCta')}
             </Typography>
             <Typography sx={{ mt: 0.25, fontSize: 12, color: 'text.secondary' }}>
-              Free on Android
+              {t('spaces.findPlace.enquire.limitAndroidNote')}
             </Typography>
             <Typography
               sx={{
@@ -417,7 +504,7 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
                 color: colors.primary,
               }}
             >
-              Get the ACOMI App <ExternalLink size={12} />
+              {t('spaces.findPlace.enquire.limitOpenApp')} <ExternalLink size={12} />
             </Typography>
           </Button>
 
@@ -445,15 +532,25 @@ export function InquiryLimitDialog({ open, onClose }: Props) {
               {priceLabel}
             </Typography>
             <Typography sx={{ mt: 1, fontSize: 12, fontWeight: 700, color: '#DC2626' }}>
-              {configLoading ? 'Loading…' : buyCtaLabel}
+              {configLoading ? t('auth.pleaseWait') : buyCtaLabel}
             </Typography>
           </Button>
         </Box>
+        {!configLoading && (configError || (config && !config.enabled)) ? (
+          <Typography color="text.secondary" sx={{ mt: 2, fontSize: 13 }} role="status">
+            {t('spaces.findPlace.enquire.limitPaymentUnavailable')}
+          </Typography>
+        ) : null}
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3 }}>
+      <DialogActions sx={{ px: 3, pb: 3, flexDirection: 'column', gap: 1 }}>
         <Button fullWidth onClick={onClose} sx={dashOutlinedButtonSx}>
-          Done
+          {t('spaces.findPlace.enquire.limitDismiss')}
         </Button>
+        {onQuotaReset ? (
+          <Button fullWidth onClick={onQuotaReset} sx={dashOutlinedButtonSx}>
+            {t('spaces.findPlace.enquire.limitResetQuota')}
+          </Button>
+        ) : null}
       </DialogActions>
     </Dialog>
   );

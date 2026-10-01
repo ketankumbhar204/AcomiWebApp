@@ -16,6 +16,8 @@ import {
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { CheckCircle2, Clock3, Search, XCircle } from 'lucide-react';
 import { useSnackbar } from 'notistack';
@@ -89,6 +91,8 @@ function StatusChip({ status }: { status: InquiryPurchaseStatus }) {
 
 export function AdminInquiryPurchaseListPage() {
   const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
+  const compact = useMediaQuery(theme.breakpoints.down('md'));
 
   const [rows, setRows] = useState<InquiryPurchaseResponse[]>([]);
   const [summary, setSummary] = useState<AdminInquiryPurchaseSummary | null>(null);
@@ -326,7 +330,7 @@ export function AdminInquiryPurchaseListPage() {
         </CardContent>
       </Card>
 
-      {/* Table */}
+      {/* Table on desktop; stacked cards on phone so Approve stays on screen */}
       <Card
         elevation={0}
         sx={{
@@ -337,6 +341,90 @@ export function AdminInquiryPurchaseListPage() {
           overflow: 'hidden',
         }}
       >
+        {compact ? (
+          <Stack spacing={1.25} sx={{ p: 1.5 }}>
+            {loading ? (
+              <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+                Loading…
+              </Typography>
+            ) : visibleRows.length === 0 ? (
+              <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+                No purchase requests found.
+              </Typography>
+            ) : (
+              visibleRows.map((row) => (
+                <Box
+                  key={row.id}
+                  sx={{
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: '12px',
+                    p: 1.5,
+                  }}
+                >
+                  <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography sx={{ fontWeight: 700, fontSize: 14 }} noWrap>
+                        {row.userFullName?.trim() || shortId(row.userId)}
+                      </Typography>
+                      <Typography sx={{ fontSize: 12, color: 'text.secondary' }} noWrap>
+                        {row.userMobileNumber || shortId(row.userId)}
+                      </Typography>
+                    </Box>
+                    <StatusChip status={row.status} />
+                  </Stack>
+                  <Typography sx={{ mt: 1, fontSize: 13 }}>
+                    {row.credits} credits · ₹{row.amount}
+                  </Typography>
+                  <Typography sx={{ fontSize: 12, color: 'text.secondary', wordBreak: 'break-all' }}>
+                    UTR {row.utr || '—'} · {formatDate(row.requestedAt)}
+                  </Typography>
+                  {row.status === 'PENDING' ? (
+                    <Stack direction="row" spacing={1} sx={{ mt: 1.25 }}>
+                      <Button
+                        fullWidth
+                        size="small"
+                        onClick={() => setActionTarget({ kind: 'approve', item: row })}
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 700,
+                          bgcolor: '#DCFCE7',
+                          color: '#15803D',
+                          borderRadius: '8px',
+                          '&:hover': { bgcolor: '#BBF7D0' },
+                        }}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        fullWidth
+                        size="small"
+                        onClick={() => setActionTarget({ kind: 'reject', item: row })}
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 700,
+                          bgcolor: '#FEE2E2',
+                          color: '#B91C1C',
+                          borderRadius: '8px',
+                          '&:hover': { bgcolor: '#FECACA' },
+                        }}
+                      >
+                        Reject
+                      </Button>
+                    </Stack>
+                  ) : (
+                    <Typography sx={{ mt: 1, fontSize: 12, color: 'text.secondary' }}>
+                      {row.verifiedAt ? formatDate(row.verifiedAt) : '—'}
+                      {row.status === 'REJECTED' && row.rejectionReason
+                        ? ` · ${row.rejectionReason}`
+                        : ''}
+                    </Typography>
+                  )}
+                </Box>
+              ))
+            )}
+          </Stack>
+        ) : (
         <Box sx={{ overflowX: 'auto' }}>
           <Table sx={{ minWidth: 860 }}>
             <TableHead>
@@ -464,6 +552,7 @@ export function AdminInquiryPurchaseListPage() {
             </TableBody>
           </Table>
         </Box>
+        )}
 
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
@@ -487,6 +576,8 @@ export function AdminInquiryPurchaseListPage() {
               onChange={(_, v) => setPage(v - 1)}
               color="primary"
               shape="rounded"
+              size={compact ? 'small' : 'medium'}
+              siblingCount={compact ? 0 : 1}
               sx={{ '& .Mui-selected': { bgcolor: '#22C55E !important', color: '#FFFFFF' } }}
             />
           ) : null}

@@ -32,6 +32,7 @@ export interface DiscoverSpaceCardResponse {
   mealPrice?: number | string | null;
   mapUrl?: string | null;
   hasContact?: boolean;
+  hasMobileContact?: boolean;
   ownedByCurrentUser?: boolean;
 }
 

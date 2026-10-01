@@ -56,7 +56,12 @@ export function AdminEnquiryDetailPage() {
     try {
       const updated = await adminEnquiryApi.share(id);
       setDetail(updated);
-      enqueueSnackbar(t('admin.enquiries.shareSuccess'), { variant: 'success' });
+      enqueueSnackbar(
+        updated.clientChannel === 'ANDROID'
+          ? t('admin.enquiries.shareSuccessApp')
+          : t('admin.enquiries.shareSuccess'),
+        { variant: 'success' },
+      );
     } catch (err) {
       enqueueSnackbar(getErrorMessage(err, t('admin.enquiries.shareFailed')), { variant: 'error' });
     } finally {
@@ -202,7 +207,7 @@ export function AdminEnquiryDetailPage() {
         <Stack spacing={2} sx={{ maxWidth: 420 }}>
           <Typography color="text.secondary">{t('admin.enquiries.shareFallbackHint')}</Typography>
           <Button disabled={busy} onClick={() => void share()} sx={dashContainedButtonSx}>
-            {t('admin.enquiries.share')}
+            {t('admin.enquiries.sendDetails')}
           </Button>
           <TextField
             label={t('admin.enquiries.rejectReason')}

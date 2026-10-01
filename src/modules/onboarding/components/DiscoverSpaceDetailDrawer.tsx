@@ -10,7 +10,9 @@ import {
   useTheme,
 } from '@mui/material';
 import {
+  BadgeCheck,
   BedDouble,
+  Check,
   Lock,
   MapPin,
   UserCheck,
@@ -26,12 +28,12 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DiscoverListingImage } from '@/modules/onboarding/components/DiscoverListingImage';
 import { EnquireDialog } from '@/modules/onboarding/components/EnquireDialog';
+import { ListingInfoChips } from '@/modules/onboarding/components/ListingInfoChips';
 import { AMENITY_VISUAL, spaceTypeLabelKey } from '@/modules/onboarding/components/createSpace/createSpaceVisuals';
 import { discoverDefaultImageUrl } from '@/modules/onboarding/utils/discoverDefaultImages';
 import {
   formatListingAddress,
   formatListingPriceInr,
-  hasListingLocation,
   humanizeAmenityCode,
 } from '@/modules/onboarding/utils/listingLocation';
 import { genderPolicyLabelKey } from '@/modules/onboarding/utils/spacePropertyCategory';
@@ -39,6 +41,7 @@ import { getErrorMessage } from '@/shared/api/errors';
 import { spaceDiscoverApi } from '@/shared/api/spaceDiscoverApi';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { ErrorState } from '@/shared/components/ErrorState';
+import { useAlreadyInquired, useInquirySentVia } from '@/shared/hooks/useAlreadyInquired';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { spaceDashboardPath } from '@/routes/paths';
@@ -154,6 +157,15 @@ export function DiscoverSpaceDetailDrawer({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const [enquireOpen, setEnquireOpen] = useState(false);
+  const alreadyInquired = useAlreadyInquired(spaceId);
+  const sentVia = useInquirySentVia(spaceId);
+  const sentWhere = sentVia === 'APP'
+    ? t('spaces.findPlace.inquirySentInApp', { defaultValue: 'Sent in the ACOMI app' })
+    : sentVia === 'BOTH'
+      ? t('spaces.findPlace.inquirySentEmailAndApp', { defaultValue: 'Sent to your email and the ACOMI app' })
+      : sentVia === 'EMAIL'
+        ? t('spaces.findPlace.inquirySentByEmail', { defaultValue: 'Sent to your email' })
+        : null;
   const autoEnquireOpened = useRef(false);
 
   const detailQuery = useQuery({
@@ -172,12 +184,12 @@ export function DiscoverSpaceDetailDrawer({
       autoEnquireOpened.current = false;
       return;
     }
-    if (!autoEnquire || !detail || detail.alreadyMember || autoEnquireOpened.current) {
+    if (!autoEnquire || !detail || detail.alreadyMember || alreadyInquired || autoEnquireOpened.current) {
       return;
     }
     autoEnquireOpened.current = true;
     setEnquireOpen(true);
-  }, [autoEnquire, detail, open]);
+  }, [alreadyInquired, autoEnquire, detail, open]);
 
   const genderLabel = detail?.genderPolicy
     ? t(genderPolicyLabelKey(detail.genderPolicy))
@@ -192,7 +204,6 @@ export function DiscoverSpaceDetailDrawer({
         address: detail.address,
       })
     : null;
-  const showLocation = detail ? hasListingLocation(detail, { latitude: detail.latitude, longitude: detail.longitude, mapUrl: detail.mapUrl }) : false;
   const priceCopy = detail ? listingPriceCopy(detail, t) : { primary: null, meal: null };
   const description = detail?.description?.trim() || null;
 
@@ -316,6 +327,21 @@ export function DiscoverSpaceDetailDrawer({
                         sx={{ height: 24, fontWeight: 700, bgcolor: '#DBEAFE', color: '#2563EB' }}
                       />
                     ) : null}
+                    {alreadyInquired ? (
+                      <Chip
+                        size="small"
+                        icon={<Check size={12} />}
+                        label={t('spaces.findPlace.inquirySent', { defaultValue: 'Inquiry sent' })}
+                        sx={{
+                          height: 24,
+                          bgcolor: '#FFEDD5',
+                          color: '#C2410C',
+                          fontWeight: 700,
+                          border: '1px solid #FDBA74',
+                          '& .MuiChip-icon': { color: '#C2410C', ml: 0.5 },
+                        }}
+                      />
+                    ) : null}
                     {detail.alreadyMember ? (
                       <Chip
                         size="small"
@@ -342,13 +368,52 @@ export function DiscoverSpaceDetailDrawer({
                   >
                     {detail.name}
                   </Typography>
+                  {alreadyInquired ? (
+                    <Typography
+                      sx={{
+                        mt: 0.75,
+                        display: 'inline-flex',
+                        maxWidth: '100%',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        color: '#C2410C',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <Check size={12} />
+                      {sentWhere
+                        ? `${t('spaces.findPlace.inquirySent', { defaultValue: 'Inquiry sent' })} · ${sentWhere}`
+                        : t('spaces.findPlace.inquirySent', { defaultValue: 'Inquiry sent' })}
+                    </Typography>
+                  ) : null}
                 </Box>
 
                 {priceCopy.primary ? (
                   <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', color: textPrimary }}>
                     {priceCopy.primary}
                   </Typography>
-                ) : null}
+                ) : (
+                  <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: textSecondary }}>
+                    {t('spaces.findPlace.priceOnRequest', { defaultValue: 'Price on request' })}
+                  </Typography>
+                )}
+
+                <Box sx={{ borderRadius: '16px', bgcolor: '#EAF8F2', p: 1.5 }}>
+                  <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mb: 1, color: '#0F6B4C' }}>
+                    <BadgeCheck size={14} />
+                    <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0F6B4C' }}>
+                      {t('spaces.findPlace.infoAvailable')}
+                    </Typography>
+                  </Stack>
+                  <ListingInfoChips
+                    listing={detail}
+                    variant="detail"
+                    surface={detail.type === 'MESS' ? 'meals' : 'places'}
+                    onEnquire={alreadyInquired ? undefined : () => setEnquireOpen(true)}
+                  />
+                </Box>
 
                 {keyDetails.length > 0 ? (
                   <Box>
@@ -415,7 +480,24 @@ export function DiscoverSpaceDetailDrawer({
                   </Box>
                 ) : null}
 
-                {showLocation ? (
+                <Box>
+                  <Typography sx={{ fontSize: '0.95rem', color: textPrimary, lineHeight: 1.5 }}>
+                    <Box component="span" sx={{ fontWeight: 800 }}>
+                      {t('spaces.findPlace.reviewsRatings', { defaultValue: 'Review & Ratings' })}
+                      {': '}
+                    </Box>
+                    {t('spaces.findPlace.notAvailable', { defaultValue: 'Not available' })}
+                  </Typography>
+                  <Typography sx={{ mt: 0.75, fontSize: '0.95rem', color: textPrimary, lineHeight: 1.5 }}>
+                    <Box component="span" sx={{ fontWeight: 800 }}>
+                      {t('spaces.findPlace.photos', { defaultValue: 'Photos' })}
+                      {': '}
+                    </Box>
+                    {t('spaces.findPlace.notAvailable', { defaultValue: 'Not available' })}
+                  </Typography>
+                </Box>
+
+                {formattedAddress || detail.mapUrl ? (
                   <Box>
                     <SectionLabel>{t('spaces.findPlace.location')}</SectionLabel>
                     {formattedAddress ? (
@@ -425,14 +507,8 @@ export function DiscoverSpaceDetailDrawer({
                           {formattedAddress}
                         </Typography>
                       </Stack>
-                    ) : (
-                      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'flex-start', mb: 1 }}>
-                        <MapPin size={16} style={{ flexShrink: 0, marginTop: 2, color: colors.teal }} />
-                        <Typography sx={{ fontSize: '0.95rem', color: textSecondary }}>
-                          {t('spaces.findPlace.locationAvailable')}
-                        </Typography>
-                      </Stack>
-                    )}
+                    ) : null}
+                    {detail.mapUrl && !alreadyInquired ? (
                     <Button
                       onClick={() => setEnquireOpen(true)}
                       aria-label={t('spaces.findPlace.openInGoogleMapsAria', { name: detail.name })}
@@ -449,6 +525,7 @@ export function DiscoverSpaceDetailDrawer({
                     >
                       {t('spaces.findPlace.openInGoogleMaps')}
                     </Button>
+                    ) : null}
                   </Box>
                 ) : null}
 
@@ -520,6 +597,39 @@ export function DiscoverSpaceDetailDrawer({
                 }}
               >
                 {t('spaces.findPlace.enquire.ownCta')}
+              </Button>
+            ) : alreadyInquired ? (
+              <Button
+                fullWidth
+                disabled
+                aria-disabled="true"
+                aria-label={sentWhere ? `${t('spaces.findPlace.inquirySent', { defaultValue: 'Inquiry sent' })}. ${sentWhere}` : undefined}
+                sx={{
+                  minHeight: 46,
+                  borderRadius: '12px',
+                  bgcolor: '#FFEDD5',
+                  color: '#C2410C',
+                  border: '1px solid #FDBA74',
+                  fontWeight: 700,
+                  textTransform: 'none',
+                  '&.Mui-disabled': {
+                    bgcolor: '#FFEDD5',
+                    color: '#C2410C',
+                    opacity: 1,
+                  },
+                }}
+              >
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.2 }}>
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+                    <Check size={16} />
+                    {t('spaces.findPlace.inquirySent', { defaultValue: 'Inquiry sent' })}
+                  </Box>
+                  {sentWhere ? (
+                    <Box component="span" sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#9A3412' }}>
+                      {sentWhere}
+                    </Box>
+                  ) : null}
+                </Box>
               </Button>
             ) : (
               <Button

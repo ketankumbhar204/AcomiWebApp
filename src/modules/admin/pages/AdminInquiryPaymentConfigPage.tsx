@@ -303,8 +303,9 @@ export function AdminInquiryPaymentConfigPage() {
                 <Box>
                   <Typography sx={{ fontWeight: 700 }}>Enable credit purchases</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Master switch for UPI purchase flow. Mobile purchases also require Android billing
-                    mode = Credits.
+                    On: free daily limit then ₹9 / 30 UPI + WhatsApp screenshot flow. Off: no daily
+                    limit and no paywall on web or mobile. Add UPI, QR, and WhatsApp below; approve
+                    under Credit payments.
                   </Typography>
                 </Box>
               }
@@ -325,11 +326,12 @@ export function AdminInquiryPaymentConfigPage() {
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
               />
               <TextField
-                label="WhatsApp number (digits only, without +91)"
+                label="WhatsApp number for payment screenshots"
                 value={whatsappNumber}
                 onChange={(e) => setWhatsappNumber(e.target.value)}
                 fullWidth
-                placeholder="9876543210"
+                placeholder="9198XXXXXXXX"
+                helperText="Seekers pay on UPI, then send the screenshot here. Use country code, e.g. 9198XXXXXXXX. Admin approves the request to add 30 enquiries."
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
               />
               <TextField
@@ -356,10 +358,14 @@ export function AdminInquiryPaymentConfigPage() {
               style={{ display: 'none' }}
               onChange={(e) => void handleQrFileChange(e)}
             />
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={2}
+              sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}>
               <Box
                 sx={{
-                  width: 140,
+                  width: { xs: '100%', sm: 140 },
+                  maxWidth: 180,
                   height: 140,
                   borderRadius: 2,
                   border: '1.5px dashed',
@@ -370,6 +376,7 @@ export function AdminInquiryPaymentConfigPage() {
                   overflow: 'hidden',
                   bgcolor: '#FAFBFC',
                   flexShrink: 0,
+                  alignSelf: { xs: 'center', sm: 'flex-start' },
                 }}>
                 {qrPreviewUrl ? (
                   <Box
@@ -382,13 +389,18 @@ export function AdminInquiryPaymentConfigPage() {
                   <Image size={36} color="#CBD5E1" />
                 )}
               </Box>
-              <Stack spacing={1}>
+              <Stack spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                 <Button
                   variant="outlined"
                   startIcon={qrUploading ? <CircularProgress size={14} /> : <Upload size={14} />}
                   disabled={qrUploading}
                   onClick={() => fileInputRef.current?.click()}
-                  sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '10px' }}>
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    borderRadius: '10px',
+                    width: { xs: '100%', sm: 'auto' },
+                  }}>
                   {qrUploading ? 'Uploading…' : qrPreviewUrl ? 'Replace QR' : 'Upload QR'}
                 </Button>
                 {qrFileId ? (
@@ -401,7 +413,12 @@ export function AdminInquiryPaymentConfigPage() {
                         setQrFileId(null);
                         setQrPreviewUrl(null);
                       }}
-                      sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '10px' }}>
+                      sx={{
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        borderRadius: '10px',
+                        width: { xs: '100%', sm: 'auto' },
+                      }}>
                       Remove
                     </Button>
                   </Tooltip>
@@ -429,7 +446,11 @@ export function AdminInquiryPaymentConfigPage() {
               size="small"
               value={webFreeDailyLimit}
               onChange={(e) => setWebFreeDailyLimit(Number(e.target.value))}
-              sx={{ maxWidth: 280, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+              sx={{
+                width: { xs: '100%', sm: 280 },
+                maxWidth: '100%',
+                '& .MuiOutlinedInput-root': { borderRadius: '10px' },
+              }}
               slotProps={{ htmlInput: { min: 0 } }}
             />
           </CardContent>
@@ -449,8 +470,8 @@ export function AdminInquiryPaymentConfigPage() {
               Controls whether in-app enquiries stay free or consume credits after a daily free
               allowance.
             </Typography>
-            <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }} sx={{ alignItems: 'flex-start' }}>
-              <FormControl size="small" sx={{ minWidth: 220 }}>
+            <Stack spacing={2} direction={{ xs: 'column', md: 'row' }} sx={{ alignItems: 'stretch' }}>
+              <FormControl size="small" sx={{ width: { xs: '100%', md: 220 }, minWidth: 0 }}>
                 <InputLabel id="android-billing-mode">Billing mode</InputLabel>
                 <Select
                   labelId="android-billing-mode"
@@ -471,7 +492,11 @@ export function AdminInquiryPaymentConfigPage() {
                 disabled={androidBillingMode === 'FREE'}
                 value={androidFreeDailyLimit}
                 onChange={(e) => setAndroidFreeDailyLimit(Number(e.target.value))}
-                sx={{ maxWidth: 280, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                sx={{
+                  width: { xs: '100%', md: 280 },
+                  maxWidth: '100%',
+                  '& .MuiOutlinedInput-root': { borderRadius: '10px' },
+                }}
                 slotProps={{ htmlInput: { min: 0 } }}
                 helperText={
                   androidBillingMode === 'FREE'
@@ -485,7 +510,11 @@ export function AdminInquiryPaymentConfigPage() {
                 size="small"
                 value={androidHourlyRateLimit}
                 onChange={(e) => setAndroidHourlyRateLimit(Number(e.target.value))}
-                sx={{ maxWidth: 200, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                sx={{
+                  width: { xs: '100%', md: 200 },
+                  maxWidth: '100%',
+                  '& .MuiOutlinedInput-root': { borderRadius: '10px' },
+                }}
                 slotProps={{ htmlInput: { min: 1 } }}
               />
             </Stack>
@@ -498,6 +527,25 @@ export function AdminInquiryPaymentConfigPage() {
           packages={mobilePackages}
           onChange={updatePkg}
         />
+      </Stack>
+
+      <Stack direction="row" sx={{ mt: 2.5, justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
+        <Button
+          variant="contained"
+          startIcon={saving ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : <Save size={16} />}
+          disabled={saving}
+          onClick={() => void handleSave()}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 700,
+            bgcolor: '#22C55E',
+            borderRadius: '10px',
+            px: 2.5,
+            width: { xs: '100%', sm: 'auto' },
+            '&:hover': { bgcolor: '#16A34A' },
+          }}>
+          {saving ? 'Saving…' : 'Save'}
+        </Button>
       </Stack>
     </Box>
   );

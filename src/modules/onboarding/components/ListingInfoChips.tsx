@@ -1,27 +1,11 @@
-import { Box, Stack, Typography } from '@mui/material';
-import {
-  CalendarDays,
-  ClipboardList,
-  Clock3,
-  IndianRupee,
-  Leaf,
-  Map,
-  MapPin,
-  Phone,
-  Sparkles,
-  UtensilsCrossed,
-  type LucideIcon,
-} from 'lucide-react';
+import { Box, Typography } from '@mui/material';
+import { IndianRupee, Map, MapPin, Phone, Sparkles, UtensilsCrossed, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
-  CARD_INFO_KEYS,
-  EXTRA_INFO_KEYS,
-  MEAL_EXTRA_INFO_KEYS,
+  INFO_GRID_KEYS,
   listingInfoFlags,
-  listingMealInfoFlags,
   type ListingInfoFlags,
   type ListingInfoSource,
-  type MealInfoFlags,
 } from '@/shared/utils/listingInfo';
 
 type ListingInfoChipsProps = {
@@ -40,127 +24,102 @@ const PLACE_LABELS: Record<keyof ListingInfoFlags, string> = {
   food: 'spaces.findPlace.infoFood',
 };
 
-const MEAL_LABELS: Record<keyof MealInfoFlags, string> = {
-  contact: 'spaces.findPlace.infoContact',
-  address: 'spaces.findPlace.infoAddress',
-  map: 'spaces.findPlace.infoMap',
-  rent: 'spaces.findPlace.infoPrice',
-  amenities: 'spaces.findPlace.infoAmenities',
-  food: 'spaces.findPlace.infoFood',
-  menu: 'spaces.findPlace.infoMenu',
-  mealTiming: 'spaces.findPlace.infoMealTiming',
-  foodType: 'spaces.findPlace.infoFoodType',
-  subscription: 'spaces.findPlace.infoSubscription',
-};
-
-const CHIP_ICONS: Record<string, LucideIcon> = {
+const CHIP_ICONS: Record<keyof ListingInfoFlags, LucideIcon> = {
   contact: Phone,
   address: MapPin,
   map: Map,
   rent: IndianRupee,
   amenities: Sparkles,
   food: UtensilsCrossed,
-  menu: ClipboardList,
-  mealTiming: Clock3,
-  foodType: Leaf,
-  subscription: CalendarDays,
 };
 
-export function ListingInfoChips({ listing, variant, surface = 'places', onEnquire }: ListingInfoChipsProps) {
+export function ListingInfoChips({ listing, surface = 'places', onEnquire }: ListingInfoChipsProps) {
   const { t } = useTranslation();
-  const compact = variant === 'card';
+  const flags = listingInfoFlags(listing);
   const meals = surface === 'meals';
-  const mealFlags = meals ? listingMealInfoFlags(listing) : null;
-  const placeFlags = meals ? null : listingInfoFlags(listing);
-  const flags = mealFlags ?? placeFlags;
-  if (!flags) {
-    return null;
-  }
-  const extras = mealFlags
-    ? MEAL_EXTRA_INFO_KEYS.filter((key) => mealFlags[key]).map((key) => ({
-        key,
-        available: true,
-        show: true,
-      }))
-    : EXTRA_INFO_KEYS.filter((key) => placeFlags?.[key]).map((key) => ({
-        key,
-        available: true,
-        show: true,
-      }));
-  const chips = [
-    ...CARD_INFO_KEYS.map((key) => ({
-      key,
-      available: flags[key],
-      show: variant === 'card' || flags[key],
-    })),
-    ...extras,
-  ].filter((item) => item.show);
-  if (chips.length === 0) {
-    return null;
-  }
 
   return (
-    <Stack
-      direction="row"
-      useFlexGap
-      spacing={1}
-      sx={{ flexWrap: 'wrap' }}
+    <Box
+      component="ul"
       aria-label={t('spaces.findPlace.infoAvailable', { defaultValue: 'Information available' })}
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 1,
+        m: 0,
+        p: 0,
+        listStyle: 'none',
+      }}
     >
-      {chips.map((chip) => {
-        const label = t(
-          meals
-            ? MEAL_LABELS[chip.key as keyof MealInfoFlags]
-            : PLACE_LABELS[chip.key as keyof ListingInfoFlags],
-          { defaultValue: chip.key },
+      {INFO_GRID_KEYS.map((key) => {
+        const available = flags[key];
+        const label = t(meals && key === 'rent' ? 'spaces.findPlace.infoPrice' : PLACE_LABELS[key], {
+          defaultValue: key,
+        });
+        const state = t(
+          available ? 'spaces.findPlace.infoAvailableState' : 'spaces.findPlace.infoUnavailableState',
+          { field: label },
         );
-        const Icon = CHIP_ICONS[chip.key] ?? Sparkles;
+        const Icon = CHIP_ICONS[key];
         return (
-          <Stack
-            key={chip.key}
-            component={onEnquire ? 'button' : 'div'}
-            type={onEnquire ? 'button' : undefined}
-            onClick={onEnquire}
-            direction="row"
-            spacing={0.75}
-            sx={{
-              alignItems: 'center',
-              border: chip.available ? '1px solid #C6EBD7' : '1px solid transparent',
-              bgcolor: chip.available ? '#fff' : 'rgba(255,255,255,0.5)',
-              px: compact ? 1 : 1.25,
-              py: compact ? 0.5 : 0.75,
-              boxShadow: chip.available ? '0 1px 2px rgba(11,28,22,0.04)' : 'none',
-              cursor: onEnquire ? 'pointer' : 'default',
-              '&:hover': onEnquire ? { bgcolor: '#F3FBF7' } : undefined,
-            }}
+          <Box
+            key={key}
+            component="li"
+            sx={{ minWidth: 0 }}
           >
             <Box
-              aria-hidden
+              component={onEnquire ? 'button' : 'div'}
+              type={onEnquire ? 'button' : undefined}
+              onClick={onEnquire}
+              aria-label={state}
               sx={{
-                width: compact ? 20 : 24,
-                height: compact ? 20 : 24,
-                borderRadius: '8px',
-                display: 'grid',
-                placeItems: 'center',
-                bgcolor: chip.available ? '#E8F8EF' : 'rgba(15,23,42,0.04)',
-                color: chip.available ? '#059669' : '#94A3B8',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                width: '100%',
+                minHeight: 40,
+                px: 1.25,
+                borderRadius: '12px',
+                border: '1px solid',
+                borderColor: available ? '#C6EBD7' : '#E6E8EC',
+                bgcolor: available ? '#F3FBF7' : '#F4F5F7',
+                color: available ? '#0F172A' : '#8B95A1',
+                cursor: onEnquire ? 'pointer' : 'default',
+                textAlign: 'left',
               }}
             >
-              <Icon size={compact ? 12 : 14} />
+              <Box
+                aria-hidden
+                sx={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: '8px',
+                  display: 'grid',
+                  placeItems: 'center',
+                  flexShrink: 0,
+                  bgcolor: '#fff',
+                  color: available ? '#059669' : '#A3ABB6',
+                }}
+              >
+                <Icon size={14} />
+              </Box>
+              <Typography
+                sx={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  lineHeight: 1.2,
+                  color: 'inherit',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {`${available ? '✓' : '—'} ${label}`}
+              </Typography>
             </Box>
-            <Typography
-              sx={{
-                fontSize: compact ? '0.6875rem' : '0.75rem',
-                fontWeight: 600,
-                color: chip.available ? '#0F172A' : '#94A3B8',
-                lineHeight: 1.2,
-              }}
-            >
-              {label}
-            </Typography>
-          </Stack>
+          </Box>
         );
       })}
-    </Stack>
+    </Box>
   );
 }
