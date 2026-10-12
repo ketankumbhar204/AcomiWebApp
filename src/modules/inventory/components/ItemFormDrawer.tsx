@@ -1,4 +1,5 @@
 import {
+  Autocomplete,
   Box,
   Button,
   FormControl,
@@ -10,7 +11,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { AppDrawer } from '@/shared/components/AppDrawer';
@@ -30,6 +31,7 @@ import {
   useInventorySuppliers,
 } from '../hooks/useInventory';
 import { defaultUnitsForSpace } from '../utils/inventoryHelpers';
+import { supplierWrite } from '../utils/inventorySupplier';
 
 type ItemFormDrawerProps = {
   open: boolean;
@@ -84,15 +86,26 @@ function ItemFormBody({
   const [location, setLocation] = useState(
     mode === 'edit' && item ? (item.location ?? '') : '',
   );
-  const [supplierId, setSupplierId] = useState(
-    mode === 'edit' && item ? (item.supplierId ?? '') : '',
+  const [supplierName, setSupplierName] = useState(
+    mode === 'edit' && item ? (item.supplierName?.trim() ?? '') : '',
   );
+  const supplierTouched = useRef(false);
   const [purchasePrice, setPurchasePrice] = useState(
     mode === 'edit' && item && item.purchasePrice != null
       ? String(item.purchasePrice)
       : '',
   );
   const [notes, setNotes] = useState(mode === 'edit' && item ? (item.notes ?? '') : '');
+
+  useEffect(() => {
+    if (supplierTouched.current || supplierName.trim() || mode !== 'edit' || !item?.supplierId) {
+      return;
+    }
+    const match = suppliers.suppliers.find((supplier) => supplier.supplierId === item.supplierId);
+    if (match?.name) {
+      setSupplierName(match.name);
+    }
+  }, [item?.supplierId, mode, supplierName, suppliers.suppliers]);
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -125,7 +138,7 @@ function ItemFormBody({
           openingStock: opening,
           minimumStock: min,
           location: location.trim() || null,
-          supplierId: supplierId || null,
+          ...supplierWrite(supplierName, suppliers.suppliers),
           purchasePrice: purchasePrice.trim() ? Number(purchasePrice) : null,
           notes: notes.trim() || null,
         };
@@ -140,7 +153,7 @@ function ItemFormBody({
           unit,
           minimumStock: min,
           location: location.trim() || null,
-          supplierId: supplierId || null,
+          ...supplierWrite(supplierName, suppliers.suppliers),
           purchasePrice: purchasePrice.trim() ? Number(purchasePrice) : null,
           notes: notes.trim() || null,
         };
@@ -238,21 +251,26 @@ function ItemFormBody({
         <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textSecondary, pt: 1 }}>
           {t('inventory.form.sectionPurchase')}
         </Typography>
-        <FormControl size="small" fullWidth>
-          <InputLabel>{t('inventory.form.supplier')}</InputLabel>
-          <Select
-            label={t('inventory.form.supplier')}
-            value={supplierId}
-            onChange={(e) => setSupplierId(String(e.target.value))}
-          >
-            <MenuItem value="">{t('inventory.form.noSupplier')}</MenuItem>
-            {suppliers.suppliers.map((s) => (
-              <MenuItem key={s.supplierId} value={s.supplierId}>
-                {s.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <Autocomplete
+          freeSolo
+          options={suppliers.suppliers.map((supplier) => supplier.name)}
+          inputValue={supplierName}
+          onInputChange={(_event, value, reason) => {
+            if (reason === 'reset') return;
+            supplierTouched.current = true;
+            setSupplierName(value);
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              size="small"
+              label={t('inventory.form.supplier')}
+              placeholder={t('inventory.form.supplierPlaceholder', {
+                defaultValue: 'Select or type a supplier',
+              })}
+            />
+          )}
+        />
         <TextField
           size="small"
           type="number"

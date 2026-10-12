@@ -1,5 +1,5 @@
 import type { PagedResponse } from './api';
-import type { SpaceType } from './space';
+import type { ListingPriceBasis, SpaceType } from './space';
 
 export type SystemRole = 'USER' | 'ADMIN';
 
@@ -184,6 +184,7 @@ export interface MessRegistrationDetail extends MessRegistrationListItem {
   latitude?: number | null;
   longitude?: number | null;
   monthlyPrice: number;
+  monthlyPriceBasis?: ListingPriceBasis | null;
   mealPrice: number;
   capacityEstimate?: number | null;
   convertedSpaceId?: string | null;
@@ -230,6 +231,7 @@ export interface AdminCreatePropertyRegistrationRequest {
   latitude?: number;
   longitude?: number;
   startingPrice?: number;
+  priceBasis?: ListingPriceBasis;
   capacityEstimate?: number;
   testLead?: boolean;
 }
@@ -254,6 +256,7 @@ export interface AdminCreateMessRegistrationRequest {
   latitude?: number;
   longitude?: number;
   monthlyPrice?: number;
+  monthlyPriceBasis?: ListingPriceBasis;
   mealPrice?: number;
   capacityEstimate?: number;
   testLead?: boolean;

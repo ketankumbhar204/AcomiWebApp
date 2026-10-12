@@ -8,7 +8,6 @@ import {
   Grid,
   InputAdornment,
   MenuItem,
-  Pagination,
   Select,
   Stack,
   Table,
@@ -32,7 +31,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useSnackbar } from 'notistack';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AdminEnquiryDetailDrawer } from '@/modules/admin/components/AdminEnquiryDetailDrawer';
@@ -50,7 +49,7 @@ import type {
   SpaceEnquiryStatus,
 } from '@/shared/types/enquiry';
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 20;
 
 type SortDir = 'asc' | 'desc';
 type DeleteTarget = { kind: 'one' | 'bulk'; ids: string[] };
@@ -112,9 +111,12 @@ export function AdminEnquiryListPage() {
   const [rows, setRows] = useState<AdminSpaceEnquiryListItem[]>([]);
   const [summary, setSummary] = useState<AdminEnquirySummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [totalElements, setTotalElements] = useState(0);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
@@ -133,7 +135,9 @@ export function AdminEnquiryListPage() {
   if (activeFilterKey !== filterKey) {
     setActiveFilterKey(filterKey);
     setPage(0);
+    setHasMore(false);
     setSelected(new Set());
+    setLoading(true);
   }
 
   useEffect(() => {
@@ -144,13 +148,6 @@ export function AdminEnquiryListPage() {
   const loadSummary = useCallback(() => {
     void adminEnquiryApi.summary().then(setSummary).catch(() => setSummary(null));
   }, []);
-
-  const requestKey = `${page}|${debouncedQ}|${status}|${requesterType}|${from}|${to}|${sortDir}`;
-  const [activeRequestKey, setActiveRequestKey] = useState(requestKey);
-  if (activeRequestKey !== requestKey) {
-    setActiveRequestKey(requestKey);
-    setLoading(true);
-  }
 
   useEffect(() => {
     loadSummary();
@@ -170,34 +167,64 @@ export function AdminEnquiryListPage() {
       })
       .then((result) => {
         if (!active) return;
-        const content = [...result.content];
-        content.sort((a, b) => {
-          const diff = new Date(a.requestedAt).getTime() - new Date(b.requestedAt).getTime();
-          return sortDir === 'asc' ? diff : -diff;
-        });
-        setRows(content);
-        setTotalPages(result.totalPages);
+        setRows((prev) => (page === 0 ? result.content : [...prev, ...result.content]));
         setTotalElements(result.totalElements);
+        setHasMore(!result.last && result.content.length > 0);
       })
       .catch(() => {
         if (!active) return;
-        setRows([]);
-        setTotalPages(0);
-        setTotalElements(0);
+        if (page === 0) {
+          setRows([]);
+          setTotalElements(0);
+        }
+        setHasMore(false);
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+          setLoadingMore(false);
+          loadingMoreRef.current = false;
+        }
       });
     return () => {
       active = false;
     };
-  }, [debouncedQ, from, page, requesterType, sortDir, status, to]);
+  }, [debouncedQ, from, page, requesterType, status, to]);
+
+  const visibleRows = useMemo(() => {
+    const content = [...rows];
+    content.sort((a, b) => {
+      const diff = new Date(a.requestedAt).getTime() - new Date(b.requestedAt).getTime();
+      return sortDir === 'asc' ? diff : -diff;
+    });
+    return content;
+  }, [rows, sortDir]);
 
   const drawerOpen = Boolean(routeEnquiryId);
-  const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.enquiryId));
+  const allSelected = visibleRows.length > 0 && visibleRows.every((row) => selected.has(row.enquiryId));
   const selectedCount = selected.size;
-  const showingFrom = totalElements === 0 ? 0 : page * PAGE_SIZE + 1;
-  const showingTo = Math.min((page + 1) * PAGE_SIZE, totalElements);
+  const showingFrom = totalElements === 0 ? 0 : 1;
+  const showingTo = visibleRows.length;
+
+  function loadMore() {
+    if (loading || loadingMoreRef.current || !hasMore) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    setPage((current) => current + 1);
+  }
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || loading || loadingMore || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) loadMore();
+      },
+      { rootMargin: '240px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  });
 
   const stats = useMemo(
     () => [
@@ -242,7 +269,7 @@ export function AdminEnquiryListPage() {
       setSelected(new Set());
       return;
     }
-    setSelected(new Set(rows.map((row) => row.enquiryId)));
+    setSelected(new Set(visibleRows.map((row) => row.enquiryId)));
   }
 
   function toggleOne(id: string) {
@@ -603,7 +630,7 @@ export function AdminEnquiryListPage() {
                     </Typography>
                   </TableCell>
                 </TableRow>
-              ) : rows.length === 0 ? (
+              ) : visibleRows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8}>
                     <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
@@ -612,7 +639,7 @@ export function AdminEnquiryListPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                rows.map((row) => {
+                visibleRows.map((row) => {
                   const requested = formatRequested(row.requestedAt);
                   const thumb = discoverDefaultImageUrl(row.spaceType ?? undefined);
                   return (
@@ -790,22 +817,11 @@ export function AdminEnquiryListPage() {
               total: totalElements,
             })}
           </Typography>
-          {totalPages > 1 ? (
-            <Pagination
-              count={totalPages}
-              page={page + 1}
-              onChange={(_, value) => setPage(value - 1)}
-              color="primary"
-              shape="rounded"
-              sx={{
-                '& .Mui-selected': {
-                  bgcolor: '#22C55E !important',
-                  color: '#FFFFFF',
-                },
-              }}
-            />
+          {loadingMore ? (
+            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{t('common.loading')}</Typography>
           ) : null}
         </Stack>
+        <Box ref={sentinelRef} sx={{ height: 1 }} />
       </Card>
 
       <AdminEnquiryDetailDrawer

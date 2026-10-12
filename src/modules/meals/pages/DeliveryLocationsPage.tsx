@@ -17,6 +17,12 @@ import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { spaceMealsPath } from '@/routes/paths';
 import type { MealDeliveryLocation } from '@/shared/types/meals';
 import { useDeliveryLocations, useMealMutations } from '../hooks/useMeals';
+import { AddressLocationFields } from '@/shared/components/AddressLocationFields';
+import {
+  EMPTY_ADDRESS_CAPTURE,
+  addressCaptureIssue,
+  composeStoredAddress,
+} from '@/modules/onboarding/utils/locationAutocomplete';
 
 export function DeliveryLocationsPage() {
   const { t } = useTranslation();
@@ -28,7 +34,7 @@ export function DeliveryLocationsPage() {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
-  const [address, setAddress] = useState('');
+  const [location, setLocation] = useState(EMPTY_ADDRESS_CAPTURE);
 
   useEffect(() => {
     document.title = `${t('meals.deliveryLocations.title')} · ${t('common.appName')}`;
@@ -94,15 +100,22 @@ export function DeliveryLocationsPage() {
       enqueueSnackbar(t('meals.deliveryLocations.nameRequired'), { variant: 'warning' });
       return;
     }
+    if (addressCaptureIssue(location) === 'selection') {
+      enqueueSnackbar(
+        t('locationCapture.selectionRequired', { defaultValue: 'Select a location from the suggestions.' }),
+        { variant: 'warning' },
+      );
+      return;
+    }
     try {
       await mutations.createDeliveryLocation.mutateAsync({
         name: name.trim(),
-        address: address.trim() || undefined,
+        address: composeStoredAddress(location) || undefined,
       });
       enqueueSnackbar(t('meals.deliveryLocations.createSuccess'), { variant: 'success' });
       setOpen(false);
       setName('');
-      setAddress('');
+      setLocation(EMPTY_ADDRESS_CAPTURE);
     } catch {
       enqueueSnackbar(t('common.errors.generic'), { variant: 'error' });
     }
@@ -162,15 +175,7 @@ export function DeliveryLocationsPage() {
               fullWidth
               required
             />
-            <TextField
-              label={t('meals.deliveryLocations.address')}
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder={t('meals.deliveryLocations.addressPlaceholder')}
-              fullWidth
-              multiline
-              minRows={2}
-            />
+            <AddressLocationFields value={location} onChange={setLocation} />
           </Stack>
           <StickyFooter>
             <Button onClick={() => setOpen(false)} sx={dashOutlinedButtonSx}>

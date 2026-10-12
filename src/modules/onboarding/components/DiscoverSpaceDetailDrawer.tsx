@@ -1,7 +1,7 @@
 import {
   Box,
   Button,
-  Chip,
+  CircularProgress,
   IconButton,
   Skeleton,
   Stack,
@@ -9,25 +9,20 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import {
-  BadgeCheck,
-  BedDouble,
-  Check,
-  Lock,
-  MapPin,
-  UserCheck,
-  Users,
-  UtensilsCrossed,
-  X,
-  type LucideIcon,
-} from 'lucide-react';
+import { BadgeCheck, Check, Map, MapPin, Phone, X } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DiscoverListingImage } from '@/modules/onboarding/components/DiscoverListingImage';
+import { FavoriteHeartButton } from '@/modules/onboarding/components/FavoriteHeartButton';
 import { EnquireDialog } from '@/modules/onboarding/components/EnquireDialog';
+import { InquirySentDetails } from '@/modules/onboarding/components/InquirySentDetails';
+import { OwnerContactCard } from '@/modules/onboarding/components/OwnerContactCard';
+import { PhotoRequestAction } from '@/modules/onboarding/components/PhotoRequestAction';
+import { hasActualListingPhotos } from '@/shared/utils/photoRequest';
+import { useIsEnquirySending } from '@/modules/onboarding/enquiryFeedback';
 import { ListingInfoChips } from '@/modules/onboarding/components/ListingInfoChips';
 import { AMENITY_VISUAL, spaceTypeLabelKey } from '@/modules/onboarding/components/createSpace/createSpaceVisuals';
 import { discoverDefaultImageUrl } from '@/modules/onboarding/utils/discoverDefaultImages';
@@ -36,14 +31,17 @@ import {
   formatListingPriceInr,
   humanizeAmenityCode,
 } from '@/modules/onboarding/utils/listingLocation';
-import { genderPolicyLabelKey } from '@/modules/onboarding/utils/spacePropertyCategory';
+import { listingPriceSuffix } from '@/shared/utils/priceBasis';
+import { ListingFacts, TypeChip } from '@/modules/onboarding/components/ListingFacts';
+import { enquiryApi } from '@/shared/api/enquiryApi';
 import { getErrorMessage } from '@/shared/api/errors';
 import { spaceDiscoverApi } from '@/shared/api/spaceDiscoverApi';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { ErrorState } from '@/shared/components/ErrorState';
-import { useAlreadyInquired, useInquirySentVia } from '@/shared/hooks/useAlreadyInquired';
+import { useAlreadyInquired, useContactViewed } from '@/shared/hooks/useAlreadyInquired';
+import type { OwnerContactResponse } from '@/shared/types/enquiry';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
 import { spaceDashboardPath } from '@/routes/paths';
 import type { AmenityAssignment, DiscoverSpaceDetailResponse } from '@/shared/types/space';
 
@@ -55,94 +53,38 @@ type DiscoverSpaceDetailDrawerProps = {
   autoEnquire?: boolean;
 };
 
-type KeyDetail = {
-  key: string;
-  label: string;
-  value: string;
-  Icon: LucideIcon;
-};
-
 function amenityLabel(item: AmenityAssignment): string {
   const label = item.label?.trim();
   if (label && !label.includes('_')) return label;
   return humanizeAmenityCode(item.code) || label || item.code;
 }
 
-function listingPriceCopy(
+function detailPriceParts(
   detail: DiscoverSpaceDetailResponse,
   t: TFunction,
-): { primary: string | null; meal: string | null } {
+): { amount: string | null; suffix: string | null } {
   const starting = formatListingPriceInr(detail.startingPrice);
   if (starting) {
-    const key =
-      detail.priceBasis === 'PER_BED'
-        ? 'spaces.findPlace.startingFromPerBed'
-        : detail.priceBasis === 'PER_ROOM'
-          ? 'spaces.findPlace.startingFromPerRoom'
-          : 'spaces.findPlace.startingFrom';
-    return { primary: t(key, { price: starting }), meal: null };
-  }
-  const monthly = formatListingPriceInr(detail.monthlyPrice);
-  const meal = formatListingPriceInr(detail.mealPrice);
-  if (monthly) {
     return {
-      primary: t('spaces.findPlace.startingFrom', { price: monthly }),
-      meal: meal ? t('spaces.findPlace.mealPriceLine', { price: meal }) : null,
+      amount: starting,
+      suffix: listingPriceSuffix(t, detail.type, detail.priceBasis),
     };
   }
-  if (meal) {
-    return { primary: t('spaces.findPlace.startingFromPerMeal', { price: meal }), meal: null };
+  const monthly = formatListingPriceInr(detail.monthlyPrice);
+  if (monthly) {
+    return {
+      amount: monthly,
+      suffix: listingPriceSuffix(t, detail.type, detail.priceBasis),
+    };
   }
-  return { primary: null, meal: null };
-}
-
-function KeyDetailCard({ item, textPrimary }: { item: KeyDetail; textPrimary: string }) {
-  const Icon = item.Icon;
-  return (
-    <Box
-      sx={{
-        p: 1.25,
-        borderRadius: '12px',
-        bgcolor: colors.mintSubtle,
-        minWidth: 0,
-      }}
-    >
-      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mb: 0.35 }}>
-        <Icon size={14} color={colors.teal} aria-hidden />
-        <Typography
-          sx={{
-            fontSize: '0.7rem',
-            fontWeight: 800,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            color: colors.muted,
-          }}
-        >
-          {item.label}
-        </Typography>
-      </Stack>
-      <Typography sx={{ fontSize: '0.92rem', fontWeight: 700, color: textPrimary, lineHeight: 1.35, wordBreak: 'break-word' }}>
-        {item.value}
-      </Typography>
-    </Box>
-  );
-}
-
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <Typography
-      sx={{
-        fontSize: '0.78rem',
-        fontWeight: 800,
-        letterSpacing: '0.06em',
-        textTransform: 'uppercase',
-        color: colors.muted,
-        mb: 1,
-      }}
-    >
-      {children}
-    </Typography>
-  );
+  const meal = formatListingPriceInr(detail.mealPrice);
+  if (meal) {
+    return {
+      amount: meal,
+      suffix: t('spaces.findPlace.mealPriceSuffix', { defaultValue: '/ meal' }),
+    };
+  }
+  return { amount: null, suffix: null };
 }
 
 export function DiscoverSpaceDetailDrawer({
@@ -157,15 +99,10 @@ export function DiscoverSpaceDetailDrawer({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const [enquireOpen, setEnquireOpen] = useState(false);
+  const [liveContact, setLiveContact] = useState<OwnerContactResponse | null>(null);
   const alreadyInquired = useAlreadyInquired(spaceId);
-  const sentVia = useInquirySentVia(spaceId);
-  const sentWhere = sentVia === 'APP'
-    ? t('spaces.findPlace.inquirySentInApp', { defaultValue: 'Sent in the ACOMI app' })
-    : sentVia === 'BOTH'
-      ? t('spaces.findPlace.inquirySentEmailAndApp', { defaultValue: 'Sent to your email and the ACOMI app' })
-      : sentVia === 'EMAIL'
-        ? t('spaces.findPlace.inquirySentByEmail', { defaultValue: 'Sent to your email' })
-        : null;
+  const contactViewed = useContactViewed(spaceId);
+  const sendingEnquiry = useIsEnquirySending(spaceId);
   const autoEnquireOpened = useRef(false);
 
   const detailQuery = useQuery({
@@ -174,10 +111,21 @@ export function DiscoverSpaceDetailDrawer({
     enabled: open && Boolean(spaceId),
   });
 
+  const revealedQuery = useQuery({
+    queryKey: ['revealed-contact', spaceId],
+    queryFn: () => enquiryApi.revealedContact(spaceId!),
+    enabled: open && Boolean(spaceId) && contactViewed && !liveContact,
+  });
+  const revealed = liveContact ?? revealedQuery.data ?? null;
+
   const detail = detailQuery.data;
   const amenityItems =
     detail?.amenities?.filter((a) => a.label || a.code) ??
     (detail?.amenityLabels ?? []).map((label) => ({ code: label, label }));
+
+  useEffect(() => {
+    setLiveContact(null);
+  }, [spaceId]);
 
   useEffect(() => {
     if (!open) {
@@ -191,10 +139,6 @@ export function DiscoverSpaceDetailDrawer({
     setEnquireOpen(true);
   }, [alreadyInquired, autoEnquire, detail, open]);
 
-  const genderLabel = detail?.genderPolicy
-    ? t(genderPolicyLabelKey(detail.genderPolicy))
-    : null;
-
   const formattedAddress = detail
     ? formatListingAddress({
         addressLine: detail.addressLine,
@@ -204,78 +148,50 @@ export function DiscoverSpaceDetailDrawer({
         address: detail.address,
       })
     : null;
-  const priceCopy = detail ? listingPriceCopy(detail, t) : { primary: null, meal: null };
+  const priceParts = detail ? detailPriceParts(detail, t) : { amount: null, suffix: null };
   const description = detail?.description?.trim() || null;
-
-  const keyDetails: KeyDetail[] = [];
-  if (detail && genderLabel) {
-    keyDetails.push({
-      key: 'gender',
-      label: t('spaces.findPlace.details.gender'),
-      value: genderLabel,
-      Icon: Users,
-    });
-  }
-  if (detail?.sharingNotes?.trim()) {
-    keyDetails.push({
-      key: 'sharing',
-      label: t('spaces.findPlace.details.sharing'),
-      value: detail.sharingNotes.trim(),
-      Icon: BedDouble,
-    });
-  }
-  if (detail?.foodIncludedInRent) {
-    keyDetails.push({
-      key: 'food',
-      label: t('spaces.findPlace.details.food'),
-      value: t('spaces.findPlace.mealsIncluded'),
-      Icon: UtensilsCrossed,
-    });
-  }
-  if (priceCopy.meal) {
-    keyDetails.push({
-      key: 'meal-price',
-      label: t('spaces.findPlace.details.mealPrice'),
-      value: priceCopy.meal,
-      Icon: UtensilsCrossed,
-    });
-  }
+  const unlocked = Boolean(revealed) || contactViewed || alreadyInquired;
+  const mapHref = detail?.mapUrl?.trim() || '';
 
   const textPrimary = isDark ? theme.palette.text.primary : colors.textPrimary;
   const textSecondary = isDark ? theme.palette.text.secondary : colors.textSecondary;
   const border = isDark ? theme.palette.divider : colors.border;
-  const canEnquire = Boolean(detail && !detail.alreadyMember && !detail.ownedByCurrentUser);
 
   return (
-    <AppDrawer open={open} onClose={onClose} width={isMobile ? '100%' : 480}>
+    <AppDrawer open={open} onClose={onClose} width={isMobile ? '100%' : 672}>
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <Stack
           direction="row"
           sx={{
             alignItems: 'center',
             justifyContent: 'space-between',
-            px: 2,
-            py: 1.5,
+            px: 2.5,
+            py: 2,
             borderBottom: `1px solid ${border}`,
           }}
         >
-          <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: textPrimary }} noWrap>
+          <Typography sx={{ fontWeight: 600, fontSize: '1.125rem', color: textPrimary }} noWrap>
             {detail?.name ?? t('spaces.findPlace.detailTitle')}
           </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            {spaceId ? (
+              <FavoriteHeartButton spaceId={spaceId} listingName={detail?.name} />
+            ) : null}
           <IconButton
             size="small"
             onClick={onClose}
             aria-label={t('spaces.findPlace.close')}
             sx={{ color: textSecondary }}
           >
-            <X size={18} />
+            <X size={20} />
           </IconButton>
+          </Box>
         </Stack>
 
         <Box sx={{ flex: 1, overflow: 'auto' }}>
           {detailQuery.isLoading ? (
-            <Stack spacing={1.5} sx={{ p: 2 }}>
-              <Skeleton variant="rounded" height={200} />
+            <Stack spacing={1.5} sx={{ p: 2.5 }}>
+              <Skeleton variant="rounded" height={200} sx={{ borderRadius: '24px' }} />
               <Skeleton variant="text" width="70%" height={28} />
               <Skeleton variant="text" width="90%" />
               <Skeleton variant="rounded" height={120} />
@@ -283,7 +199,7 @@ export function DiscoverSpaceDetailDrawer({
           ) : null}
 
           {detailQuery.isError ? (
-            <Box sx={{ p: 2 }}>
+            <Box sx={{ p: 2.5 }}>
               <ErrorState
                 message={getErrorMessage(detailQuery.error, t('spaces.findPlace.errorLoad'))}
                 onRetry={() => void detailQuery.refetch()}
@@ -292,202 +208,179 @@ export function DiscoverSpaceDetailDrawer({
           ) : null}
 
           {detail ? (
-            <Stack spacing={0}>
+            <Stack spacing={0} sx={{ minHeight: '100%', p: 2.5, boxSizing: 'border-box' }}>
               <Box
                 sx={{
                   position: 'relative',
-                  height: { xs: 200, sm: 220 },
-                  bgcolor: colors.mintSubtle,
+                  aspectRatio: '16 / 10',
+                  borderRadius: '24px',
                   overflow: 'hidden',
+                  border: '1px solid rgba(0,0,0,0.05)',
+                  bgcolor: '#fff',
+                  boxShadow: '0 1px 2px rgba(15,23,42,0.06)',
                 }}
               >
                 <DiscoverListingImage
                   src={discoverDefaultImageUrl(detail.type, detail.spaceId)}
                   alt={detail.name}
                 />
-              </Box>
-
-              <Stack spacing={2} sx={{ p: 2.25 }}>
-                <Box>
-                  <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', mb: 1 }}>
-                    <Chip
-                      size="small"
-                      label={t(spaceTypeLabelKey(detail.type))}
-                      sx={{
-                        height: 24,
-                        fontWeight: 800,
-                        bgcolor: colors.mintSubtle,
-                        color: colors.teal,
-                      }}
-                    />
-                    {genderLabel ? (
-                      <Chip
-                        size="small"
-                        label={genderLabel}
-                        sx={{ height: 24, fontWeight: 700, bgcolor: '#DBEAFE', color: '#2563EB' }}
-                      />
-                    ) : null}
-                    {alreadyInquired ? (
-                      <Chip
-                        size="small"
-                        icon={<Check size={12} />}
-                        label={t('spaces.findPlace.inquirySent', { defaultValue: 'Inquiry sent' })}
-                        sx={{
-                          height: 24,
-                          bgcolor: '#FFEDD5',
-                          color: '#C2410C',
-                          fontWeight: 700,
-                          border: '1px solid #FDBA74',
-                          '& .MuiChip-icon': { color: '#C2410C', ml: 0.5 },
-                        }}
-                      />
-                    ) : null}
-                    {detail.alreadyMember ? (
-                      <Chip
-                        size="small"
-                        icon={<UserCheck size={12} />}
-                        label={t('spaces.findPlace.alreadyMember')}
-                        sx={{
-                          height: 24,
-                          bgcolor: colors.selected,
-                          color: colors.teal,
-                          fontWeight: 700,
-                          '& .MuiChip-icon': { color: colors.teal, ml: 0.5 },
-                        }}
-                      />
-                    ) : null}
-                  </Stack>
-                  <Typography
+                {alreadyInquired ? (
+                  <Box
                     sx={{
-                      fontWeight: 800,
-                      fontSize: '1.35rem',
-                      letterSpacing: '-0.02em',
-                      color: textPrimary,
-                      lineHeight: 1.2,
+                      position: 'absolute',
+                      top: 12,
+                      left: 12,
+                      zIndex: 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: '6px',
+                      bgcolor: '#FFEDD5',
+                      color: '#C2410C',
+                      border: '1px solid #FDBA74',
+                      fontSize: 11,
+                      fontWeight: 700,
                     }}
                   >
-                    {detail.name}
-                  </Typography>
-                  {alreadyInquired ? (
-                    <Typography
-                      sx={{
-                        mt: 0.75,
-                        display: 'inline-flex',
-                        maxWidth: '100%',
-                        alignItems: 'center',
-                        gap: 0.5,
-                        color: '#C2410C',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      <Check size={12} />
-                      {sentWhere
-                        ? `${t('spaces.findPlace.inquirySent', { defaultValue: 'Inquiry sent' })} · ${sentWhere}`
-                        : t('spaces.findPlace.inquirySent', { defaultValue: 'Inquiry sent' })}
-                    </Typography>
+                    <Check size={12} />
+                    {t('spaces.findPlace.inquirySent', { defaultValue: 'Inquiry sent' })}
+                  </Box>
+                ) : null}
+              </Box>
+
+              <Box sx={{ mt: 2 }}>
+                <ListingFacts
+                  leading={<TypeChip label={t(spaceTypeLabelKey(detail.type))} />}
+                  genderPolicy={detail.genderPolicy}
+                  sharingNotes={detail.sharingNotes}
+                  foodAvailability={detail.foodAvailability}
+                  foodIncludedInRent={detail.foodIncludedInRent}
+                />
+              </Box>
+
+              <Typography
+                sx={{
+                  mt: 1,
+                  fontWeight: 600,
+                  fontSize: '1.35rem',
+                  letterSpacing: '-0.02em',
+                  color: textPrimary,
+                  lineHeight: 1.2,
+                }}
+              >
+                {detail.name}
+              </Typography>
+
+              {contactViewed ? (
+                <Typography sx={{ mt: 1.5, fontSize: 13, fontWeight: 700, color: '#0F6B4C' }}>
+                  {t('spaces.findPlace.contactDetailsViewed', { defaultValue: 'Contact details viewed' })}
+                </Typography>
+              ) : null}
+
+              <OwnerContactCard contact={revealed} mapUrl={unlocked ? detail.mapUrl : null} />
+              {alreadyInquired ? <InquirySentDetails listingId={detail.spaceId} /> : null}
+
+              {formattedAddress ? (
+                <Typography
+                  sx={{
+                    mt: 1,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 0.75,
+                    fontSize: 13,
+                    color: textSecondary,
+                  }}
+                >
+                  <MapPin size={16} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />
+                  {formattedAddress}
+                </Typography>
+              ) : null}
+
+              {priceParts.amount ? (
+                <Typography sx={{ mt: 2, fontWeight: 600, fontSize: '1.35rem', color: textPrimary }}>
+                  {priceParts.amount}
+                  {priceParts.suffix ? (
+                    <Box component="span" sx={{ ml: 0.75, fontSize: 12, fontWeight: 500, color: textSecondary }}>
+                      {priceParts.suffix}
+                    </Box>
                   ) : null}
+                </Typography>
+              ) : (
+                <Typography sx={{ mt: 2, fontWeight: 500, fontSize: 15, color: textSecondary }}>
+                  {t('spaces.findPlace.priceOnRequest', { defaultValue: 'Price on request' })}
+                </Typography>
+              )}
+
+              {description ? (
+                <Box sx={{ mt: 2.5 }}>
+                  <Typography sx={{ fontSize: 14, fontWeight: 700, color: textPrimary }}>
+                    {t('spaces.findPlace.aboutThisPlace')}
+                  </Typography>
+                  <Typography sx={{ mt: 1, fontSize: 13, color: textSecondary, lineHeight: 1.55 }}>
+                    {description}
+                  </Typography>
                 </Box>
+              ) : null}
 
-                {priceCopy.primary ? (
-                  <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', color: textPrimary }}>
-                    {priceCopy.primary}
+              {detail.sharingNotes ? (
+                <Box sx={{ mt: 2.5 }}>
+                  <Typography sx={{ fontSize: 14, fontWeight: 700, color: textPrimary }}>
+                    {t('spaces.findPlace.details.sharing')}
                   </Typography>
-                ) : (
-                  <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: textSecondary }}>
-                    {t('spaces.findPlace.priceOnRequest', { defaultValue: 'Price on request' })}
+                  <Typography sx={{ mt: 1, fontSize: 13, color: textSecondary, lineHeight: 1.55 }}>
+                    {detail.sharingNotes}
                   </Typography>
-                )}
-
-                <Box sx={{ borderRadius: '16px', bgcolor: '#EAF8F2', p: 1.5 }}>
-                  <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mb: 1, color: '#0F6B4C' }}>
-                    <BadgeCheck size={14} />
-                    <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0F6B4C' }}>
-                      {t('spaces.findPlace.infoAvailable')}
-                    </Typography>
-                  </Stack>
-                  <ListingInfoChips
-                    listing={detail}
-                    variant="detail"
-                    surface={detail.type === 'MESS' ? 'meals' : 'places'}
-                    onEnquire={alreadyInquired ? undefined : () => setEnquireOpen(true)}
-                  />
                 </Box>
+              ) : null}
 
-                {keyDetails.length > 0 ? (
-                  <Box>
-                    <SectionLabel>{t('spaces.findPlace.keyDetails')}</SectionLabel>
-                    <Box
-                      sx={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        gap: 1,
-                      }}
-                    >
-                      {keyDetails.map((item) => (
-                        <KeyDetailCard key={item.key} item={item} textPrimary={textPrimary} />
-                      ))}
-                    </Box>
-                  </Box>
-                ) : null}
-
-                {description ? (
-                  <Box>
-                    <SectionLabel>{t('spaces.findPlace.aboutThisPlace')}</SectionLabel>
-                    <Typography sx={{ fontSize: '0.95rem', color: textPrimary, lineHeight: 1.55 }}>
-                      {description}
-                    </Typography>
-                  </Box>
-                ) : null}
-
-                {amenityItems.length > 0 ? (
-                  <Box>
-                    <SectionLabel>{t('spaces.findPlace.amenities')}</SectionLabel>
-                    <Stack
-                      direction="row"
-                      spacing={0.75}
-                      useFlexGap
-                      sx={{ flexWrap: 'wrap' }}
-                      role="list"
-                      aria-label={t('spaces.findPlace.amenities')}
-                    >
-                      {amenityItems.map((item) => {
-                        const code = item.code?.toUpperCase() ?? '';
-                        const visual = code in AMENITY_VISUAL ? AMENITY_VISUAL[code as keyof typeof AMENITY_VISUAL] : null;
-                        const Icon = visual?.icon;
-                        const label = amenityLabel(item);
-                        return (
-                          <Chip
-                            key={`${item.code}-${item.label}`}
-                            role="listitem"
-                            size="small"
-                            icon={Icon ? <Icon size={13} /> : undefined}
-                            label={label}
-                            sx={{
-                              bgcolor: visual?.tint ?? colors.surfaceSecondary,
-                              color: visual?.accent ?? colors.textSecondary,
-                              fontWeight: 600,
-                              '& .MuiChip-icon': {
-                                color: visual?.accent ?? colors.textSecondary,
-                                ml: 0.5,
-                              },
-                            }}
-                          />
-                        );
-                      })}
-                    </Stack>
-                  </Box>
-                ) : null}
-
-                <Box>
-                  <Typography sx={{ fontSize: '0.95rem', color: textPrimary, lineHeight: 1.5 }}>
-                    <Box component="span" sx={{ fontWeight: 800 }}>
-                      {t('spaces.findPlace.reviewsRatings', { defaultValue: 'Review & Ratings' })}
-                      {': '}
-                    </Box>
-                    {t('spaces.findPlace.notAvailable', { defaultValue: 'Not available' })}
+              {amenityItems.length > 0 ? (
+                <Box sx={{ mt: 2.5 }}>
+                  <Typography sx={{ fontSize: 14, fontWeight: 700, color: textPrimary }}>
+                    {t('spaces.findPlace.amenities')}
                   </Typography>
+                  <Box
+                    component="ul"
+                    sx={{
+                      mt: 1.5,
+                      m: 0,
+                      p: 0,
+                      listStyle: 'none',
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 1,
+                    }}
+                  >
+                    {amenityItems.map((item) => {
+                      const code = item.code?.toUpperCase() ?? '';
+                      const visual = code in AMENITY_VISUAL ? AMENITY_VISUAL[code as keyof typeof AMENITY_VISUAL] : null;
+                      const Icon = visual?.icon;
+                      const label = amenityLabel(item);
+                      return (
+                        <Box
+                          component="li"
+                          key={`${item.code}-${item.label}`}
+                          sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, fontSize: 12, color: textSecondary }}
+                        >
+                          {Icon ? <Icon size={16} color={colors.teal} aria-hidden /> : null}
+                          {label}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                </Box>
+              ) : null}
+
+              <Box sx={{ mt: 2.5 }}>
+                <Typography sx={{ fontSize: '0.95rem', color: textPrimary, lineHeight: 1.5 }}>
+                  <Box component="span" sx={{ fontWeight: 800 }}>
+                    {t('spaces.findPlace.reviewsRatings', { defaultValue: 'Review & Ratings' })}
+                    {': '}
+                  </Box>
+                  {t('spaces.findPlace.notAvailable', { defaultValue: 'Not available' })}
+                </Typography>
+                {hasActualListingPhotos([detail.listingImageUrl, detail.coverImageUrl, detail.imageUrl]) ? null : (
                   <Typography sx={{ mt: 0.75, fontSize: '0.95rem', color: textPrimary, lineHeight: 1.5 }}>
                     <Box component="span" sx={{ fontWeight: 800 }}>
                       {t('spaces.findPlace.photos', { defaultValue: 'Photos' })}
@@ -495,170 +388,236 @@ export function DiscoverSpaceDetailDrawer({
                     </Box>
                     {t('spaces.findPlace.notAvailable', { defaultValue: 'Not available' })}
                   </Typography>
-                </Box>
+                )}
+                <PhotoRequestAction
+                  kind={detail.type === 'MESS' ? 'mess' : 'property'}
+                  name={detail.name}
+                  spaceType={detail.type}
+                  location={formattedAddress}
+                  photoUrls={[detail.listingImageUrl, detail.coverImageUrl, detail.imageUrl]}
+                  phones={
+                    revealed
+                      ? [revealed.mobileNumber, revealed.alternateMobileNumber, revealed.additionalMobileNumber]
+                      : []
+                  }
+                  contactAuthorized={Boolean(revealed)}
+                  onNeedContact={revealed || contactViewed ? undefined : () => setEnquireOpen(true)}
+                />
+              </Box>
 
-                {formattedAddress || detail.mapUrl ? (
-                  <Box>
-                    <SectionLabel>{t('spaces.findPlace.location')}</SectionLabel>
-                    {formattedAddress ? (
-                      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'flex-start', mb: 1 }}>
-                        <MapPin size={16} style={{ flexShrink: 0, marginTop: 2, color: colors.teal }} />
-                        <Typography sx={{ fontSize: '0.95rem', color: textPrimary, whiteSpace: 'pre-wrap' }}>
-                          {formattedAddress}
-                        </Typography>
-                      </Stack>
-                    ) : null}
-                    {detail.mapUrl && !alreadyInquired ? (
-                    <Button
-                      onClick={() => setEnquireOpen(true)}
-                      aria-label={t('spaces.findPlace.openInGoogleMapsAria', { name: detail.name })}
+              <Box sx={{ mt: 'auto', pt: 2.5 }}>
+                <Box sx={{ borderRadius: '16px', bgcolor: '#EAF8F2', p: 1.25 }}>
+                  {mapHref && unlocked ? (
+                    <Box
+                      component="a"
+                      href={mapHref}
+                      target="_blank"
+                      rel="noreferrer"
                       sx={{
-                        mt: 0.5,
-                        px: 0,
-                        minWidth: 0,
-                        justifyContent: 'flex-start',
-                        textTransform: 'none',
-                        fontWeight: 700,
-                        fontSize: '0.92rem',
-                        color: colors.teal,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        width: '100%',
+                        borderRadius: '12px',
+                        bgcolor: '#fff',
+                        px: 1,
+                        py: 0.75,
+                        textDecoration: 'none',
+                        boxShadow: '0 1px 2px rgba(11,28,22,0.04)',
+                        '&:hover': { bgcolor: '#F3FBF7' },
                       }}
                     >
-                      {t('spaces.findPlace.openInGoogleMaps')}
-                    </Button>
-                    ) : null}
-                  </Box>
-                ) : null}
+                      <Box
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '8px',
+                          bgcolor: '#E8F8EF',
+                          color: '#0F6B4C',
+                          display: 'grid',
+                          placeItems: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Map size={16} aria-hidden />
+                      </Box>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography
+                          sx={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: '0.12em',
+                            textTransform: 'uppercase',
+                            color: colors.muted,
+                          }}
+                        >
+                          {t('spaces.findPlace.location', { defaultValue: 'Location' })}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: '#0F6B4C',
+                            textDecoration: 'underline',
+                            textUnderlineOffset: '2px',
+                          }}
+                        >
+                          {t('spaces.findPlace.openMaps', { defaultValue: 'Open in Google Maps' })}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ) : !unlocked ? (
+                    <Box
+                      component="button"
+                      type="button"
+                      onClick={() => setEnquireOpen(true)}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        width: '100%',
+                        border: 0,
+                        borderRadius: '12px',
+                        bgcolor: '#fff',
+                        px: 1,
+                        py: 0.75,
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                        boxShadow: '0 1px 2px rgba(11,28,22,0.04)',
+                        '&:hover': { bgcolor: '#F3FBF7' },
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '8px',
+                          bgcolor: '#E8F8EF',
+                          color: '#0F6B4C',
+                          display: 'grid',
+                          placeItems: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Map size={16} aria-hidden />
+                      </Box>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography
+                          sx={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: '0.12em',
+                            textTransform: 'uppercase',
+                            color: colors.muted,
+                          }}
+                        >
+                          {t('spaces.findPlace.location', { defaultValue: 'Location' })}
+                        </Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#0F6B4C' }}>
+                          {t('spaces.findPlace.openMaps', { defaultValue: 'Open in Google Maps' })}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ) : null}
 
-                {canEnquire ? (
-                  <Box
+                  <Box sx={{ mt: mapHref || !unlocked ? 1 : 0 }}>
+                    <Typography
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        mb: 1,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: '0.12em',
+                        textTransform: 'uppercase',
+                        color: '#0F6B4C',
+                      }}
+                    >
+                      <BadgeCheck size={14} aria-hidden />
+                      {t('spaces.findPlace.infoAvailable', { defaultValue: 'Information available' })}
+                    </Typography>
+                    <ListingInfoChips
+                      listing={detail}
+                      variant="detail"
+                      surface={detail.type === 'MESS' ? 'meals' : 'places'}
+                      onEnquire={unlocked ? undefined : () => setEnquireOpen(true)}
+                    />
+                  </Box>
+                </Box>
+
+                {detail.alreadyMember ? (
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="primary"
+                    onClick={() => {
+                      onClose();
+                      navigate(spaceDashboardPath(detail.spaceId));
+                    }}
+                    sx={{ ...dashContainedButtonSx, mt: 2, minHeight: 44, borderRadius: '12px', bgcolor: colors.primaryDark }}
+                  >
+                    {t('spaces.findPlace.openDashboard')}
+                  </Button>
+                ) : detail.ownedByCurrentUser ? (
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="primary"
+                    onClick={() => setEnquireOpen(true)}
+                    sx={{ ...dashContainedButtonSx, mt: 2, minHeight: 44, borderRadius: '12px', bgcolor: colors.primaryDark }}
+                  >
+                    {t('spaces.findPlace.enquire.ownCta')}
+                  </Button>
+                ) : contactViewed && !sendingEnquiry ? null : alreadyInquired && !sendingEnquiry ? (
+                  <Button
+                    fullWidth
+                    disabled
+                    aria-disabled="true"
+                    startIcon={<Check size={16} />}
                     sx={{
-                      display: 'flex',
-                      gap: 1.25,
-                      alignItems: 'flex-start',
-                      p: 1.5,
-                      borderRadius: '14px',
-                      bgcolor: colors.infoTint,
-                      border: `1px solid ${colors.border}`,
+                      mt: 2,
+                      minHeight: 44,
+                      borderRadius: '12px',
+                      bgcolor: '#FFEDD5',
+                      color: '#C2410C',
+                      border: '1px solid #FDBA74',
+                      fontWeight: 700,
+                      textTransform: 'none',
+                      '&.Mui-disabled': { bgcolor: '#FFEDD5', color: '#C2410C', opacity: 1 },
                     }}
                   >
-                    <Lock size={18} color={colors.info} style={{ flexShrink: 0, marginTop: 2 }} />
-                    <Typography sx={{ fontSize: '0.88rem', color: textPrimary, lineHeight: 1.45 }}>
-                      {t('spaces.findPlace.enquire.privacyHint')}
-                    </Typography>
-                  </Box>
-                ) : null}
-              </Stack>
+                    {t('spaces.findPlace.inquirySent', { defaultValue: 'Inquiry sent' })}
+                  </Button>
+                ) : (
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="primary"
+                    disabled={sendingEnquiry}
+                    onClick={() => setEnquireOpen(true)}
+                    startIcon={sendingEnquiry ? undefined : <Phone size={16} />}
+                    sx={{
+                      ...dashContainedButtonSx,
+                      mt: 2,
+                      minHeight: 44,
+                      borderRadius: '12px',
+                      bgcolor: colors.primary,
+                      '&:hover': { bgcolor: colors.primaryHover },
+                    }}
+                  >
+                    {sendingEnquiry ? (
+                      <CircularProgress size={18} sx={{ color: colors.white }} />
+                    ) : (
+                      t('spaces.findPlace.getContactDetails', { defaultValue: 'Get Contact Details' })
+                    )}
+                  </Button>
+                )}
+              </Box>
             </Stack>
           ) : null}
         </Box>
-
-        {detail ? (
-          <Box
-            sx={{
-              p: 2,
-              borderTop: `1px solid ${border}`,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 1,
-              pb: { xs: 'calc(16px + env(safe-area-inset-bottom))', sm: 2 },
-            }}
-          >
-            {detail.alreadyMember ? (
-              <Button
-                fullWidth
-                variant="contained"
-                color="primary"
-                onClick={() => {
-                  onClose();
-                  navigate(spaceDashboardPath(detail.spaceId));
-                }}
-                sx={{
-                  ...dashContainedButtonSx,
-                  minHeight: 46,
-                  borderRadius: '12px',
-                  bgcolor: colors.primaryDark,
-                  '&:hover': { bgcolor: colors.primaryHover },
-                }}
-              >
-                {t('spaces.findPlace.openDashboard')}
-              </Button>
-            ) : detail.ownedByCurrentUser ? (
-              <Button
-                fullWidth
-                variant="contained"
-                color="primary"
-                onClick={() => setEnquireOpen(true)}
-                sx={{
-                  ...dashContainedButtonSx,
-                  minHeight: 46,
-                  borderRadius: '12px',
-                  bgcolor: colors.primaryDark,
-                  '&:hover': { bgcolor: colors.primaryHover },
-                }}
-              >
-                {t('spaces.findPlace.enquire.ownCta')}
-              </Button>
-            ) : alreadyInquired ? (
-              <Button
-                fullWidth
-                disabled
-                aria-disabled="true"
-                aria-label={sentWhere ? `${t('spaces.findPlace.inquirySent', { defaultValue: 'Inquiry sent' })}. ${sentWhere}` : undefined}
-                sx={{
-                  minHeight: 46,
-                  borderRadius: '12px',
-                  bgcolor: '#FFEDD5',
-                  color: '#C2410C',
-                  border: '1px solid #FDBA74',
-                  fontWeight: 700,
-                  textTransform: 'none',
-                  '&.Mui-disabled': {
-                    bgcolor: '#FFEDD5',
-                    color: '#C2410C',
-                    opacity: 1,
-                  },
-                }}
-              >
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.2 }}>
-                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
-                    <Check size={16} />
-                    {t('spaces.findPlace.inquirySent', { defaultValue: 'Inquiry sent' })}
-                  </Box>
-                  {sentWhere ? (
-                    <Box component="span" sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#9A3412' }}>
-                      {sentWhere}
-                    </Box>
-                  ) : null}
-                </Box>
-              </Button>
-            ) : (
-              <Button
-                fullWidth
-                variant="contained"
-                color="primary"
-                onClick={() => setEnquireOpen(true)}
-                sx={{
-                  ...dashContainedButtonSx,
-                  minHeight: 46,
-                  borderRadius: '12px',
-                  bgcolor: colors.primaryDark,
-                  '&:hover': { bgcolor: colors.primaryHover },
-                }}
-              >
-                {t('spaces.findPlace.enquire.cta')}
-              </Button>
-            )}
-            <Button
-              fullWidth
-              variant="outlined"
-              color="primary"
-              onClick={onClose}
-              sx={{ ...dashOutlinedButtonSx, minHeight: 42, borderRadius: '12px' }}
-            >
-              {t('spaces.findPlace.close')}
-            </Button>
-          </Box>
-        ) : null}
       </Box>
       {detail ? (
         <EnquireDialog
@@ -667,6 +626,11 @@ export function DiscoverSpaceDetailDrawer({
           spaceName={detail.name}
           ownedByCurrentUser={Boolean(detail.ownedByCurrentUser)}
           onClose={() => setEnquireOpen(false)}
+          onOpen={() => setEnquireOpen(true)}
+          onViewedHere={(contact) => {
+            setLiveContact(contact);
+            setEnquireOpen(false);
+          }}
         />
       ) : null}
     </AppDrawer>

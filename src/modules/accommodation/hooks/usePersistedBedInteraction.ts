@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { useNavigate } from 'react-router-dom';
@@ -7,12 +7,14 @@ import { spaceMemberPath, spaceOccupancyWizardPath } from '@/routes/paths';
 import type { AccommodationStatus } from '@/shared/types/accommodation';
 import { accommodationApi } from '../api/accommodationApi';
 import {
+  bedTargetAfterDetailsSave,
   hasBedPricingChange,
   isBedDraftUnchanged,
   type BedInteractionDraft,
 } from '../utils/bedInteractionDraft';
 import { formatBedDisplayLabel } from '../utils/formatBedDisplayLabel';
 import { updateBedNumberOnly } from '../utils/commitBedPricing';
+import { invalidateStayPaymentCache } from '../utils/stayChargeIndex';
 import { useConfirmBedPricingCommit } from './useConfirmBedPricingCommit';
 
 export type PersistedBedTarget = {
@@ -46,10 +48,18 @@ export function usePersistedBedInteraction(options: {
   const [saving, setSaving] = useState(false);
   const onSuccessRef = useRef(options.onSuccess);
   onSuccessRef.current = options.onSuccess;
+  const savedDraftRef = useRef<BedInteractionDraft | null>(null);
+
+  const keepOpenWithSavedDraft = useCallback((draft: BedInteractionDraft) => {
+    setTarget(current => (current ? bedTargetAfterDetailsSave(current, draft) : current));
+  }, []);
 
   const pricingCommit = useConfirmBedPricingCommit({
     onSuccess: async () => {
-      setTarget(null);
+      if (savedDraftRef.current) {
+        keepOpenWithSavedDraft(savedDraftRef.current);
+        savedDraftRef.current = null;
+      }
       await onSuccessRef.current?.();
     },
   });
@@ -125,7 +135,11 @@ export function usePersistedBedInteraction(options: {
           enqueueSnackbar(t('accommodation.beds.updateSuccess', { defaultValue: 'Bed updated' }), {
             variant: 'success',
           });
-          setTarget(null);
+          keepOpenWithSavedDraft({
+            bedNumber: nextNumber,
+            rent: target.rent ?? null,
+            deposit: target.deposit ?? null,
+          });
           await onSuccessRef.current?.();
         } catch (err) {
           enqueueSnackbar(getErrorMessage(err, t('accommodation.errors.saveBed', { defaultValue: 'Could not save bed' })), {
@@ -137,6 +151,11 @@ export function usePersistedBedInteraction(options: {
         return;
       }
 
+      savedDraftRef.current = {
+        bedNumber: nextNumber,
+        rent: draft.rent,
+        deposit: draft.deposit,
+      };
       pricingCommit.request({
         spaceId: options.spaceId,
         roomId: target.roomId,
@@ -150,26 +169,39 @@ export function usePersistedBedInteraction(options: {
         bedNumber: nextNumber,
       });
     },
-    [enqueueSnackbar, options.canEditStructure, options.spaceId, pricingCommit, t, target],
+    [enqueueSnackbar, keepOpenWithSavedDraft, options.canEditStructure, options.spaceId, pricingCommit, t, target],
   );
+
+  const openingWizardRef = useRef(false);
+
+  useEffect(() => {
+    if (!target) {
+      openingWizardRef.current = false;
+    }
+  }, [target]);
 
   const openWizard = useCallback(
     (mode: 'ALLOCATE' | 'RESERVE' | 'MOVE_IN' | 'TRANSFER' | 'VACATE') => {
-      if (!target) {
+      if (!target || openingWizardRef.current) {
         return;
       }
+      openingWizardRef.current = true;
+      invalidateStayPaymentCache();
+      const nextPath = spaceOccupancyWizardPath(options.spaceId, mode, {
+        bedId: target.bedId,
+        roomId: target.roomId,
+        unitId: target.unitId ?? undefined,
+        buildingId: target.buildingId,
+        occupancyId: target.occupancyId ?? undefined,
+        memberId: target.memberId ?? undefined,
+        returnTo: options.returnTo,
+        defaultRent: target.rent,
+        defaultDeposit: target.deposit,
+        bedLabel: target.label,
+        displayPath: target.locationLine,
+      });
       setTarget(null);
-      navigate(
-        spaceOccupancyWizardPath(options.spaceId, mode, {
-          bedId: target.bedId,
-          roomId: target.roomId,
-          unitId: target.unitId ?? undefined,
-          buildingId: target.buildingId,
-          occupancyId: target.occupancyId ?? undefined,
-          memberId: target.memberId ?? undefined,
-          returnTo: options.returnTo,
-        }),
-      );
+      navigate(nextPath);
     },
     [navigate, options.returnTo, options.spaceId, target],
   );
@@ -183,6 +215,7 @@ export function usePersistedBedInteraction(options: {
   }, [navigate, options.spaceId, target]);
 
   return {
+    spaceId: options.spaceId,
     target,
     open,
     close,

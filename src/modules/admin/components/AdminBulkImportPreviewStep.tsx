@@ -43,6 +43,7 @@ import {
   effectivePreviewStatus,
   previewErrorAppliesToField,
   remainingPreviewErrors,
+  remainingPreviewNotices,
   type PropertyBulkImportFieldKey,
   type PropertyBulkImportFieldOverrides,
   type PropertyBulkImportMapping,
@@ -74,7 +75,7 @@ const PREFERRED_COLUMN_ORDER: PropertyBulkImportFieldKey[] = [
   'TEST_LEAD',
 ];
 
-type StatusFilter = 'ALL' | 'VALID' | 'INVALID' | 'BLANK' | 'DUPLICATE';
+type StatusFilter = 'ALL' | 'VALID' | 'WARNING' | 'INVALID' | 'BLANK' | 'DUPLICATE';
 export type DuplicateDecision = 'KEEP' | 'SKIP';
 
 type Props = {
@@ -217,6 +218,37 @@ export function AdminBulkImportPreviewStep({
     }));
   }, [mapping, t]);
 
+  const errorsByColumn = useMemo(() => {
+    const columnErrors = new Map<string, { invalid: number; warning: number; normalized: number }>();
+    const bump = (label: string, kind: 'invalid' | 'warning' | 'normalized') => {
+      const current = columnErrors.get(label) ?? { invalid: 0, warning: 0, normalized: 0 };
+      current[kind] += 1;
+      columnErrors.set(label, current);
+    };
+    for (const row of preview.rows) {
+      const seen = new Set<string>();
+      for (const err of remainingPreviewErrors(row, fieldOverrides)) {
+        const match = columns.find((col) => previewErrorAppliesToField(err.field, col.field));
+        const label = match?.header ?? err.field ?? 'Row';
+        if (seen.has(`invalid:${label}`)) continue;
+        seen.add(`invalid:${label}`);
+        bump(label, 'invalid');
+      }
+      for (const notice of remainingPreviewNotices(row, fieldOverrides)) {
+        const match = columns.find((col) => previewErrorAppliesToField(notice.field, col.field));
+        const label = match?.header ?? notice.field ?? 'Row';
+        const kind = notice.level === 'WARNING' ? 'warning' : 'normalized';
+        if (seen.has(`${kind}:${label}`)) continue;
+        seen.add(`${kind}:${label}`);
+        bump(label, kind);
+      }
+    }
+    return [...columnErrors.entries()].sort(
+      (a, b) =>
+        b[1].invalid + b[1].warning - (a[1].invalid + a[1].warning) || a[0].localeCompare(b[0]),
+    );
+  }, [preview.rows, fieldOverrides, columns]);
+
   const filteredRows = useMemo(() => {
     return preview.rows.filter((row) => {
       const status = effectivePreviewStatus(row, fieldOverrides);
@@ -261,9 +293,17 @@ export function AdminBulkImportPreviewStep({
       ).length,
     [preview.rows, fieldOverrides],
   );
-  const displayValid = preview.valid + correctedCount;
+  const clearedWarnings = useMemo(
+    () =>
+      preview.rows.filter(
+        (row) => row.status === 'WARNING' && effectivePreviewStatus(row, fieldOverrides) === 'VALID',
+      ).length,
+    [preview.rows, fieldOverrides],
+  );
+  const displayValid = preview.valid + correctedCount + clearedWarnings;
+  const displayWarning = Math.max(0, (preview.warning ?? 0) - clearedWarnings);
   const displayInvalid = Math.max(0, preview.invalid - correctedCount);
-  const importCount = displayValid + keptDuplicates.length;
+  const importCount = displayValid + displayWarning + keptDuplicates.length;
   const hasDuplicates = duplicateCount > 0;
   const canImport = importCount > 0;
 
@@ -309,7 +349,7 @@ export function AdminBulkImportPreviewStep({
           gridTemplateColumns: {
             xs: '1fr',
             sm: 'repeat(2, 1fr)',
-            lg: 'repeat(5, minmax(0, 1fr))',
+            lg: 'repeat(6, minmax(0, 1fr))',
           },
           gap: 1.5,
         }}
@@ -329,6 +369,14 @@ export function AdminBulkImportPreviewStep({
           iconBg={colors.mintSubtle}
           iconColor={colors.success}
           cardBg={colors.mintSubtle}
+        />
+        <SummaryCard
+          label={t('admin.propertyBulk.summaryWarning')}
+          value={displayWarning}
+          icon={<AlertTriangle size={18} />}
+          iconBg="#FEF3C7"
+          iconColor="#B45309"
+          cardBg="#FFFBEB"
         />
         <SummaryCard
           label={t('admin.propertyBulk.summaryDuplicate')}
@@ -358,6 +406,11 @@ export function AdminBulkImportPreviewStep({
           cardBg="#FFF7ED"
         />
       </Box>
+      {(preview.normalized ?? 0) > 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          {t('admin.propertyBulk.summaryNormalized', { count: preview.normalized })}
+        </Typography>
+      ) : null}
 
       <Paper
         elevation={0}
@@ -501,6 +554,29 @@ export function AdminBulkImportPreviewStep({
             <Typography variant="body2" color="text.secondary">
               {t('admin.propertyBulk.previewCardHintDuplicates')}
             </Typography>
+            {errorsByColumn.length > 0 ? (
+              <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', mt: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
+                  {t('admin.propertyBulk.previewErrorsByColumn')}
+                </Typography>
+                {errorsByColumn.map(([label, counts]) => {
+                  const parts = [
+                    counts.invalid > 0 ? `${counts.invalid} invalid` : '',
+                    counts.warning > 0 ? `${counts.warning} warnings` : '',
+                    counts.normalized > 0 ? `${counts.normalized} normalized` : '',
+                  ].filter(Boolean);
+                  return (
+                    <Chip
+                      key={label}
+                      size="small"
+                      label={`${label} ${parts.join(' · ')}`}
+                      color={counts.invalid > 0 ? 'error' : 'warning'}
+                      variant="outlined"
+                    />
+                  );
+                })}
+              </Stack>
+            ) : null}
           </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', md: 'auto' } }}>
             <TextField
@@ -534,6 +610,7 @@ export function AdminBulkImportPreviewStep({
               >
                 <MenuItem value="ALL">{t('admin.propertyBulk.filterAll')}</MenuItem>
                 <MenuItem value="VALID">{t('admin.propertyBulk.filterValid')}</MenuItem>
+                <MenuItem value="WARNING">{t('admin.propertyBulk.filterWarning')}</MenuItem>
                 <MenuItem value="DUPLICATE">{t('admin.propertyBulk.filterDuplicate')}</MenuItem>
                 <MenuItem value="INVALID">{t('admin.propertyBulk.filterInvalid')}</MenuItem>
                 <MenuItem value="BLANK">{t('admin.propertyBulk.filterBlank')}</MenuItem>
@@ -624,6 +701,7 @@ export function AdminBulkImportPreviewStep({
                   const decision = duplicateDecisions[String(row.rowNumber)] ?? 'SKIP';
                   const status = effectivePreviewStatus(row, fieldOverrides);
                   const visibleErrors = remainingPreviewErrors(row, fieldOverrides);
+                  const visibleNotices = remainingPreviewNotices(row, fieldOverrides);
                   return (
                     <TableRow
                       key={row.rowNumber}
@@ -743,6 +821,11 @@ export function AdminBulkImportPreviewStep({
                       </TableCell>
                       {columns.map((col) => {
                         const original = displayValue(row.values?.[col.field]);
+                        const normalized = row.normalizedValues?.[col.field];
+                        const fieldNotices = visibleNotices.filter((notice) =>
+                          previewErrorAppliesToField(notice.field, col.field),
+                        );
+                        const fieldWarning = fieldNotices.some((notice) => notice.level === 'WARNING');
                         const hasFieldError = (row.errors ?? []).some((err) =>
                           previewErrorAppliesToField(err.field, col.field),
                         );
@@ -750,7 +833,15 @@ export function AdminBulkImportPreviewStep({
                           previewErrorAppliesToField(err.field, col.field),
                         );
                         const selected = fieldOverrides[String(row.rowNumber)]?.[col.field] ?? '';
-                        const canCorrect = hasFieldError || Boolean(selected);
+                        const canCorrect = hasFieldError || fieldWarning || Boolean(selected);
+                        const noticeTitle = fieldNotices
+                          .map((notice) => {
+                            const interpreted = notice.normalizedValue
+                              ? `Interpreted as ${notice.normalizedValue}. `
+                              : '';
+                            return `${interpreted}${notice.message}`;
+                          })
+                          .join(' ');
                         const options = canCorrect ? correctionOptions(col.field, t) : null;
                         return (
                           <TableCell
@@ -761,11 +852,15 @@ export function AdminBulkImportPreviewStep({
                               whiteSpace: canCorrect ? 'normal' : 'nowrap',
                               overflow: canCorrect ? 'visible' : 'hidden',
                               textOverflow: 'ellipsis',
-                              bgcolor: fieldStillInvalid ? '#FEF2F2' : undefined,
+                              bgcolor: fieldStillInvalid ? '#FEF2F2' : fieldWarning ? '#FFFBEB' : undefined,
                               color: fieldStillInvalid ? '#B91C1C' : undefined,
-                              boxShadow: fieldStillInvalid ? 'inset 0 0 0 1px #FECACA' : undefined,
+                              boxShadow: fieldStillInvalid
+                                ? 'inset 0 0 0 1px #FECACA'
+                                : fieldWarning
+                                  ? 'inset 0 0 0 1px #FDE68A'
+                                  : undefined,
                             }}
-                            title={original}
+                            title={noticeTitle || original}
                           >
                             {canCorrect ? (
                               <Stack spacing={0.75}>
@@ -777,6 +872,11 @@ export function AdminBulkImportPreviewStep({
                                 >
                                   {original}
                                 </Typography>
+                                {normalized && normalized !== original ? (
+                                  <Typography variant="caption" sx={{ color: fieldWarning ? '#B45309' : '#047857' }}>
+                                    {normalized}
+                                  </Typography>
+                                ) : null}
                                 {options ? (
                                   <CorrectionSelect
                                     value={selected}
@@ -801,7 +901,14 @@ export function AdminBulkImportPreviewStep({
                                 )}
                               </Stack>
                             ) : (
-                              original
+                              <Stack spacing={0.25}>
+                                <span>{original}</span>
+                                {normalized && normalized !== original ? (
+                                  <Typography variant="caption" sx={{ color: fieldWarning ? '#B45309' : '#047857' }}>
+                                    {normalized}
+                                  </Typography>
+                                ) : null}
+                              </Stack>
                             )}
                           </TableCell>
                         );
@@ -809,9 +916,22 @@ export function AdminBulkImportPreviewStep({
                       <TableCell
                         sx={{ maxWidth: 260, color: visibleErrors.length ? '#B91C1C' : 'text.secondary' }}
                       >
-                        {visibleErrors.length === 0
+                        {visibleErrors.length === 0 && visibleNotices.length === 0
                           ? '—'
-                          : visibleErrors.map((err) => `${err.field}: ${err.message}`).join('; ')}
+                          : (
+                            <Stack spacing={0.5}>
+                              {visibleErrors.length > 0 ? (
+                                <Typography variant="caption" sx={{ color: '#B91C1C' }}>
+                                  {visibleErrors.map((err) => `${err.field}: ${err.message}`).join('; ')}
+                                </Typography>
+                              ) : null}
+                              {visibleNotices.length > 0 ? (
+                                <Typography variant="caption" sx={{ color: '#B45309' }}>
+                                  {visibleNotices.map((notice) => notice.message).join('; ')}
+                                </Typography>
+                              ) : null}
+                            </Stack>
+                          )}
                       </TableCell>
                     </TableRow>
                   );
@@ -1121,6 +1241,15 @@ function StatusChip({ status }: { status: string }) {
       <Chip
         size="small"
         label={t('admin.propertyBulk.statusDuplicate')}
+        sx={{ bgcolor: '#FEF3C7', color: '#B45309', fontWeight: 700 }}
+      />
+    );
+  }
+  if (normalized === 'WARNING') {
+    return (
+      <Chip
+        size="small"
+        label={t('admin.propertyBulk.statusWarning')}
         sx={{ bgcolor: '#FEF3C7', color: '#B45309', fontWeight: 700 }}
       />
     );

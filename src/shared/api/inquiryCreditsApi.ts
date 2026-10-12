@@ -21,8 +21,12 @@ export const inquiryCreditsApi = {
   getQuota: (): Promise<InquiryQuota> =>
     unwrapApiResponse(apiClient.get<ApiResponse<InquiryQuota>>('/inquiry-credits/quota')),
 
-  resetQuota: (): Promise<InquiryQuota> =>
-    unwrapApiResponse(apiClient.post<ApiResponse<InquiryQuota>>('/inquiry-credits/quota/reset')),
+  resetQuota: (target?: 'EMAIL' | 'VIEW_HERE'): Promise<InquiryQuota> =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<InquiryQuota>>('/inquiry-credits/quota/reset', null, {
+        params: target === 'VIEW_HERE' ? { target: 'VIEW_HERE' } : undefined,
+      }),
+    ),
 
   createPurchase: (body: CreateInquiryPurchaseRequest): Promise<InquiryPurchaseResponse> =>
     unwrapApiResponse(

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Box, Button, CircularProgress, Stack } from '@mui/material';
+import { Box, Button, CircularProgress, Stack, useMediaQuery, useTheme } from '@mui/material';
 import { Check, Send } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { colors } from '@/shared/theme/colors';
@@ -25,17 +25,36 @@ export function OwnerPaymentRowActions({
   onReminder,
 }: OwnerPaymentRowActionsProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const stackActions = useMediaQuery(theme.breakpoints.down('md'));
   if (!showReceived && !showReminder) {
     return null;
   }
 
+  const buttonSx = {
+    minHeight: 32,
+    height: 32,
+    width: stackActions ? '100%' : 'auto',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+    px: 1.25,
+    justifyContent: 'center',
+  };
+
   return (
     <Stack
-      direction="row"
+      direction={stackActions ? 'column' : 'row'}
       spacing={1}
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
-      sx={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}
+      sx={{
+        width: stackActions ? 168 : 'auto',
+        minWidth: stackActions ? 168 : 0,
+        maxWidth: stackActions ? 168 : 'none',
+        flexWrap: 'nowrap',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+      }}
     >
       {showReceived ? (
         <Button
@@ -49,7 +68,7 @@ export function OwnerPaymentRowActions({
           startIcon={
             receivedLoading ? <CircularProgress size={14} color="inherit" /> : <Check size={14} />
           }
-          sx={{ ...dashContainedButtonSx, minHeight: 36, px: 1.25, bgcolor: colors.primaryDark }}
+          sx={{ ...dashContainedButtonSx, ...buttonSx, bgcolor: colors.primaryDark }}
         >
           {t('paymentCollection.received.action')}
         </Button>
@@ -66,7 +85,7 @@ export function OwnerPaymentRowActions({
           startIcon={
             reminderLoading ? <CircularProgress size={14} color="inherit" /> : <Send size={14} />
           }
-          sx={{ ...dashOutlinedButtonSx, minHeight: 36, px: 1.25 }}
+          sx={{ ...dashOutlinedButtonSx, ...buttonSx }}
         >
           {t('paymentCollection.reminder.send')}
         </Button>

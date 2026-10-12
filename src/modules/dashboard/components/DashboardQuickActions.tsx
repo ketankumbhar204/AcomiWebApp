@@ -11,7 +11,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
-  spaceAddCustomersHubPath,
+  spaceMembersAddChoicePath,
   spaceBedInventoryPath,
   spaceInventoryPath,
   spaceMealsPath,
@@ -131,7 +131,7 @@ export function DashboardQuickActions({
         icon={Users}
         title={t('dashboard.quickActions.setupAddCustomers')}
         subtitle={t('dashboard.quickActions.setupAddCustomersSubtitle')}
-        onClick={() => navigate(spaceAddCustomersHubPath(spaceId))}
+        onClick={() => navigate(spaceMembersAddChoicePath(spaceId))}
       />,
     );
   } else if (isOperator && permissions.canManageMembers && !isMess && !membersLocked) {

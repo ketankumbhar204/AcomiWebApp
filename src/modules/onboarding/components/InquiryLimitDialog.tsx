@@ -5,29 +5,31 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
-  DialogTitle,
-  Divider,
   IconButton,
-  MenuItem,
-  Select,
   TextField,
   Tooltip,
   Typography,
+  useMediaQuery,
 } from '@mui/material';
 import {
-  AlertCircle,
+  ArrowRight,
   CheckCircle2,
   Copy,
   CreditCard,
-  ExternalLink,
+  Headset,
+  Mail,
   MessageCircle,
-  Smartphone,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { inquiryCreditsApi } from '@/shared/api/inquiryCreditsApi';
 import { getErrorMessage } from '@/shared/api/errors';
-import { filesApi } from '@/shared/api/filesApi';
+import { FileImageViewer } from '@/shared/components/files/FileImageViewer';
+import {
+  fetchDisplayableFileUrl,
+  isApiFileContentUrl,
+  revokeDisplayableFileUrl,
+} from '@/shared/services/fileUploadService';
 import { openAcomiAndroidApp } from '@/shared/utils/openAcomiAndroidApp';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { colors } from '@/shared/theme/colors';
@@ -58,11 +60,124 @@ function CopyButton({ text }: { text: string }) {
     }
   }
   return (
-    <Tooltip title={copied ? 'Copied!' : 'Copy'}>
-      <IconButton size="small" onClick={() => void handleCopy()} sx={{ ml: 0.5, p: 0.5 }}>
-        {copied ? <CheckCircle2 size={15} color={colors.success} /> : <Copy size={15} />}
-      </IconButton>
-    </Tooltip>
+    <>
+      <Tooltip title={copied ? 'Copied' : 'Copy'}>
+        <IconButton
+          size="small"
+          onClick={() => void handleCopy()}
+          aria-label={copied ? 'Copied' : 'Copy UPI ID'}
+          sx={{ ml: 0.5, p: 0.5 }}
+        >
+          {copied ? <CheckCircle2 size={15} color={colors.success} /> : <Copy size={15} />}
+        </IconButton>
+      </Tooltip>
+      {copied ? (
+        <Typography component="span" sx={{ fontSize: 11, fontWeight: 700, color: colors.primary }}>
+          Copied
+        </Typography>
+      ) : null}
+    </>
+  );
+}
+
+function AndroidMark() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden>
+      <path
+        fill="#3DDC84"
+        d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24a11.43 11.43 0 00-8.94 0L5.65 5.67c-.19-.29-.58-.38-.87-.2-.28.18-.37.54-.22.83L6.4 9.48A10.81 10.81 0 002 18h20a10.81 10.81 0 00-4.4-8.52zM7 15.25a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5zm10 0a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5z"
+      />
+    </svg>
+  );
+}
+
+function PlayMark() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
+      <path fill="currentColor" d="M8 5.2v13.6l11-6.8L8 5.2z" />
+    </svg>
+  );
+}
+
+function ChoiceCard({
+  selected,
+  onSelect,
+  icon,
+  title,
+  body,
+  badge,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  icon: ReactNode;
+  title: string;
+  body: string;
+  badge?: string;
+}) {
+  return (
+    <Box
+      component="button"
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      sx={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 1.25,
+        width: '100%',
+        p: 1.5,
+        borderRadius: '16px',
+        border: '1px solid',
+        borderColor: selected ? colors.primary : 'rgba(0,0,0,0.1)',
+        bgcolor: selected ? '#F3FBF7' : '#fff',
+        textAlign: 'left',
+        cursor: 'pointer',
+      }}
+    >
+      <Box
+        aria-hidden
+        sx={{
+          mt: 0.4,
+          width: 16,
+          height: 16,
+          borderRadius: '50%',
+          border: '1px solid',
+          borderColor: selected ? colors.primary : 'rgba(0,0,0,0.2)',
+          display: 'grid',
+          placeItems: 'center',
+          flexShrink: 0,
+        }}
+      >
+        {selected ? (
+          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: colors.primary }} />
+        ) : null}
+      </Box>
+      <Box sx={{ mt: 0.15, flexShrink: 0 }}>{icon}</Box>
+      <Box sx={{ minWidth: 0, flex: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+          <Typography sx={{ fontWeight: 700, fontSize: 14 }}>{title}</Typography>
+          {badge ? (
+            <Box
+              component="span"
+              sx={{
+                flexShrink: 0,
+                borderRadius: '999px',
+                bgcolor: '#D8F3E4',
+                color: '#0F6B4C',
+                px: 1,
+                py: 0.25,
+                fontSize: 11,
+                fontWeight: 700,
+              }}
+            >
+              {badge}
+            </Box>
+          ) : null}
+        </Box>
+        <Typography sx={{ mt: 0.25, fontSize: 12, color: 'text.secondary' }}>{body}</Typography>
+      </Box>
+    </Box>
   );
 }
 
@@ -72,6 +187,7 @@ type Props = {
   onQuotaReset?: () => void;
   availableCredits?: number;
   onContinueWithCredits?: () => void;
+  freeUsedToday?: number;
 };
 
 type View = 'main' | 'buy';
@@ -84,11 +200,24 @@ export function InquiryLimitDialog({
   onContinueWithCredits,
 }: Props) {
   const { t } = useTranslation();
+  const narrow = useMediaQuery('(max-width:767px)');
+  const [phoneBrowser] = useState(
+    () => typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
+  );
+  const mobileBrowser = narrow || phoneBrowser;
   const [view, setView] = useState<View>('main');
+  const [choice, setChoice] = useState<'credits' | 'app'>(() =>
+    typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+      ? 'app'
+      : 'credits',
+  );
   const [config, setConfig] = useState<InquiryPaymentConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(false);
   const [configError, setConfigError] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [qrFailed, setQrFailed] = useState(false);
+  const [qrViewerOpen, setQrViewerOpen] = useState(false);
+  const qrObjectUrlRef = useRef<string | null>(null);
   const [selectedPkg, setSelectedPkg] = useState<InquiryPackage | null>(null);
   const [utr, setUtr] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -99,6 +228,7 @@ export function InquiryLimitDialog({
   useEffect(() => {
     if (!open) {
       setView('main');
+      setChoice(mobileBrowser ? 'app' : 'credits');
       setSelectedPkg(null);
       setUtr('');
       setSubmitting(false);
@@ -124,22 +254,50 @@ export function InquiryLimitDialog({
         setConfigError(true);
       })
       .finally(() => setConfigLoading(false));
-  }, [open]);
+  }, [open, mobileBrowser]);
 
   useEffect(() => {
-    if (config?.qrUrl) {
-      setQrUrl(config.qrUrl);
-      return;
-    }
-    if (!config?.qrFileId) {
+    let cancelled = false;
+    const load = async () => {
+      if (config?.qrFileId) {
+        setQrFailed(false);
+        try {
+          const url = await fetchDisplayableFileUrl(config.qrFileId);
+          if (cancelled) {
+            revokeDisplayableFileUrl(url);
+            return;
+          }
+          revokeDisplayableFileUrl(qrObjectUrlRef.current);
+          qrObjectUrlRef.current = url.startsWith('blob:') ? url : null;
+          setQrUrl(url);
+        } catch {
+          if (!cancelled) {
+            setQrUrl(null);
+            setQrFailed(true);
+          }
+        }
+        return;
+      }
+      revokeDisplayableFileUrl(qrObjectUrlRef.current);
+      qrObjectUrlRef.current = null;
+      setQrFailed(false);
+      if (config?.qrUrl && !isApiFileContentUrl(config.qrUrl)) {
+        setQrUrl(config.qrUrl);
+        return;
+      }
       setQrUrl(null);
-      return;
-    }
-    filesApi
-      .getContentUrl(config.qrFileId)
-      .then((r) => setQrUrl(r.contentUrl))
-      .catch(() => setQrUrl(null));
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, [config?.qrUrl, config?.qrFileId]);
+
+  useEffect(() => {
+    return () => {
+      revokeDisplayableFileUrl(qrObjectUrlRef.current);
+    };
+  }, []);
 
   async function handleSubmitPurchase() {
     if (submittingRef.current || !selectedPkg) return;
@@ -163,16 +321,6 @@ export function InquiryLimitDialog({
   }
 
   const primaryPkg = selectedPkg ?? config?.packages[0] ?? null;
-  const creditsLabel = primaryPkg
-    ? t('spaces.findPlace.enquire.limitCreditsCta', {
-        count: primaryPkg.credits,
-        amount: primaryPkg.priceAmount,
-      })
-    : t('spaces.findPlace.enquire.limitCreditsCtaDefault');
-  const priceLabel = primaryPkg
-    ? t('spaces.findPlace.enquire.limitCreditsJust', { amount: primaryPkg.priceAmount })
-    : t('spaces.findPlace.enquire.limitCreditsJust', { amount: 9 });
-  const buyCtaLabel = creditsLabel;
 
   if (submitted) {
     return (
@@ -194,10 +342,14 @@ export function InquiryLimitDialog({
             <CheckCircle2 size={24} />
           </Box>
           <Typography sx={{ mt: 2, fontWeight: 800, fontSize: 20 }}>
-            {t('spaces.findPlace.enquire.limitPaymentPendingTitle')}
+            {t('spaces.findPlace.enquire.limitPaySuccessTitle', {
+              defaultValue: 'Payment request submitted',
+            })}
           </Typography>
           <Typography color="text.secondary" sx={{ mt: 1, fontSize: 14 }}>
-            {t('spaces.findPlace.enquire.limitPaymentPendingBody')}
+            {t('spaces.findPlace.enquire.limitPaySuccessBody', {
+              defaultValue: 'Your enquiry credits will be added after approval.',
+            })}
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
@@ -210,200 +362,287 @@ export function InquiryLimitDialog({
   }
 
   if (view === 'buy' && config) {
-    const waMessage = selectedPkg
-      ? [
-          'ACOMI Inquiry Credit Payment',
-          `Package: ${selectedPkg.name} (${selectedPkg.credits} credits)`,
-          `Amount: ₹${selectedPkg.priceAmount}`,
-          utr.trim() ? `UTR: ${utr.trim()}` : null,
-          'Please find payment screenshot attached.',
-        ]
-          .filter(Boolean)
-          .join('\n')
+    const priceLabel = selectedPkg ? `₹${Number(selectedPkg.priceAmount)}` : '';
+    const upiId = config.upiId?.trim() ?? '';
+    const instructions = /e2e local payment instructions/i.test(config.instructions?.trim() ?? '')
+      ? ''
+      : (config.instructions?.trim() ?? '');
+    const hasQr = Boolean(qrUrl);
+    const hasUpi = upiId.length > 0;
+    const qrPending = Boolean(config.qrFileId) && !hasQr && !qrFailed;
+    const canPay = Boolean(selectedPkg) && (hasQr || hasUpi || qrPending);
+    const waUrl = selectedPkg
+      ? waLink(
+          config.whatsappNumber,
+          `Hi, I paid ${priceLabel} for ${selectedPkg.credits} enquiry credits on ACOMI. Sharing the payment screenshot.`,
+        )
       : null;
-    const waUrl = waLink(config.whatsappNumber, waMessage);
-    const canSubmit = Boolean(selectedPkg);
+
+    const helpHref = waLink(
+      config.whatsappNumber,
+      t('spaces.findPlace.enquire.limitHelpText', {
+        defaultValue: 'Hi, I need help with ACOMI enquiry credits.',
+      }),
+    );
 
     return (
       <Dialog
         open={open}
         onClose={submitting ? undefined : onClose}
         fullWidth
-        maxWidth="sm"
         scroll="paper"
         slotProps={{
           paper: {
             sx: {
-              m: { xs: 1.5, sm: 2 },
-              maxHeight: { xs: 'calc(100dvh - 24px)', sm: '90vh' },
+              m: { xs: 0, sm: 2 },
+              width: { xs: '100%', sm: 480 },
+              maxWidth: { xs: '100%', sm: 480 },
+              maxHeight: { xs: '100dvh', sm: '90vh' },
+              borderRadius: { xs: '16px 16px 0 0', sm: '20px' },
+              alignSelf: { xs: 'flex-end', sm: 'center' },
             },
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 800, pr: 2 }}>
-          {t('spaces.findPlace.enquire.limitBuyTitle')}
-        </DialogTitle>
-        <DialogContent dividers sx={{ px: { xs: 2, sm: 3 } }}>
-          {config.packages.length > 0 ? (
-            <Box sx={{ mb: 2.5 }}>
-              <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-                {t('spaces.findPlace.enquire.limitSelectPackage')}
+        <DialogContent sx={{ px: 2.5, pt: 3, pb: 2.5, textAlign: 'center' }}>
+          <Box
+            sx={{
+              width: 44,
+              height: 44,
+              mx: 'auto',
+              mb: 1.25,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '50%',
+              bgcolor: '#E7F6EE',
+              color: colors.primary,
+            }}
+          >
+            <CreditCard size={20} />
+          </Box>
+          <Typography sx={{ fontWeight: 800, fontSize: 22, lineHeight: 1.25 }}>
+            {selectedPkg
+              ? t('spaces.findPlace.enquire.limitPayTitle', {
+                  count: selectedPkg.credits,
+                  defaultValue: 'Get {{count}} enquiry credits',
+                })
+              : t('spaces.findPlace.enquire.limitPayUnavailableBoth', {
+                  defaultValue: 'Payment details are currently unavailable. Please try again later.',
+                })}
+          </Typography>
+          {selectedPkg ? (
+            <Typography color="text.secondary" sx={{ mt: 0.75, fontSize: 14 }}>
+              {t('spaces.findPlace.enquire.limitPaySubtitle', {
+                count: selectedPkg.credits,
+                amount: priceLabel,
+                defaultValue:
+                  'Pay {{amount}} to get {{count}} more email enquiries and continue contacting properties.',
+              })}
+            </Typography>
+          ) : null}
+
+          {canPay && selectedPkg ? (
+            <Box sx={{ mt: 2, borderRadius: '16px', bgcolor: '#E7F6EE', p: 1.75, textAlign: 'left' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: 14, color: colors.primary }}>
+                  {t('spaces.findPlace.enquire.limitPayUsingUpi', { defaultValue: 'Pay using UPI' })}
+                </Typography>
+                <Typography sx={{ fontWeight: 700, fontSize: 14, color: colors.primary }}>
+                  {t('spaces.findPlace.enquire.limitPayAmount', {
+                    amount: priceLabel,
+                    defaultValue: 'Amount: {{amount}}',
+                  })}
+                </Typography>
+              </Box>
+              {instructions ? (
+                <Typography sx={{ mt: 0.5, fontSize: 12, color: 'text.secondary' }}>{instructions}</Typography>
+              ) : null}
+              <Box
+                sx={{
+                  mt: 1.5,
+                  display: 'grid',
+                  gap: 1.5,
+                  alignItems: 'center',
+                  gridTemplateColumns:
+                    !mobileBrowser && hasQr && hasUpi ? 'minmax(0,1fr) auto minmax(0,1.1fr)' : '1fr',
+                }}
+              >
+                {hasQr ? (
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Box sx={{ display: 'inline-flex', bgcolor: '#fff', borderRadius: '12px', p: 1 }}>
+                      <Box
+                        component="button"
+                        type="button"
+                        onClick={() => setQrViewerOpen(true)}
+                        aria-label={t('spaces.findPlace.enquire.limitQrAlt', { defaultValue: 'UPI QR code' })}
+                        sx={{ border: 0, p: 0, bgcolor: 'transparent', cursor: 'zoom-in', display: 'block' }}
+                      >
+                        <Box
+                          component="img"
+                          src={qrUrl ?? undefined}
+                          alt={t('spaces.findPlace.enquire.limitQrAlt', { defaultValue: 'UPI QR code' })}
+                          sx={{ width: mobileBrowser ? 180 : 200, height: mobileBrowser ? 180 : 200, objectFit: 'contain', display: 'block' }}
+                        />
+                      </Box>
+                    </Box>
+                    <Typography sx={{ mt: 1, fontSize: 12, color: 'text.secondary' }}>
+                      {t('spaces.findPlace.enquire.limitPayScan', {
+                        defaultValue:
+                          'Scan the QR code with any UPI app (Google Pay, PhonePe, Paytm, etc.).',
+                      })}
+                    </Typography>
+                  </Box>
+                ) : qrPending ? (
+                  <Box
+                    sx={{
+                      mx: 'auto',
+                      width: mobileBrowser ? 180 : 200,
+                      height: mobileBrowser ? 180 : 200,
+                      borderRadius: '12px',
+                      bgcolor: '#fff',
+                    }}
+                  />
+                ) : (
+                  <Typography sx={{ fontSize: 13, color: 'text.secondary', textAlign: 'center' }}>
+                    {t('spaces.findPlace.enquire.limitPayQrUnavailable', {
+                      defaultValue: 'QR payment is currently unavailable.',
+                    })}
+                  </Typography>
+                )}
+                {hasQr && hasUpi ? (
+                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary', textAlign: 'center' }}>
+                    OR
+                  </Typography>
+                ) : null}
+                <Box>
+                  {hasUpi ? (
+                    <>
+                      <Typography sx={{ fontSize: 12, fontWeight: 700 }}>
+                        {t('spaces.findPlace.enquire.limitPayUpiLabel', { defaultValue: 'UPI ID' })}
+                      </Typography>
+                      <Box
+                        sx={{
+                          mt: 0.5,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          bgcolor: '#fff',
+                          border: '1px solid rgba(0,0,0,0.1)',
+                          borderRadius: '12px',
+                          px: 1.5,
+                          py: 1,
+                        }}
+                      >
+                        <Typography sx={{ flex: 1, fontWeight: 600, fontSize: 13, wordBreak: 'break-all' }}>
+                          {upiId}
+                        </Typography>
+                        <CopyButton text={upiId} />
+                      </Box>
+                    </>
+                  ) : (
+                    <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                      {t('spaces.findPlace.enquire.limitPayUpiUnavailable', {
+                        defaultValue: 'UPI payment details are currently unavailable.',
+                      })}
+                    </Typography>
+                  )}
+                  {waUrl ? (
+                    <Button
+                      component="a"
+                      href={waUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      startIcon={<MessageCircle size={16} />}
+                      fullWidth
+                      sx={{
+                        mt: 1.5,
+                        borderRadius: '999px',
+                        border: `1px solid ${colors.primary}`,
+                        color: colors.primary,
+                        bgcolor: '#fff',
+                        textTransform: 'none',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {t('spaces.findPlace.enquire.limitWhatsappCta', {
+                        defaultValue: 'Send payment screenshot on WhatsApp',
+                      })}
+                    </Button>
+                  ) : null}
+                </Box>
+              </Box>
+            </Box>
+          ) : (
+            <Typography sx={{ mt: 2, fontSize: 14, color: 'text.secondary' }} role="status">
+              {t('spaces.findPlace.enquire.limitPayUnavailableBoth', {
+                defaultValue: 'Payment details are currently unavailable. Please try again later.',
+              })}
+            </Typography>
+          )}
+
+          {canPay ? (
+            <Box sx={{ mt: 2, textAlign: 'left' }}>
+              <Typography sx={{ fontSize: 13, fontWeight: 700 }}>
+                {t('spaces.findPlace.enquire.limitPayReference', { defaultValue: 'Transaction reference' })}{' '}
+                <Box component="span" sx={{ fontWeight: 400, color: 'text.secondary' }}>
+                  {t('spaces.findPlace.enquire.limitPayReferenceOptional', { defaultValue: '(optional)' })}
+                </Box>
               </Typography>
-              <Select
+              <TextField
                 fullWidth
                 size="small"
-                value={selectedPkg?.id ?? ''}
-                onChange={(e) => {
-                  const pkg = config.packages.find((p) => p.id === e.target.value);
-                  setSelectedPkg(pkg ?? null);
-                }}
-                sx={{ mt: 1, borderRadius: '10px' }}
-              >
-                {config.packages.map((pkg) => (
-                  <MenuItem key={pkg.id} value={pkg.id}>
-                    {pkg.name} — {pkg.credits} credits · ₹{pkg.priceAmount}
-                  </MenuItem>
-                ))}
-              </Select>
-            </Box>
-          ) : null}
-
-          <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-            {t('spaces.findPlace.enquire.limitPayViaUpi')}
-          </Typography>
-
-          {config.upiId ? (
-            <Box
-              sx={{
-                mt: 1,
-                mb: 2,
-                display: 'flex',
-                alignItems: 'center',
-                bgcolor: colors.surfaceSecondary,
-                border: `1px solid ${colors.border}`,
-                borderRadius: 2,
-                px: 2,
-                py: 1.25,
-              }}
-            >
-              <Typography sx={{ fontWeight: 700, flex: 1, fontSize: 15 }}>{config.upiId}</Typography>
-              <CopyButton text={config.upiId} />
-            </Box>
-          ) : (
-            <Typography color="warning.main" variant="body2" sx={{ mt: 1, mb: 2 }}>
-              {t('spaces.findPlace.enquire.limitUpiMissing')}
-            </Typography>
-          )}
-
-          {qrUrl ? (
-            <Box sx={{ mb: 2, textAlign: 'center' }}>
-              <Box
-                component="img"
-                src={qrUrl}
-                alt={t('spaces.findPlace.enquire.limitQrAlt')}
-                sx={{
-                  width: '100%',
-                  maxWidth: 200,
-                  height: 'auto',
-                  borderRadius: 2,
-                  border: `1px solid ${colors.border}`,
-                }}
+                placeholder={t('spaces.findPlace.enquire.limitUtrPlaceholder', {
+                  defaultValue: 'e.g. 123456789012',
+                })}
+                value={utr}
+                disabled={submitting}
+                onChange={(e) => setUtr(e.target.value)}
+                sx={{ mt: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
               />
-            </Box>
-          ) : null}
-
-          {waUrl ? (
-            <Box sx={{ mb: 2 }}>
+              {submitError ? (
+                <Typography color="error" variant="body2" sx={{ mt: 1 }} role="alert">
+                  {submitError}
+                </Typography>
+              ) : null}
               <Button
-                component="a"
-                href={waUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                startIcon={<MessageCircle size={16} />}
                 fullWidth
-                variant="outlined"
-                sx={{
-                  ...dashOutlinedButtonSx,
-                  borderColor: '#25D366',
-                  color: '#25D366',
-                  '&:hover': { bgcolor: '#F0FDF4', borderColor: '#25D366' },
-                }}
+                disabled={submitting || !selectedPkg}
+                onClick={() => void handleSubmitPurchase()}
+                sx={{ ...dashContainedButtonSx, mt: 1.5, borderRadius: '999px' }}
               >
-                {t('spaces.findPlace.enquire.limitWhatsappCta')}
+                {submitting ? <CircularProgress size={18} sx={{ mr: 1 }} /> : null}
+                {t('spaces.findPlace.enquire.limitPaymentSubmit', {
+                  defaultValue: "I've paid — Notify admin",
+                })}
               </Button>
             </Box>
-          ) : (
-            <Typography color="warning.main" variant="body2" sx={{ mb: 2 }}>
-              {t('spaces.findPlace.enquire.limitWhatsappMissing')}
-            </Typography>
-          )}
-
-          {config.instructions ? (
-            <Box
-              sx={{
-                mb: 2,
-                bgcolor: colors.infoTint,
-                border: `1px solid ${colors.border}`,
-                borderRadius: 2,
-                px: 2,
-                py: 1.5,
-              }}
-            >
-              <Typography variant="body2" sx={{ color: colors.info, whiteSpace: 'pre-wrap' }}>
-                {config.instructions}
-              </Typography>
-            </Box>
           ) : null}
 
-          <Divider sx={{ my: 2 }} />
-
-          <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-            {t('spaces.findPlace.enquire.limitUtrLabel')}
-          </Typography>
-          <TextField
-            fullWidth
-            size="small"
-            placeholder={t('spaces.findPlace.enquire.limitUtrPlaceholder')}
-            value={utr}
-            disabled={submitting}
-            onChange={(e) => setUtr(e.target.value)}
-            sx={{ mt: 1, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-          />
-          {submitError ? (
-            <Typography color="error" variant="body2" sx={{ mt: 1 }} role="alert">
-              {submitError}
-            </Typography>
-          ) : null}
-        </DialogContent>
-        <DialogActions
-          sx={{
-            px: { xs: 2, sm: 3 },
-            pb: { xs: 2, sm: 2.5 },
-            flexDirection: { xs: 'column-reverse', sm: 'row' },
-            gap: 1,
-          }}
-        >
           <Button
-            disabled={submitting}
             fullWidth
+            disabled={submitting}
             onClick={() => {
               setView('main');
               setSubmitError(null);
             }}
-            sx={{ ...dashOutlinedButtonSx, width: { xs: '100%', sm: 'auto' } }}
+            sx={{ ...dashOutlinedButtonSx, mt: 1.25, borderRadius: '999px' }}
           >
-            {t('spaces.findPlace.enquire.back')}
+            {t('spaces.findPlace.enquire.back', { defaultValue: 'Back' })}
           </Button>
-          <Button
-            disabled={submitting || !canSubmit}
-            fullWidth
-            onClick={() => void handleSubmitPurchase()}
-            sx={{ ...dashContainedButtonSx, width: { xs: '100%', sm: 'auto' } }}
-          >
-            {submitting ? <CircularProgress size={18} sx={{ mr: 1 }} /> : null}
-            {t('spaces.findPlace.enquire.limitPaymentSubmit')}
-          </Button>
-        </DialogActions>
+          {helpHref ? (
+            <Button
+              component="a"
+              href={helpHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              startIcon={<Headset size={16} />}
+              sx={{ mt: 1, textTransform: 'none', fontWeight: 700, color: colors.primary }}
+            >
+              {t('spaces.findPlace.enquire.limitNeedHelp', { defaultValue: 'Need help?' })}
+            </Button>
+          ) : null}
+        </DialogContent>
       </Dialog>
     );
   }
@@ -435,106 +674,85 @@ export function InquiryLimitDialog({
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: '50%',
-            bgcolor: '#FEF2F2',
-            color: '#DC2626',
+            bgcolor: '#E7F6EE',
+            color: colors.primary,
           }}
         >
-          <AlertCircle size={24} />
+          <Mail size={22} />
         </Box>
-        <Typography sx={{ fontWeight: 800, fontSize: 20, lineHeight: 1.25 }}>
-          {config?.webFreeDailyLimit
-            ? t('spaces.findPlace.enquire.limitTitleWithCount', {
-                count: config.webFreeDailyLimit,
-              })
-            : t('spaces.findPlace.enquire.limitTitle')}
+        <Typography sx={{ fontWeight: 800, fontSize: 22, lineHeight: 1.25 }}>
+          {t('spaces.findPlace.enquire.limitUsedTodayTitle', {
+            defaultValue: "You've used today's free enquiry",
+          })}
         </Typography>
-        <Typography color="text.secondary" sx={{ mt: 0.75, fontSize: 14 }}>
-          {t('spaces.findPlace.enquire.limitBody')}
-        </Typography>
-
-        {availableCredits > 0 && onContinueWithCredits ? (
-          <Button
-            fullWidth
-            onClick={onContinueWithCredits}
-            sx={{ ...dashContainedButtonSx, mt: 2 }}
-          >
-            {t('spaces.findPlace.enquire.limitContinueWithCredits', { count: availableCredits })}
-          </Button>
-        ) : null}
-
-        <Box
+        <Typography
+          color="primary"
           sx={{
-            mt: 2.5,
-            display: 'grid',
-            gap: 1.25,
-            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-            textAlign: 'left',
+            mt: 1.5,
+            fontSize: 14,
+            fontWeight: 600,
+            maxWidth: 340,
+            mx: 'auto',
+            bgcolor: '#E7F6EE',
+            border: `1px solid ${colors.primary}40`,
+            borderRadius: '12px',
+            px: 1.5,
+            py: 1,
           }}
         >
-          <Button
-            type="button"
-            onClick={() => openAcomiAndroidApp()}
-            sx={{
-              display: 'block',
-              p: 1.75,
-              borderRadius: 3,
-              border: `1px solid ${colors.primary}40`,
-              bgcolor: colors.mintSubtle,
-              color: colors.tealDark,
-              textTransform: 'none',
-              textAlign: 'left',
-              '&:hover': { borderColor: colors.primary, bgcolor: colors.mintSubtle },
-            }}
-          >
-            <Smartphone size={20} color={colors.primary} />
-            <Typography sx={{ mt: 1, fontWeight: 700, fontSize: 13, lineHeight: 1.3 }}>
-              {t('spaces.findPlace.enquire.limitAndroidCta')}
-            </Typography>
-            <Typography sx={{ mt: 0.25, fontSize: 12, color: 'text.secondary' }}>
-              {t('spaces.findPlace.enquire.limitAndroidNote')}
-            </Typography>
-            <Typography
-              sx={{
-                mt: 1,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.5,
-                fontSize: 12,
-                fontWeight: 700,
-                color: colors.primary,
-              }}
-            >
-              {t('spaces.findPlace.enquire.limitOpenApp')} <ExternalLink size={12} />
-            </Typography>
-          </Button>
+          {mobileBrowser
+            ? t('spaces.findPlace.enquire.limitMobileBody', {
+                defaultValue:
+                  'Get unlimited enquiries with the ACOMI Android app, or choose paid email enquiries.',
+              })
+            : (
+              <>
+                {t('spaces.findPlace.enquire.limitDesktopBodyLead', {
+                  defaultValue: 'You can use the ACOMI mobile app for unlimited',
+                })}
+                <br />
+                {t('spaces.findPlace.enquire.limitDesktopBodyTail', { defaultValue: 'free enquiries.' })}
+              </>
+            )}
+        </Typography>
 
-          <Button
-            type="button"
-            disabled={configLoading || !(config?.enabled && config.packages.length > 0)}
-            onClick={() => setView('buy')}
-            sx={{
-              display: 'block',
-              p: 1.75,
-              borderRadius: 3,
-              border: '1px solid #FECACA',
-              bgcolor: '#FEF2F2',
-              color: colors.tealDark,
-              textTransform: 'none',
-              textAlign: 'left',
-              '&:hover': { borderColor: '#F87171', bgcolor: '#FEF2F2' },
-            }}
-          >
-            <CreditCard size={20} color="#DC2626" />
-            <Typography sx={{ mt: 1, fontWeight: 700, fontSize: 13, lineHeight: 1.3 }}>
-              {creditsLabel}
-            </Typography>
-            <Typography sx={{ mt: 0.25, fontSize: 12, color: 'text.secondary' }}>
-              {priceLabel}
-            </Typography>
-            <Typography sx={{ mt: 1, fontSize: 12, fontWeight: 700, color: '#DC2626' }}>
-              {configLoading ? t('auth.pleaseWait') : buyCtaLabel}
-            </Typography>
-          </Button>
+        <Box sx={{ mt: 2.5, display: 'grid', gap: 1.25, textAlign: 'left' }}>
+          {mobileBrowser ? (
+            <ChoiceCard
+              selected={choice === 'app'}
+              onSelect={() => setChoice('app')}
+              icon={<AndroidMark />}
+              title={t('spaces.findPlace.enquire.limitUnlimitedTitle', {
+                defaultValue: 'Unlimited enquiries',
+              })}
+              body={t('spaces.findPlace.enquire.limitUnlimitedBody', {
+                defaultValue: 'Use the ACOMI Android app for free and enjoy unlimited enquiries.',
+              })}
+              badge={t('spaces.findPlace.enquire.recommended', { defaultValue: 'Recommended' })}
+            />
+          ) : null}
+          <ChoiceCard
+            selected={!mobileBrowser || choice === 'credits'}
+            onSelect={() => setChoice('credits')}
+            icon={<Mail size={20} color={colors.primary} />}
+            title={
+              primaryPkg
+                ? t('spaces.findPlace.enquire.limitPackageTitle', {
+                    count: primaryPkg.credits,
+                    amount: `₹${Number(primaryPkg.priceAmount)}`,
+                    defaultValue: '{{count}} enquiry credits — {{amount}}',
+                  })
+                : t('auth.pleaseWait')
+            }
+            body={
+              primaryPkg
+                ? t('spaces.findPlace.enquire.limitPackageBody', {
+                    count: primaryPkg.credits,
+                    defaultValue: 'Get {{count}} more email enquiries to contact properties.',
+                  })
+                : ''
+            }
+          />
         </Box>
         {!configLoading && (configError || (config && !config.enabled)) ? (
           <Typography color="text.secondary" sx={{ mt: 2, fontSize: 13 }} role="status">
@@ -542,16 +760,72 @@ export function InquiryLimitDialog({
           </Typography>
         ) : null}
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3, flexDirection: 'column', gap: 1 }}>
-        <Button fullWidth onClick={onClose} sx={dashOutlinedButtonSx}>
-          {t('spaces.findPlace.enquire.limitDismiss')}
+      <DialogActions sx={{ px: 3, pb: 2, flexDirection: 'column', gap: 1 }}>
+        <Button
+          fullWidth
+          disabled={
+            (mobileBrowser ? choice : 'credits') === 'credits' &&
+            (configLoading || !(config?.enabled && config.packages.length > 0))
+          }
+          onClick={() => {
+            if (mobileBrowser && choice === 'app') {
+              openAcomiAndroidApp();
+              return;
+            }
+            setView('buy');
+          }}
+          startIcon={mobileBrowser && choice === 'app' ? <PlayMark /> : undefined}
+          endIcon={<ArrowRight size={16} />}
+          sx={{ ...dashContainedButtonSx, borderRadius: '999px' }}
+        >
+          {mobileBrowser && choice === 'app'
+            ? t('spaces.findPlace.enquire.limitGetAppCta', { defaultValue: 'Get the ACOMI app' })
+            : primaryPkg
+              ? t('spaces.findPlace.enquire.limitGetCreditsCta', {
+                  count: primaryPkg.credits,
+                  amount: `₹${Number(primaryPkg.priceAmount)}`,
+                  defaultValue: 'Get {{count}} credits for {{amount}}',
+                })
+              : t('auth.pleaseWait')}
         </Button>
+        <Button fullWidth onClick={onClose} sx={{ ...dashOutlinedButtonSx, borderRadius: '999px' }}>
+          {t('spaces.findPlace.enquire.limitNotNow', { defaultValue: 'Not now' })}
+        </Button>
+        {availableCredits > 0 && onContinueWithCredits ? (
+          <Button fullWidth onClick={onContinueWithCredits} sx={{ textTransform: 'none', fontWeight: 700 }}>
+            {t('spaces.findPlace.enquire.limitContinueWithCredits', { count: availableCredits })}
+          </Button>
+        ) : null}
+        {waLink(config?.whatsappNumber, t('spaces.findPlace.enquire.limitHelpText', {
+          defaultValue: 'Hi, I need help with ACOMI enquiry credits.',
+        })) ? (
+          <Button
+            component="a"
+            href={waLink(config?.whatsappNumber, t('spaces.findPlace.enquire.limitHelpText', {
+              defaultValue: 'Hi, I need help with ACOMI enquiry credits.',
+            })) ?? undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+            startIcon={<Headset size={16} />}
+            sx={{ textTransform: 'none', fontWeight: 700, color: colors.primary }}
+          >
+            {t('spaces.findPlace.enquire.limitNeedHelp', { defaultValue: 'Need help?' })}
+          </Button>
+        ) : null}
         {onQuotaReset ? (
           <Button fullWidth onClick={onQuotaReset} sx={dashOutlinedButtonSx}>
             {t('spaces.findPlace.enquire.limitResetQuota')}
           </Button>
         ) : null}
       </DialogActions>
+      <FileImageViewer
+        open={qrViewerOpen}
+        onClose={() => setQrViewerOpen(false)}
+        fileId={config?.qrFileId}
+        imageUrl={qrUrl}
+        title={t('spaces.findPlace.enquire.limitQrAlt', { defaultValue: 'UPI QR code' })}
+        downloadFilename="payment-qr.png"
+      />
     </Dialog>
   );
 }

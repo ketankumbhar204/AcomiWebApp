@@ -40,6 +40,7 @@ import { ContentCard } from '@/shared/components/ContentCard';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { ROUTES } from '@/routes/paths';
 import { colors, spaceTypePalette } from '@/shared/theme/colors';
+import { PRICE_BASIS_LABEL, defaultPriceBasis, isPriceBasis } from '@/shared/utils/priceBasis';
 import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type {
   AdminUpdateRegistrationContactRequest,
@@ -358,7 +359,11 @@ export function AdminPropertyDetailPage() {
                     />
                     <AdminLeadDetailField
                       label={t('admin.property.startingPrice')}
-                      value={`₹${detail.startingPrice ?? 0}`}
+                      value={`₹${detail.startingPrice ?? 0} ${
+                        PRICE_BASIS_LABEL[
+                          isPriceBasis(detail.priceBasis) ? detail.priceBasis : defaultPriceBasis(detail.propertyType)
+                        ]
+                      }`}
                     />
                     <AdminLeadDetailField
                       label={t('admin.propertyBulk.fields.AMENITIES')}

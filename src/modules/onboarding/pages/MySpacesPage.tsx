@@ -44,6 +44,7 @@ import { useGlobalDashboard } from '@/modules/global/hooks/useGlobalDashboard';
 import { useConsumerSpacesAttention } from '@/modules/global/hooks/useConsumerSpacesAttention';
 import { isConsumerMembershipRole } from '@/modules/onboarding/utils/profileCompletion';
 import { getAccountIntent } from '@/modules/onboarding/utils/accountIntent';
+import { canCreateSpace } from '@/modules/onboarding/utils/spaceCreationAccess';
 import { PendingInvitationsPanel } from '@/modules/onboarding/components/PendingInvitationsPanel';
 import { invitationApi } from '@/modules/onboarding/api/invitationApi';
 import { mySpacesApi } from '@/shared/api/mySpacesApi';
@@ -313,6 +314,9 @@ export function MySpacesPage() {
   };
 
   const isEmptyCatalog = !debounced && filter === 'all' && spaces.length === 0;
+  const creationCatalog = storeSpaces.length > 0 || Boolean(debounced) ? storeSpaces : spaces;
+  const catalogReady = storeSpaces.length > 0 || (!spacesQuery.isLoading && !debounced);
+  const canAddSpace = catalogReady && canCreateSpace(creationCatalog);
 
   // Members with zero spaces should not sit on an empty My Spaces dashboard.
   if (
@@ -349,21 +353,23 @@ export function MySpacesPage() {
               </Typography>
             </Box>
             <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', flexShrink: 0 }}>
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<Plus size={14} />}
-                onClick={() => navigate(ROUTES.createSpace)}
-                sx={{
-                  ...dashContainedButtonSx,
-                  minHeight: DASHBOARD_UX.buttonHeight,
-                  height: DASHBOARD_UX.buttonHeight,
-                  bgcolor: colors.primaryDark,
-                  '&:hover': { bgcolor: colors.primaryHover },
-                }}
-              >
-                {t('spaces.mySpaces.addSpace')}
-              </Button>
+              {canAddSpace ? (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<Plus size={14} />}
+                  onClick={() => navigate(ROUTES.createSpace)}
+                  sx={{
+                    ...dashContainedButtonSx,
+                    minHeight: DASHBOARD_UX.buttonHeight,
+                    height: DASHBOARD_UX.buttonHeight,
+                    bgcolor: colors.primaryDark,
+                    '&:hover': { bgcolor: colors.primaryHover },
+                  }}
+                >
+                  {t('spaces.mySpaces.addSpace')}
+                </Button>
+              ) : null}
               {hasPendingInvitations ? (
                 <Button
                   variant="outlined"
@@ -728,14 +734,16 @@ export function MySpacesPage() {
                       >
                         {t('onboarding.join.title')}
                       </Button>
-                      <Button
-                        variant="text"
-                        color="primary"
-                        onClick={() => navigate(ROUTES.createSpace)}
-                        sx={primaryOutlinedSx}
-                      >
-                        {t('spaces.mySpaces.createFab')}
-                      </Button>
+                      {canAddSpace ? (
+                        <Button
+                          variant="text"
+                          color="primary"
+                          onClick={() => navigate(ROUTES.createSpace)}
+                          sx={primaryOutlinedSx}
+                        >
+                          {t('spaces.mySpaces.createFab')}
+                        </Button>
+                      ) : null}
                     </Stack>
                   ) : null
                 }

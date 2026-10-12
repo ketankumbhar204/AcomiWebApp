@@ -499,6 +499,8 @@ export interface MemberMealActivityDay {
   date: string;
   hasActivity?: boolean;
   dayTotal?: number | null;
+  /** False when an accepted meal has no price, so the day total must not be shown as zero. */
+  amountKnown?: boolean | null;
   currencyCode?: string | null;
   paymentStatus?: MealPollPaymentStatus | null;
   paymentReference?: string | null;

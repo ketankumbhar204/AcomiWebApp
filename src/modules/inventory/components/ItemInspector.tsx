@@ -159,7 +159,8 @@ export function ItemInspector({
     categories.find((c) => c.categoryId === item.categoryId)?.name ??
     t('inventory.details.uncategorized');
   const supplierName =
-    suppliers.find((s) => s.supplierId === item.supplierId)?.name ??
+    item.supplierName?.trim() ||
+    suppliers.find((s) => s.supplierId === item.supplierId)?.name ||
     t('inventory.form.noSupplier');
 
   return (

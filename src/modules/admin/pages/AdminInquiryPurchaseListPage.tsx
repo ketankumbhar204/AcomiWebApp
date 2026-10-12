@@ -219,28 +219,34 @@ export function AdminInquiryPurchaseListPage() {
     }
   }
 
-  // ── Stat cards ───────────────────────────────────────────────
-  const stats = [
+  // ── Stat cards — same status filter as the dropdown ─────────
+  const stats: Array<{
+    key: InquiryPurchaseStatus;
+    label: string;
+    value: number;
+    fg: string;
+    selectedBg: string;
+  }> = [
     {
-      key: 'pending',
+      key: 'PENDING',
       label: 'Pending',
       value: summary?.pendingCount ?? 0,
-      bg: '#FFEDD5',
       fg: '#C2410C',
+      selectedBg: '#FFF7ED',
     },
     {
-      key: 'approved',
+      key: 'APPROVED',
       label: 'Approved',
       value: summary?.approvedCount ?? 0,
-      bg: '#DCFCE7',
       fg: '#15803D',
+      selectedBg: '#F0FDF4',
     },
     {
-      key: 'rejected',
+      key: 'REJECTED',
       label: 'Rejected',
       value: summary?.rejectedCount ?? 0,
-      bg: '#FEE2E2',
       fg: '#B91C1C',
+      selectedBg: '#FEF2F2',
     },
   ];
 
@@ -260,28 +266,41 @@ export function AdminInquiryPurchaseListPage() {
 
       {/* Summary cards */}
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2.5 }}>
-        {stats.map((s) => (
-          <Card
-            key={s.key}
-            elevation={0}
-            sx={{
-              flex: 1,
-              borderRadius: '14px',
-              border: '1px solid',
-              borderColor: 'divider',
-              boxShadow: '0 1px 2px rgb(15 23 42 / 0.04)',
-            }}
-          >
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                {s.label}
-              </Typography>
-              <Typography sx={{ fontWeight: 800, fontSize: 26, lineHeight: 1.2, color: s.fg }}>
-                {s.value}
-              </Typography>
-            </CardContent>
-          </Card>
-        ))}
+        {stats.map((s) => {
+          const selected = statusFilter === s.key;
+          return (
+            <Card
+              key={s.key}
+              component="button"
+              type="button"
+              aria-pressed={selected}
+              onClick={() => setStatusFilter(selected ? '' : s.key)}
+              elevation={0}
+              sx={{
+                flex: 1,
+                textAlign: 'left',
+                font: 'inherit',
+                color: 'inherit',
+                cursor: 'pointer',
+                borderRadius: '14px',
+                border: '1.5px solid',
+                borderColor: selected ? s.fg : 'divider',
+                bgcolor: selected ? s.selectedBg : '#fff',
+                boxShadow: '0 1px 2px rgb(15 23 42 / 0.04)',
+                '&:hover': { borderColor: s.fg },
+              }}
+            >
+              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                  {s.label}
+                </Typography>
+                <Typography sx={{ fontWeight: 800, fontSize: 26, lineHeight: 1.2, color: s.fg }}>
+                  {s.value}
+                </Typography>
+              </CardContent>
+            </Card>
+          );
+        })}
       </Stack>
 
       {/* Filters */}

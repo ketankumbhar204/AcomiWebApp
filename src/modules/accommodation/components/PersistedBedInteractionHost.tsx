@@ -11,6 +11,7 @@ export function PersistedBedInteractionHost({
 }) {
   const { t } = useTranslation();
   const {
+    spaceId,
     target,
     close,
     save,
@@ -28,6 +29,8 @@ export function PersistedBedInteractionHost({
         open={target != null}
         mode="persisted"
         label={target ? formatBedDisplayLabel(target.label || target.bedNumber, t) : ''}
+        spaceId={spaceId}
+        bedId={target?.bedId}
         bedNumber={target?.bedNumber ?? ''}
         locationLine={target?.locationLine}
         status={target?.status}

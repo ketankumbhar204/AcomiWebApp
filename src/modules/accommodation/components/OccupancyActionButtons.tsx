@@ -1,4 +1,4 @@
-import { Button, Stack, Typography, useTheme } from '@mui/material';
+import { Button, CircularProgress, Stack, Typography, useTheme } from '@mui/material';
 import {
   ArrowRightLeft,
   CalendarDays,
@@ -21,6 +21,7 @@ export type OccupancyActionButtonsProps = {
   title?: string;
   onAllocate?: () => void;
   onReserve?: () => void;
+  pendingAction?: 'allocate' | 'reserve' | null;
   onMoveIn?: () => void;
   onCancel?: () => void;
   onTransfer?: () => void;
@@ -36,6 +37,7 @@ export function OccupancyActionButtons({
   title,
   onAllocate,
   onReserve,
+  pendingAction = null,
   onMoveIn,
   onCancel,
   onTransfer,
@@ -59,8 +61,16 @@ export function OccupancyActionButtons({
       ? [
           {
             id: 'allocate',
-            label: t('occupancy.actions.allocate'),
-            icon: <UserPlus size={16} />,
+            label:
+              pendingAction === 'allocate'
+                ? t('occupancy.actions.openingAllocation', { defaultValue: 'Opening allocation…' })
+                : t('occupancy.actions.allocate'),
+            icon:
+              pendingAction === 'allocate' ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <UserPlus size={16} />
+              ),
             tint: occupancyActionTint.allocate,
             onClick: onAllocate,
           },
@@ -70,8 +80,16 @@ export function OccupancyActionButtons({
       ? [
           {
             id: 'reserve',
-            label: t('occupancy.actions.reserve'),
-            icon: <CalendarDays size={16} />,
+            label:
+              pendingAction === 'reserve'
+                ? t('occupancy.actions.openingReservation', { defaultValue: 'Opening reservation…' })
+                : t('occupancy.actions.reserve'),
+            icon:
+              pendingAction === 'reserve' ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <CalendarDays size={16} />
+              ),
             tint: occupancyActionTint.reserve,
             onClick: onReserve,
           },
@@ -151,6 +169,8 @@ export function OccupancyActionButtons({
             variant="outlined"
             startIcon={action.icon}
             onClick={action.onClick}
+            disabled={pendingAction != null}
+            aria-busy={pendingAction === action.id}
             sx={occupancyActionButtonSx(action.tint)}
           >
             {action.label}

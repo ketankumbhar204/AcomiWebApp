@@ -10,13 +10,14 @@ import {
   useTheme,
 } from '@mui/material';
 import { Download, RefreshCw, Trash2, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import {
   downloadAuthorizedFile,
-  fetchSignedContentUrlWithRetry,
+  fetchDisplayableFileUrl,
+  revokeDisplayableFileUrl,
 } from '@/shared/services/fileUploadService';
 import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 
@@ -51,28 +52,35 @@ export function FileImageViewer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const objectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!open) {
-      setSrc(null);
-      setError(null);
-      setLoading(false);
+      revokeDisplayableFileUrl(objectUrlRef.current);
+      objectUrlRef.current = null;
       return;
     }
     let cancelled = false;
     const load = async () => {
       setLoading(true);
       setError(null);
+      setSrc(null);
       try {
         if (fileId) {
-          const url = await fetchSignedContentUrlWithRetry(fileId);
-          if (!cancelled) {
-            setSrc(url);
+          const url = await fetchDisplayableFileUrl(fileId);
+          if (cancelled) {
+            revokeDisplayableFileUrl(url);
+            return;
           }
+          revokeDisplayableFileUrl(objectUrlRef.current);
+          objectUrlRef.current = url.startsWith('blob:') ? url : null;
+          setSrc(url);
           return;
         }
         if (imageUrl) {
           if (!cancelled) {
+            revokeDisplayableFileUrl(objectUrlRef.current);
+            objectUrlRef.current = null;
             setSrc(imageUrl);
           }
           return;
@@ -95,6 +103,12 @@ export function FileImageViewer({
       cancelled = true;
     };
   }, [open, fileId, imageUrl, t]);
+
+  useEffect(() => {
+    return () => {
+      revokeDisplayableFileUrl(objectUrlRef.current);
+    };
+  }, []);
 
   const handleDownload = async () => {
     setDownloading(true);

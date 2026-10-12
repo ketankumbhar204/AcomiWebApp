@@ -1,37 +1,25 @@
-import { Box, useTheme } from '@mui/material';
-import { AUTH_UX, authSurfaces } from '../theme/authUx';
+import { Box } from '@mui/material';
+import { AUTH_UX } from '../theme/authUx';
 
 type AuthBrandMarkProps = {
   size?: number;
 };
 
-/** ACOMI “A” mark — replaces the retired CountIn “C”. */
+/** ACOMI house mark — spoon and fork forming the roof. */
 export function AuthBrandMark({ size = AUTH_UX.markSize }: AuthBrandMarkProps) {
-  const theme = useTheme();
-  const a = authSurfaces(theme.palette.mode);
-
   return (
     <Box
-      aria-hidden
+      component="img"
+      src="/brand/icon-light.png"
+      alt=""
       sx={{
         width: size,
         height: size,
         flexShrink: 0,
-        borderRadius: `${Math.round(size * 0.28)}px`,
-        bgcolor: a.brand,
-        color: theme.palette.mode === 'dark' ? '#0F172A' : '#FFFFFF',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: '"Plus Jakarta Sans", "Helvetica Neue", Arial, sans-serif',
-        fontWeight: 700,
-        fontSize: Math.round(size * 0.5),
-        letterSpacing: '-0.04em',
-        lineHeight: 1,
-        userSelect: 'none',
+        borderRadius: `${Math.round(size * 0.22)}px`,
+        objectFit: 'cover',
+        display: 'block',
       }}
-    >
-      A
-    </Box>
+    />
   );
 }

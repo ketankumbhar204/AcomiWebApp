@@ -8,6 +8,7 @@ import type {
   PaymentsReviewQueueParam,
   PaymentsSummaryResponse,
   PaymentTimelineResponse,
+  CreateSpacePaymentRequest,
   ReviewPaymentRequest,
   SpacePaymentListResponse,
   SpacePaymentResponse,
@@ -18,6 +19,13 @@ import { ensureUploadedFileId } from '@/shared/services/fileUploadService';
 const OWNER_MONTH_TIMEOUT_MS = 120_000;
 
 export const paymentsApi = {
+  listStayCharges: (spaceId: string, month?: string) =>
+    unwrapApiResponse(
+      apiClient.get<ApiResponse<SpacePaymentListResponse>>(`/spaces/${spaceId}/payments/stay-charges`, {
+        params: month ? { month } : undefined,
+      }),
+    ),
+
   listPayments: (spaceId: string, params?: ListSpacePaymentsParams) =>
     unwrapApiResponse(
       apiClient.get<ApiResponse<SpacePaymentListResponse>>(`/spaces/${spaceId}/payments`, {
@@ -57,6 +65,11 @@ export const paymentsApi = {
         `/spaces/${spaceId}/payments/${paymentId}/review`,
         body,
       ),
+    ),
+
+  createPayment: (spaceId: string, body: CreateSpacePaymentRequest) =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<SpacePaymentResponse>>(`/spaces/${spaceId}/payments`, body),
     ),
 
   markPaymentReceived: (spaceId: string, paymentId: string, body?: { remarks?: string }) =>
@@ -186,6 +199,11 @@ export type PaymentReminderDeliveryResult = {
   sentAt?: string | null;
   lastAttemptAt?: string | null;
   attemptCount?: number;
+  messageText?: string | null;
+  whatsAppUrl?: string | null;
+  internationalPhone?: string | null;
+  inAppRecorded?: boolean;
+  inAppFailureCode?: string | null;
 };
 
 export type PaymentReminderProcessResult = {

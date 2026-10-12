@@ -209,7 +209,7 @@ export function AdminLayout() {
   return (
     <AppLayout
       navSections={navSections}
-      sidebarExpandMode="pinned"
+      sidebarExpandMode="hover"
       contentDense
       contentMaxWidth={false}
       headerLeading={headerLeading}

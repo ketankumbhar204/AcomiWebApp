@@ -26,6 +26,7 @@ export const ROUTES = {
   acceptInvitations: '/accept-invitations',
   mySpaces: '/my-spaces',
   findAPlace: '/find-a-place',
+  findAMeal: '/find-a-meal',
   completeProfile: '/complete-profile',
   profile: '/profile',
   globalAttention: '/global/attention',
@@ -51,6 +52,7 @@ export const ROUTES = {
   adminInquiryCredits: '/admin/inquiry-credits',
   adminInquiryPayments: '/admin/inquiry-credits/payments',
   myEnquiries: '/my-enquiries',
+  favorites: '/favorites',
 } as const;
 
 export function myEnquiriesPath(enquiryId?: string): string {
@@ -85,8 +87,22 @@ export function spaceOccupancyListPath(
   return `/spaces/${spaceId}/occupancy?mode=${mode}`;
 }
 
-export function spaceBedInventoryPath(spaceId: string, status = 'AVAILABLE'): string {
-  return `/spaces/${spaceId}/bed-inventory?status=${encodeURIComponent(status)}`;
+export function spaceBedInventoryPath(
+  spaceId: string,
+  status = 'AVAILABLE',
+  options?: { intent?: 'allocate' },
+): string {
+  const search = new URLSearchParams();
+  if (status) {
+    search.set('status', status);
+  }
+  if (options?.intent) {
+    search.set('intent', options.intent);
+  }
+  const qs = search.toString();
+  return qs
+    ? `/spaces/${spaceId}/bed-inventory?${qs}`
+    : `/spaces/${spaceId}/bed-inventory`;
 }
 
 export function spaceSpaceHealthPath(spaceId: string): string {
@@ -108,6 +124,11 @@ export function spaceMealHeadcountPath(
 
 export function spaceMembersPath(spaceId: string): string {
   return `/spaces/${spaceId}/members`;
+}
+
+/** Members list with the add-person choice dialog opened. */
+export function spaceMembersAddChoicePath(spaceId: string): string {
+  return `${spaceMembersPath(spaceId)}?addChoice=1`;
 }
 
 export function spaceImportPeoplePath(spaceId: string): string {
@@ -147,6 +168,10 @@ export function spaceOccupancyWizardPath(
     occupancyId?: string;
     /** Absolute or app path to return to after cancel/success (e.g. bed inventory). */
     returnTo?: string;
+    defaultRent?: number | null;
+    defaultDeposit?: number | null;
+    bedLabel?: string;
+    displayPath?: string;
   },
 ): string {
   const search = new URLSearchParams({ mode });
@@ -157,6 +182,10 @@ export function spaceOccupancyWizardPath(
   if (params?.buildingId) search.set('buildingId', params.buildingId);
   if (params?.occupancyId) search.set('occupancyId', params.occupancyId);
   if (params?.returnTo) search.set('returnTo', params.returnTo);
+  if (params?.defaultRent != null) search.set('defaultRent', String(params.defaultRent));
+  if (params?.defaultDeposit != null) search.set('defaultDeposit', String(params.defaultDeposit));
+  if (params?.bedLabel) search.set('bedLabel', params.bedLabel);
+  if (params?.displayPath) search.set('displayPath', params.displayPath);
   return `/spaces/${spaceId}/occupancy/wizard?${search.toString()}`;
 }
 
@@ -189,9 +218,17 @@ export function spaceMealsParticipationPath(spaceId: string): string {
   return `/spaces/${spaceId}/meals/participation`;
 }
 
-export function spaceMealsSharePath(spaceId: string, date?: string): string {
+export function spaceMealsSharePath(
+  spaceId: string,
+  date?: string,
+  intent?: 'save' | 'share' | 'reshare',
+): string {
   const base = `/spaces/${spaceId}/meals/share`;
-  return date ? `${base}?date=${encodeURIComponent(date)}` : base;
+  const params = new URLSearchParams();
+  if (date) params.set('date', date);
+  if (intent) params.set('intent', intent);
+  const query = params.toString();
+  return query ? `${base}?${query}` : base;
 }
 
 export function spaceMealsPollPath(
@@ -345,7 +382,8 @@ export function findAPlaceEnquirePath(options: {
   if (options.spaceId) {
     params.set('space', options.spaceId);
   }
-  return `${ROUTES.findAPlace}?${params.toString()}`;
+  const base = options.tab === 'mess' ? ROUTES.findAMeal : ROUTES.findAPlace;
+  return `${base}?${params.toString()}`;
 }
 
 export function adminEnquiryDetailPath(id: string): string {

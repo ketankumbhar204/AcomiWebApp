@@ -55,6 +55,7 @@ import {
 } from '@/modules/admin/utils/adminLabels';
 import { ROUTES, adminRegisteredUserDetailPath } from '@/routes/paths';
 import { getErrorMessage } from '@/shared/api/errors';
+import { normalizeIndianMobileDigits } from '@/shared/utils/indianMobile';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import type {
   AdminActiveSpace,
@@ -1158,7 +1159,7 @@ export function AdminRegisteredUsersPage() {
               onChange={(e) =>
                 setCreateForm((f) => ({
                   ...f,
-                  mobileNumber: e.target.value.replace(/\D/g, '').slice(0, 10),
+                  mobileNumber: normalizeIndianMobileDigits(e.target.value),
                 }))
               }
               error={Boolean(createErrors.mobileNumber)}

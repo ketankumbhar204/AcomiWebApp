@@ -146,7 +146,9 @@ test('Find a place sources stay aligned with the public website', () => {
   assert.match(page, /shouldPromptDiscoverLocation/);
   assert.match(page, /useInfiniteQuery/);
   assert.match(page, /DISCOVER_PAGE_SIZE/);
-  assert.match(page, /minRent: isMess \? null/);
+  assert.match(page, /minRent: filters\.minPrice/);
+  assert.match(page, /type: apiType/);
+  assert.match(page, /role="tablist"/);
   assert.doesNotMatch(page, /locations\.json/);
   assert.doesNotMatch(page, /PUNE_DISCOVER_LOCALITIES/);
   assert.doesNotMatch(page, /cityPune/);

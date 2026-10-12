@@ -33,6 +33,7 @@ import {
   isConsumerMembershipRole,
   profileCompletionPercentage,
 } from '@/modules/onboarding/utils/profileCompletion';
+import { membershipRoleLabelKey } from '@/modules/members/utils/memberRoles';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { ContentCard } from '@/shared/components/ContentCard';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -278,9 +279,13 @@ export function ProfilePage() {
                     ) : null}
                     {currentSpace?.membershipRole ? (
                       <StatusChip
-                        label={t(`spaces.roles.${currentSpace.membershipRole}`, {
-                          defaultValue: currentSpace.membershipRole,
-                        })}
+                        label={t(
+                          membershipRoleLabelKey(
+                            currentSpace.membershipRole,
+                            currentSpace.spaceType,
+                          ),
+                          { defaultValue: currentSpace.membershipRole },
+                        )}
                         tone="success"
                       />
                     ) : null}
@@ -356,13 +361,12 @@ export function ProfilePage() {
             <ProfileField
               icon={<Shield size={15} />}
               label={t('settings.profile.roleLabel', { defaultValue: 'Role in current space' })}
-              value={
-                currentSpace?.membershipRole
-                  ? t(`spaces.roles.${currentSpace.membershipRole}`, {
-                      defaultValue: currentSpace.membershipRole,
-                    })
-                  : '—'
-              }
+              value={t(
+                membershipRoleLabelKey(currentSpace?.membershipRole, currentSpace?.spaceType),
+                {
+                  defaultValue: currentSpace?.membershipRole ?? 'Member',
+                },
+              )}
             />
             <ProfileField
               icon={<Mail size={15} />}

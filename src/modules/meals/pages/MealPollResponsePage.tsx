@@ -31,6 +31,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { IconBadge } from '@/modules/dashboard/components/IconBadge';
+import { MealChoiceCards } from '../components/MealChoiceCards';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { ContentCard } from '@/shared/components/ContentCard';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -832,61 +833,9 @@ export function MealPollResponsePage() {
           justifyContent: 'space-between',
         }}
       >
-        <Stack
-          direction="row"
-          spacing={1.25}
-          useFlexGap
-          sx={{ minWidth: 0, flexWrap: 'wrap', alignItems: 'center', flex: 1 }}
-        >
-          <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary, whiteSpace: 'nowrap' }}>
-            {t('meals.poll.mealsSelectedLabel', {
-              defaultValue: '{{count}} meals selected',
-              count: mealsSelectedCount,
-            })}
-          </Typography>
-          {mealProgress
-            .filter((row) => row.selected && row.items.length > 0)
-            .map((row) => {
-            const MealIcon = MEAL_ICONS[row.mealType];
-            const accent = MEAL_ACCENTS[row.mealType];
-            const ordered = [
-              ...row.items.filter((item) => !item.isExtra),
-              ...row.items.filter((item) => item.isExtra),
-            ];
-            const itemLine = ordered
-              .map((item) =>
-                item.quantity > 1 ? `${item.label} ×${item.quantity}` : item.label,
-              )
-              .join(', ');
-            return (
-              <Stack
-                key={row.mealType}
-                direction="row"
-                spacing={0.5}
-                sx={{
-                  alignItems: 'center',
-                  maxWidth: 180,
-                  px: 0.75,
-                  py: 0.35,
-                  borderRadius: 1.5,
-                  border: `1px solid ${s.border}`,
-                  bgcolor: s.surface,
-                }}
-              >
-                <Box sx={{ color: accent, display: 'flex' }}>
-                  <MealIcon size={12} />
-                </Box>
-                <Typography
-                  sx={{ ...DASHBOARD_UX.smallCaption, color: s.textPrimary, fontWeight: 600 }}
-                  noWrap
-                  title={itemLine || t(`meals.mealType.${row.mealType}`)}
-                >
-                  {itemLine || t(`meals.mealType.${row.mealType}`)}
-                </Typography>
-              </Stack>
-            );
-          })}
-        </Stack>
+        <Box sx={{ flex: '1 1 240px', minWidth: 0 }}>
+          <MealChoiceCards rows={mealProgress} />
+        </Box>
 
         <Stack
           direction="row"
@@ -1360,77 +1309,7 @@ export function MealPollResponsePage() {
                     </Typography>
                   </Box>
                 </Stack>
-                <Stack spacing={0.75}>
-                  {mealProgress.map((row) => {
-                    const MealIcon = MEAL_ICONS[row.mealType];
-                    const accent = MEAL_ACCENTS[row.mealType];
-                    const mainItems = row.items.filter((item) => !item.isExtra);
-                    const extraItems = row.items.filter((item) => item.isExtra);
-                    const formatItem = (item: (typeof row.items)[number]) =>
-                      item.quantity > 1 ? `${item.label} ×${item.quantity}` : item.label;
-                    return (
-                      <Stack key={row.mealType} direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-                        <IconBadge accent={accent}>
-                          <MealIcon />
-                        </IconBadge>
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary, fontWeight: 600 }}>
-                            {t(`meals.mealType.${row.mealType}`)}
-                          </Typography>
-                          {row.selected && row.items.length > 0 ? (
-                            <Stack spacing={0.4} sx={{ mt: 0.35 }}>
-                              {mainItems.length > 0 ? (
-                                <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
-                                  {mainItems.map(formatItem).join(', ')}
-                                </Typography>
-                              ) : null}
-                              {extraItems.length > 0 ? (
-                                <Box sx={{ pt: 0.2 }}>
-                                  <Typography
-                                    sx={{
-                                      ...DASHBOARD_UX.badge,
-                                      color: colors.primaryDark,
-                                      fontWeight: 700,
-                                      mb: 0.15,
-                                    }}
-                                  >
-                                    {t('meals.poll.extrasSection', { defaultValue: 'Extras' })}
-                                  </Typography>
-                                  <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
-                                    {extraItems.map(formatItem).join(', ')}
-                                  </Typography>
-                                </Box>
-                              ) : null}
-                            </Stack>
-                          ) : (
-                            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
-                              {row.pending
-                                ? multiQuantity
-                                  ? t('meals.poll.skipShort', { defaultValue: 'Skip' })
-                                  : t('meals.poll.pendingShort', { defaultValue: 'Pending' })
-                                : t('meals.poll.statusClosed', { defaultValue: 'Closed' })}
-                            </Typography>
-                          )}
-                        </Box>
-                        <Stack spacing={0.15} sx={{ alignItems: 'flex-end', flexShrink: 0 }}>
-                          {row.plates > 0 ? (
-                            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
-                              {t('meals.poll.platesCount', {
-                                defaultValue: '{{count}} plates',
-                                count: row.plates,
-                              })}
-                            </Typography>
-                          ) : null}
-                          {pricesVisible && row.mealTotal > 0 ? (
-                            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textPrimary, fontWeight: 600 }}>
-                              {formatCurrency(row.mealTotal, row.currencyCode)}
-                            </Typography>
-                          ) : null}
-                        </Stack>
-                      </Stack>
-                    );
-                  })}
-                </Stack>
+                <MealChoiceCards rows={mealProgress} />
                 {pricesVisible && totalAmount.sum > 0 ? (
                   <Stack
                     direction="row"

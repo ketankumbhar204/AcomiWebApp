@@ -44,6 +44,13 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { AddressLocationFields } from '@/shared/components/AddressLocationFields';
+import {
+  EMPTY_ADDRESS_CAPTURE,
+  addressCaptureIssue,
+  captureFromParts,
+  composeStoredAddress,
+} from '@/modules/onboarding/utils/locationAutocomplete';
 import type { AdminSavedAddressesSummary, SavedAddress } from '@/shared/types/admin';
 
 const PAGE_SIZE = 6;
@@ -85,13 +92,7 @@ function messCount(row: SavedAddress): number {
   return row.messUsageCount ?? 0;
 }
 
-const emptyForm = {
-  addressLine: '',
-  city: '',
-  state: '',
-  pincode: '',
-  mapUrl: '',
-};
+const emptyLocation = EMPTY_ADDRESS_CAPTURE;
 
 type DeleteTarget =
   | { kind: 'one'; item: SavedAddress }
@@ -121,7 +122,7 @@ export function AdminSavedAddressesPage() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [location, setLocation] = useState(emptyLocation);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuRow, setMenuRow] = useState<SavedAddress | null>(null);
 
@@ -253,31 +254,35 @@ export function AdminSavedAddressesPage() {
 
   function openCreate() {
     setEditTarget(null);
-    setForm(emptyForm);
+    setLocation(emptyLocation);
     setDialogMode('create');
   }
 
   function openView(row: SavedAddress) {
     setEditTarget(row);
-    setForm({
-      addressLine: row.addressLine,
-      city: row.city,
-      state: row.state,
-      pincode: row.pincode,
-      mapUrl: row.mapUrl ?? '',
-    });
+    setLocation(
+      captureFromParts({
+        addressLine: row.addressLine,
+        city: row.city,
+        state: row.state,
+        pincode: row.pincode,
+        mapUrl: row.mapUrl,
+      }),
+    );
     setDialogMode('view');
   }
 
   function openEdit(row: SavedAddress) {
     setEditTarget(row);
-    setForm({
-      addressLine: row.addressLine,
-      city: row.city,
-      state: row.state,
-      pincode: row.pincode,
-      mapUrl: row.mapUrl ?? '',
-    });
+    setLocation(
+      captureFromParts({
+        addressLine: row.addressLine,
+        city: row.city,
+        state: row.state,
+        pincode: row.pincode,
+        mapUrl: row.mapUrl,
+      }),
+    );
     setDialogMode('edit');
   }
 
@@ -296,25 +301,25 @@ export function AdminSavedAddressesPage() {
   }
 
   async function handleSave() {
-    if (!form.addressLine.trim() || !form.city.trim() || !form.state.trim()) {
+    if (addressCaptureIssue(location, { required: true, pincodeRequired: true })) {
       enqueueSnackbar(t('admin.addresses.requiredFields'), { variant: 'error' });
       return;
     }
-    if (!isValidPincode(form.pincode.trim())) {
+    if (!isValidPincode(location.pincode.trim())) {
       enqueueSnackbar(t('admin.addresses.invalidPincode'), { variant: 'error' });
       return;
     }
-    if (form.mapUrl.trim() && !isValidMapUrl(form.mapUrl)) {
+    if (location.mapUrl.trim() && !isValidMapUrl(location.mapUrl)) {
       enqueueSnackbar(t('admin.addresses.invalidMapUrl'), { variant: 'error' });
       return;
     }
     setSaving(true);
     const payload = {
-      addressLine: form.addressLine.trim(),
-      city: form.city.trim(),
-      state: form.state.trim(),
-      pincode: form.pincode.trim(),
-      mapUrl: form.mapUrl.trim() || undefined,
+      addressLine: composeStoredAddress(location),
+      city: location.city.trim(),
+      state: location.state.trim(),
+      pincode: location.pincode.trim(),
+      mapUrl: location.mapUrl.trim() || undefined,
     };
     try {
       if (dialogMode === 'create') {
@@ -868,45 +873,13 @@ export function AdminSavedAddressesPage() {
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              label={t('admin.common.addressLine')}
-              value={form.addressLine}
-              onChange={(e) => setForm((f) => ({ ...f, addressLine: e.target.value }))}
+            <AddressLocationFields
+              value={location}
+              onChange={setLocation}
+              required
+              pincodeRequired
               disabled={readOnly}
-              fullWidth
             />
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                label={t('admin.common.city')}
-                value={form.city}
-                onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-                disabled={readOnly}
-                fullWidth
-              />
-              <TextField
-                label={t('admin.common.state')}
-                value={form.state}
-                onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
-                disabled={readOnly}
-                fullWidth
-              />
-            </Stack>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                label={t('admin.common.pincode')}
-                value={form.pincode}
-                onChange={(e) => setForm((f) => ({ ...f, pincode: e.target.value }))}
-                disabled={readOnly}
-                fullWidth
-              />
-              <TextField
-                label={t('admin.common.mapLink')}
-                value={form.mapUrl}
-                onChange={(e) => setForm((f) => ({ ...f, mapUrl: e.target.value }))}
-                disabled={readOnly}
-                fullWidth
-              />
-            </Stack>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

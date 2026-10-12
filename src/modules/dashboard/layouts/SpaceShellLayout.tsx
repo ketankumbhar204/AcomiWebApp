@@ -24,6 +24,7 @@ import {
   CustomerSidebarProfile,
 } from '@/modules/dashboard/components/customer/CustomerSidebarChrome';
 import { SpaceContextSelector } from '@/modules/dashboard/components/SpaceContextSelector';
+import { SpaceDashboardHomeButton } from '@/modules/dashboard/components/SpaceDashboardHomeButton';
 import { usePendingActions } from '@/modules/dashboard/hooks/usePendingActions';
 import { useSpaceProgressiveAccess } from '@/modules/dashboard/hooks/useSpaceProgressiveAccess';
 import { DASHBOARD_UX } from '@/modules/dashboard/theme/dashboardUx';
@@ -365,12 +366,17 @@ export function SpaceShellLayout() {
       padded={!useFullBleedContent}
       lockContentScroll={isMealMenuEditorPage}
       headerLeading={
-        <SpaceContextSelector
-          spaceId={spaceId}
-          spaceName={space?.spaceName}
-          spaceType={space?.spaceType}
-          membershipRole={space?.membershipRole}
-        />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, maxWidth: '100%' }}>
+          <SpaceDashboardHomeButton />
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <SpaceContextSelector
+              spaceId={spaceId}
+              spaceName={space?.spaceName}
+              spaceType={space?.spaceType}
+              membershipRole={space?.membershipRole}
+            />
+          </Box>
+        </Box>
       }
       headerActions={
         <Box

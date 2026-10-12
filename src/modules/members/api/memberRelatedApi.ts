@@ -1,7 +1,8 @@
 import apiClient from '@/shared/api/client';
 import { unwrapApiResponse } from '@/shared/api/apiRequest';
 import type { ApiResponse } from '@/shared/types/api';
-import type { MemberOccupancyListResponse, SpacePaymentListResponse } from '@/shared/types/member';
+import type { MemberOccupancyListResponse } from '@/shared/types/member';
+import type { SpacePaymentListResponse } from '@/shared/types/payments';
 import { currentMonthKey } from '@/shared/utils/dashboardFinancial';
 
 export const memberRelatedApi = {

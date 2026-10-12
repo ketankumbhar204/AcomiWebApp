@@ -34,6 +34,7 @@ import { colors } from '@/shared/theme/colors';
 import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
 import { canEditEntityPhoto } from '@/shared/files/entityPhoto';
 import type { MembershipRole, MySpaceResponse, SpaceType } from '@/shared/types/space';
+import { membershipRoleLabelKey } from '@/modules/members/utils/memberRoles';
 
 export const SPACE_CARD_COMPACT_WIDTH = { min: 360, max: 420 } as const;
 
@@ -245,7 +246,8 @@ export function SpaceCardCompact({
               sx={{ ...DASHBOARD_UX.spaceRole, color: s.textSecondary, mt: 0.15 }}
               noWrap
             >
-              {t(typeLabelKey(space.spaceType))} · {t(`spaces.roles.${space.membershipRole}`)}
+              {t(typeLabelKey(space.spaceType))} ·{' '}
+              {t(membershipRoleLabelKey(space.membershipRole, space.spaceType))}
             </Typography>
           </Box>
         </Box>

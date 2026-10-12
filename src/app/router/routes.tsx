@@ -16,6 +16,7 @@ import { InventoryPermissionGate } from '@/modules/inventory/components/Inventor
 import { MembersPermissionGate } from '@/modules/members/components/MembersPermissionGate';
 import { ProfileCompletionGate } from '@/modules/onboarding/components/ProfileCompletionGate';
 import { AuthenticatedRootRedirect } from '@/modules/onboarding/components/AuthenticatedRootRedirect';
+import { RoleOnboardingGate } from '@/modules/onboarding/components/RoleOnboardingGate';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { RouteErrorPage } from '@/shared/components/RouteErrorPage';
 import { ROUTES } from '@/routes/paths';
@@ -142,6 +143,11 @@ const MySpacesPage = lazyPage(() =>
 const FindAPlacePage = lazyPage(() =>
   import('@/modules/onboarding/pages/FindAPlacePage').then((m) => ({
     default: m.FindAPlacePage,
+  })),
+);
+const FavoritesPage = lazyPage(() =>
+  import('@/modules/onboarding/pages/FavoritesPage').then((m) => ({
+    default: m.FavoritesPage,
   })),
 );
 const MemberHomePage = lazyPage(() =>
@@ -639,9 +645,11 @@ export const appRoutes = [
               {
                 path: ROUTES.onboarding,
                 element: (
-                  <L>
-                    <OnboardingChoicePage />
-                  </L>
+                  <RoleOnboardingGate>
+                    <L>
+                      <OnboardingChoicePage />
+                    </L>
+                  </RoleOnboardingGate>
                 ),
               },
               {
@@ -688,6 +696,38 @@ export const appRoutes = [
                     ),
                   },
                   {
+                    path: ROUTES.findAMeal,
+                    element: (
+                      <L>
+                        <FindAPlacePage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.profile,
+                    element: (
+                      <L>
+                        <ProfilePage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.myEnquiries,
+                    element: (
+                      <L>
+                        <MyEnquiriesPage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.favorites,
+                    element: (
+                      <L>
+                        <FavoritesPage />
+                      </L>
+                    ),
+                  },
+                  {
                     path: ROUTES.joinSpace,
                     element: (
                       <L>
@@ -705,22 +745,6 @@ export const appRoutes = [
                     element: (
                       <L>
                         <MySpacesPage />
-                      </L>
-                    ),
-                  },
-                  {
-                    path: ROUTES.profile,
-                    element: (
-                      <L>
-                        <ProfilePage />
-                      </L>
-                    ),
-                  },
-                  {
-                    path: ROUTES.myEnquiries,
-                    element: (
-                      <L>
-                        <MyEnquiriesPage />
                       </L>
                     ),
                   },

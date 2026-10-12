@@ -6,18 +6,21 @@ import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardU
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { ErrorState } from '@/shared/components/ErrorState';
-import { InfoRow } from '@/shared/components/InfoRow';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { PageSection } from '@/shared/components/PageSection';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
+import { colors } from '@/shared/theme/colors';
 import type { CurrentOccupancySummary } from '@/shared/types/member';
 import { spaceOccupancyWizardPath } from '@/routes/paths';
+import { MemberCurrentStayCard } from '../MemberCurrentStayCard';
 import { useMemberOccupancies } from '../../hooks/useMemberDetailData';
+import { hasStayContent, labeledStayLocation, readStayRecord } from '../../utils/memberStayDisplay';
 
 type MemberOccupancyPanelProps = {
   spaceId: string;
   memberId: string;
   mode: 'current' | 'history';
+  amenities?: { code: string; label: string }[] | null;
   onViewHistory?: () => void;
 };
 
@@ -25,6 +28,7 @@ export function MemberOccupancyPanel({
   spaceId,
   memberId,
   mode,
+  amenities,
   onViewHistory,
 }: MemberOccupancyPanelProps) {
   const { t } = useTranslation();
@@ -49,39 +53,52 @@ export function MemberOccupancyPanel({
   }
 
   if (mode === 'current') {
-    const current = (data?.currentOccupancy ?? null) as CurrentOccupancySummary | null;
+    const currentSummary = (data?.currentOccupancy ?? null) as CurrentOccupancySummary | null;
+    const currentStay = readStayRecord(data?.currentOccupancy ?? null);
+    const reservedStay = hasStayContent(currentStay)
+      ? null
+      : readStayRecord(data?.reservedOccupancy ?? null);
+    const stay = hasStayContent(currentStay) ? currentStay : hasStayContent(reservedStay) ? reservedStay : null;
 
-    if (!current) {
+    if (!stay) {
       return (
-        <EmptyState
-          title={t('membership.workspace.noOccupancy')}
-          description={t('membership.workspace.noOccupancyBody')}
-        />
+        <Stack spacing={1.5}>
+          <EmptyState
+            title={t('occupancy.section.noStayTitle')}
+            description={t('occupancy.section.noStayBody')}
+          />
+          {onViewHistory ? (
+            <Typography
+              component="button"
+              onClick={onViewHistory}
+              sx={{
+                ...DASHBOARD_UX.button,
+                color: colors.primaryDark,
+                background: 'none',
+                border: 0,
+                textAlign: 'left',
+                cursor: 'pointer',
+                p: 0,
+              }}
+            >
+              {t('occupancy.actions.viewHistoryShort')}
+            </Typography>
+          ) : null}
+        </Stack>
       );
     }
 
-    const location = [
-      current.buildingName,
-      current.floorName,
-      current.unitName,
-      current.roomName,
-      current.bedName,
-    ]
-      .filter(Boolean)
-      .join(' · ');
+    const current = currentSummary;
 
     return (
-      <PageSection title={t('membership.workspace.currentStay')}>
-        <InfoRow label={t('membership.workspace.location')} value={location || '—'} />
-        <InfoRow
-          label={t('dashboard.drilldown.columns.status')}
-          value={current.occupancyStatus ?? '—'}
+      <Stack spacing={1.5}>
+        <MemberCurrentStayCard
+          stay={stay}
+          reserved={stay?.status === 'RESERVED' || stay?.occupancyStatus === 'RESERVED'}
+          amenities={amenities}
+          onViewHistory={onViewHistory}
         />
-        <InfoRow
-          label={t('dashboard.drilldown.columns.moveIn')}
-          value={current.moveInDate ?? '—'}
-        />
-        {permissions.canManageOccupancy && current.occupancyId ? (
+        {permissions.canManageOccupancy && current?.occupancyId ? (
           <OccupancyActionButtons
             status={current.occupancyStatus === 'RESERVED' ? 'RESERVED' : 'OCCUPIED'}
             occupancyId={current.occupancyId}
@@ -113,7 +130,7 @@ export function MemberOccupancyPanel({
             onViewHistory={onViewHistory}
           />
         ) : null}
-      </PageSection>
+      </Stack>
     );
   }
 
@@ -128,9 +145,7 @@ export function MemberOccupancyPanel({
       id: 'location',
       header: t('membership.workspace.location'),
       accessor: (row) =>
-        [row.buildingName, row.floorName, row.unitName, row.roomName, row.bedName]
-          .filter(Boolean)
-          .join(' · ') || '—',
+        labeledStayLocation(row, (key) => t(key)) || '—',
       primary: true,
     },
     {

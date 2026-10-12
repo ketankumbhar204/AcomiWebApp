@@ -14,6 +14,19 @@ function toPickerItem(candidate: MemberImportCandidateResponse): ResidentPickerI
   };
 }
 
+export function importCandidatesQueryKey(spaceId: string, search = '') {
+  return ['import-candidates', spaceId, search.trim()] as const;
+}
+
+/** Same list the import screen renders (available for move-in / mess reuse). */
+export async function loadImportPickerItems(
+  spaceId: string,
+  search?: string,
+): Promise<ResidentPickerItem[]> {
+  const data = await memberApi.searchImportCandidates(spaceId, search);
+  return data.filter((item) => item.availableForMoveIn).map(toPickerItem);
+}
+
 /**
  * Cross-space eligible resident search.
  * Mirrors mobile `useResidentImportSearch` (GET import-candidates).
@@ -27,14 +40,8 @@ export function useResidentImportSearch(spaceId: string | undefined, query: stri
   }, [query]);
 
   const searchQuery = useQuery({
-    queryKey: ['import-candidates', spaceId, debounced.trim()],
-    queryFn: async () => {
-      const data = await memberApi.searchImportCandidates(
-        spaceId!,
-        debounced.trim() || undefined,
-      );
-      return data.filter((item) => item.availableForMoveIn).map(toPickerItem);
-    },
+    queryKey: importCandidatesQueryKey(spaceId ?? '', debounced),
+    queryFn: () => loadImportPickerItems(spaceId!, debounced.trim() || undefined),
     enabled: Boolean(enabled && spaceId),
     staleTime: 15_000,
   });

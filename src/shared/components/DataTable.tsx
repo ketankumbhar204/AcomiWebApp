@@ -354,6 +354,7 @@ export function DataTable<T extends { id: string }>({
                       sortDirection={sortBy === column.id ? sortDirection : false}
                       sx={{
                         width: column.width,
+                        whiteSpace: column.width ? 'nowrap' : undefined,
                         height: TABLE_HEADER_HEIGHT,
                         ...DASHBOARD_UX.caption,
                         fontWeight: 600,

@@ -54,7 +54,7 @@ export function BulkCreateDialog(props: BulkCreateDialogProps) {
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
   const [count, setCount] = useState('3');
-  const [labelStyle, setLabelStyle] = useState<BedLabelStyle>('ALPHA');
+  const [labelStyle, setLabelStyle] = useState<BedLabelStyle>('NUMERIC');
   const [roomType, setRoomType] = useState<RoomType>('SHARED');
   const [capacity, setCapacity] = useState('2');
   const [bedsPerRoom, setBedsPerRoom] = useState('2');
@@ -63,7 +63,7 @@ export function BulkCreateDialog(props: BulkCreateDialogProps) {
   useEffect(() => {
     if (props.open) {
       setCount('3');
-      setLabelStyle('ALPHA');
+      setLabelStyle('NUMERIC');
       setRoomType('SHARED');
       setCapacity('2');
       setBedsPerRoom('2');

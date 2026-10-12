@@ -6,13 +6,40 @@ import { formatPricingMoney } from '../utils/commitBedPricing';
 type BedPricingDisplayProps = {
   rent?: number | null;
   deposit?: number | null;
+  layout?: 'columns' | 'rows';
 };
 
-export function BedPricingDisplay({ rent, deposit }: BedPricingDisplayProps) {
+export function BedPricingDisplay({ rent, deposit, layout = 'columns' }: BedPricingDisplayProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const notSet = t('accommodation.pricingConfirm.notSet', { defaultValue: 'Not set' });
+
+  if (layout === 'rows') {
+    return (
+      <Stack
+        spacing={0.5}
+        aria-label={`${t('accommodation.fields.rent', { defaultValue: 'Rent' })} ${formatPricingMoney(rent, notSet)}, ${t('accommodation.fields.deposit', { defaultValue: 'Deposit' })} ${formatPricingMoney(deposit, notSet)}`}
+      >
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <Typography sx={{ fontSize: 12, fontWeight: 600, color: s.textSecondary }}>
+            {t('accommodation.fields.rent', { defaultValue: 'Rent' })}
+          </Typography>
+          <Typography sx={{ fontSize: 14, fontWeight: 800, color: s.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
+            {formatPricingMoney(rent, notSet)}
+          </Typography>
+        </Stack>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <Typography sx={{ fontSize: 12, fontWeight: 600, color: s.textSecondary }}>
+            {t('accommodation.fields.deposit', { defaultValue: 'Deposit' })}
+          </Typography>
+          <Typography sx={{ fontSize: 14, fontWeight: 800, color: s.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
+            {formatPricingMoney(deposit, notSet)}
+          </Typography>
+        </Stack>
+      </Stack>
+    );
+  }
 
   return (
     <Stack

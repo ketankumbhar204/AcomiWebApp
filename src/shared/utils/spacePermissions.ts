@@ -4,6 +4,13 @@ export function isAccommodationApplicable(spaceType: SpaceType): boolean {
   return spaceType !== 'MESS';
 }
 
+/** Menu and order dashboard widgets. Unknown or non-mess types do not show them. */
+export function showsMessDashboardWidgets(
+  spaceType: SpaceType | null | undefined,
+): boolean {
+  return spaceType === 'MESS';
+}
+
 function deriveMealPermissions(role: MembershipRole | undefined) {
   const isOwner = role === 'OWNER';
   const isManager = role === 'MANAGER';

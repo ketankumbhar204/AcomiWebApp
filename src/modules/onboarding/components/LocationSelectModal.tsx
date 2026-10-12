@@ -14,7 +14,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { ChevronDown, Map, MapPin, Search, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Map, MapPin, Search, X } from 'lucide-react';
 import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -68,6 +68,29 @@ export function LocationSelectModal({
       maxWidth="xs"
       aria-labelledby="location-select-title"
       aria-describedby="location-select-description"
+      slotProps={{
+        backdrop: { sx: { backgroundColor: 'rgba(15, 23, 42, 0.45)' } },
+        paper: {
+          sx: {
+            display: 'flex',
+            flexDirection: 'column',
+            width: '100%',
+            maxWidth: { xs: '100%', sm: 440 },
+            m: 0,
+            maxHeight: {
+              xs: 'min(92dvh, calc(100dvh - 12px))',
+              sm: 'min(680px, calc(100dvh - 48px))',
+            },
+            borderRadius: { xs: '24px 24px 0 0', sm: '20px' },
+            boxShadow: '0 16px 48px rgba(15, 23, 42, 0.18)',
+          },
+        },
+      }}
+      sx={{
+        '& .MuiDialog-container': {
+          alignItems: { xs: 'flex-end', sm: 'center' },
+        },
+      }}
     >
       {open ? (
         <LocationSelectBody
@@ -262,7 +285,7 @@ function LocationSelectBody({
           <X size={18} />
         </IconButton>
       </DialogTitle>
-      <DialogContent>
+      <DialogContent sx={{ flex: '1 1 auto', overflow: 'auto' }}>
         <Typography id="location-select-description" sx={{ mb: 1.5, fontSize: '0.875rem', color: colors.textSecondary }}>
           {t('spaces.findPlace.locationSearchIntro')}
         </Typography>
@@ -353,17 +376,18 @@ function LocationSelectBody({
                         <ListItemButton
                           key={suggestionKey(suggestion, index)}
                           onClick={() => setSearchPick(suggestion)}
-                          sx={{ alignItems: 'flex-start', py: 1.25 }}
+                          sx={{ alignItems: 'center', py: 1.25, gap: 0.5 }}
                         >
                           <Box sx={{ mr: 1.25, mt: 0.35, color: colors.primaryDark }}>
                             <MapPin size={16} />
                           </Box>
-                          <Box>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Typography sx={{ fontSize: '0.875rem', fontWeight: 700 }}>{title}</Typography>
                             {detail ? (
                               <Typography sx={{ fontSize: '0.75rem', color: colors.textSecondary }}>{detail}</Typography>
                             ) : null}
                           </Box>
+                          <ChevronRight size={16} color={colors.muted} />
                         </ListItemButton>
                       );
                     })}
@@ -450,15 +474,16 @@ function LocationSelectBody({
                       <ListItemButton
                         key={[record.location, record.pincode, record.cityTaluka, record.district].join('|')}
                         onClick={() => setAreaPick(record)}
-                        sx={{ alignItems: 'flex-start', py: 1.25 }}
+                        sx={{ alignItems: 'center', py: 1.25, gap: 0.5 }}
                       >
                         <Box sx={{ mr: 1.25, mt: 0.35, color: colors.primaryDark }}>
                           <MapPin size={16} />
                         </Box>
-                        <Box>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Typography sx={{ fontSize: '0.875rem', fontWeight: 700 }}>{record.location}</Typography>
                           <Typography sx={{ fontSize: '0.75rem', color: colors.textSecondary }}>{recordDetail(record)}</Typography>
                         </Box>
+                        <ChevronRight size={16} color={colors.muted} />
                       </ListItemButton>
                     ))}
                   </List>
@@ -473,7 +498,7 @@ function LocationSelectBody({
           </Box>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2.5, pt: 0, justifyContent: 'space-between' }}>
+      <DialogActions sx={{ flexShrink: 0, px: 3, pb: 2.5, pt: 1, justifyContent: 'space-between', borderTop: `1px solid ${colors.border}` }}>
         <Button variant="outlined" onClick={onClose} sx={{ borderRadius: '12px', textTransform: 'none' }}>
           {t('common.cancel')}
         </Button>

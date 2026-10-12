@@ -5,6 +5,7 @@ import { paymentsApi } from '../api/paymentsApi';
 import type { SpacePaymentResponse } from '@/shared/types/payments';
 import { usePaymentMutations } from './usePayments';
 import { canOwnerMarkPaymentReceived, canOwnerSendPaymentReminder } from '../utils/paymentHelpers';
+import { openReminderWhatsApp } from '../utils/paymentReminderLaunch';
 
 export function receivablePayments(payments: SpacePaymentResponse[]): SpacePaymentResponse[] {
   return payments.filter((payment) => canOwnerMarkPaymentReceived(payment.paymentStatus ?? payment.status));
@@ -28,28 +29,6 @@ export function useOwnerPaymentCardActions(spaceId: string | undefined, month: s
     (key: string, action: ProcessingAction) => processingKey === key && processingAction === action,
     [processingAction, processingKey],
   );
-
-  const toastReminder = (result: {
-    deliveryStatus?: string;
-    failureCode?: string | null;
-    failureReason?: string | null;
-    providerConfigured?: boolean;
-  }) => {
-    const code = `${result.failureCode || ''} ${result.failureReason || ''}`;
-    if (result.deliveryStatus === 'SENT') {
-      enqueueSnackbar(t('paymentCollection.reminder.sent'), { variant: 'success' });
-      return;
-    }
-    if (!result.providerConfigured || code.includes('PROVIDER_NOT_CONFIGURED')) {
-      enqueueSnackbar(t('paymentCollection.reminder.providerUnavailable'), { variant: 'warning' });
-      return;
-    }
-    if (result.deliveryStatus === 'SKIPPED' || code.toLowerCase().includes('already')) {
-      enqueueSnackbar(t('paymentCollection.reminder.alreadySentToday'), { variant: 'info' });
-      return;
-    }
-    enqueueSnackbar(t('paymentCollection.reminder.failed'), { variant: 'error' });
-  };
 
   const markPaymentsReceived = async (payments: SpacePaymentResponse[]) => {
     const first = payments[0];
@@ -80,11 +59,33 @@ export function useOwnerPaymentCardActions(spaceId: string | undefined, month: s
     setProcessingKey(key);
     setProcessingAction('reminder');
     try {
-      let last = null as Awaited<ReturnType<typeof paymentsApi.sendPaymentReminder>> | null;
       for (const payment of payments) {
-        last = await paymentsApi.sendPaymentReminder(spaceId, payment.paymentId);
+        const result = await paymentsApi.sendPaymentReminder(spaceId, payment.paymentId);
+        const launch = await openReminderWhatsApp(result);
+        if (result.inAppFailureCode === 'NOTIFICATION_FAILED') {
+          enqueueSnackbar(t('paymentCollection.reminder.notificationFailed'), { variant: 'error' });
+        } else if (result.inAppFailureCode === 'MEMBER_NOT_ON_ACOMI') {
+          enqueueSnackbar(t('paymentCollection.reminder.memberNotOnAcomi'), { variant: 'warning' });
+        } else if (result.inAppRecorded && launch !== 'opened') {
+          enqueueSnackbar(t('paymentCollection.reminder.inAppSaved'), { variant: 'success' });
+        }
+        if (launch === 'opened') {
+          enqueueSnackbar(
+            t(
+              result.inAppRecorded
+                ? 'paymentCollection.reminder.openedWhatsApp'
+                : 'paymentCollection.reminder.whatsAppReady',
+            ),
+            { variant: 'success' },
+          );
+        } else if (launch === 'copied') {
+          enqueueSnackbar(t('paymentCollection.reminder.copied'), { variant: 'warning' });
+        } else if (launch === 'invalid') {
+          enqueueSnackbar(t('paymentCollection.reminder.invalidRecipient'), { variant: 'error' });
+        } else {
+          enqueueSnackbar(t('paymentCollection.reminder.whatsAppFailed'), { variant: 'error' });
+        }
       }
-      if (last) toastReminder(last);
     } catch {
       enqueueSnackbar(t('paymentCollection.reminder.failed'), { variant: 'error' });
     } finally {

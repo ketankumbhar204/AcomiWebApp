@@ -1,7 +1,8 @@
 import { Box, Link, useTheme } from '@mui/material';
 import { ArrowLeft } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { keyboardCoveredHeight } from './authKeyboardInset';
 import { AuthIllustration } from '@/modules/auth/components/AuthIllustration';
 import { AuthPhonePreview } from '@/modules/auth/components/AuthPhonePreview';
 import { authSurfaces } from '@/modules/auth/theme/authUx';
@@ -13,6 +14,29 @@ type AuthLayoutProps = {
   children: ReactNode;
 };
 
+function useKeyboardCoveredHeight(): number {
+  const [covered, setCovered] = useState(0);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) {
+      return;
+    }
+    const update = () => {
+      setCovered(keyboardCoveredHeight(window.innerHeight, viewport.height, viewport.offsetTop));
+    };
+    update();
+    viewport.addEventListener('resize', update);
+    viewport.addEventListener('scroll', update);
+    return () => {
+      viewport.removeEventListener('resize', update);
+      viewport.removeEventListener('scroll', update);
+    };
+  }, []);
+
+  return covered;
+}
+
 /**
  * Two-column auth shell. The page (html) is the only vertical scroller —
  * do not set overflow-x: hidden here; CSS would turn overflow-y into auto
@@ -23,6 +47,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
   const theme = useTheme();
   const a = authSurfaces(theme.palette.mode);
   const isDark = theme.palette.mode === 'dark';
+  const keyboardCovered = useKeyboardCoveredHeight();
 
   return (
     <Box
@@ -104,6 +129,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           zIndex: 1,
           minHeight: '100dvh',
           display: 'grid',
+          alignItems: { xs: 'start', md: 'stretch' },
           gridTemplateColumns: {
             xs: '1fr',
             md: 'minmax(0, 1.08fr) minmax(0, 0.92fr)',
@@ -118,10 +144,17 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           sx={{
             boxSizing: 'border-box',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            justifyContent: { xs: 'flex-start', md: 'safe center' },
             px: { xs: 2, sm: 3, md: 4, lg: 6 },
-            py: { xs: 4, md: 5, lg: 6 },
+            pt: { xs: 4, md: 5, lg: 6 },
+            pb: {
+              xs: keyboardCovered > 0 ? `calc(32px + ${keyboardCovered}px)` : 4,
+              md: 5,
+              lg: 6,
+            },
+            width: '100%',
             minHeight: { xs: '100dvh', md: '100%' },
             outline: 'none',
           }}

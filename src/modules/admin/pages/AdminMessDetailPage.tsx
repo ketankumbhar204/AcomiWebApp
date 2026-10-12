@@ -40,6 +40,7 @@ import { ContentCard } from '@/shared/components/ContentCard';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { ROUTES } from '@/routes/paths';
 import { colors, spaceTypePalette } from '@/shared/theme/colors';
+import { PRICE_BASIS_LABEL, isPriceBasis } from '@/shared/utils/priceBasis';
 import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type {
   AdminUpdateRegistrationContactRequest,
@@ -341,7 +342,9 @@ export function AdminMessDetailPage() {
                     />
                     <AdminLeadDetailField
                       label={t('admin.mess.monthlyPrice')}
-                      value={`₹${detail.monthlyPrice ?? 0}`}
+                      value={`₹${detail.monthlyPrice ?? 0}${
+                        isPriceBasis(detail.monthlyPriceBasis) ? ` ${PRICE_BASIS_LABEL[detail.monthlyPriceBasis]}` : ' per month'
+                      }`}
                     />
                     <AdminLeadDetailField
                       label={t('admin.mess.mealPrice')}

@@ -1,6 +1,11 @@
 import {
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Grid,
   IconButton,
   Stack,
@@ -8,8 +13,10 @@ import {
   useTheme,
 } from '@mui/material';
 import {
+  AlertCircle,
   BookOpen,
   CalendarDays,
+  Lock,
   MapPinned,
   PieChart,
   Plus,
@@ -17,7 +24,7 @@ import {
   Share2,
   Users,
 } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
@@ -50,6 +57,8 @@ import {
   useMealMutations,
   useMealPolls,
 } from '../hooks/useMeals';
+import { resolveDayPollControl, resolveDayShareVisual, resolveDayShareAction } from '../utils/dayShareAction';
+import { clearDayShareFailed, isDayShareFailed } from '../utils/dayShareFailure';
 import { addDaysIso, formatMenuDateLabel, MEAL_TYPES, todayIsoDate } from '../utils/mealDates';
 
 const navPillSx = {
@@ -128,6 +137,42 @@ export function MealsPlannerPage() {
     });
   }, [menuByType]);
 
+  const plannedCounts = useMemo(() => {
+    let published = 0;
+    let modified = 0;
+    let draft = 0;
+    for (const mealType of MEAL_TYPES) {
+      const menu = menuByType[mealType];
+      const options = menu?.options?.filter((option) => option.isAvailable) ?? [];
+      if (!menu || options.length === 0) {
+        continue;
+      }
+      if (menu.status === 'PUBLISHED') {
+        published += 1;
+      } else if (menu.status === 'MODIFIED') {
+        modified += 1;
+      } else {
+        draft += 1;
+      }
+    }
+    return { published, modified, draft };
+  }, [menuByType]);
+
+  const shareAction = resolveDayShareAction(plannedCounts);
+  const shareFailed = isDayShareFailed(spaceId, focusDate);
+  const dayStatus = resolveDayShareVisual(plannedCounts, { shareFailed });
+  useEffect(() => {
+    if (dayStatus === 'shared') {
+      clearDayShareFailed(spaceId, focusDate);
+    }
+  }, [dayStatus, focusDate, spaceId]);
+  const pollControl = resolveDayPollControl(
+    (dayPolls.pollDay?.polls ?? []).map((poll) => poll.status),
+  );
+  const [closePollOpen, setClosePollOpen] = useState(false);
+  const [closingPoll, setClosingPoll] = useState(false);
+  const closingPollRef = useRef(false);
+
   const dayStrip = useMemo(() => {
     let shared = 0;
     let notShared = 0;
@@ -151,12 +196,64 @@ export function MealsPlannerPage() {
     setSearchParams({ date: addDaysIso(focusDate, delta) });
   };
 
+  const openingShareRef = useRef(false);
+  const openDayShare = () => {
+    if (shareAction === 'hidden' || openingShareRef.current) {
+      return;
+    }
+    openingShareRef.current = true;
+    navigate(
+      spaceMealsSharePath(spaceId, focusDate, shareAction === 'reshare' ? 'reshare' : 'save'),
+    );
+  };
+
   const runAction = async (fn: () => Promise<unknown>, successKey: string) => {
     try {
       await fn();
       enqueueSnackbar(t(successKey), { variant: 'success' });
     } catch {
       enqueueSnackbar(t('common.errors.generic'), { variant: 'error' });
+    }
+  };
+
+  const confirmClosePolls = async () => {
+    if (closingPollRef.current) {
+      return;
+    }
+    const openPolls = (dayPolls.pollDay?.polls ?? []).filter((poll) => poll.status === 'OPEN');
+    if (openPolls.length === 0) {
+      setClosePollOpen(false);
+      return;
+    }
+    closingPollRef.current = true;
+    setClosingPoll(true);
+    try {
+      for (const poll of openPolls) {
+        await mutations.closeMealPoll.mutateAsync({
+          menuDate: focusDate,
+          mealType: poll.mealType,
+        });
+      }
+      enqueueSnackbar(
+        t('meals.planning.dayShare.closePollSuccess', {
+          defaultValue: 'Meal poll closed successfully.',
+        }),
+        { variant: 'success' },
+      );
+      setClosePollOpen(false);
+      reloadAll();
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : t('meals.planning.dayShare.closePollFailed', {
+              defaultValue: 'Could not close the meal poll. Try again.',
+            });
+      enqueueSnackbar(message, { variant: 'error' });
+      reloadAll();
+    } finally {
+      closingPollRef.current = false;
+      setClosingPoll(false);
     }
   };
 
@@ -247,66 +344,9 @@ export function MealsPlannerPage() {
               >
                 <RefreshCw size={DASHBOARD_UX.iconSize} />
               </IconButton>
-              {canManage ? (
-                <Button
-                  size="small"
-                  variant="contained"
-                  startIcon={<Share2 size={DASHBOARD_UX.iconSize} />}
-                  onClick={() => navigate(spaceMealsSharePath(spaceId, focusDate))}
-                  sx={{
-                    ...dashContainedButtonSx,
-                    ...DASHBOARD_UX.button,
-                    minHeight: DASHBOARD_UX.buttonHeight,
-                    height: DASHBOARD_UX.buttonHeight,
-                    px: `${DASHBOARD_UX.buttonPx}px`,
-                    bgcolor: colors.primaryDark,
-                    '&:hover': { bgcolor: colors.primaryHover },
-                  }}
-                >
-                  {t('meals.planning.share')}
-                </Button>
-              ) : null}
             </Stack>
           </Box>
         </Box>
-
-        {/* Secondary nav */}
-        {canManage ? (
-          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-            <Button
-              size="small"
-              startIcon={<BookOpen size={DASHBOARD_UX.iconSize} />}
-              onClick={() => navigate(spaceMealsLibraryPath(spaceId))}
-              sx={navPillSx}
-            >
-              {t('meals.library.title')}
-            </Button>
-            <Button
-              size="small"
-              startIcon={<Users size={DASHBOARD_UX.iconSize} />}
-              onClick={() => navigate(spaceMealsPlansPath(spaceId))}
-              sx={navPillSx}
-            >
-              {t('meals.subscriptionPlans.title')}
-            </Button>
-            <Button
-              size="small"
-              startIcon={<Users size={DASHBOARD_UX.iconSize} />}
-              onClick={() => navigate(spaceMealsParticipationPath(spaceId))}
-              sx={navPillSx}
-            >
-              {t('meals.participation.title')}
-            </Button>
-            <Button
-              size="small"
-              startIcon={<MapPinned size={DASHBOARD_UX.iconSize} />}
-              onClick={() => navigate(spaceMealsLocationsPath(spaceId))}
-              sx={navPillSx}
-            >
-              {t('meals.deliveryLocations.title')}
-            </Button>
-          </Stack>
-        ) : null}
 
         {/* Stats */}
         {canManage ? (
@@ -384,6 +424,90 @@ export function MealsPlannerPage() {
                     defaultValue: 'Plan your menu for the day',
                   })}
                 </Typography>
+                <Box
+                  sx={{
+                    mt: 1.25,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 1,
+                    px: 1.5,
+                    py: 1,
+                    borderRadius: `${DASHBOARD_UX.radius}px`,
+                    border: '1px solid',
+                    borderColor:
+                      dayStatus === 'shared'
+                        ? '#BFE8D4'
+                        : dayStatus === 'updated'
+                          ? '#D0E0F8'
+                          : dayStatus === 'failed'
+                            ? '#FECACA'
+                            : '#FED7AA',
+                    bgcolor:
+                      dayStatus === 'shared'
+                        ? '#ECFBF3'
+                        : dayStatus === 'updated'
+                          ? '#EEF4FF'
+                          : dayStatus === 'failed'
+                            ? '#FEF2F2'
+                            : '#FFF4EC',
+                  }}
+                >
+                  {dayStatus === 'shared' ? (
+                    <Share2 size={18} color="#059669" strokeWidth={2.2} />
+                  ) : (
+                    <AlertCircle
+                      size={18}
+                      strokeWidth={2.2}
+                      color={
+                        dayStatus === 'failed' ? '#B91C1C' : dayStatus === 'updated' ? '#1D4ED8' : '#C2410C'
+                      }
+                    />
+                  )}
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography
+                      sx={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        lineHeight: 1.3,
+                        color:
+                          dayStatus === 'shared'
+                            ? '#047857'
+                            : dayStatus === 'updated'
+                              ? '#1D4ED8'
+                              : dayStatus === 'failed'
+                                ? '#B91C1C'
+                                : '#C2410C',
+                      }}
+                    >
+                      {dayStatus === 'failed'
+                        ? t('meals.planning.dayShare.failed', { defaultValue: 'Sharing failed' })
+                        : dayStatus === 'updated'
+                          ? t('meals.planning.dayShare.updated', {
+                              defaultValue: 'Updated since last share',
+                            })
+                          : dayStatus === 'shared'
+                            ? t('meals.planning.dayShare.shared', { defaultValue: 'Shared' })
+                            : t('meals.planning.dayShare.notShared', { defaultValue: 'Not shared' })}
+                    </Typography>
+                    <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textSecondary, mt: 0.25 }}>
+                      {dayStatus === 'failed'
+                        ? t('meals.planning.dayShare.failedHint', {
+                            defaultValue: 'The menu was not shared. Try again.',
+                          })
+                        : dayStatus === 'updated'
+                          ? t('meals.planning.dayShare.updatedHint', {
+                              defaultValue: 'Share again so members see the latest menu',
+                            })
+                          : dayStatus === 'shared'
+                            ? t('meals.planning.dayShare.sharedHint', {
+                                defaultValue: "Today's menu has been shared",
+                              })
+                            : t('meals.planning.dayShare.notSharedHint', {
+                                defaultValue: "Today's menu has not been shared yet",
+                              })}
+                    </Typography>
+                  </Box>
+                </Box>
               </Box>
 
               <Box
@@ -412,7 +536,7 @@ export function MealsPlannerPage() {
                         }),
                       )
                     }
-                    onShare={() => navigate(spaceMealsSharePath(spaceId, focusDate))}
+                    onShare={openDayShare}
                     onPublish={() =>
                       void runAction(
                         () =>
@@ -446,6 +570,139 @@ export function MealsPlannerPage() {
                   />
                 ))}
               </Box>
+
+              {canManage && shareAction !== 'hidden' ? (
+                <Box sx={{ mt: 2.5 }}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    startIcon={<Share2 size={DASHBOARD_UX.iconSize} />}
+                    onClick={openDayShare}
+                    sx={{
+                      ...dashContainedButtonSx,
+                      ...DASHBOARD_UX.button,
+                      minHeight: DASHBOARD_UX.buttonHeight,
+                      bgcolor: colors.primaryDark,
+                      whiteSpace: 'normal',
+                      textAlign: 'center',
+                      '&:hover': { bgcolor: colors.primaryHover },
+                    }}
+                  >
+                    {shareAction === 'reshare'
+                      ? t('meals.planning.dayShare.reshare', {
+                          defaultValue: "Reshare today's menu",
+                        })
+                      : t('meals.planning.dayShare.action', {
+                          defaultValue: "Share today's menu",
+                        })}
+                  </Button>
+                </Box>
+              ) : null}
+
+              {canManage && pollControl === 'open' ? (
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<Lock size={DASHBOARD_UX.iconSize} />}
+                  disabled={closingPoll}
+                  onClick={() => setClosePollOpen(true)}
+                  sx={{
+                    ...DASHBOARD_UX.button,
+                    mt: 1.5,
+                    minHeight: DASHBOARD_UX.buttonHeight,
+                    color: '#C2410C',
+                    borderColor: '#FED7AA',
+                    bgcolor: '#FFF4EC',
+                    whiteSpace: 'normal',
+                    textTransform: 'none',
+                    '&:hover': { borderColor: '#FDBA74', bgcolor: '#FFEDD5' },
+                  }}
+                >
+                  {t('meals.planning.dayShare.closePoll', { defaultValue: 'Close poll' })}
+                </Button>
+              ) : null}
+              {canManage && pollControl === 'closed' ? (
+                <Box
+                  sx={{
+                    mt: 1.5,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 1,
+                    px: 1.5,
+                    py: 1,
+                    borderRadius: `${DASHBOARD_UX.radius}px`,
+                    border: '1px solid #E5E7EB',
+                    bgcolor: '#F4F5F7',
+                  }}
+                >
+                  <Lock size={16} color="#4B5563" strokeWidth={2.2} />
+                  <Box>
+                    <Typography sx={{ fontSize: 14, fontWeight: 700, color: '#374151' }}>
+                      {t('meals.planning.dayShare.pollClosed', { defaultValue: 'Poll closed' })}
+                    </Typography>
+                    <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textSecondary }}>
+                      {t('meals.planning.dayShare.pollClosedHint', {
+                        defaultValue: 'Members can no longer submit or change their selections',
+                      })}
+                    </Typography>
+                  </Box>
+                </Box>
+              ) : null}
+
+              {canManage && shareAction !== 'hidden' ? (
+                <Typography
+                  sx={{ ...DASHBOARD_UX.metricCaption, color: s.textMuted, mt: 0.75, textAlign: 'center' }}
+                >
+                  {t('meals.planning.dayShare.subtitle', {
+                    defaultValue: 'Share Breakfast, Lunch and Dinner together',
+                  })}
+                </Typography>
+              ) : canManage ? (
+                <Typography
+                  sx={{ ...DASHBOARD_UX.metricCaption, color: s.textMuted, mt: 2, textAlign: 'center' }}
+                >
+                  {t('meals.planning.dayShare.emptyHint', {
+                    defaultValue: 'Plan at least one meal before sharing.',
+                  })}
+                </Typography>
+              ) : null}
+
+              {canManage ? (
+                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mt: 2.5 }}>
+                  <Button
+                    size="small"
+                    startIcon={<BookOpen size={DASHBOARD_UX.iconSize} />}
+                    onClick={() => navigate(spaceMealsLibraryPath(spaceId))}
+                    sx={navPillSx}
+                  >
+                    {t('meals.library.title')}
+                  </Button>
+                  <Button
+                    size="small"
+                    startIcon={<Users size={DASHBOARD_UX.iconSize} />}
+                    onClick={() => navigate(spaceMealsPlansPath(spaceId))}
+                    sx={navPillSx}
+                  >
+                    {t('meals.subscriptionPlans.title')}
+                  </Button>
+                  <Button
+                    size="small"
+                    startIcon={<Users size={DASHBOARD_UX.iconSize} />}
+                    onClick={() => navigate(spaceMealsParticipationPath(spaceId))}
+                    sx={navPillSx}
+                  >
+                    {t('meals.participation.title')}
+                  </Button>
+                  <Button
+                    size="small"
+                    startIcon={<MapPinned size={DASHBOARD_UX.iconSize} />}
+                    onClick={() => navigate(spaceMealsLocationsPath(spaceId))}
+                    sx={navPillSx}
+                  >
+                    {t('meals.deliveryLocations.title')}
+                  </Button>
+                </Stack>
+              ) : null}
 
               {canManage ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2.5 }}>
@@ -567,31 +824,65 @@ export function MealsPlannerPage() {
                   </Stack>
                 ) : null}
 
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  endIcon={<Share2 size={DASHBOARD_UX.iconSize} />}
-                  onClick={() => navigate(spaceMealsSharePath(spaceId, focusDate))}
-                  sx={{
-                    ...dashOutlinedButtonSx,
-                    ...DASHBOARD_UX.button,
-                    mt: 'auto',
-                    minHeight: DASHBOARD_UX.buttonHeight,
-                    color: colors.primaryDark,
-                    borderColor: colors.primaryDark,
-                    '&:hover': {
+                {shareAction !== 'hidden' ? (
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    endIcon={<Share2 size={DASHBOARD_UX.iconSize} />}
+                    onClick={openDayShare}
+                    sx={{
+                      ...dashOutlinedButtonSx,
+                      ...DASHBOARD_UX.button,
+                      mt: 'auto',
+                      minHeight: DASHBOARD_UX.buttonHeight,
+                      color: colors.primaryDark,
                       borderColor: colors.primaryDark,
-                      bgcolor: `${colors.primaryDark}0F`,
-                    },
-                  }}
-                >
-                  {t('meals.planning.sharePreview')}
-                </Button>
+                      whiteSpace: 'normal',
+                      '&:hover': {
+                        borderColor: colors.primaryDark,
+                        bgcolor: `${colors.primaryDark}0F`,
+                      },
+                    }}
+                  >
+                    {shareAction === 'reshare'
+                      ? t('meals.planning.dayShare.reshare', {
+                          defaultValue: "Reshare today's menu",
+                        })
+                      : t('meals.planning.dayShare.action', {
+                          defaultValue: "Share today's menu",
+                        })}
+                  </Button>
+                ) : null}
               </ContentCard>
             ) : null}
           </Box>
         )}
       </Stack>
+      <Dialog open={closePollOpen} onClose={closingPoll ? undefined : () => setClosePollOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>
+          {t('meals.planning.dayShare.closePollTitle', {
+            defaultValue: "Close today's meal poll?",
+          })}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {t('meals.planning.dayShare.closePollMessage', {
+              defaultValue:
+                'Members will no longer be able to submit or change their meal selections for this poll.',
+            })}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setClosePollOpen(false)} disabled={closingPoll}>
+            {t('common.cancel', { defaultValue: 'Cancel' })}
+          </Button>
+          <Button onClick={() => void confirmClosePolls()} disabled={closingPoll} color="warning">
+            {closingPoll
+              ? t('common.loading', { defaultValue: 'Closing…' })
+              : t('meals.planning.dayShare.closePollConfirm', { defaultValue: 'Close poll' })}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </PageContainer>
   );
 }

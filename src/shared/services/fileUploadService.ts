@@ -1,3 +1,4 @@
+import apiClient from '@/shared/api/client';
 import { env } from '@/shared/config/env';
 import { ApiError } from '@/shared/api/errors';
 import {
@@ -167,16 +168,51 @@ function resolveDownloadUrl(contentUrl: string): string {
   return `${env.apiBaseUrl}${path}`;
 }
 
+/** Local storage serves `/files/{id}/content` only with the bearer token. `<img>` cannot send that header. */
+export function isApiFileContentUrl(contentUrl: string): boolean {
+  return /\/files\/[^/?#]+\/content(?:[?#]|$)/.test(contentUrl);
+}
+
+export function revokeDisplayableFileUrl(url: string | null | undefined): void {
+  if (url?.startsWith('blob:')) {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** A URL an `<img>` can paint: a public signed URL, or a blob fetched with the session token. */
+export async function fetchDisplayableFileUrl(fileId: string): Promise<string> {
+  const meta = await filesApi.getContentUrl(fileId);
+  const resolved = resolveDownloadUrl(meta.contentUrl);
+  if (!isApiFileContentUrl(resolved)) {
+    return resolved;
+  }
+  const response = await apiClient.get<Blob>(`/files/${fileId}/content`, {
+    responseType: 'blob',
+    headers: { Accept: '*/*' },
+  });
+  return URL.createObjectURL(response.data);
+}
+
 export async function downloadAuthorizedFile(
   fileId: string,
   fallbackFilename = 'file.jpg',
 ): Promise<void> {
-  const meta = await fetchSignedContentUrlResponse(fileId);
-  const response = await fetch(meta.contentUrl);
-  if (!response.ok) {
-    throw new ApiError('Unable to download the file. Please try again.', response.status);
+  const meta = await filesApi.getContentUrl(fileId);
+  const resolved = resolveDownloadUrl(meta.contentUrl);
+  let blob: Blob;
+  if (isApiFileContentUrl(resolved)) {
+    const response = await apiClient.get<Blob>(`/files/${fileId}/content`, {
+      responseType: 'blob',
+      headers: { Accept: '*/*' },
+    });
+    blob = response.data;
+  } else {
+    const response = await fetch(resolved);
+    if (!response.ok) {
+      throw new ApiError('Unable to download the file. Please try again.', response.status);
+    }
+    blob = await response.blob();
   }
-  const blob = await response.blob();
   const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = objectUrl;

@@ -27,6 +27,10 @@ export type InquiryPaymentConfig = {
   whatsappNumber?: string | null;
   instructions?: string | null;
   webFreeDailyLimit?: number;
+  viewHereDailyLimit?: number;
+  webViewHereEnabled?: boolean;
+  androidViewHereEnabled?: boolean;
+  androidViewHereDailyLimit?: number;
   androidBillingMode?: AndroidInquiryBillingMode;
   androidFreeDailyLimit?: number;
   androidHourlyRateLimit?: number;
@@ -52,6 +56,9 @@ export type InquiryQuota = {
   androidBillingMode?: AndroidInquiryBillingMode | string | null;
   purchasesEnabled?: boolean;
   unlimited?: boolean;
+  viewHereDailyLimit?: number;
+  viewHereUsedToday?: number;
+  viewHereRemainingToday?: number;
 };
 
 export type InquiryPurchaseStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -94,6 +101,10 @@ export type UpdateInquiryPaymentConfigRequest = {
   qrFileId?: string | null;
   instructions?: string | null;
   webFreeDailyLimit?: number;
+  viewHereDailyLimit?: number;
+  webViewHereEnabled?: boolean;
+  androidViewHereEnabled?: boolean;
+  androidViewHereDailyLimit?: number;
   androidBillingMode?: AndroidInquiryBillingMode;
   androidFreeDailyLimit?: number;
   androidHourlyRateLimit?: number;

@@ -40,8 +40,13 @@ import {
   customerMealDateBounds,
   resolveCustomerMealFocusDate,
 } from '@/modules/meals/utils/customerMealFocusDate';
-import { buildMealSummaryFromPolls, platesForSingleSelectOption } from '@/modules/meals/utils/mealSelectionSummary';
+import {
+  buildMealSummaryFromPolls,
+  platesForSingleSelectOption,
+  resolveMealPollChoice,
+} from '@/modules/meals/utils/mealSelectionSummary';
 import { showMealPrices } from '@/modules/meals/utils/mealPricingPolicy';
+import { showsMessDashboardWidgets } from '@/shared/utils/spacePermissions';
 import { ContentCard } from '@/shared/components/ContentCard';
 import { PeriodDayNav } from '@/shared/components/PeriodDayNav';
 import { StatusChip } from '@/shared/components/StatusChip';
@@ -393,6 +398,7 @@ export function DashboardCustomerMealsSection({
 
   const spaceName = permissions.space?.spaceName ?? t('navigation.dashboard');
   const spaceType = permissions.space?.spaceType;
+  const showMessWidgets = embeddedOnOrders || showsMessDashboardWidgets(spaceType);
   const name = firstName(user?.fullName) || t('dashboard.customer.guest', { defaultValue: 'there' });
   const showPrices = showMealPrices({ spaceType });
   const { minDate, maxDate } = customerMealDateBounds();
@@ -412,10 +418,18 @@ export function DashboardCustomerMealsSection({
   const lastUpdatedMs =
     Math.max(pollsQuery.dataUpdatedAt || 0, activity.dataUpdatedAt || 0) || undefined;
 
-  const pollBadge = (poll: MealPollSlot | undefined, selected: boolean) => {
+  const pollBadge = (
+    poll: MealPollSlot | undefined,
+    choice: 'unanswered' | 'selected' | 'unavailable',
+  ) => {
     if (!poll) return null;
-    // Prefer customer selection state over kitchen/poll-status copy.
-    if (selected) {
+    if (choice === 'unavailable') {
+      return {
+        label: t('dashboard.pollCard.notAvailable', { defaultValue: 'Not available' }),
+        tone: 'neutral' as const,
+      };
+    }
+    if (choice === 'selected') {
       return {
         label: t('meals.poll.selectedShort', { defaultValue: 'Selected' }),
         tone: 'success' as const,
@@ -498,16 +512,18 @@ export function DashboardCustomerMealsSection({
               </Box>
             ) : null}
           </Stack>
-          <Typography sx={{ fontSize: 12, color: s.textMuted, mt: 0.2, lineHeight: 1.35 }}>
-            {t('dashboard.customer.heroSubtitle', {
-              defaultValue: "Here's what's cooking today",
-            })}
-          </Typography>
+          {showMessWidgets ? (
+            <Typography sx={{ fontSize: 12, color: s.textMuted, mt: 0.2, lineHeight: 1.35 }}>
+              {t('dashboard.customer.heroSubtitle', {
+                defaultValue: "Here's what's cooking today",
+              })}
+            </Typography>
+          ) : null}
         </Box>
       </Box>
 
       {/* Subscription banner */}
-      {subscriptionStatus?.prepaidBilling && !subscriptionStatus.subscriptionActive ? (
+      {showMessWidgets && subscriptionStatus?.prepaidBilling && !subscriptionStatus.subscriptionActive ? (
         <ContentCard>
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
@@ -542,7 +558,8 @@ export function DashboardCustomerMealsSection({
         </ContentCard>
       ) : null}
 
-      {/* Date + meals + CTA in one panel */}
+      {/* Date + meals + CTA — mess dashboard and the Meals page only */}
+      {showMessWidgets ? (
       <ContentCard padded={false}>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
@@ -655,14 +672,17 @@ export function DashboardCustomerMealsSection({
                   const cardBg = isDark ? cardSurface.dark : cardSurface.light;
                   const cardBorder = isDark ? cardSurface.borderDark : cardSurface.borderLight;
                   const cardHover = isDark ? cardSurface.hoverDark : cardSurface.hoverLight;
-                  const plates = poll ? platesForPoll(poll, multiQuantity) : 0;
-                  const selected = plates > 0;
+                  const choice = resolveMealPollChoice(poll, multiQuantity);
+                  const selected = choice === 'selected';
+                  const unavailable = choice === 'unavailable';
                   const preview = selected
                     ? selectionPreview(poll, multiQuantity, showPrices, 2)
-                    : menuPreview(poll, showPrices, 2);
+                    : unavailable
+                      ? { lines: [] as string[], moreCount: 0 }
+                      : menuPreview(poll, showPrices, 2);
                   const { lines, moreCount } = preview;
                   const hasSlot = Boolean(poll);
-                  const badge = pollBadge(poll, selected);
+                  const badge = pollBadge(poll, choice);
                   return (
                     <Box
                       key={mealType}
@@ -763,7 +783,11 @@ export function DashboardCustomerMealsSection({
                             })}
                           </Typography>
                         ) : null}
-                        {lines.length > 0 ? (
+                        {unavailable ? (
+                          <Typography sx={{ fontSize: 12, fontWeight: 700, color: s.textSecondary, mt: 0.15 }}>
+                            {t('dashboard.pollCard.notAvailable', { defaultValue: 'Not available' })}
+                          </Typography>
+                        ) : lines.length > 0 ? (
                           <Stack spacing={0.35} sx={{ mt: selected ? 0 : 0.15 }}>
                             {lines.map((line) => (
                               <Stack
@@ -886,6 +910,7 @@ export function DashboardCustomerMealsSection({
           )}
         </Box>
       </ContentCard>
+      ) : null}
 
       {/* Quick stats — compact tiles with value + label (mock) */}
       <Box>
@@ -895,12 +920,17 @@ export function DashboardCustomerMealsSection({
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, minmax(0, 1fr))' },
+            gridTemplateColumns: {
+              xs: '1fr 1fr',
+              md: showMessWidgets ? 'repeat(4, minmax(0, 1fr))' : '1fr 1fr',
+            },
             gap: 1,
           }}
         >
           {(
             [
+              ...(showMessWidgets
+                ? [
               {
                 id: 'menu',
                 label: t('dashboard.customer.stats.menuItems', { defaultValue: 'Total menu items' }),
@@ -915,6 +945,8 @@ export function DashboardCustomerMealsSection({
                 icon: ClipboardList,
                 accent: '#2563EB',
               },
+                  ]
+                : []),
               {
                 id: 'due',
                 label: t('dashboard.customer.stats.dueAmount', { defaultValue: 'Due amount' }),
@@ -939,7 +971,7 @@ export function DashboardCustomerMealsSection({
                 icon: CalendarDays,
                 accent: '#7C3AED',
               },
-            ] as const
+            ]
           ).map((stat) => {
             const Icon = stat.icon;
             return (
@@ -1006,7 +1038,7 @@ export function DashboardCustomerMealsSection({
       </Box>
 
       {/* Recent orders */}
-      {!embeddedOnOrders ? (
+      {showMessWidgets && !embeddedOnOrders ? (
       <Box>
         <Stack
           direction="row"
@@ -1077,13 +1109,18 @@ export function DashboardCustomerMealsSection({
             display: 'grid',
             gridTemplateColumns: {
               xs: '1fr',
-              sm: embeddedOnOrders ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))',
+              sm:
+                showMessWidgets && !embeddedOnOrders
+                  ? 'repeat(3, minmax(0, 1fr))'
+                  : 'repeat(2, minmax(0, 1fr))',
             },
             gap: 1,
           }}
         >
           {(
             [
+              ...(showMessWidgets
+                ? [
               {
                 id: 'orders',
                 label: t('dashboard.customer.quickActions.myOrders', { defaultValue: 'My Orders' }),
@@ -1095,6 +1132,8 @@ export function DashboardCustomerMealsSection({
                 onClick: goMeals,
                 hideOnOrders: true,
               },
+                  ]
+                : []),
               {
                 id: 'payments',
                 label: t('dashboard.customer.quickActions.payments', { defaultValue: 'Payments' }),
@@ -1119,7 +1158,7 @@ export function DashboardCustomerMealsSection({
                 onClick: goComplaints,
                 hideOnOrders: false,
               },
-            ] as const
+            ]
           )
             .filter((action) => !(embeddedOnOrders && action.hideOnOrders))
             .map((action) => {

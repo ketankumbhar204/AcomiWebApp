@@ -1,5 +1,5 @@
-import { Box, Typography } from '@mui/material';
-import { IndianRupee, Map, MapPin, Phone, Sparkles, UtensilsCrossed, type LucideIcon } from 'lucide-react';
+import { Box, Typography, useTheme } from '@mui/material';
+import { IndianRupee, Info, Map, MapPin, Phone, Sparkles, UtensilsCrossed, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   INFO_GRID_KEYS,
@@ -13,6 +13,8 @@ type ListingInfoChipsProps = {
   variant: 'card' | 'detail';
   surface?: 'places' | 'meals';
   onEnquire?: () => void;
+  /** Opens the existing listing detail. Used by the card layout only. */
+  onViewAll?: () => void;
 };
 
 const PLACE_LABELS: Record<keyof ListingInfoFlags, string> = {
@@ -33,10 +35,142 @@ const CHIP_ICONS: Record<keyof ListingInfoFlags, LucideIcon> = {
   food: UtensilsCrossed,
 };
 
-export function ListingInfoChips({ listing, surface = 'places', onEnquire }: ListingInfoChipsProps) {
+export function ListingInfoChips({
+  listing,
+  variant,
+  surface = 'places',
+  onEnquire,
+  onViewAll,
+}: ListingInfoChipsProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
   const flags = listingInfoFlags(listing);
   const meals = surface === 'meals';
+  const isDark = theme.palette.mode === 'dark';
+
+  if (variant === 'card') {
+    return (
+      <Box component="section" aria-label={t('spaces.findPlace.availableInformation', { defaultValue: 'Available Information' })}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1.25 }}>
+          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, minWidth: 0, color: '#0F6B4C' }}>
+            <Info size={16} aria-hidden />
+            <Typography sx={{ fontSize: '0.875rem', fontWeight: 700, lineHeight: 1.2, color: '#0F6B4C' }}>
+              {t('spaces.findPlace.availableInformation', { defaultValue: 'Available Information' })}
+            </Typography>
+          </Box>
+          {onViewAll ? (
+            <Box
+              component="button"
+              type="button"
+              onClick={onViewAll}
+              sx={{
+                flexShrink: 0,
+                border: 0,
+                bgcolor: 'transparent',
+                p: 0,
+                color: '#0F6B4C',
+                font: 'inherit',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                lineHeight: 1.2,
+                cursor: 'pointer',
+                '&:hover': { textDecoration: 'underline' },
+                '&:focus-visible': { outline: '2px solid #25D366', outlineOffset: 2, borderRadius: '4px' },
+              }}
+            >
+              {`${t('spaces.findPlace.viewAllInfo', { defaultValue: 'View all' })} →`}
+            </Box>
+          ) : null}
+        </Box>
+        <Box
+          component="ul"
+          sx={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: 0.25,
+            m: 0,
+            p: 0,
+            listStyle: 'none',
+          }}
+        >
+          {INFO_GRID_KEYS.map((key) => {
+            const available = flags[key];
+            const label = t(meals && key === 'rent' ? 'spaces.findPlace.infoPrice' : PLACE_LABELS[key], {
+              defaultValue: key,
+            });
+            const state = t(
+              available ? 'spaces.findPlace.infoAvailableState' : 'spaces.findPlace.infoUnavailableState',
+              { field: label },
+            );
+            const Icon = CHIP_ICONS[key];
+            return (
+              <Box
+                key={key}
+                component="li"
+                sx={{
+                  flex: '1 1 0',
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 0.75,
+                  color: available ? '#0F6B4C' : isDark ? '#9CA3AF' : '#94A3B8',
+                }}
+              >
+                <Box
+                  component={onEnquire ? 'button' : 'div'}
+                  type={onEnquire ? 'button' : undefined}
+                  onClick={onEnquire}
+                  aria-label={state}
+                  sx={{
+                    display: 'flex',
+                    width: '100%',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 0.75,
+                    border: 0,
+                    bgcolor: 'transparent',
+                    p: 0,
+                    color: 'inherit',
+                    font: 'inherit',
+                    cursor: onEnquire ? 'pointer' : 'default',
+                  }}
+                >
+                <Box
+                  aria-hidden
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    display: 'grid',
+                    placeItems: 'center',
+                    bgcolor: available ? (isDark ? 'rgba(255,255,255,0.92)' : '#fff') : (isDark ? 'rgba(255,255,255,0.08)' : '#EEF1F4'),
+                    boxShadow: available && !isDark ? '0 1px 2px rgba(15,23,42,0.06)' : 'none',
+                  }}
+                >
+                  <Icon size={16} />
+                </Box>
+                <Typography
+                  sx={{
+                    width: '100%',
+                    fontSize: '0.5625rem',
+                    fontWeight: 600,
+                    lineHeight: 1.15,
+                    textAlign: 'center',
+                    color: 'inherit',
+                  }}
+                >
+                  {label}
+                </Typography>
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box

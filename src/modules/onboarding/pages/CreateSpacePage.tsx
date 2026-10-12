@@ -7,7 +7,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { ArrowRight, Building2, Info, MapPin, Pencil, Phone } from 'lucide-react';
+import { ArrowRight, Building2, Info, Pencil, Phone } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +25,13 @@ import {
   type CreateSpaceStepId,
 } from '@/modules/onboarding/components/createSpace/createSpaceVisuals';
 import { useCreateSpace } from '@/modules/onboarding/hooks/useCreateSpace';
+import { AddressLocationFields } from '@/shared/components/AddressLocationFields';
+import {
+  EMPTY_ADDRESS_CAPTURE,
+  addressCaptureIssue,
+  composeStoredAddress,
+} from '@/modules/onboarding/utils/locationAutocomplete';
+import { resolveRoleOnboardingAccess } from '@/modules/onboarding/utils/roleOnboardingAccess';
 import { isDuplicateSpaceName } from '@/shared/utils/suggestBuildingDefaults';
 import {
   buildAllPresetAmenities,
@@ -44,6 +51,8 @@ import type { AmenityAssignment, GenderPolicy, SpaceType } from '@/shared/types/
 import { isAccommodationApplicable } from '@/shared/utils/spacePermissions';
 import { useAuthStore } from '@/store/authStore';
 import { useSpaceStore } from '@/store/spaceStore';
+import { canCreateSpace } from '@/modules/onboarding/utils/spaceCreationAccess';
+import { LoadingState } from '@/shared/components/LoadingState';
 
 export function CreateSpacePage() {
   const { t } = useTranslation();
@@ -53,6 +62,9 @@ export function CreateSpacePage() {
   const { enqueueSnackbar } = useSnackbar();
   const { createSpace, isSubmitting, error, clearError } = useCreateSpace();
   const mySpaces = useSpaceStore((state) => state.mySpaces);
+  const selectedSpaceId = useSpaceStore((state) => state.selectedSpaceId);
+  const spaceLoadError = useSpaceStore((state) => state.error);
+  const bootstrapped = useSpaceStore((state) => state.bootstrapped);
   const loadMySpaces = useSpaceStore((state) => state.loadMySpaces);
   const switchSpace = useSpaceStore((state) => state.switchSpace);
   const userMobile = useAuthStore((state) => state.user?.mobileNumber);
@@ -61,7 +73,7 @@ export function CreateSpacePage() {
   const [step, setStep] = useState<CreateSpaceStepId>('type');
   const [name, setName] = useState('');
   const [type, setType] = useState<SpaceType | ''>('');
-  const [address, setAddress] = useState('');
+  const [location, setLocation] = useState(EMPTY_ADDRESS_CAPTURE);
   const [contactNumber, setContactNumber] = useState(() =>
     resolveDefaultSpaceContact({ userMobile, accessToken }),
   );
@@ -73,6 +85,12 @@ export function CreateSpacePage() {
   useEffect(() => {
     document.title = `${t('navigation.createSpace')} · ${t('common.appName')}`;
   }, [t]);
+
+  useEffect(() => {
+    if (!bootstrapped) {
+      void loadMySpaces();
+    }
+  }, [bootstrapped, loadMySpaces]);
 
   useEffect(() => {
     const next = resolveDefaultSpaceContact({ userMobile, accessToken });
@@ -128,6 +146,9 @@ export function CreateSpacePage() {
       );
       return false;
     }
+    if (addressCaptureIssue(location) === 'selection') {
+      return false;
+    }
     setNameError(null);
     return true;
   }
@@ -159,7 +180,10 @@ export function CreateSpacePage() {
     const space = await createSpace({
       name: name.trim(),
       type,
-      address: address.trim() || undefined,
+      address: composeStoredAddress(location) || undefined,
+      ...(location.latitude != null && location.longitude != null
+        ? { latitude: location.latitude, longitude: location.longitude }
+        : {}),
       contactNumber: contactNumber.trim() || undefined,
       amenities: includeAmenities ? normalizeAmenityAssignments(amenities) : undefined,
       genderPolicy: includeCategory && genderPolicy ? genderPolicy : undefined,
@@ -218,10 +242,61 @@ export function CreateSpacePage() {
     },
   };
 
+  function cancelCreateSpace() {
+    const access = resolveRoleOnboardingAccess(
+      mySpaces.map((space) => space.spaceId),
+      selectedSpaceId,
+    );
+    if (access.status === 'space') {
+      navigate(spaceDashboardPath(access.spaceId), { replace: true });
+      return;
+    }
+    if (access.status === 'picker') {
+      navigate(ROUTES.mySpaces, { replace: true });
+      return;
+    }
+    if (spaceLoadError) {
+      navigate(ROUTES.root, { replace: true });
+      return;
+    }
+    navigate(ROUTES.onboarding, { replace: true });
+  }
+
+  if (!bootstrapped) {
+    return (
+      <OnboardingLayout pageTitle={t('navigation.createSpace')} showLogout={false}>
+        <LoadingState />
+      </OnboardingLayout>
+    );
+  }
+
+  if (!canCreateSpace(mySpaces)) {
+    return (
+      <OnboardingLayout
+        pageTitle={t('navigation.createSpace')}
+        onCancel={() => navigate(ROUTES.mySpaces)}
+        cancelLabel={t('common.back', { defaultValue: 'Back' })}
+        showLogout={false}
+      >
+        <Box sx={{ maxWidth: 560, mx: 'auto', px: 2, py: 4 }}>
+          <Alert severity="info">
+            {t('spaces.createSpace.notAllowed', {
+              defaultValue:
+                'Only an owner can create a space. Tenant and customer access does not include this.',
+            })}
+          </Alert>
+          <Button sx={{ mt: 2 }} variant="outlined" onClick={() => navigate(ROUTES.mySpaces)}>
+            {t('common.back', { defaultValue: 'Back' })}
+          </Button>
+        </Box>
+      </OnboardingLayout>
+    );
+  }
+
   return (
     <OnboardingLayout
       pageTitle={t('navigation.createSpace')}
-      onCancel={() => navigate(ROUTES.onboarding)}
+      onCancel={cancelCreateSpace}
       cancelLabel={t('common.cancel')}
       showLogout={false}
     >
@@ -349,23 +424,7 @@ export function CreateSpacePage() {
                       },
                     }}
                   />
-                  <TextField
-                    label={t('spaces.createSpace.addressLabel')}
-                    value={address}
-                    onChange={(event) => setAddress(event.target.value)}
-                    placeholder={t('spaces.createSpace.addressPlaceholder')}
-                    fullWidth
-                    sx={fieldSx}
-                    slotProps={{
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <MapPin size={18} color={a.brand} />
-                          </InputAdornment>
-                        ),
-                      },
-                    }}
-                  />
+                  <AddressLocationFields value={location} onChange={setLocation} sx={fieldSx} />
                 </Box>
 
                 {includeCategory && type ? (
@@ -441,7 +500,7 @@ export function CreateSpacePage() {
                   />
                   <SummaryCard
                     title={t('spaces.details.address')}
-                    value={address.trim() || t('spaces.details.notProvided')}
+                    value={composeStoredAddress(location) || t('spaces.details.notProvided')}
                     onEdit={() => setStep('details')}
                   />
                   <SummaryCard

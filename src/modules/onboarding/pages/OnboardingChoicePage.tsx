@@ -157,7 +157,7 @@ export function OnboardingChoicePage() {
             illustration="owner"
             onClick={() => {
               setAccountIntent('owner');
-              navigate(ROUTES.createSpace);
+              navigate(ROUTES.createSpace, { replace: true });
             }}
           />
           <OnboardingChoiceCard
@@ -177,7 +177,7 @@ export function OnboardingChoicePage() {
             illustration="member"
             onClick={() => {
               setAccountIntent('member');
-              navigate(ROUTES.memberHome);
+              navigate(ROUTES.memberHome, { replace: true });
             }}
           />
 

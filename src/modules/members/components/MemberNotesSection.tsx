@@ -14,9 +14,14 @@ import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 type MemberNotesSectionProps = {
   spaceId: string;
   memberId: string;
+  embedded?: boolean;
 };
 
-export function MemberNotesSection({ spaceId, memberId }: MemberNotesSectionProps) {
+export function MemberNotesSection({
+  spaceId,
+  memberId,
+  embedded = false,
+}: MemberNotesSectionProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
@@ -47,7 +52,7 @@ export function MemberNotesSection({ spaceId, memberId }: MemberNotesSectionProp
   };
 
   return (
-    <PageSection title={t('membership.detailTabs.notes')}>
+    <PageSection title={embedded ? undefined : t('membership.detailTabs.notes')}>
       {loading ? <LoadingState minHeight={80} /> : null}
       <Stack spacing={1} sx={{ mb: 1.5 }}>
         {notes.map((entry) => (

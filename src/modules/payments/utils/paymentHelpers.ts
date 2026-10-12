@@ -104,6 +104,57 @@ export function shiftMonth(monthKey: string, delta: number): string {
   return `${year}-${month}`;
 }
 
+export type IndividualPaymentListItem = {
+  paymentId: string;
+  memberId?: string | null;
+  memberName?: string | null;
+  memberMobile?: string | null;
+  title?: string | null;
+  description?: string | null;
+  paymentType?: string | null;
+  paymentStatus?: string | null;
+  status?: string | null;
+};
+
+export function individualPaymentStatus(payment: IndividualPaymentListItem): string {
+  return payment.paymentStatus || payment.status || 'PENDING';
+}
+
+/** Month list is complete, so search and status run on that full set. */
+export function matchesIndividualPayment(
+  payment: IndividualPaymentListItem,
+  options: { status?: string; query?: string; memberId?: string },
+): boolean {
+  if (options.memberId && payment.memberId !== options.memberId) {
+    return false;
+  }
+  const status = options.status?.trim();
+  if (status) {
+    const current = individualPaymentStatus(payment);
+    if (status === 'UNDER_REVIEW') {
+      if (current !== 'UNDER_REVIEW' && current !== 'PROOF_UPLOADED') {
+        return false;
+      }
+    } else if (current !== status) {
+      return false;
+    }
+  }
+  const query = options.query?.trim().toLowerCase();
+  if (!query) {
+    return true;
+  }
+  const mobileDigits = (payment.memberMobile ?? '').replace(/\D/g, '');
+  const haystack = [payment.memberName, payment.memberMobile, mobileDigits, payment.title, payment.description, payment.paymentType]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  if (haystack.includes(query)) {
+    return true;
+  }
+  const queryDigits = query.replace(/\D/g, '');
+  return queryDigits.length > 0 && mobileDigits.includes(queryDigits);
+}
+
 export function formatMonthLabel(monthKey: string): string {
   const parts = monthKey.split('-').map(Number);
   const y = parts[0] ?? 1970;

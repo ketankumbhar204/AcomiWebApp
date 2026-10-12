@@ -12,25 +12,20 @@ import {
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useBlocker, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
-import {
-  Building2,
-  ChevronDown,
-  ChevronUp,
-  Copy,
-  Share2,
-  UtensilsCrossed,
-} from 'lucide-react';
+import { ChevronDown, ChevronUp, Copy, Share2, UtensilsCrossed } from 'lucide-react';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { ContentCard } from '@/shared/components/ContentCard';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { PageContainer } from '@/shared/components/PageContainer';
+import { GuidedStepPanel } from '@/shared/components/GuidedStepPanel';
 import { StickyFooter, StickyFooterClearance } from '@/shared/components/StickyFooter';
+import { guidedStepFooterHostSx } from '@/shared/theme/guidedStepFooterHostSx';
 import { colors } from '@/shared/theme/colors';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { spaceMealsPath } from '@/routes/paths';
 import { useSpaceStore } from '@/store/spaceStore';
@@ -54,15 +49,31 @@ import {
 } from '../utils/shareMenuSelection';
 import {
   listOtherShareTargetSpaces,
+  mapWithConcurrency,
+  SHARE_SPACE_CONCURRENCY,
   shareMenusToSpace,
   validateShareMenusToSpace,
 } from '../utils/shareMenuToSpaces';
+import {
+  defaultOtherSpaceIds,
+  nextOtherSpaceSelection,
+  otherSpaceSelectAllState,
+  selectedShareDestinations,
+  shouldOfferOtherSpaceShare,
+} from '../utils/otherSpaceShareSelection';
+import {
+  resolveMealReviewIntent,
+  shouldOpenExternalShare,
+  shouldPublishMenu,
+} from '../utils/mealReviewIntent';
+import { clearDayShareFailed, markDayShareFailed } from '../utils/dayShareFailure';
 
 export function MealSharePage() {
   const { t, i18n } = useTranslation();
   const { spaceId = '' } = useParams<{ spaceId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
@@ -72,6 +83,9 @@ export function MealSharePage() {
 
   const menuDate = searchParams.get('date') || todayIsoDate();
   const initialMealType = (searchParams.get('mealType') as MealType | null) ?? undefined;
+  const reviewIntent = resolveMealReviewIntent(searchParams.get('intent'));
+  const externalShare = shouldOpenExternalShare(reviewIntent);
+  const publishMenu = shouldPublishMenu(reviewIntent);
   const dateReadOnly = isPastMenuDate(menuDate);
 
   const menusQuery = useDailyMenus(spaceId, menuDate, permissions.canManageMeals);
@@ -84,10 +98,15 @@ export function MealSharePage() {
   const [selectedTypes, setSelectedTypes] = useState<MealType[]>([]);
   const [selectionReady, setSelectionReady] = useState(false);
   const [otherSpacesOpen, setOtherSpacesOpen] = useState(false);
+  const [spaceQuery, setSpaceQuery] = useState('');
   const [selectedOtherSpaceIds, setSelectedOtherSpaceIds] = useState<string[]>([]);
   const [messageReviewed, setMessageReviewed] = useState(false);
   const [messageHighlight, setMessageHighlight] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [sharePhase, setSharePhase] = useState<'saving' | 'opening' | 'sharing' | null>(null);
+  const sharingRef = useRef(false);
+  const openedCurrentMeals = useRef(new Set<MealType>());
+  const openedBySpace = useRef(new Map<string, MealType[]>());
   const messageSectionRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -98,23 +117,57 @@ export function MealSharePage() {
   useEffect(() => {
     setSelectionReady(false);
     setSelectedTypes([]);
-    setSelectedOtherSpaceIds([]);
-    setOtherSpacesOpen(false);
     setMessageReviewed(false);
-  }, [menuDate, spaceId, initialMealType]);
+  }, [menuDate, spaceId, initialMealType, reviewIntent]);
 
   useEffect(() => {
     if (selectionReady || menusQuery.loading) {
       return;
     }
-    setSelectedTypes(defaultSelectedMealTypes(menuMap, initialMealType));
+    setSelectedTypes(
+      defaultSelectedMealTypes(menuMap, initialMealType, {
+        includePublished: reviewIntent === 'reshare',
+      }),
+    );
     setSelectionReady(true);
-  }, [selectionReady, menusQuery.loading, menuMap, initialMealType]);
+  }, [selectionReady, menusQuery.loading, menuMap, initialMealType, reviewIntent]);
 
   const otherSpaces = useMemo(
     () => listOtherShareTargetSpaces(mySpaces, spaceId),
     [mySpaces, spaceId],
   );
+  const offerOtherSpaces = shouldOfferOtherSpaceShare(otherSpaces.length);
+  const otherSpaceKey = otherSpaces.map((space) => space.spaceId).join('|');
+  const eligibleOtherIds = useMemo(() => otherSpaces.map((space) => space.spaceId), [otherSpaces]);
+  const selectedOtherCount = useMemo(
+    () => selectedOtherSpaceIds.filter((id) => eligibleOtherIds.includes(id)).length,
+    [eligibleOtherIds, selectedOtherSpaceIds],
+  );
+  const selectAllState = otherSpaceSelectAllState(eligibleOtherIds, selectedOtherSpaceIds);
+  const visibleOtherSpaces = useMemo(() => {
+    const query = spaceQuery.trim().toLowerCase();
+    if (!query) {
+      return otherSpaces;
+    }
+    return otherSpaces.filter((space) =>
+      `${space.spaceName} ${space.address ?? ''}`.toLowerCase().includes(query),
+    );
+  }, [otherSpaces, spaceQuery]);
+
+  useEffect(() => {
+    void loadMySpaces();
+  }, [loadMySpaces, spaceId]);
+
+  useEffect(() => {
+    const ids = otherSpaceKey ? otherSpaceKey.split('|') : [];
+    setSelectedOtherSpaceIds(defaultOtherSpaceIds(ids.map((id) => ({ spaceId: id }))));
+    setOtherSpacesOpen(false);
+    setSpaceQuery('');
+    if (!sharingRef.current) {
+      openedCurrentMeals.current = new Set();
+      openedBySpace.current = new Map();
+    }
+  }, [menuDate, otherSpaceKey, spaceId]);
 
   const previewQuery = useQuery({
     queryKey: ['meal-share-preview-selection', spaceId, menuDate, selectedTypes.join(',')],
@@ -170,82 +223,151 @@ export function MealSharePage() {
   };
 
   const handleShare = useCallback(async () => {
-    if (dateReadOnly || selectedTypes.length === 0 || !messageText.trim()) {
+    if (sharingRef.current || dateReadOnly || selectedTypes.length === 0 || !messageText.trim()) {
       return;
     }
+    sharingRef.current = true;
     setSharing(true);
+    setSharePhase('saving');
     try {
-      const targets = otherSpaces.filter((space) =>
-        selectedOtherSpaceIds.includes(space.spaceId),
-      );
+      const targets = selectedShareDestinations(otherSpaces, selectedOtherSpaceIds);
 
-      for (const target of targets) {
-        const validation = await validateShareMenusToSpace(menuMap, selectedTypes, target);
-        if (!validation.ok) {
-          enqueueSnackbar(
-            t('meals.planning.shareToSpaceIncompatible', {
-              space: validation.spaceName,
-              items: validation.missingLabels.join(', '),
-            }),
-            { variant: 'error' },
-          );
-          return;
-        }
+      const validations = await mapWithConcurrency(targets, SHARE_SPACE_CONCURRENCY, async (target) => ({
+        target,
+        validation: await validateShareMenusToSpace(menuMap, selectedTypes, target),
+      }));
+      const incompatible = validations.find((row) => !row.validation.ok);
+      if (incompatible && !incompatible.validation.ok) {
+        enqueueSnackbar(
+          t('meals.planning.shareToSpaceIncompatible', {
+            space: incompatible.validation.spaceName,
+            items: incompatible.validation.missingLabels.join(', '),
+          }),
+          { variant: 'error' },
+        );
+        return;
       }
 
-      await publishDraftMenusForTypes(spaceId, menuDate, selectedTypes, menuMap);
-      await menusQuery.reload();
-
-      const opened = await openPollsForMealTypes(spaceId, menuDate, selectedTypes);
-      if (opened > 0) {
+      if (publishMenu) {
+        await publishDraftMenusForTypes(spaceId, menuDate, selectedTypes, menuMap);
+        const pendingPolls = selectedTypes.filter((type) => !openedCurrentMeals.current.has(type));
+        if (pendingPolls.length > 0) {
+          setSharePhase('opening');
+          const pollResult = await openPollsForMealTypes(spaceId, menuDate, pendingPolls);
+          pollResult.opened.forEach((type) => openedCurrentMeals.current.add(type));
+          const opened = pollResult.opened.length;
+          if (opened === 0) {
+            enqueueSnackbar(t('meals.errors.saveFailed', { defaultValue: 'Could not save menu.' }), {
+              variant: 'error',
+            });
+            return;
+          }
+          if (pollResult.failed.length > 0) {
+            enqueueSnackbar(t('meals.errors.saveFailed', { defaultValue: 'Could not save menu.' }), {
+              variant: 'error',
+            });
+            return;
+          }
+        }
         enqueueSnackbar(t('meals.poll.autoOpened'), { variant: 'success' });
       }
 
+      const readyTargets = validations.flatMap((row) =>
+        row.validation.ok ? [{ target: row.target, validation: row.validation }] : [],
+      );
+      const pendingTargets = readyTargets.filter((row) =>
+        selectedTypes.some((type) => {
+          const options = row.validation.optionsByMeal[type];
+          const opened = openedBySpace.current.get(row.target.spaceId) ?? [];
+          return Boolean(options && options.length > 0) && !opened.includes(type);
+        }),
+      );
+
       let sharedOther = 0;
-      for (const target of targets) {
-        const validation = await validateShareMenusToSpace(menuMap, selectedTypes, target);
-        if (!validation.ok) {
-          continue;
-        }
-        try {
-          await shareMenusToSpace(target.spaceId, menuDate, selectedTypes, validation);
-          sharedOther += 1;
-        } catch {
+      let otherFailed = false;
+      if (pendingTargets.length > 0) {
+        setSharePhase('sharing');
+        const shareResults = await mapWithConcurrency(
+          pendingTargets,
+          SHARE_SPACE_CONCURRENCY,
+          async (row) => {
+            try {
+              const shared = await shareMenusToSpace(
+                row.target.spaceId,
+                menuDate,
+                selectedTypes,
+                row.validation,
+                openedBySpace.current.get(row.target.spaceId) ?? [],
+              );
+              openedBySpace.current.set(row.target.spaceId, shared.opened);
+              return shared.failed.length === 0;
+            } catch {
+              return false;
+            }
+          },
+        );
+        shareResults.forEach((ok, index) => {
+          if (ok) {
+            sharedOther += 1;
+            return;
+          }
+          otherFailed = true;
           enqueueSnackbar(
-            t('meals.planning.shareToSpaceFailed', { space: target.spaceName }),
+            t('meals.planning.shareToSpaceFailed', { space: pendingTargets[index]?.target.spaceName }),
             { variant: 'warning' },
           );
-        }
+        });
+      }
+      if (otherFailed) {
+        return;
       }
       if (sharedOther > 0) {
-        enqueueSnackbar(
-          t('meals.planning.shareToSpacesSuccess', { count: sharedOther }),
-          { variant: 'success' },
-        );
+        enqueueSnackbar(t('meals.planning.shareToSpacesSuccess', { count: sharedOther }), {
+          variant: 'success',
+        });
       }
 
-      try {
-        await navigator.clipboard.writeText(messageText);
-        enqueueSnackbar(t('meals.share.copied'), { variant: 'success' });
-      } catch {
-        // Clipboard optional on some browsers
+      if (externalShare) {
+        try {
+          await navigator.clipboard.writeText(messageText);
+          enqueueSnackbar(t('meals.share.copied'), { variant: 'success' });
+        } catch {
+          // Clipboard optional on some browsers. The meal and poll stay published.
+        }
+        enqueueSnackbar(t('meals.share.success'), { variant: 'success' });
       }
-
-      enqueueSnackbar(t('meals.share.success'), { variant: 'success' });
-      navigate(`${spaceMealsPath(spaceId)}?date=${menuDate}`);
+      clearDayShareFailed(spaceId, menuDate);
+      void queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = String(query.queryKey[0]);
+          return (
+            key.includes('daily-menu') ||
+            key.includes('meal-poll') ||
+            key.includes('meal-headcount') ||
+            key.includes('meal-eligibility')
+          );
+        },
+      });
+      sharingRef.current = false;
+      navigate(spaceMealsPath(spaceId, menuDate), { replace: true });
     } catch {
-      enqueueSnackbar(t('meals.errors.actionFailed', { defaultValue: t('common.errors.generic') }), {
+      markDayShareFailed(spaceId, menuDate);
+      enqueueSnackbar(t('meals.errors.saveFailed', { defaultValue: 'Could not save menu.' }), {
         variant: 'error',
       });
     } finally {
+      sharingRef.current = false;
       setSharing(false);
+      setSharePhase(null);
     }
   }, [
     dateReadOnly,
     enqueueSnackbar,
     menuDate,
     menuMap,
-    menusQuery,
+    queryClient,
+    externalShare,
+    publishMenu,
     messageText,
     navigate,
     otherSpaces,
@@ -255,8 +377,21 @@ export function MealSharePage() {
     t,
   ]);
 
-  const currentSpaceName =
-    mySpaces.find((space) => space.spaceId === spaceId)?.spaceName ?? t('meals.planning.shareToCurrentSpace');
+  const shareExitBlocker = useBlocker(
+    ({ historyAction }) => sharing && historyAction === 'POP',
+  );
+  useEffect(() => {
+    if (shareExitBlocker.state === 'blocked') {
+      shareExitBlocker.reset();
+    }
+  }, [shareExitBlocker]);
+
+  const currentSpace = mySpaces.find((space) => space.spaceId === spaceId);
+  const currentSpaceName = currentSpace?.spaceName ?? t('meals.planning.shareToCurrentSpace');
+  const otherSpaceCountLabel =
+    selectedOtherCount === 0
+      ? t('meals.planning.shareToOtherNone')
+      : t('meals.planning.shareToOtherCount', { count: selectedOtherCount });
 
   return (
     <PageContainer gap={0}>
@@ -305,10 +440,10 @@ export function MealSharePage() {
             {formatMenuDateLabel(menuDate, i18n.language)}
           </Typography>
           <Typography sx={{ ...DASHBOARD_UX.pageTitle, color: s.textPrimary, mt: 0.5 }}>
-            {t('meals.planning.previewShare')}
+            {t(externalShare ? 'meals.planning.previewShare' : 'meals.planning.reviewSaveTitle')}
           </Typography>
           <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mt: 0.5, maxWidth: 560 }}>
-            {t('meals.planning.shareHint')}
+            {t(externalShare ? 'meals.planning.shareHint' : 'meals.planning.reviewSaveHint')}
           </Typography>
         </Box>
 
@@ -322,7 +457,11 @@ export function MealSharePage() {
                 label={t('meals.share.date')}
                 value={menuDate}
                 disabled={sharing}
-                onChange={(e) => setSearchParams({ date: e.target.value })}
+                onChange={(e) => {
+                  const next = new URLSearchParams(searchParams);
+                  next.set('date', e.target.value);
+                  setSearchParams(next);
+                }}
                 slotProps={{ inputLabel: { shrink: true } }}
                 sx={{ mb: 2, maxWidth: 220 }}
               />
@@ -390,78 +529,109 @@ export function MealSharePage() {
                 {!dateReadOnly && hasShareableSlot ? (
                   <Box sx={{ mb: 2 }}>
                     <Box
-                      component="button"
-                      type="button"
-                      onClick={() => void openOtherSpaces()}
                       sx={{
-                        width: '100%',
                         display: 'flex',
                         alignItems: 'center',
+                        justifyContent: 'space-between',
                         gap: 1,
-                        border: `1px solid ${s.border}`,
-                        borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-                        bgcolor: s.elevated,
-                        p: 1.25,
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        mb: otherSpacesOpen ? 1.25 : 0,
+                        mb: 1,
                       }}
                     >
-                      <Building2 size={16} color={colors.primaryDark} />
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
-                          {otherSpacesOpen
-                            ? t('meals.planning.shareToOtherSpacesHide')
-                            : t('meals.planning.shareToOtherSpacesShow')}
-                        </Typography>
-                        <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted }}>
-                          {selectedOtherSpaceIds.length > 0
-                            ? t('meals.planning.shareToOtherSpacesSelected', {
-                                count: selectedOtherSpaceIds.length,
-                              })
-                            : t('meals.planning.shareToOtherSpacesHint')}
-                        </Typography>
-                      </Box>
-                      {otherSpacesOpen ? (
-                        <ChevronUp size={16} color={s.textMuted} />
-                      ) : (
-                        <ChevronDown size={16} color={s.textMuted} />
-                      )}
+                      <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+                        {t('meals.planning.shareToSection')}
+                      </Typography>
+                      {offerOtherSpaces ? (
+                        <Box
+                          component="button"
+                          type="button"
+                          onClick={() => void openOtherSpaces()}
+                          aria-expanded={otherSpacesOpen}
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            maxWidth: '62%',
+                            border: `1px solid ${colors.primary}`,
+                            borderRadius: 999,
+                            bgcolor: colors.lightGreen,
+                            color: colors.tealDark,
+                            px: 1.25,
+                            py: 0.5,
+                            cursor: 'pointer',
+                            ...DASHBOARD_UX.caption,
+                            fontWeight: 700,
+                          }}
+                        >
+                          <Box
+                            component="span"
+                            sx={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {otherSpaceCountLabel}
+                          </Box>
+                          {otherSpacesOpen ? (
+                            <ChevronUp size={16} color={colors.tealDark} />
+                          ) : (
+                            <ChevronDown size={16} color={colors.tealDark} />
+                          )}
+                        </Box>
+                      ) : null}
                     </Box>
 
-                    <Collapse in={otherSpacesOpen}>
-                      <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted, mb: 1 }}>
-                        {t('meals.planning.shareToHint')}
-                      </Typography>
-                      <SpaceCheckRow
-                        label={currentSpaceName}
-                        hint={t('meals.planning.shareToCurrent')}
-                        checked
-                        locked
-                      />
-                      {otherSpaces.length === 0 ? (
-                        <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted, py: 1 }}>
-                          {t('meals.planning.shareToNoOtherSpaces')}
-                        </Typography>
-                      ) : (
-                        otherSpaces.map((space) => (
+                    <SpaceCheckRow
+                      label={currentSpaceName}
+                      hint={currentSpace?.address?.trim() || undefined}
+                      badge={t('meals.planning.shareToCurrent')}
+                      checked
+                      locked
+                    />
+
+                    {offerOtherSpaces ? (
+                      <Collapse in={otherSpacesOpen}>
+                        <SpaceCheckRow
+                          label={t('meals.planning.shareToSelectAll', { count: otherSpaces.length })}
+                          checked={selectAllState === 'all'}
+                          indeterminate={selectAllState === 'some'}
+                          onChange={() => {
+                            setMessageReviewed(true);
+                            setSelectedOtherSpaceIds(
+                              nextOtherSpaceSelection(eligibleOtherIds, selectedOtherSpaceIds),
+                            );
+                          }}
+                        />
+                        {otherSpaces.length > 6 ? (
+                          <TextField
+                            value={spaceQuery}
+                            onChange={(event) => setSpaceQuery(event.target.value)}
+                            placeholder={t('meals.planning.shareToSearch')}
+                            size="small"
+                            fullWidth
+                            sx={{ mb: 1 }}
+                          />
+                        ) : null}
+                        {visibleOtherSpaces.map((space) => (
                           <SpaceCheckRow
                             key={space.spaceId}
                             label={space.spaceName}
-                            hint={space.spaceType}
+                            hint={space.address?.trim() || undefined}
                             checked={selectedOtherSpaceIds.includes(space.spaceId)}
                             onChange={(checked) => {
                               setMessageReviewed(true);
                               setSelectedOtherSpaceIds((prev) =>
                                 checked
-                                  ? [...prev, space.spaceId]
+                                  ? prev.includes(space.spaceId)
+                                    ? prev
+                                    : [...prev, space.spaceId]
                                   : prev.filter((id) => id !== space.spaceId),
                               );
                             }}
                           />
-                        ))
-                      )}
-                    </Collapse>
+                        ))}
+                      </Collapse>
+                    ) : null}
                   </Box>
                 ) : null}
 
@@ -494,66 +664,75 @@ export function MealSharePage() {
         </Stack>
       </Stack>
 
-      <StickyFooterClearance />
+      <StickyFooterClearance
+        height={
+          !dateReadOnly && hasShareableSlot
+            ? { xs: 460, sm: 420, md: 360 }
+            : { xs: 96, md: 80 }
+        }
+      />
 
       {!dateReadOnly && hasShareableSlot ? (
-        <StickyFooter pin="fixed">
-          {progressiveContinue ? (
-            <>
-              <Box sx={{ flex: 1, mr: 'auto', minWidth: 0 }}>
-                <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
-                  {t('progressiveWorkflow.stepOf', { current: 1, total: 2 })}
-                </Typography>
-                <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary }} noWrap>
-                  {t('progressiveWorkflow.sharePreview.progressSlotsNext')}
-                </Typography>
-              </Box>
-              <Button
-                onClick={() => navigate(spaceMealsPath(spaceId))}
-                disabled={sharing}
-                sx={dashOutlinedButtonSx}
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button variant="contained" onClick={continueToMessage} sx={dashContainedButtonSx}>
-                {t('progressiveWorkflow.sharePreview.continueToMessage')}
-              </Button>
-            </>
-          ) : (
-            <>
-              <Box sx={{ flex: 1, mr: 'auto', minWidth: 0 }}>
-                <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
-                  {t('progressiveWorkflow.stepOf', { current: 2, total: 2 })}
-                </Typography>
-                <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary }} noWrap>
-                  {t('progressiveWorkflow.sharePreview.progressReady')}
-                </Typography>
-              </Box>
-              <Button
-                onClick={() => navigate(spaceMealsPath(spaceId))}
-                disabled={sharing}
-                sx={dashOutlinedButtonSx}
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={sharing ? <CircularProgress size={14} color="inherit" /> : <Share2 size={14} />}
-                disabled={
-                  sharing ||
-                  selectedTypes.length === 0 ||
-                  !messageText.trim() ||
-                  previewQuery.isFetching
-                }
-                onClick={() => void handleShare()}
-                sx={dashContainedButtonSx}
-              >
-                {sharing
-                  ? t('meals.poll.openingPolls')
-                  : t('meals.planning.copyMessage')}
-              </Button>
-            </>
-          )}
+        <StickyFooter pin="fixed" sx={guidedStepFooterHostSx}>
+          <GuidedStepPanel
+            stepLabel={t('progressiveWorkflow.stepOf', {
+              current: progressiveContinue ? 1 : 2,
+              total: 2,
+            })}
+            stepCurrent={progressiveContinue ? 1 : 2}
+            stepTotal={2}
+            progressLine={
+              progressiveContinue
+                ? t('progressiveWorkflow.sharePreview.progressSlotsNext')
+                : t('progressiveWorkflow.sharePreview.progressReady')
+            }
+            eyebrow={progressiveContinue ? t('progressiveWorkflow.nextStep') : undefined}
+            title={
+              progressiveContinue
+                ? t('progressiveWorkflow.sharePreview.reviewMessageTitle')
+                : undefined
+            }
+            description={
+              progressiveContinue
+                ? t('progressiveWorkflow.sharePreview.reviewMessageHint')
+                : undefined
+            }
+            primary={
+              progressiveContinue
+                ? {
+                    label: t('progressiveWorkflow.sharePreview.continueToMessage'),
+                    onClick: continueToMessage,
+                    disabled: sharing,
+                  }
+                : {
+                    label: sharing
+                      ? sharePhase === 'opening'
+                        ? t('meals.poll.openingPolls')
+                        : sharePhase === 'sharing'
+                          ? t('meals.planning.sharingToSpaces')
+                          : t('meals.planning.savingMenu')
+                      : externalShare
+                        ? t('meals.planning.copyMessage')
+                        : t('meals.actions.save'),
+                    onClick: () => void handleShare(),
+                    disabled:
+                      sharing ||
+                      selectedTypes.length === 0 ||
+                      !messageText.trim() ||
+                      previewQuery.isFetching,
+                    startIcon: sharing ? (
+                      <CircularProgress size={14} color="inherit" />
+                    ) : externalShare ? (
+                      <Share2 size={14} />
+                    ) : undefined,
+                  }
+            }
+            secondary={{
+              label: t('common.cancel'),
+              onClick: () => navigate(spaceMealsPath(spaceId)),
+              disabled: sharing,
+            }}
+          />
         </StickyFooter>
       ) : (
         <StickyFooter pin="fixed">
@@ -569,36 +748,67 @@ export function MealSharePage() {
 function SpaceCheckRow({
   label,
   hint,
+  badge,
   checked,
+  indeterminate,
   locked,
   onChange,
 }: {
   label: string;
   hint?: string;
+  badge?: string;
   checked: boolean;
+  indeterminate?: boolean;
   locked?: boolean;
   onChange?: (checked: boolean) => void;
 }) {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const active = checked || indeterminate;
 
   return (
     <FormControlLabel
       control={
         <Checkbox
           checked={checked}
+          indeterminate={indeterminate}
           disabled={locked}
           onChange={(_, value) => onChange?.(value)}
           size="small"
         />
       }
       label={
-        <Box>
-          <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
-            {label}
-          </Typography>
-          {hint ? (
-            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>{hint}</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, width: '100%' }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              sx={{
+                ...DASHBOARD_UX.link,
+                color: s.textPrimary,
+                overflowWrap: 'anywhere',
+              }}
+            >
+              {label}
+            </Typography>
+            {hint ? (
+              <Typography
+                sx={{
+                  ...DASHBOARD_UX.smallCaption,
+                  color: s.textMuted,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {hint}
+              </Typography>
+            ) : null}
+          </Box>
+          {badge ? (
+            <Typography
+              sx={{ ...DASHBOARD_UX.smallCaption, color: colors.tealDark, fontWeight: 700, flexShrink: 0 }}
+            >
+              {badge}
+            </Typography>
           ) : null}
         </Box>
       }
@@ -606,12 +816,14 @@ function SpaceCheckRow({
         m: 0,
         mb: 0.75,
         width: '100%',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         px: 1,
-        py: 0.75,
+        py: 0.5,
+        minHeight: 48,
         borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-        bgcolor: checked ? s.successTint : s.surface,
-        border: `1px solid ${checked ? colors.primary : s.border}`,
+        bgcolor: active ? s.successTint : s.surface,
+        border: `1px solid ${active ? colors.primary : s.border}`,
+        '& .MuiFormControlLabel-label': { flex: 1, minWidth: 0 },
       }}
     />
   );

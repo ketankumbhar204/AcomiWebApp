@@ -1,18 +1,26 @@
-import { InputAdornment, TextField } from '@mui/material';
-import { ChefHat, IndianRupee, MapPin, User } from 'lucide-react';
+import { Box, InputAdornment, TextField } from '@mui/material';
+import { ChefHat, IndianRupee, User } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import { AdminRegistrationFormLayout } from '@/modules/admin/components/AdminRegistrationFormLayout';
 import { AdminSavedAddressPicker } from '@/modules/admin/components/AdminSavedAddressPicker';
+import { AddressLocationFields } from '@/shared/components/AddressLocationFields';
+import {
+  EMPTY_ADDRESS_CAPTURE,
+  addressCaptureIssue,
+  captureFromParts,
+} from '@/modules/onboarding/utils/locationAutocomplete';
 import { AdminTestLeadOption } from '@/modules/admin/components/AdminTestLeadOption';
 import { IndianMobileTextField } from '@/modules/admin/components/IndianMobileTextField';
 import { ROUTES } from '@/routes/paths';
 import { ContentCard } from '@/shared/components/ContentCard';
+import { PriceBasisSelect } from '@/shared/components/PriceBasisSelect';
 import { FormSection } from '@/shared/components/FormSection';
 import { isValidIndianMobile, normalizeIndianMobileDigits } from '@/shared/utils/indianMobile';
 import type { AdminCreateMessRegistrationRequest } from '@/shared/types/admin';
+import type { ListingPriceBasis } from '@/shared/types/space';
 
 function isValidPincode(value: string): boolean {
   return /^[1-9]\d{5}$/.test(value);
@@ -37,14 +45,9 @@ export function AdminAddMessPage() {
   const [ownerName, setOwnerName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [alternateMobileNumber, setAlternateMobileNumber] = useState('');
-  const [addressLine, setAddressLine] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [pincode, setPincode] = useState('');
-  const [mapUrl, setMapUrl] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
+  const [location, setLocation] = useState(EMPTY_ADDRESS_CAPTURE);
   const [monthlyPrice, setMonthlyPrice] = useState('');
+  const [monthlyPriceBasis, setMonthlyPriceBasis] = useState<ListingPriceBasis>('PER_UNIT');
   const [mealPrice, setMealPrice] = useState('');
   const [testLead, setTestLead] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,33 +73,18 @@ export function AdminAddMessPage() {
       setError(t('admin.mess.errors.alternateDifferent'));
       return;
     }
-    if (pincode.trim() && !isValidPincode(pincode.trim())) {
+    const locationIssue = addressCaptureIssue(location, { allowManual: true });
+    if (locationIssue === 'selection') {
+      setError(t('locationCapture.selectionRequired', { defaultValue: 'Select a location from the suggestions.' }));
+      return;
+    }
+    if (locationIssue === 'pincode' || (location.pincode.trim() && !isValidPincode(location.pincode.trim()))) {
       setError(t('admin.mess.errors.pincode'));
       return;
     }
-    if (mapUrl.trim() && !isValidMapUrl(mapUrl)) {
+    if (location.mapUrl.trim() && !isValidMapUrl(location.mapUrl)) {
       setError(t('admin.mess.errors.mapUrl'));
       return;
-    }
-    const latRaw = latitude.trim();
-    const lngRaw = longitude.trim();
-    let latValue: number | undefined;
-    let lngValue: number | undefined;
-    if (latRaw || lngRaw) {
-      if (!latRaw || !lngRaw) {
-        setError(t('admin.common.coordinatesPair'));
-        return;
-      }
-      latValue = Number(latRaw);
-      lngValue = Number(lngRaw);
-      if (!Number.isFinite(latValue) || latValue < -90 || latValue > 90) {
-        setError(t('admin.common.invalidLatitude'));
-        return;
-      }
-      if (!Number.isFinite(lngValue) || lngValue < -180 || lngValue > 180) {
-        setError(t('admin.common.invalidLongitude'));
-        return;
-      }
     }
 
     let monthly: number | undefined;
@@ -121,11 +109,11 @@ export function AdminAddMessPage() {
     const owner = optionalText(ownerName);
     const mobile = optionalText(mobileNumber);
     const alternateMobile = optionalText(alternateMobileNumber);
-    const address = optionalText(addressLine);
-    const cityValue = optionalText(city);
-    const stateValue = optionalText(state);
-    const pincodeValue = optionalText(pincode);
-    const map = optionalText(mapUrl);
+    const address = optionalText(location.selected ? location.address : location.query);
+    const cityValue = optionalText(location.city);
+    const stateValue = optionalText(location.state);
+    const pincodeValue = optionalText(location.pincode);
+    const map = optionalText(location.mapUrl);
     if (name) payload.messName = name;
     if (owner) payload.ownerName = owner;
     if (mobile) payload.mobileNumber = mobile;
@@ -135,9 +123,12 @@ export function AdminAddMessPage() {
     if (stateValue) payload.state = stateValue;
     if (pincodeValue) payload.pincode = pincodeValue;
     if (map) payload.mapUrl = map;
-    if (latValue !== undefined) payload.latitude = latValue;
-    if (lngValue !== undefined) payload.longitude = lngValue;
+    if (location.latitude != null && location.longitude != null) {
+      payload.latitude = location.latitude;
+      payload.longitude = location.longitude;
+    }
     if (monthly !== undefined) payload.monthlyPrice = monthly;
+    payload.monthlyPriceBasis = monthlyPriceBasis;
     if (meal !== undefined) payload.mealPrice = meal;
     if (testLead) payload.testLead = true;
 
@@ -242,96 +233,42 @@ export function AdminAddMessPage() {
           description={t('admin.common.locationHintMess')}
         >
           <AdminSavedAddressPicker
-            value={{ addressLine, city, state, pincode, mapUrl }}
-            onChange={(next) => {
-              setAddressLine(next.addressLine);
-              setCity(next.city);
-              setState(next.state);
-              setPincode(next.pincode);
-              setMapUrl(next.mapUrl);
+            value={{
+              addressLine: location.address,
+              city: location.city,
+              state: location.state,
+              pincode: location.pincode,
+              mapUrl: location.mapUrl,
             }}
+            onChange={(next) => setLocation(captureFromParts(next))}
           />
-          <TextField
-            label={t('admin.common.addressLine')}
-            value={addressLine}
-            onChange={(e) => setAddressLine(e.target.value)}
-            fullWidth
-            size="small"
-            sx={{ ...fieldSx, gridColumn: { md: '1 / -1' } }}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <MapPin size={16} />
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-          <TextField label={t('admin.common.city')} value={city} onChange={(e) => setCity(e.target.value)} fullWidth size="small" sx={fieldSx} />
-          <TextField label={t('admin.common.state')} value={state} onChange={(e) => setState(e.target.value)} fullWidth size="small" sx={fieldSx} />
-          <TextField
-            label={t('admin.common.pincode')}
-            value={pincode}
-            onChange={(e) => setPincode(e.target.value)}
-            fullWidth
-            size="small"
-            sx={fieldSx}
-            slotProps={{ htmlInput: { maxLength: 6, inputMode: 'numeric' } }}
-          />
-          <TextField
-            label={t('admin.common.latitude')}
-            value={latitude}
-            onChange={(e) => setLatitude(e.target.value)}
-            placeholder={t('admin.common.latitudePlaceholder')}
-            fullWidth
-            size="small"
-            sx={fieldSx}
-            slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-          />
-          <TextField
-            label={t('admin.common.longitude')}
-            value={longitude}
-            onChange={(e) => setLongitude(e.target.value)}
-            placeholder={t('admin.common.longitudePlaceholder')}
-            fullWidth
-            size="small"
-            sx={fieldSx}
-            slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-          />
-          <TextField
-            label={t('admin.common.mapLink')}
-            value={mapUrl}
-            onChange={(e) => setMapUrl(e.target.value)}
-            placeholder={t('admin.common.mapLinkPlaceholder')}
-            helperText={t('admin.common.mapEitherHint')}
-            fullWidth
-            size="small"
-            sx={{ ...fieldSx, gridColumn: { md: '1 / -1' } }}
-          />
+          <AddressLocationFields value={location} onChange={setLocation} showBuildingName={false} allowManual />
         </FormSection>
       </ContentCard>
 
       <ContentCard>
         <FormSection title={t('admin.common.pricingOptions')} description={t('admin.common.pricingOptionsHint')}>
-          <TextField
-            label={t('admin.mess.monthlyPriceLabel')}
-            value={monthlyPrice}
-            onChange={(e) => setMonthlyPrice(e.target.value)}
-            fullWidth
-            size="small"
-            sx={fieldSx}
-            slotProps={{
-              htmlInput: { inputMode: 'decimal' },
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <IndianRupee size={16} />
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.5 }}>
+            <TextField
+              label={t('admin.mess.monthlyPriceLabel')}
+              value={monthlyPrice}
+              onChange={(e) => setMonthlyPrice(e.target.value)}
+              fullWidth
+              size="small"
+              sx={fieldSx}
+              slotProps={{
+                htmlInput: { inputMode: 'decimal' },
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <IndianRupee size={16} />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+            <PriceBasisSelect value={monthlyPriceBasis} onChange={setMonthlyPriceBasis} />
+          </Box>
           <TextField
             label={t('admin.mess.mealPriceLabel')}
             value={mealPrice}

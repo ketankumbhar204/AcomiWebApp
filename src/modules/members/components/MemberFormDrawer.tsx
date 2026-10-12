@@ -10,12 +10,15 @@ import {
   useTheme,
 } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { Pencil, Phone, User, UserPlus } from 'lucide-react';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { AppDrawer } from '@/shared/components/AppDrawer';
+import { GuidedStepPanel } from '@/shared/components/GuidedStepPanel';
 import { StickyFooter } from '@/shared/components/StickyFooter';
+import { guidedStepFooterHostSx } from '@/shared/theme/guidedStepFooterHostSx';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type {
@@ -67,6 +70,8 @@ type MemberFormDrawerProps = {
   onClose: () => void;
   /** Opens invite flow (mobile “Send invitation” link). */
   onInvite?: () => void;
+  /** Mode chosen before the drawer opens. Tabs are not shown inside the form. */
+  initialPickerMode?: MemberPickerMode;
 };
 
 type FieldErrors = Record<string, string>;
@@ -88,11 +93,13 @@ function MemberFormBody({
   member,
   onClose,
   onInvite,
+  initialPickerMode = 'new',
 }: Omit<MemberFormDrawerProps, 'open'>) {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
   const { createMember, updateMember } = useMemberMutations(spaceId);
   const mealsSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -119,7 +126,6 @@ function MemberFormBody({
     return null;
   });
 
-  const [pickerMode, setPickerMode] = useState<MemberPickerMode>('search');
   const [memberQuery, setMemberQuery] = useState('');
   const [selectedImport, setSelectedImport] = useState<ResidentPickerItem | null>(null);
 
@@ -145,6 +151,7 @@ function MemberFormBody({
   const [importing, setImporting] = useState(false);
 
   const showCustomerReuse = !isEdit && isMess && role === 'CUSTOMER';
+  const pickerMode: MemberPickerMode = showCustomerReuse ? initialPickerMode : 'new';
   const usingImport = showCustomerReuse && pickerMode === 'search' && selectedImport != null;
   const showCreateForm = !showCustomerReuse || pickerMode === 'new';
   const showMealAccess = !isEdit && isMess && role === 'CUSTOMER';
@@ -169,21 +176,6 @@ function MemberFormBody({
       setPrepaidBalanceUnit(settings.prepaidBalanceUnit ?? 'MEALS');
     });
   }, [showMealBilling, spaceId]);
-
-  useEffect(() => {
-    if (!showCustomerReuse) {
-      setPickerMode('new');
-      setSelectedImport(null);
-      setMemberQuery('');
-    } else {
-      setPickerMode('search');
-    }
-  }, [showCustomerReuse, role]);
-
-  useEffect(() => {
-    setMealsReviewed(false);
-    setMealsHighlighted(false);
-  }, [role, messProgressiveEnabled]);
 
   const saving = createMember.isPending || updateMember.isPending || importing;
 
@@ -284,6 +276,7 @@ function MemberFormBody({
       usingImport ? t('membership.add.importSuccessToast') : t('membership.add.successToast'),
       { variant: 'success' },
     );
+    await queryClient.invalidateQueries({ queryKey: ['import-candidates', spaceId] });
     onClose();
   };
 
@@ -438,6 +431,9 @@ function MemberFormBody({
           onChange={(selected) => {
             setRole(selected);
             setSelectedImport(null);
+            setMemberQuery('');
+            setMealsReviewed(false);
+            setMealsHighlighted(false);
             setErrors((prev) => {
               const next = { ...prev };
               delete next.role;
@@ -453,15 +449,6 @@ function MemberFormBody({
             members={importSearch.members}
             loading={importSearch.loading}
             pickerMode={pickerMode}
-            onPickerModeChange={(next) => {
-              setPickerMode(next);
-              setSelectedImport(null);
-              setErrors((prev) => {
-                const copy = { ...prev };
-                delete copy.import;
-                return copy;
-              });
-            }}
             selectedMemberId={selectedImport?.memberId}
             onSelect={(item) => {
               setSelectedImport(item);
@@ -729,55 +716,62 @@ function MemberFormBody({
         ) : null}
       </Box>
 
-      <StickyFooter>
-        {progressiveContinue ? (
-          <>
-            <Box sx={{ flex: 1, mr: 'auto', minWidth: 0 }}>
-              <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
-                {t('progressiveWorkflow.stepOf', { current: 1, total: 2 })}
-              </Typography>
-              <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary }} noWrap>
-                {t('progressiveWorkflow.member.progressIdentityNext')}
-              </Typography>
-            </Box>
-            <Button onClick={onClose} disabled={saving} sx={dashOutlinedButtonSx}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              variant="contained"
-              onClick={continueToMeals}
-              disabled={saving}
-              sx={dashContainedButtonSx}
-            >
-              {t('progressiveWorkflow.member.continueToMeals')}
-            </Button>
-          </>
-        ) : (
-          <>
-            {messProgressiveEnabled ? (
-              <Box sx={{ flex: 1, mr: 'auto', minWidth: 0 }}>
-                <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
-                  {t('progressiveWorkflow.stepOf', { current: 2, total: 2 })}
-                </Typography>
-                <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary }} noWrap>
-                  {t('progressiveWorkflow.member.progressReady')}
-                </Typography>
-              </Box>
-            ) : null}
-            <Button onClick={onClose} disabled={saving} sx={dashOutlinedButtonSx}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              variant="contained"
-              onClick={() => void handleSubmit()}
-              disabled={saveDisabled}
-              sx={dashContainedButtonSx}
-            >
-              {saveLabel}
-            </Button>
-          </>
-        )}
-      </StickyFooter>
+      {messProgressiveEnabled ? (
+        <StickyFooter sx={guidedStepFooterHostSx}>
+          <GuidedStepPanel
+            stepLabel={t('progressiveWorkflow.stepOf', {
+              current: progressiveContinue ? 1 : 2,
+              total: 2,
+            })}
+            stepCurrent={progressiveContinue ? 1 : 2}
+            stepTotal={2}
+            progressLine={
+              progressiveContinue
+                ? t('progressiveWorkflow.member.progressIdentityNext')
+                : t('progressiveWorkflow.member.progressReady')
+            }
+            eyebrow={progressiveContinue ? t('progressiveWorkflow.nextStep') : undefined}
+            title={
+              progressiveContinue ? t('progressiveWorkflow.member.reviewMealsTitle') : undefined
+            }
+            description={
+              progressiveContinue ? t('progressiveWorkflow.member.reviewMealsHint') : undefined
+            }
+            primary={
+              progressiveContinue
+                ? {
+                    label: t('progressiveWorkflow.member.continueToMeals'),
+                    onClick: continueToMeals,
+                    disabled: saving,
+                  }
+                : {
+                    label: saveLabel,
+                    onClick: () => void handleSubmit(),
+                    disabled: saveDisabled,
+                  }
+            }
+            secondary={{
+              label: t('common.cancel'),
+              onClick: onClose,
+              disabled: saving,
+            }}
+          />
+        </StickyFooter>
+      ) : (
+        <StickyFooter>
+          <Button onClick={onClose} disabled={saving} sx={dashOutlinedButtonSx}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => void handleSubmit()}
+            disabled={saveDisabled}
+            sx={dashContainedButtonSx}
+          >
+            {saveLabel}
+          </Button>
+        </StickyFooter>
+      )}
     </Box>
   );
 }
@@ -790,18 +784,20 @@ export function MemberFormDrawer({
   member,
   onClose,
   onInvite,
+  initialPickerMode = 'new',
 }: MemberFormDrawerProps) {
   return (
     <AppDrawer open={open} onClose={onClose} width={560}>
       {open ? (
         <MemberFormBody
-          key={`${mode}-${member?.memberId ?? 'new'}`}
+          key={`${mode}-${member?.memberId ?? 'new'}-${initialPickerMode}`}
           mode={mode}
           spaceId={spaceId}
           spaceType={spaceType}
           member={member}
           onClose={onClose}
           onInvite={onInvite}
+          initialPickerMode={initialPickerMode}
         />
       ) : null}
     </AppDrawer>

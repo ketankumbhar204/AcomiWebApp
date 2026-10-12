@@ -27,3 +27,31 @@ export function useSpaceDashboard(spaceId: string | undefined, spaceType: SpaceT
     reload: () => query.refetch(),
   };
 }
+
+/**
+ * Payment Summary for a month other than the live dashboard month.
+ * Property and meal sections stay on the current month.
+ */
+export function useDashboardMonthFinancial(
+  spaceId: string | undefined,
+  spaceType: SpaceType | undefined,
+  month: string,
+  enabled: boolean,
+) {
+  const current = currentMonthKey();
+  const active = Boolean(enabled && spaceId && spaceType && month !== current);
+  const query = useQuery({
+    queryKey: ['dashboard-summary', spaceId, month],
+    queryFn: () => dashboardApi.getDashboardSummary(spaceId!, spaceType!, month),
+    enabled: active,
+    staleTime: 15_000,
+  });
+
+  return {
+    active,
+    loading: active && (query.isLoading || query.isFetching),
+    error: active && query.isError,
+    financial: active ? (query.data?.financial ?? null) : null,
+    reload: () => void query.refetch(),
+  };
+}

@@ -10,6 +10,16 @@ export type DiscoverSpacesParams = {
   minRent?: number | null;
   maxRent?: number | null;
   amenities?: string[];
+  genders?: string[];
+  sharings?: string[];
+  foods?: string[];
+  furnishings?: string[];
+  contactAvailable?: boolean;
+  servicedApartment?: boolean;
+  mealTypes?: string[];
+  foodTypes?: string[];
+  mealTypes?: string[];
+  foodTypes?: string[];
   page?: number;
   size?: number;
   sort?: string;
@@ -41,16 +51,32 @@ export function buildDiscoverSearchParams(
   if (params.maxRent != null) {
     query.set('maxRent', String(params.maxRent));
   }
-  for (const code of params.amenities ?? []) {
-    const trimmed = code.trim();
-    if (trimmed) {
-      query.append('amenities', trimmed);
-    }
+  appendList(query, 'amenities', params.amenities);
+  appendList(query, 'genders', params.genders);
+  appendList(query, 'sharings', params.sharings);
+  appendList(query, 'foods', params.foods);
+  appendList(query, 'furnishings', params.furnishings);
+  if (params.contactAvailable) {
+    query.set('contactAvailable', 'true');
+  }
+  appendList(query, 'mealTypes', params.mealTypes);
+  appendList(query, 'foodTypes', params.foodTypes);
+  if (params.servicedApartment) {
+    query.set('servicedApartment', 'true');
   }
   query.set('page', String(params.page ?? 0));
   query.set('size', String(params.size ?? DISCOVER_PAGE_SIZE));
   query.set('sort', params.sort ?? 'newest');
   return query;
+}
+
+function appendList(query: URLSearchParams, key: string, values?: string[]) {
+  for (const value of values ?? []) {
+    const trimmed = value.trim();
+    if (trimmed) {
+      query.append(key, trimmed);
+    }
+  }
 }
 
 export function discoverFilterKey(params: DiscoverSpacesParams): string {
@@ -62,6 +88,12 @@ export function discoverFilterKey(params: DiscoverSpacesParams): string {
     minRent: params.minRent ?? null,
     maxRent: params.maxRent ?? null,
     amenities: [...(params.amenities ?? [])].map((code) => code.trim()).filter(Boolean).sort(),
+    genders: [...(params.genders ?? [])].map((value) => value.trim()).filter(Boolean).sort(),
+    sharings: [...(params.sharings ?? [])].map((value) => value.trim()).filter(Boolean).sort(),
+    foods: [...(params.foods ?? [])].map((value) => value.trim()).filter(Boolean).sort(),
+    furnishings: [...(params.furnishings ?? [])].map((value) => value.trim()).filter(Boolean).sort(),
+    mealTypes: [...(params.mealTypes ?? [])].map((value) => value.trim()).filter(Boolean).sort(),
+    foodTypes: [...(params.foodTypes ?? [])].map((value) => value.trim()).filter(Boolean).sort(),
     sort: params.sort ?? 'newest',
   });
 }

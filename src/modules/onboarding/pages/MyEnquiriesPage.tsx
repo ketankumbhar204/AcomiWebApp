@@ -27,12 +27,15 @@ import { contactWasEmailed } from '@/modules/onboarding/utils/enquiryContactDeli
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { ROUTES } from '@/routes/paths';
 import { enquiryApi } from '@/shared/api/enquiryApi';
+import { spaceDiscoverApi } from '@/shared/api/spaceDiscoverApi';
+import { PhotoRequestAction } from '@/modules/onboarding/components/PhotoRequestAction';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { ReceivedEnquiriesPage } from '@/modules/onboarding/pages/ReceivedEnquiriesPage';
 import type {
   OwnerContactResponse,
   SpaceEnquiryResponse,
@@ -116,6 +119,12 @@ function EnquiryInspector({
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const photosQuery = useQuery({
+    queryKey: ['discover-photo-request', enquiry?.spaceId],
+    queryFn: () => spaceDiscoverApi.getDiscoverSpaceDetail(enquiry!.spaceId),
+    enabled: Boolean(enquiry?.spaceId && enquiry.status === 'SHARED' && enquiry.ownerContact?.available),
+    staleTime: 60_000,
+  });
 
   if (!enquiry) {
     return (
@@ -282,6 +291,22 @@ function EnquiryInspector({
                 }
               />
             ) : null}
+
+            {photosQuery.isSuccess || photosQuery.isError ? (
+              <PhotoRequestAction
+                kind={enquiry.spaceType === 'MESS' ? 'mess' : 'property'}
+                name={enquiry.spaceName}
+                spaceType={enquiry.spaceType}
+                location={enquiry.locationLabel}
+                photoUrls={[
+                  photosQuery.data?.listingImageUrl,
+                  photosQuery.data?.coverImageUrl,
+                  photosQuery.data?.imageUrl,
+                ]}
+                phones={mobiles}
+                contactAuthorized
+              />
+            ) : null}
           </Stack>
         ) : enquiry.status === 'SHARED' && contactWasEmailed(enquiry) ? (
           <Typography color="text.secondary" sx={{ fontSize: 13 }}>
@@ -343,7 +368,7 @@ function ContactRow({
   );
 }
 
-export function MyEnquiriesPage() {
+function MemberEnquiriesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -586,4 +611,47 @@ export function MyEnquiriesPage() {
       </AppDrawer>
     </PageContainer>
   );
+}
+
+export function MyEnquiriesPage() {
+  const { t } = useTranslation();
+  const [params] = useSearchParams();
+  const inbox = useQuery({
+    queryKey: ['enquiry-inbox'],
+    queryFn: () => enquiryApi.inbox(),
+  });
+
+  if (inbox.isLoading) {
+    return (
+      <PageContainer>
+        <Typography color="text.secondary">{t('common.loading', { defaultValue: 'Loading…' })}</Typography>
+      </PageContainer>
+    );
+  }
+  if (inbox.isError || !inbox.data) {
+    return (
+      <PageContainer>
+        <Stack spacing={1}>
+          <Typography color="text.secondary">
+            {t('spaces.enquiries.receivedError', {
+              defaultValue: 'Enquiries could not be loaded.',
+            })}
+          </Typography>
+          <Button onClick={() => void inbox.refetch()} sx={dashOutlinedButtonSx}>
+            {t('common.retry', { defaultValue: 'Try again' })}
+          </Button>
+        </Stack>
+      </PageContainer>
+    );
+  }
+  if (inbox.data.mode === 'RECEIVED') {
+    const highlightId = params.get('id');
+    return (
+      <ReceivedEnquiriesPage
+        listings={inbox.data.listings ?? []}
+        highlightId={highlightId}
+      />
+    );
+  }
+  return <MemberEnquiriesPage />;
 }

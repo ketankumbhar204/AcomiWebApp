@@ -1,15 +1,19 @@
-import { Box, Button, Stack, Typography, useTheme } from '@mui/material';
-import { BadgeCheck, Check, Heart } from 'lucide-react';
+import { Box, Button, CircularProgress, Typography, useTheme } from '@mui/material';
+import { Check, Eye, House, MapPin, Phone } from 'lucide-react';
+import { FavoriteHeartButton } from '@/modules/onboarding/components/FavoriteHeartButton';
 import { useTranslation } from 'react-i18next';
 import { spaceTypeLabelKey } from '@/modules/onboarding/components/createSpace/createSpaceVisuals';
 import { DiscoverListingImage } from '@/modules/onboarding/components/DiscoverListingImage';
+import { ListingFacts } from '@/modules/onboarding/components/ListingFacts';
 import { ListingInfoChips } from '@/modules/onboarding/components/ListingInfoChips';
-import { discoverDefaultImageUrl } from '@/modules/onboarding/utils/discoverDefaultImages';
 import { formatListingPriceInr } from '@/modules/onboarding/utils/listingLocation';
-import { useAlreadyInquired, useInquirySentVia } from '@/shared/hooks/useAlreadyInquired';
+import { useAlreadyInquired, useInquiryRecord, useInquirySentVia } from '@/shared/hooks/useAlreadyInquired';
+import { useIsEnquirySending } from '@/modules/onboarding/enquiryFeedback';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
-import type { DiscoverSpaceCardResponse, SpaceType } from '@/shared/types/space';
+import { resolveListingCover } from '@/shared/utils/representativeImage';
+import { listingPriceSuffix } from '@/shared/utils/priceBasis';
+import type { DiscoverSpaceCardResponse } from '@/shared/types/space';
 
 type DiscoverSpaceCardProps = {
   space: DiscoverSpaceCardResponse;
@@ -25,23 +29,36 @@ export function DiscoverSpaceCard({ space, onViewDetails, onEnquire }: DiscoverS
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const address = space.address?.trim() ?? '';
-  const cover = discoverDefaultImageUrl(
-    space.type,
-    space.spaceId,
-    space.listingImageUrl || space.coverImageUrl || space.imageUrl,
-  );
+  const cover = resolveListingCover({
+    listingId: space.spaceId,
+    spaceType: space.type,
+    listingImageUrl: space.listingImageUrl || space.coverImageUrl || space.imageUrl,
+  });
   const isMess = space.type === 'MESS';
   const price = isMess
     ? formatListingPriceInr(space.monthlyPrice)
     : formatListingPriceInr(space.startingPrice);
   const mealPrice = isMess ? formatListingPriceInr(space.mealPrice) : null;
-  const viewLabel = t('spaces.findPlace.view', { defaultValue: 'View' });
-  const viewDetails = t('spaces.findPlace.viewDetails');
+  const priceSuffix = listingPriceSuffix(t, space.type, space.priceBasis);
+  const mealSuffix = t('spaces.findPlace.mealPriceSuffix', { defaultValue: '/ meal' });
+  const viewDetails = t('spaces.findPlace.viewDetails', { defaultValue: 'View Details' });
+  const categoryLabel = t(`spaces.findPlace.representativeCategory.${cover.category}`, {
+    defaultValue: cover.category,
+  });
+  const imageAlt = cover.kind === 'representative'
+    ? t('spaces.findPlace.representativeImageAria', {
+      category: categoryLabel,
+      defaultValue: 'Representative image for {{category}} listing',
+    })
+    : space.name;
   const contactCta = t('spaces.findPlace.getContactDetails', {
     defaultValue: 'Get Contact Details',
   });
   const inquirySent = t('spaces.findPlace.inquirySent', { defaultValue: 'Inquiry sent' });
   const alreadyInquired = useAlreadyInquired(space.spaceId);
+  const inquiry = useInquiryRecord(space.spaceId);
+  const contactViewed = inquiry?.contactViewed === true;
+  const sendingEnquiry = useIsEnquirySending(space.spaceId);
   const sentVia = useInquirySentVia(space.spaceId);
   const sentWhere = sentVia === 'APP'
     ? t('spaces.findPlace.inquirySentInApp', { defaultValue: 'Sent in the ACOMI app' })
@@ -56,7 +73,7 @@ export function DiscoverSpaceCard({ space, onViewDetails, onEnquire }: DiscoverS
       component="article"
       sx={{
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: { xs: 'row', sm: 'column' },
         height: '100%',
         minWidth: 0,
         borderRadius: '16px',
@@ -72,200 +89,253 @@ export function DiscoverSpaceCard({ space, onViewDetails, onEnquire }: DiscoverS
       }}
     >
       <Box
-        sx={{ position: 'relative', aspectRatio: '4 / 3', overflow: 'hidden', bgcolor: colors.mintSubtle, cursor: 'pointer' }}
+        role="button"
+        tabIndex={0}
         onClick={() => onViewDetails(space.spaceId)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onViewDetails(space.spaceId);
+          }
+        }}
+        sx={{
+          position: 'relative',
+          width: { xs: 118, sm: '100%' },
+          aspectRatio: { xs: 'auto', sm: '16 / 10' },
+          minHeight: { xs: 132, sm: 0 },
+          flexShrink: 0,
+          overflow: 'hidden',
+          bgcolor: colors.mintSubtle,
+          cursor: 'pointer',
+        }}
       >
-        <DiscoverListingImage src={cover} alt={space.name} />
+        <DiscoverListingImage
+          src={cover.url}
+          alt={imageAlt}
+          sx={{ position: 'absolute', inset: 0 }}
+        />
 
         <Box
+          component="span"
           sx={{
             position: 'absolute',
             top: 12,
             left: 12,
-            right: 52,
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 0.75,
-            alignItems: 'flex-start',
+            zIndex: 2,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.5,
+            maxWidth: 'calc(100% - 64px)',
+            px: 1,
+            py: 0.5,
+            borderRadius: '999px',
+            bgcolor: '#fff',
+            color: '#0F6B4C',
+            border: '1px solid rgba(15,23,42,0.1)',
+            boxShadow: '0 2px 8px rgba(15,23,42,0.18)',
+            fontSize: '0.68rem',
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            lineHeight: 1,
+            textTransform: 'uppercase',
           }}
         >
-          <Box
-            component="span"
-            sx={{
-              px: 1,
-              py: 0.5,
-              borderRadius: '6px',
-              bgcolor: 'rgba(255,255,255,0.95)',
-              fontSize: '0.68rem',
-              fontWeight: 700,
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              color: colors.textPrimary,
-              maxWidth: '100%',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {t(spaceTypeLabelKey(space.type))}
-          </Box>
-          {alreadyInquired ? (
-            <Box
-              component="span"
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.5,
-                px: 1,
-                py: 0.5,
-                borderRadius: '6px',
-                bgcolor: '#FFEDD5',
-                color: '#C2410C',
-                border: '1px solid #FDBA74',
-                fontSize: '0.68rem',
-                fontWeight: 700,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <Check size={12} />
-              {inquirySent}
-            </Box>
-          ) : null}
+          <House size={13} aria-hidden />
+          {t(spaceTypeLabelKey(space.type))}
         </Box>
 
-        {space.testSpace ? (
-          <Box
-            component="span"
-            sx={{
-              position: 'absolute',
-              top: 44,
-              left: 12,
-              px: 1,
-              py: 0.5,
-              borderRadius: '6px',
-              bgcolor: '#FFEDD5',
-              border: '1px solid #F59E0B',
-              fontSize: '0.68rem',
-              fontWeight: 700,
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              color: '#9A3412',
-            }}
-          >
-            {t('spaces.findPlace.testBadge')}
-          </Box>
-        ) : null}
+        <FavoriteHeartButton
+          spaceId={space.spaceId}
+          listingName={space.name}
+          sx={{ position: 'absolute', top: 10, right: 10, zIndex: 2 }}
+        />
 
-        <Box
-          aria-hidden
-          sx={{
-            position: 'absolute',
-            top: 10,
-            right: 10,
-            width: 32,
-            height: 32,
-            borderRadius: '50%',
-            bgcolor: 'rgba(255,255,255,0.95)',
-            display: 'grid',
-            placeItems: 'center',
-            color: colors.textPrimary,
-            boxShadow: '0 1px 3px rgba(15,23,42,0.08)',
-          }}
-        >
-          <Heart size={15} />
-        </Box>
-
-        {space.alreadyMember ? (
-          <Box
-            component="span"
-            sx={{
-              position: 'absolute',
-              bottom: 12,
-              left: 12,
-              px: 1.25,
-              py: 0.5,
-              borderRadius: '999px',
-              bgcolor: colors.primary,
-              color: '#fff',
-              fontSize: '0.72rem',
-              fontWeight: 700,
-            }}
-          >
-            {t('spaces.findPlace.alreadyMember')}
+        {(alreadyInquired && !contactViewed) || space.alreadyMember ? (
+          <Box sx={{ position: 'absolute', left: 12, bottom: 10, maxWidth: '48%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
+            {alreadyInquired && !contactViewed ? (
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: '6px',
+                  bgcolor: '#FFEDD5',
+                  color: '#C2410C',
+                  border: '1px solid #FDBA74',
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <Check size={12} />
+                {inquirySent}
+              </Box>
+            ) : null}
+            {space.alreadyMember ? (
+              <Box
+                component="span"
+                sx={{
+                  px: 1.25,
+                  py: 0.5,
+                  borderRadius: '999px',
+                  bgcolor: colors.primary,
+                  color: '#fff',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                }}
+              >
+                {t('spaces.findPlace.alreadyMember')}
+              </Box>
+            ) : null}
           </Box>
         ) : null}
       </Box>
 
-      <Stack spacing={1} sx={{ p: 1.75, flex: 1, textAlign: 'left', containerType: 'inline-size' }}>
-        <Box sx={{ cursor: 'pointer' }} onClick={() => onViewDetails(space.spaceId)}>
-          <Typography
+      <Box sx={{ p: { xs: 1.25, sm: 2 }, flex: '1 1 160px', display: 'flex', flexDirection: 'column', gap: 1, textAlign: 'left', minWidth: 0 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+          <Box
+            component="button"
+            type="button"
+            onClick={() => onViewDetails(space.spaceId)}
             sx={{
-              fontWeight: 700,
-              fontSize: '1rem',
-              letterSpacing: '-0.02em',
-              color: isDark ? theme.palette.text.primary : colors.textPrimary,
-              lineHeight: 1.25,
+              display: 'block',
+              width: '100%',
+              border: 0,
+              bgcolor: 'transparent',
+              p: 0,
+              textAlign: 'left',
+              cursor: 'pointer',
+              font: 'inherit',
+              color: 'inherit',
             }}
-            title={space.name}
           >
-            {space.name}
-          </Typography>
-          {alreadyInquired ? (
             <Typography
+              title={space.name}
               sx={{
-                mt: 0.5,
-                display: 'inline-flex',
-                maxWidth: '100%',
+                fontWeight: 800,
+                fontSize: '1.125rem',
+                letterSpacing: '-0.02em',
+                color: isDark ? theme.palette.text.primary : colors.textPrimary,
+                lineHeight: 1.25,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
+              {space.name}
+            </Typography>
+          </Box>
+          {address ? (
+            <Box
+              component={alreadyInquired ? 'div' : 'button'}
+              type={alreadyInquired ? undefined : 'button'}
+              onClick={alreadyInquired ? undefined : () => onEnquire(space)}
+              aria-label={alreadyInquired ? undefined : `${contactCta}: ${space.name}`}
+              sx={{
+                display: 'flex',
                 alignItems: 'center',
                 gap: 0.5,
-                color: '#C2410C',
-                fontSize: '0.6875rem',
-                fontWeight: 700,
-                whiteSpace: 'nowrap',
+                width: '100%',
+                minWidth: 0,
+                border: 0,
+                bgcolor: 'transparent',
+                p: 0,
+                textAlign: 'left',
+                cursor: alreadyInquired ? 'default' : 'pointer',
+                font: 'inherit',
+                color: 'inherit',
               }}
             >
-              <Check size={12} />
-              <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {sentWhere ? `${inquirySent} · ${sentWhere}` : inquirySent}
-              </Box>
-            </Typography>
+              <MapPin size={14} aria-hidden color={isDark ? theme.palette.text.secondary : colors.textSecondary} />
+              <Typography
+                title={address}
+                sx={{
+                  minWidth: 0,
+                  fontSize: '0.8125rem',
+                  color: isDark ? theme.palette.text.secondary : colors.textSecondary,
+                  lineHeight: 1.35,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {address}
+              </Typography>
+            </Box>
           ) : null}
-          {address ? (
-            <Typography
-              sx={{
-                mt: 0.5,
-                fontSize: '0.8125rem',
-                color: isDark ? theme.palette.text.secondary : colors.textSecondary,
-                lineHeight: 1.35,
-              }}
-              title={address}
-            >
-              {address}
+          <Box
+            component="button"
+            type="button"
+            onClick={() => (alreadyInquired ? onViewDetails(space.spaceId) : onEnquire(space))}
+            aria-label={alreadyInquired ? `${viewDetails}: ${space.name}` : `${contactCta}: ${space.name}`}
+            sx={{
+              display: 'block',
+              width: '100%',
+              border: 0,
+              bgcolor: 'transparent',
+              p: 0,
+              m: 0,
+              textAlign: 'left',
+              cursor: 'pointer',
+              font: 'inherit',
+              color: isDark ? theme.palette.text.primary : colors.textPrimary,
+            }}
+          >
+            <Typography sx={{ m: 0, color: 'inherit' }}>
+              {price ? (
+                <>
+                  <Box component="span" sx={{ fontWeight: 800, fontSize: '1.15rem', letterSpacing: '-0.02em' }}>
+                    {price}
+                  </Box>
+                  <Box
+                    component="span"
+                    sx={{
+                      ml: 0.75,
+                      fontWeight: 500,
+                      fontSize: '0.8125rem',
+                      color: isDark ? theme.palette.text.secondary : colors.textSecondary,
+                    }}
+                  >
+                    {priceSuffix}
+                  </Box>
+                </>
+              ) : (
+                <Box component="span" sx={{ fontWeight: 700, fontSize: '1rem' }}>
+                  {t('spaces.findPlace.priceOnRequest', { defaultValue: 'Price on request' })}
+                </Box>
+              )}
             </Typography>
-          ) : null}
-          <Typography sx={{ mt: 1, fontWeight: 700, fontSize: '0.95rem', color: colors.textPrimary }}>
-            {price
-              ? `${price} ${t(`spaces.findPlace.priceSuffix.${space.type as SpaceType}`, { defaultValue: '/ month' })}`
-              : t('spaces.findPlace.priceOnRequest', { defaultValue: 'Price on request' })}
-          </Typography>
-          {mealPrice ? (
-            <Typography sx={{ mt: 0.25, fontWeight: 600, fontSize: '0.8125rem', color: colors.textPrimary }}>
-              {`${mealPrice} ${t('spaces.findPlace.mealPriceSuffix', { defaultValue: '/ meal' })}`}
-            </Typography>
-          ) : null}
+            {mealPrice ? (
+              <Typography sx={{ m: 0, mt: 0.25, color: 'inherit' }}>
+                <Box component="span" sx={{ fontWeight: 700, fontSize: '0.95rem' }}>{mealPrice}</Box>
+                <Box
+                  component="span"
+                  sx={{ ml: 0.75, fontWeight: 500, fontSize: '0.75rem', color: isDark ? theme.palette.text.secondary : colors.textSecondary }}
+                >
+                  {mealSuffix}
+                </Box>
+              </Typography>
+            ) : null}
+          </Box>
+          <ListingFacts
+            appearance="pills"
+            genderPolicy={space.genderPolicy}
+            sharingNotes={space.sharingNotes}
+            foodAvailability={space.foodAvailability}
+            foodIncludedInRent={space.foodIncludedInRent}
+          />
         </Box>
 
-        <Box sx={{ mt: 0.5, borderRadius: '16px', bgcolor: '#EAF8F2', p: 1.25 }}>
-          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mb: 0.75, color: '#0F6B4C' }}>
-            <BadgeCheck size={14} />
-            <Typography sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0F6B4C' }}>
-              {t('spaces.findPlace.infoAvailable', { defaultValue: 'Information available' })}
-            </Typography>
-          </Stack>
+        <Box sx={{ display: { xs: 'none', sm: 'block' }, borderRadius: '14px', bgcolor: isDark ? 'rgba(37,211,102,0.1)' : '#F3FBF7', px: 1.25, py: 1.25 }}>
           <ListingInfoChips
             listing={space}
             variant="card"
             surface={isMess ? 'meals' : 'places'}
+            onViewAll={() => onViewDetails(space.spaceId)}
             onEnquire={alreadyInquired ? undefined : () => onEnquire(space)}
           />
         </Box>
@@ -273,13 +343,11 @@ export function DiscoverSpaceCard({ space, onViewDetails, onEnquire }: DiscoverS
         <Box
           sx={{
             mt: 'auto',
-            pt: 0.5,
+            pt: 0.25,
             display: 'flex',
-            flexDirection: 'column',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: 'stretch',
             gap: 1,
-            '@container (min-width: 260px)': {
-              flexDirection: 'row',
-            },
           }}
         >
           <Button
@@ -289,73 +357,114 @@ export function DiscoverSpaceCard({ space, onViewDetails, onEnquire }: DiscoverS
             aria-label={`${viewDetails}: ${space.name}`}
             sx={{
               ...dashOutlinedButtonSx,
-              width: '100%',
-              minHeight: 40,
-              borderRadius: '10px',
+              width: 'auto',
+              height: 44,
+              maxHeight: 44,
+              minWidth: 0,
+              minHeight: 44,
+              flex: '0.82 1 0',
+              fontSize: '13px',
+              px: 1,
+              borderRadius: '12px',
               whiteSpace: 'nowrap',
-              flexShrink: 0,
-              '@container (min-width: 260px)': { width: 'auto' },
+              bgcolor: isDark ? 'transparent' : '#fff',
+              fontWeight: 600,
+              px: 1.25,
             }}
           >
-            {viewLabel}
+            {viewDetails}
           </Button>
-          {alreadyInquired ? (
+          {contactViewed ? (
             <Button
-              disabled
-              aria-disabled="true"
-              aria-label={sentWhere ? `${inquirySent}. ${sentWhere}` : inquirySent}
+              onClick={() => onViewDetails(space.spaceId)}
+              aria-label={`${t('spaces.findPlace.contactDetailsViewed', { defaultValue: 'Contact details viewed' })}: ${space.name}`}
               sx={{
-                width: '100%',
-                minHeight: 40,
-                borderRadius: '10px',
-                whiteSpace: 'normal',
+                width: 'auto',
+                height: 44,
+                maxHeight: 44,
+                minWidth: 0,
+                minHeight: 44,
+                flex: '1.18 1 0',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                fontSize: '13px',
+                px: 1,
+                bgcolor: '#E7F6EE',
+                color: '#0F6B4C',
+                border: '1px solid #8FCBAB',
+                fontWeight: 700,
+                textTransform: 'none',
+                gap: 0.75,
+                '&:hover': { bgcolor: '#D8F3E4' },
+              }}
+            >
+              <Eye size={14} />
+              {t('spaces.findPlace.contactDetailsViewed', { defaultValue: 'Contact details viewed' })}
+            </Button>
+          ) : alreadyInquired ? (
+            <Button
+              onClick={() => onViewDetails(space.spaceId)}
+              aria-label={sentWhere ? `${inquirySent}. ${sentWhere}` : inquirySent}
+              startIcon={<Check size={14} />}
+              sx={{
+                width: 'auto',
+                height: 44,
+                maxHeight: 44,
+                minWidth: 0,
+                minHeight: 44,
+                flex: '1.18 1 0',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                px: 1,
+                py: 0,
                 bgcolor: '#FFEDD5',
                 color: '#C2410C',
                 border: '1px solid #FDBA74',
-                fontWeight: 700,
+                fontWeight: 600,
+                fontSize: '13px',
+                lineHeight: 1.15,
                 textTransform: 'none',
-                '&.Mui-disabled': {
-                  bgcolor: '#FFEDD5',
-                  color: '#C2410C',
-                  opacity: 1,
-                },
-                '@container (min-width: 260px)': { flexGrow: 1, flexShrink: 0, width: 'auto' },
+                whiteSpace: 'nowrap',
+                '&:hover': { bgcolor: '#FED7AA' },
               }}
             >
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.2 }}>
-                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-                  <Check size={14} />
-                  {inquirySent}
-                </Box>
-                {sentWhere ? (
-                  <Box component="span" sx={{ fontSize: '0.7rem', fontWeight: 600, color: '#9A3412' }}>
-                    {sentWhere}
-                  </Box>
-                ) : null}
-              </Box>
+              {inquirySent}
             </Button>
           ) : (
             <Button
               variant="contained"
               color="primary"
+              disabled={sendingEnquiry}
               onClick={() => onEnquire(space)}
               aria-label={`${contactCta}: ${space.name}`}
+              startIcon={sendingEnquiry ? undefined : <Phone size={16} />}
               sx={{
                 ...dashContainedButtonSx,
-                width: '100%',
-                minHeight: 40,
-                borderRadius: '10px',
+                width: 'auto',
+                height: 44,
+                maxHeight: 44,
+                minWidth: 0,
+                minHeight: 44,
+                overflow: 'hidden',
+                fontSize: '13px',
+                flex: '1.18 1 0',
+                borderRadius: '12px',
                 whiteSpace: 'nowrap',
-                bgcolor: colors.primaryDark,
+                px: 1.25,
+                bgcolor: colors.primary,
                 '&:hover': { bgcolor: colors.primaryHover },
-                '@container (min-width: 260px)': { flexGrow: 1, flexShrink: 0, width: 'auto' },
               }}
             >
-              {contactCta}
+              {sendingEnquiry ? (
+                <CircularProgress size={16} sx={{ color: colors.white }} />
+              ) : (
+                contactCta
+              )}
             </Button>
           )}
         </Box>
-      </Stack>
+      </Box>
     </Box>
   );
 }

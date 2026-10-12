@@ -1,11 +1,11 @@
 import { Box, Typography, useTheme } from '@mui/material';
-import { Moon, Sun, Sunrise } from 'lucide-react';
+import { Calendar, CheckCircle2, Moon, Sun, Sunrise } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { DailyMenuResponse, MealPollSlot, MealType } from '@/shared/types/meals';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
-import { StatusChip } from '@/shared/components/StatusChip';
 import { mealTypeTheme } from '../utils/mealTypeTheme';
+import { isMealPlanned } from '../utils/dayShareAction';
 
 const ICONS: Record<MealType, LucideIcon> = {
   BREAKFAST: Sunrise,
@@ -31,32 +31,19 @@ type MealSlotCardProps = {
 /**
  * Compact Breakfast / Lunch / Dinner cell — tap opens the menu editor (mobile parity).
  */
-export function MealSlotCard({ mealType, menu, poll, canManage, onEdit }: MealSlotCardProps) {
+export function MealSlotCard({ mealType, menu, canManage, onEdit }: MealSlotCardProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const mealTheme = mealTypeTheme(mealType);
   const Icon = ICONS[mealType];
-  const options = menu?.options?.filter((o) => o.isAvailable) ?? [];
-  const planned = options.length > 0;
+  const planned = isMealPlanned(menu);
+  const StatusIcon = planned ? CheckCircle2 : Calendar;
+  const statusColor = planned ? '#047857' : '#4B5563';
 
-  const statusTone =
-    !menu || !planned
-      ? 'warning'
-      : menu.status === 'PUBLISHED'
-        ? 'success'
-        : menu.status === 'DRAFT'
-          ? 'warning'
-          : 'info';
-
-  const statusLabel =
-    !menu || !planned
-      ? t('meals.planning.selector.notPlanned', { defaultValue: 'Not planned' })
-      : menu.status === 'PUBLISHED'
-        ? t('meals.planning.selector.shared', { defaultValue: 'Shared' })
-        : menu.status === 'MODIFIED'
-          ? t('meals.planning.selector.updated', { defaultValue: 'Updated' })
-          : t('meals.planning.selector.planned', { defaultValue: 'Planned' });
+  const statusLabel = planned
+    ? t('meals.planning.selector.planned', { defaultValue: 'Planned' })
+    : t('meals.planning.selector.notPlanned', { defaultValue: 'Not planned' });
 
   const actionLabel = planned
     ? t('meals.planning.selector.viewMenu', { defaultValue: 'View menu' })
@@ -130,7 +117,27 @@ export function MealSlotCard({ mealType, menu, poll, canManage, onEdit }: MealSl
         {t(`meals.mealType.${mealType}`)}
       </Typography>
 
-      <StatusChip label={statusLabel} tone={statusTone} />
+      <Box
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.5,
+          maxWidth: '100%',
+          minHeight: 24,
+          px: 1,
+          py: 0.25,
+          borderRadius: '999px',
+          border: '1px solid',
+          borderColor: planned ? '#6EE7B7' : '#D1D5DB',
+          bgcolor: planned ? '#ECFDF5' : '#F3F4F6',
+          color: statusColor,
+        }}
+      >
+        <StatusIcon size={12} strokeWidth={2.4} />
+        <Typography sx={{ fontSize: 11, lineHeight: '14px', fontWeight: 700, color: statusColor }}>
+          {statusLabel}
+        </Typography>
+      </Box>
 
       <Typography
         sx={{
@@ -142,12 +149,6 @@ export function MealSlotCard({ mealType, menu, poll, canManage, onEdit }: MealSl
       >
         {actionLabel}
       </Typography>
-
-      {poll ? (
-        <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textMuted }}>
-          {t(`meals.poll.status.${poll.status}`)} · {poll.responseCount}
-        </Typography>
-      ) : null}
     </Box>
   );
 }

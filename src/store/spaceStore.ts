@@ -66,10 +66,8 @@ export const useSpaceStore = create<SpaceStoreState>((set, get) => ({
         loading: false,
         error: message,
         bootstrapped: true,
-        mySpaces: [],
-        selectedSpaceId: null,
       });
-      return [];
+      return get().mySpaces;
     }
   },
 

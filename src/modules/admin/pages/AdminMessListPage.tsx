@@ -9,7 +9,6 @@ import {
   IconButton,
   InputAdornment,
   MenuItem,
-  Pagination,
   Select,
   Stack,
   Tab,
@@ -35,7 +34,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useSnackbar } from 'notistack';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
@@ -52,7 +51,7 @@ import type {
   RegistrationStatus,
 } from '@/shared/types/admin';
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 20;
 
 type LeadScope = 'open' | 'my' | 'claimed' | 'unclaimed' | 'website' | 'admin';
 type DeleteTarget =
@@ -110,9 +109,13 @@ export function AdminMessListPage() {
   const [leads, setLeads] = useState<MessRegistrationListItem[]>([]);
   const [activeAll, setActiveAll] = useState<AdminActiveSpace[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [leadPage, setLeadPage] = useState(0);
+  const [leadHasMore, setLeadHasMore] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [totalElements, setTotalElements] = useState(0);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
   const [sourceFilter, setSourceFilter] = useState<RegistrationSource | ''>('');
@@ -130,14 +133,10 @@ export function AdminMessListPage() {
   const [activeFilterKey, setActiveFilterKey] = useState(filterKey);
   if (activeFilterKey !== filterKey) {
     setActiveFilterKey(filterKey);
-    setPage(0);
+    setLeadPage(0);
+    setVisibleCount(PAGE_SIZE);
+    setLeadHasMore(false);
     setSelected(new Set());
-  }
-
-  const requestKey = `${filterKey}|${page}`;
-  const [activeRequestKey, setActiveRequestKey] = useState(requestKey);
-  if (activeRequestKey !== requestKey) {
-    setActiveRequestKey(requestKey);
     setLoading(true);
   }
 
@@ -194,20 +193,19 @@ export function AdminMessListPage() {
         if (tab === 'leads') {
           const result = await adminApi.listMessRegistrations({
             ...listParams,
-            page,
+            page: leadPage,
             size: PAGE_SIZE,
           });
           if (!cancelled) {
-            setLeads(result.content);
-            setTotalPages(result.totalPages);
+            setLeads((prev) => (leadPage === 0 ? result.content : [...prev, ...result.content]));
             setTotalElements(result.totalElements);
+            setLeadHasMore(!result.last && result.content.length > 0);
           }
-        } else {
+        } else if (leadPage === 0) {
           const spaces = await adminApi.listActiveSpaces('MESS');
           if (!cancelled) {
             const filtered = spaces
               .filter((s) => {
-
                 if (!debouncedQ) return true;
                 const q = debouncedQ.toLowerCase();
                 return (
@@ -221,22 +219,26 @@ export function AdminMessListPage() {
               .filter((s) => !sourceFilter || s.source === sourceFilter);
             setActiveAll(filtered);
             setTotalElements(filtered.length);
-            setTotalPages(Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)));
           }
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setLoadingMore(false);
+          loadingMoreRef.current = false;
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [debouncedQ, listParams, page, sourceFilter, tab]);
+  }, [debouncedQ, listParams, leadPage, sourceFilter, tab]);
 
-  const activePage = useMemo(() => {
-    const start = page * PAGE_SIZE;
-    return activeAll.slice(start, start + PAGE_SIZE);
-  }, [activeAll, page]);
+  const activeVisible = useMemo(
+    () => activeAll.slice(0, visibleCount),
+    [activeAll, visibleCount],
+  );
+  const hasMore = tab === 'leads' ? leadHasMore : visibleCount < activeAll.length;
 
   const stats = useMemo(
     () => [
@@ -310,7 +312,7 @@ export function AdminMessListPage() {
     setSearchParams(params, { replace: true });
   }
 
-  const rowIds = tab === 'leads' ? leads.map((l) => l.id) : activePage.map((s) => s.id);
+  const rowIds = tab === 'leads' ? leads.map((l) => l.id) : activeVisible.map((s) => s.id);
   const allSelected = rowIds.length > 0 && rowIds.every((id) => selected.has(id));
 
   function toggleAll() {
@@ -418,9 +420,34 @@ export function AdminMessListPage() {
   }
 
   const selectedCount = selected.size;
-  const showingFrom = totalElements === 0 ? 0 : page * PAGE_SIZE + 1;
-  const showingTo = Math.min((page + 1) * PAGE_SIZE, totalElements);
-  const pages = tab === 'leads' ? totalPages : Math.max(1, Math.ceil(totalElements / PAGE_SIZE));
+  const shownCount = tab === 'leads' ? leads.length : Math.min(visibleCount, activeAll.length);
+  const showingFrom = totalElements === 0 ? 0 : 1;
+  const showingTo = shownCount;
+
+  function loadMore() {
+    if (loading || loadingMoreRef.current || !hasMore) return;
+    loadingMoreRef.current = true;
+    if (tab === 'leads') {
+      setLoadingMore(true);
+      setLeadPage((current) => current + 1);
+      return;
+    }
+    setVisibleCount((current) => current + PAGE_SIZE);
+    loadingMoreRef.current = false;
+  }
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || loading || loadingMore || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) loadMore();
+      },
+      { rootMargin: '240px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  });
 
   return (
     <Box>
@@ -434,7 +461,7 @@ export function AdminMessListPage() {
           </Typography>
           <Typography sx={{ color: 'text.secondary', mt: 0.5 }}>
             {t('admin.mess.subtitle')}
-          </Typography>
+        </Typography>
         </Box>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ flexShrink: 0 }}>
           <Button
@@ -450,7 +477,7 @@ export function AdminMessListPage() {
               '&:hover': { bgcolor: '#16A34A' },
             }}>
             {t('admin.nav.addMess')}
-          </Button>
+        </Button>
         </Stack>
       </Stack>
 
@@ -575,7 +602,7 @@ export function AdminMessListPage() {
             spacing={1.25}
             sx={{ alignItems: { xs: 'stretch', md: 'center' } }}>
             <TextField
-              size="small"
+          size="small"
               fullWidth
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -692,7 +719,7 @@ export function AdminMessListPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {loading ? (
+      {loading ? (
                 <TableRow>
                   <TableCell colSpan={7}>
                     <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
@@ -700,8 +727,8 @@ export function AdminMessListPage() {
                     </Typography>
                   </TableCell>
                 </TableRow>
-              ) : tab === 'leads' ? (
-                leads.length === 0 ? (
+      ) : tab === 'leads' ? (
+        leads.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7}>
                       <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
@@ -738,7 +765,7 @@ export function AdminMessListPage() {
                             <Box sx={{ minWidth: 0 }}>
                               <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                                 <Box
-                                  sx={{
+              sx={{
                                     width: 8,
                                     height: 8,
                                     borderRadius: '50%',
@@ -763,7 +790,7 @@ export function AdminMessListPage() {
                                 </Typography>
                               </Stack>
                             </Box>
-                          </Stack>
+            </Stack>
                         </TableCell>
                         <TableCell>
                           <Typography sx={{ fontSize: 13, fontWeight: 700 }}>MESS</Typography>
@@ -776,7 +803,7 @@ export function AdminMessListPage() {
                         </TableCell>
                         <TableCell>
                           <Box
-                            sx={{
+                sx={{
                               display: 'inline-flex',
                               px: 1.25,
                               py: 0.35,
@@ -801,7 +828,7 @@ export function AdminMessListPage() {
                                 fontSize: 12,
                                 fontWeight: 700,
                               }}>
-                              {t('admin.common.yes')}
+                              {t('admin.labels.testBadge')}
                             </Box>
                           ) : (
                             <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
@@ -818,8 +845,8 @@ export function AdminMessListPage() {
                         <TableCell>
                           <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                             <Button
-                              component={RouterLink}
-                              to={adminMessDetailPath(item.id)}
+                    component={RouterLink}
+                    to={adminMessDetailPath(item.id)}
                               size="small"
                               sx={{
                                 textTransform: 'none',
@@ -836,7 +863,7 @@ export function AdminMessListPage() {
                             <Button
                               size="small"
                               onClick={() => setDeleteTarget({ kind: 'lead', item })}
-                              sx={{
+                    sx={{
                                 textTransform: 'none',
                                 fontWeight: 700,
                                 color: '#B91C1C',
@@ -857,7 +884,7 @@ export function AdminMessListPage() {
                     );
                   })
                 )
-              ) : activePage.length === 0 ? (
+              ) : activeVisible.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7}>
                     <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
@@ -866,7 +893,7 @@ export function AdminMessListPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                activePage.map((space) => {
+                activeVisible.map((space) => {
                   const created = formatCreated(space.createdAt);
                   const chipSx = sourceChipSx(space.source);
                   const detailPath = space.registrationId
@@ -930,7 +957,7 @@ export function AdminMessListPage() {
                         <Typography sx={{ fontSize: 13, fontWeight: 700 }}>{space.type}</Typography>
                         <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
                           {space.contactNumber || '—'}
-                        </Typography>
+                    </Typography>
                       </TableCell>
                       <TableCell>
                         {space.source ? (
@@ -963,8 +990,8 @@ export function AdminMessListPage() {
                               fontSize: 12,
                               fontWeight: 700,
                             }}>
-                            {t('admin.common.yes')}
-                          </Box>
+                            {t('admin.labels.testBadge')}
+                  </Box>
                         ) : (
                           <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
                             {t('admin.common.no')}
@@ -975,7 +1002,7 @@ export function AdminMessListPage() {
                         <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{created.date}</Typography>
                         <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
                           {created.time}
-                        </Typography>
+                  </Typography>
                       </TableCell>
                       <TableCell>
                         <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
@@ -997,8 +1024,8 @@ export function AdminMessListPage() {
                               {t('admin.mess.view')}
                             </Button>
                           ) : null}
-                          <Button
-                            size="small"
+                    <Button
+                      size="small"
                             onClick={() => setDeleteTarget({ kind: 'space', item: space })}
                             sx={{
                               textTransform: 'none',
@@ -1011,11 +1038,11 @@ export function AdminMessListPage() {
                               '&:hover': { bgcolor: '#FECACA' },
                             }}>
                             {t('admin.common.delete')}
-                          </Button>
+                    </Button>
                           <IconButton size="small" sx={{ color: 'text.secondary' }}>
                             <MoreVertical size={16} />
                           </IconButton>
-                        </Stack>
+                  </Stack>
                       </TableCell>
                     </TableRow>
                   );
@@ -1023,7 +1050,7 @@ export function AdminMessListPage() {
               )}
             </TableBody>
           </Table>
-        </Box>
+              </Box>
 
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
@@ -1042,23 +1069,12 @@ export function AdminMessListPage() {
               to: showingTo,
               total: totalElements,
             })}
-          </Typography>
-          {pages > 1 ? (
-            <Pagination
-              count={pages}
-              page={page + 1}
-              onChange={(_, value) => setPage(value - 1)}
-              color="primary"
-              shape="rounded"
-              sx={{
-                '& .Mui-selected': {
-                  bgcolor: '#22C55E !important',
-                  color: '#FFFFFF',
-                },
-              }}
-            />
+              </Typography>
+          {loadingMore ? (
+            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{t('common.loading')}</Typography>
           ) : null}
         </Stack>
+        <Box ref={sentinelRef} sx={{ height: 1 }} />
       </Card>
 
       <ConfirmDialog

@@ -3,7 +3,7 @@ import type { SpaceType } from '@/shared/types/space';
 import {
   spaceAccommodationPath,
   spaceAccommodationQuickSetupPath,
-  spaceAddCustomersHubPath,
+  spaceMembersAddChoicePath,
   spaceBedInventoryPath,
   spaceDashboardPath,
   spaceMealsLibraryPath,
@@ -72,10 +72,8 @@ export function navigateHealthAction(
           navigate(spaceAccommodationQuickSetupPath(spaceId));
           return;
         case 'addMember':
-          navigate(spaceMembersPath(spaceId));
-          return;
         case 'addCustomersHub':
-          navigate(spaceAddCustomersHubPath(spaceId));
+          navigate(spaceMembersAddChoicePath(spaceId));
           return;
         case 'menuLibrary':
           navigate(spaceMealsLibraryPath(spaceId));

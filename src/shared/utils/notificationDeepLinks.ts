@@ -1,6 +1,6 @@
 import type { NavigateFunction } from 'react-router-dom';
 import type { PendingActionGroup, SpaceNotification } from '@/shared/types/dashboard';
-import { extractIsoDateFromText } from '@/shared/utils/extractIsoDateFromText';
+import { extractIsoDateFromText, extractMealTypeFromText } from '@/shared/utils/extractIsoDateFromText';
 import { isOwnerOnlyNotificationType } from '@/shared/utils/ownerOnlyNotifications';
 import { addDaysIso, todayIsoDate } from '@/modules/meals/utils/mealDates';
 import {
@@ -8,6 +8,7 @@ import {
   spaceComplaintsPath,
   spaceMealsPath,
   spaceMealsPlansPath,
+  spaceMealsPollPath,
   spaceMealsSharePath,
   spaceMembersPath,
   spaceOccupancyListPath,
@@ -18,6 +19,25 @@ type NotificationLike = Pick<
   SpaceNotification,
   'notificationType' | 'entityId' | 'actionRoute' | 'message' | 'title'
 >;
+
+function mealContext(notification: NotificationLike): {
+  menuDate: string;
+  mealType?: 'BREAKFAST' | 'LUNCH' | 'DINNER';
+} {
+  const menuDate =
+    extractIsoDateFromText(
+      notification.message,
+      notification.title,
+      notification.actionRoute,
+    ) ?? todayIsoDate();
+  const mealType =
+    extractMealTypeFromText(
+      notification.message,
+      notification.title,
+      notification.actionRoute,
+    ) ?? undefined;
+  return mealType ? { menuDate, mealType } : { menuDate };
+}
 
 function tomorrowIsoDate(): string {
   return addDaysIso(todayIsoDate(), 1);
@@ -70,12 +90,13 @@ export function navigateFromNotificationType(
       return;
     case 'MEAL_POLL_PUBLISHED':
     case 'MEAL_POLL_REMINDER': {
-      const menuDate = extractIsoDateFromText(
-        notification.message,
-        notification.title,
-        notification.actionRoute,
-      );
-      navigate(spaceMealsPath(spaceId, menuDate ?? undefined));
+      const meal = mealContext(notification);
+      navigate(spaceMealsPollPath(spaceId, meal.menuDate, meal.mealType));
+      return;
+    }
+    case 'MENU_PUBLISHED': {
+      const meal = mealContext(notification);
+      navigate(spaceMealsPollPath(spaceId, meal.menuDate, meal.mealType));
       return;
     }
     case 'SUBSCRIPTION_ACTIVATION_PENDING':
@@ -131,6 +152,14 @@ export function navigateFromNotificationType(
         navigate(ROUTES.acceptInvitations);
       } else if (notification.actionRoute === 'DashboardOccupancyList') {
         navigate(spaceOccupancyListPath(spaceId, 'active'));
+      } else if (
+        notification.actionRoute === 'MealPollResponse' ||
+        notification.actionRoute?.startsWith('MealPollResponse?') ||
+        notification.actionRoute === 'DailyMenuToday' ||
+        notification.actionRoute?.startsWith('DailyMenuToday?')
+      ) {
+        const meal = mealContext(notification);
+        navigate(spaceMealsPollPath(spaceId, meal.menuDate, meal.mealType));
       } else if (notification.actionRoute === 'MenuPlanning') {
         navigate(spaceMealsPath(spaceId, tomorrow));
       } else if (notification.actionRoute === 'MenuSharePreview') {

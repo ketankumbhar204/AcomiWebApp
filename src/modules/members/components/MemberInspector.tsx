@@ -11,7 +11,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { Pencil, Trash2, UserPlus } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
@@ -34,6 +34,7 @@ import {
   getMemberStatusLabelKey,
   memberStatusTone,
 } from '../utils/memberStatus';
+import { membershipRoleLabelKey } from '../utils/memberRoles';
 
 export type MemberInspectorTab =
   | 'profile'
@@ -46,6 +47,7 @@ export type MemberInspectorTab =
 type MemberInspectorProps = {
   spaceId: string;
   memberId: string;
+  initialTab?: MemberInspectorTab;
   onClose: () => void;
   onEdit: () => void;
   onInvite: () => void;
@@ -63,6 +65,7 @@ function initials(name: string): string {
 export function MemberInspector({
   spaceId,
   memberId,
+  initialTab = 'profile',
   onClose,
   onEdit,
   onInvite,
@@ -74,8 +77,12 @@ export function MemberInspector({
   const permissions = useSpacePermissions(spaceId);
   const { member, loading, error, reload } = useMemberDetails(spaceId, memberId);
   const { removeMember } = useMemberMutations(spaceId);
-  const [tab, setTab] = useState<MemberInspectorTab>('profile');
+  const [tab, setTab] = useState<MemberInspectorTab>(initialTab);
   const [confirmRemove, setConfirmRemove] = useState(false);
+
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab, memberId]);
 
   const canEdit = permissions.canManageMembers && member?.role !== 'OWNER';
   const canRemove = permissions.canRemoveMember && member?.role !== 'OWNER';
@@ -219,11 +226,16 @@ export function MemberInspector({
               {initials(member.fullName)}
             </Avatar>
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }} noWrap>
+              <Typography
+                sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary, wordBreak: 'break-word' }}
+              >
                 {member.fullName}
               </Typography>
               <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', mt: 0.5 }}>
-                <StatusChip label={t(`spaces.roles.${member.role}`)} tone="info" />
+                <StatusChip
+                  label={t(membershipRoleLabelKey(member.role, permissions.space?.spaceType))}
+                  tone="info"
+                />
                 <StatusChip
                   label={t(getMemberStatusLabelKey(member.status))}
                   tone={memberStatusTone(member.status)}
@@ -262,7 +274,12 @@ export function MemberInspector({
           <Divider sx={{ borderColor: s.border }} />
 
           {tab === 'profile' ? (
-            <MemberProfilePanel member={member} spaceId={spaceId} canEdit={canEdit} />
+            <MemberProfilePanel
+              member={member}
+              spaceId={spaceId}
+              canEdit={canEdit}
+              onViewHistory={() => setTab('occupancy')}
+            />
           ) : null}
           {tab === 'subscription' ? (
             <MemberSubscriptionPanel
@@ -276,6 +293,7 @@ export function MemberInspector({
               spaceId={spaceId}
               memberId={memberId}
               mode="current"
+              amenities={member.assignedAmenities}
               onViewHistory={() => setTab('occupancy')}
             />
           ) : null}

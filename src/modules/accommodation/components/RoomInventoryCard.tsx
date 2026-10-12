@@ -1,12 +1,12 @@
 import { Box, IconButton, Paper, Stack, Tooltip, Typography, useTheme } from '@mui/material';
-import { ChevronLeft, ChevronRight, DoorOpen, Pencil, Plus, Users } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { ChevronRight, DoorOpen, Pencil, Plus, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
 import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
 import type { AccommodationStatus, BedSpaceListItemResponse } from '@/shared/types/accommodation';
 import { BedPricingDisplay } from './BedPricingDisplay';
+import { OccupiedBedPaymentFace } from './OccupiedBedPaymentFace';
 import { HierarchyEditMenu } from './HierarchyEditMenu';
 import type { TreeSelection } from './HierarchyTree';
 import { getBedIllustration } from '../illustrations/illustrationAssets';
@@ -18,8 +18,7 @@ import {
   type RoomPathLevel,
 } from '../utils/groupBedsByRoom';
 
-/** Mock bed card width — room for icon + status + rent/deposit columns. */
-const BED_CARD_MIN_WIDTH = 268;
+/** Beds share the row and wrap to two columns when the room card is wide enough. */
 
 function statusTone(status: AccommodationStatus | string): SemanticTone {
   switch (status) {
@@ -83,6 +82,7 @@ function StatusDotBadge({
 }
 
 type RoomInventoryBedCardProps = {
+  spaceId?: string;
   group: BedRoomGroup;
   bed: BedSpaceListItemResponse;
   canManage: boolean;
@@ -93,6 +93,7 @@ type RoomInventoryBedCardProps = {
 };
 
 function RoomInventoryBedCard({
+  spaceId,
   group,
   bed,
   canManage,
@@ -126,10 +127,10 @@ function RoomInventoryBedCard({
         onViewBed(bed);
       }}
       sx={{
-        minWidth: BED_CARD_MIN_WIDTH,
-        width: BED_CARD_MIN_WIDTH,
-        flex: '0 0 auto',
-        p: 1.75,
+        width: '100%',
+        minWidth: 0,
+        height: '100%',
+        p: 1.5,
         borderRadius: 2.5,
         border: `1px solid ${surface.border}`,
         bgcolor: surface.bg,
@@ -204,7 +205,11 @@ function RoomInventoryBedCard({
           </Box>
         </Stack>
 
-        <BedPricingDisplay rent={rent} deposit={deposit} />
+        {bed.status === 'OCCUPIED' ? (
+          <OccupiedBedPaymentFace spaceId={spaceId} bedId={bed.bedId} />
+        ) : (
+          <BedPricingDisplay rent={rent} deposit={deposit} layout="rows" />
+        )}
       </Stack>
     </Paper>
   );
@@ -223,9 +228,9 @@ function AddBedCard({ onClick }: { onClick: () => void }) {
       type="button"
       onClick={onClick}
       sx={{
-        minWidth: 200,
-        width: 200,
-        flex: '0 0 auto',
+        width: '100%',
+        minWidth: 0,
+        height: '100%',
         minHeight: 148,
         p: 2,
         borderRadius: 2.5,
@@ -300,9 +305,9 @@ function LivingSpacesTipCard() {
     <Paper
       elevation={0}
       sx={{
-        minWidth: 220,
-        width: 220,
-        flex: '0 0 auto',
+        width: '100%',
+        minWidth: 0,
+        height: '100%',
         minHeight: 148,
         p: 2,
         borderRadius: 2.5,
@@ -379,7 +384,7 @@ function selectionForPathCrumb(group: BedRoomGroup, level: RoomPathLevel): TreeS
 }
 
 export function RoomInventoryCard({
-  spaceId: _spaceId,
+  spaceId,
   group,
   canManage,
   showUnits = false,
@@ -392,9 +397,6 @@ export function RoomInventoryCard({
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const available = roomGroupAvailableCount(group);
   const pathCrumbs = roomInventoryPathCrumbs(group, { includeUnit: showUnits && Boolean(group.unitId) });
@@ -409,45 +411,6 @@ export function RoomInventoryCard({
     floorId: group.floorId ?? undefined,
     unitId: group.unitId ?? undefined,
   };
-
-  const updateScrollState = () => {
-    const el = scrollerRef.current;
-    if (!el) {
-      return;
-    }
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-  };
-
-  useEffect(() => {
-    updateScrollState();
-    const el = scrollerRef.current;
-    if (!el) {
-      return;
-    }
-    el.addEventListener('scroll', updateScrollState, { passive: true });
-    const observer = new ResizeObserver(updateScrollState);
-    observer.observe(el);
-    return () => {
-      el.removeEventListener('scroll', updateScrollState);
-      observer.disconnect();
-    };
-  }, [group.beds.length, showTipCard, canManage]);
-
-  const scrollBy = (dir: -1 | 1) => {
-    scrollerRef.current?.scrollBy({ left: dir * (BED_CARD_MIN_WIDTH + 14), behavior: 'smooth' });
-  };
-
-  const arrowSx = {
-    width: 34,
-    height: 34,
-    bgcolor: '#EFF6FF',
-    color: colors.info,
-    border: '1px solid #BFDBFE',
-    boxShadow: '0 2px 6px rgba(37, 99, 235, 0.12)',
-    '&:hover': { bgcolor: '#DBEAFE' },
-    '&.Mui-disabled': { opacity: 0.35 },
-  } as const;
 
   return (
     <Paper
@@ -634,74 +597,29 @@ export function RoomInventoryCard({
           </Stack>
         </Stack>
 
-        <Box sx={{ position: 'relative', px: { xs: 0, sm: 2.75 } }}>
-          <IconButton
-            size="small"
-            disabled={!canScrollLeft}
-            onClick={() => scrollBy(-1)}
-            aria-label={t('common.previous', { defaultValue: 'Previous' })}
-            sx={{
-              ...arrowSx,
-              position: 'absolute',
-              left: { xs: -4, sm: 0 },
-              top: '50%',
-              transform: 'translateY(-50%)',
-              zIndex: 1,
-              display: { xs: canScrollLeft ? 'inline-flex' : 'none', sm: 'inline-flex' },
-            }}
-          >
-            <ChevronLeft size={18} />
-          </IconButton>
-          <IconButton
-            size="small"
-            disabled={!canScrollRight}
-            onClick={() => scrollBy(1)}
-            aria-label={t('common.next', { defaultValue: 'Next' })}
-            sx={{
-              ...arrowSx,
-              position: 'absolute',
-              right: { xs: -4, sm: 0 },
-              top: '50%',
-              transform: 'translateY(-50%)',
-              zIndex: 1,
-              display: { xs: canScrollRight ? 'inline-flex' : 'none', sm: 'inline-flex' },
-            }}
-          >
-            <ChevronRight size={18} />
-          </IconButton>
-
-          <Stack
-            ref={scrollerRef}
-            direction="row"
-            spacing={1.75}
-            sx={{
-              overflowX: 'auto',
-              pb: 0.75,
-              px: 0.25,
-              scrollBehavior: 'smooth',
-              scrollbarWidth: 'thin',
-              '&::-webkit-scrollbar': { height: 6 },
-              '&::-webkit-scrollbar-thumb': {
-                bgcolor: s.border,
-                borderRadius: 99,
-              },
-            }}
-          >
-            {group.beds.map((bed) => (
-              <RoomInventoryBedCard
-                key={bed.bedId}
-                group={group}
-                bed={bed}
-                canManage={canManage}
-                showUnit={showUnits}
-                onSelect={onSelect}
-                onEdit={onEditEntity}
-                onViewBed={onViewBed}
-              />
-            ))}
-            {canManage ? <AddBedCard onClick={() => onAddBed(roomSelection)} /> : null}
-            {showTipCard ? <LivingSpacesTipCard /> : null}
-          </Stack>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))',
+            gap: 1.5,
+            alignItems: 'stretch',
+          }}
+        >
+          {group.beds.map((bed) => (
+            <RoomInventoryBedCard
+              key={bed.bedId}
+              spaceId={spaceId}
+              group={group}
+              bed={bed}
+              canManage={canManage}
+              showUnit={showUnits}
+              onSelect={onSelect}
+              onEdit={onEditEntity}
+              onViewBed={onViewBed}
+            />
+          ))}
+          {canManage ? <AddBedCard onClick={() => onAddBed(roomSelection)} /> : null}
+          {showTipCard ? <LivingSpacesTipCard /> : null}
         </Box>
       </Stack>
     </Paper>

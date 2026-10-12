@@ -4,6 +4,12 @@ import type {
   PendingInvitationResponse,
 } from '@/shared/types/member';
 import type { MembershipRole, SpaceType } from '@/shared/types/space';
+import {
+  matchesPaymentDuesFilter,
+  memberDuesCue,
+  type MemberDuesSnapshot,
+  type MemberPaymentDuesFilter,
+} from './memberDues';
 
 export type MemberSortOption =
   | 'name_asc'
@@ -35,6 +41,8 @@ export type MemberListFilterState = {
   sort: MemberSortOption;
   /** When true, only members whose createdAt falls in the current calendar month. */
   joinedThisMonthOnly?: boolean;
+  /** Outstanding-dues filter. Uses the payment-month ledger, not contract rent. */
+  paymentDues?: MemberPaymentDuesFilter;
 };
 
 export function defaultMemberListFilters(): MemberListFilterState {
@@ -43,6 +51,7 @@ export function defaultMemberListFilters(): MemberListFilterState {
     statuses: [],
     sort: DEFAULT_MEMBER_SORT,
     joinedThisMonthOnly: false,
+    paymentDues: 'all',
   };
 }
 
@@ -72,9 +81,10 @@ function matchesMemberSearch(member: MemberResponse, search: string): boolean {
   if (!q) {
     return true;
   }
+  const digits = q.replace(/\D/g, '');
   return (
     member.fullName.toLowerCase().includes(q) ||
-    member.mobileNumber.replace(/\D/g, '').includes(q.replace(/\D/g, ''))
+    (digits.length > 0 && member.mobileNumber.replace(/\D/g, '').includes(digits))
   );
 }
 
@@ -102,6 +112,7 @@ export function filterAndSortMembers(
     search: string;
     filters: MemberListFilterState;
     spaceType?: SpaceType;
+    duesByMemberId?: Map<string, MemberDuesSnapshot>;
   },
 ): MemberResponse[] {
   const allRoles = rolesForSpace(options.spaceType);
@@ -117,6 +128,14 @@ export function filterAndSortMembers(
       return false;
     }
     if (options.filters.joinedThisMonthOnly && !isJoinedThisMonth(member.createdAt)) {
+      return false;
+    }
+    if (
+      !matchesPaymentDuesFilter(
+        memberDuesCue(options.duesByMemberId?.get(member.memberId)),
+        options.filters.paymentDues,
+      )
+    ) {
       return false;
     }
     return true;
@@ -159,8 +178,10 @@ export function filterPendingInvitations(
       if (!q) {
         return true;
       }
+      const digits = q.replace(/\D/g, '');
       return (
-        invitation.mobileNumber.replace(/\D/g, '').includes(q.replace(/\D/g, '')) ||
+        (digits.length > 0 &&
+          invitation.mobileNumber.replace(/\D/g, '').includes(digits)) ||
         invitation.invitedBy.toLowerCase().includes(q)
       );
     })
@@ -180,6 +201,9 @@ export function countMemberListFilters(
     count += 1;
   }
   if (filters.joinedThisMonthOnly) {
+    count += 1;
+  }
+  if (filters.paymentDues && filters.paymentDues !== 'all') {
     count += 1;
   }
   if (filters.sort !== DEFAULT_MEMBER_SORT) {

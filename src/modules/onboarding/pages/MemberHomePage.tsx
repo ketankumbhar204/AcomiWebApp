@@ -124,7 +124,7 @@ export function MemberHomePage() {
           startIcon={<Building2 size={16} />}
           onClick={() => {
             setAccountIntent('owner');
-            navigate(ROUTES.onboarding);
+            navigate(ROUTES.createSpace);
           }}
           sx={{
             ...dashOutlinedButtonSx,

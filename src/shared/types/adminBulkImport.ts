@@ -126,17 +126,32 @@ export function remainingPreviewErrors(
   return (row.errors ?? []).filter((error) => !overrideClearsError(error.field, rowOverrides));
 }
 
+export function remainingPreviewNotices(
+  row: PropertyBulkImportPreviewRow,
+  overrides: PropertyBulkImportFieldOverrides,
+  level?: 'WARNING' | 'NORMALIZED',
+): PropertyBulkImportFieldNotice[] {
+  const rowOverrides = overrides[String(row.rowNumber)] ?? {};
+  return (row.notices ?? []).filter((notice) => {
+    if (level && notice.level !== level) return false;
+    return !overrideClearsError(notice.field, rowOverrides);
+  });
+}
+
 export function effectivePreviewStatus(
   row: PropertyBulkImportPreviewRow,
   overrides: PropertyBulkImportFieldOverrides,
 ): string {
   if (row.status === 'INVALID' && remainingPreviewErrors(row, overrides).length === 0) {
+    return remainingPreviewNotices(row, overrides, 'WARNING').length > 0 ? 'WARNING' : 'VALID';
+  }
+  if (row.status === 'WARNING' && remainingPreviewNotices(row, overrides, 'WARNING').length === 0) {
     return 'VALID';
   }
   return row.status;
 }
 
-export type PropertyBulkImportPreviewStatus = 'VALID' | 'INVALID' | 'BLANK' | 'DUPLICATE';
+export type PropertyBulkImportPreviewStatus = 'VALID' | 'WARNING' | 'INVALID' | 'BLANK' | 'DUPLICATE';
 
 export type PropertyBulkImportResultStatus =
   | 'CONVERTED'
@@ -149,6 +164,14 @@ export type PropertyBulkImportResultStatus =
 export interface PropertyBulkImportFieldError {
   field: string;
   message: string;
+}
+
+export interface PropertyBulkImportFieldNotice {
+  field: string;
+  level: 'NORMALIZED' | 'WARNING' | string;
+  message: string;
+  originalValue?: string | null;
+  normalizedValue?: string | null;
 }
 
 export interface PropertyBulkImportDuplicateMatch {
@@ -172,15 +195,19 @@ export interface PropertyBulkImportPreviewRow {
   rowNumber: number;
   status: PropertyBulkImportPreviewStatus | string;
   values: Record<string, string>;
+  normalizedValues?: Record<string, string>;
   errors: PropertyBulkImportFieldError[];
+  notices?: PropertyBulkImportFieldNotice[];
   duplicateMatch?: PropertyBulkImportDuplicateMatch | null;
 }
 
 export interface PropertyBulkImportPreviewResponse {
   totalRows: number;
   valid: number;
+  warning?: number;
   invalid: number;
   blank: number;
+  normalized?: number;
   duplicate?: number;
   rows: PropertyBulkImportPreviewRow[];
 }

@@ -68,6 +68,7 @@ import { OwnerDayMealReview } from '../components/DayMealReviewOwner';
 import { MealSlotAccordions } from '../components/MealSlotAccordions';
 import { mealsApi } from '../api/mealsApi';
 import { formatActivityListDate } from '../utils/memberMealActivityHistory';
+import { formatPaymentAmount } from '../utils/paymentAmount';
 import {
   buildDayMealPaymentListItems,
   filterDayMealPaymentsInSection,
@@ -182,10 +183,17 @@ function DayMealTenantInspector({
     );
   }
 
-  const amount = detail?.dayTotal ?? listItem?.amount ?? 0;
+  const live = detail?.dayTotal != null ? Number(detail.dayTotal) : null;
+  const charged =
+    detail?.payment?.chargedAmount != null ? Number(detail.payment.chargedAmount) : null;
+  const fromList = listItem?.amountKnown ? listItem.amount : null;
+  const amount =
+    live != null && live > 0 ? live : charged != null && charged > 0 ? charged : fromList;
   const code = detail?.currencyCode ?? listItem?.currencyCode ?? currencyCode;
   const paymentStatus = detail?.paymentStatus ?? listItem?.paymentStatus ?? null;
   const displayStatus = listItem?.displayStatus ?? paymentStatus ?? 'PENDING';
+  const amountPaid = amount != null && displayStatus === 'PAID' ? amount : amount != null ? 0 : null;
+  const amountRemaining = amount != null && displayStatus === 'PAID' ? 0 : amount;
   const slots = detail?.slots ?? [];
   const mealTypes =
     slots.length > 0
@@ -308,11 +316,24 @@ function DayMealTenantInspector({
             </Box>
             <Box>
               <Typography sx={{ fontSize: 12, color: s.textMuted }}>
-                {t('paymentCollection.fields.amount')}
+                {t('paymentCollection.dayMeals.amountDueLabel')}
               </Typography>
               <Typography sx={{ fontSize: 22, fontWeight: 700, color: s.textPrimary, lineHeight: 1.2 }}>
-                {formatCurrency(amount, code)}
+                {amount != null
+                  ? formatPaymentAmount(amount, code)
+                  : t('paymentCollection.dayMeals.amountUnavailable')}
               </Typography>
+              {amount != null ? (
+                <Typography sx={{ fontSize: 12, color: s.textMuted }}>
+                  {t('paymentCollection.dayMeals.amountPaid', {
+                    amount: formatPaymentAmount(amountPaid, code),
+                  })}
+                  {' · '}
+                  {t('paymentCollection.dayMeals.amountRemaining', {
+                    amount: formatPaymentAmount(amountRemaining, code),
+                  })}
+                </Typography>
+              ) : null}
             </Box>
           </Stack>
 
@@ -539,7 +560,12 @@ function TenantDayMealPayments({ spaceId }: { spaceId: string }) {
     {
       id: 'amount',
       header: t('paymentCollection.fields.amount'),
-      accessor: (row) => formatCurrency(row.amount, row.currencyCode),
+      accessor: (row) =>
+        row.amountKnown && row.amount != null
+          ? t('paymentCollection.dayMeals.amountDue', {
+              amount: formatPaymentAmount(row.amount, row.currencyCode),
+            })
+          : t('paymentCollection.dayMeals.amountUnavailable'),
     },
     {
       id: 'meals',
@@ -569,6 +595,11 @@ function TenantDayMealPayments({ spaceId }: { spaceId: string }) {
   };
 
   const showDesktopPanel = !isLgDown;
+  const summaryMoney = (amount: number | null) =>
+    amount == null
+      ? t('paymentCollection.dayMeals.amountUnavailable')
+      : (formatPaymentAmount(amount, summary.currencyCode) ??
+        t('paymentCollection.dayMeals.amountUnavailable'));
 
   const inspector = (
     <DayMealTenantInspector
@@ -637,15 +668,15 @@ function TenantDayMealPayments({ spaceId }: { spaceId: string }) {
             sx={{
               display: 'grid',
               gap: 1.25,
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
+              gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, minmax(0, 1fr))' },
               flex: 1,
               minWidth: 0,
             }}
           >
             <StatCard
               dense
-              label={t('dashboard.financial.pending')}
-              value={formatCurrency(summary.pendingAmount, summary.currencyCode)}
+              label={t('paymentCollection.dayMeals.summary.total')}
+              value={summaryMoney(summary.totalAmount)}
               icon={
                 <Box
                   sx={{
@@ -665,8 +696,8 @@ function TenantDayMealPayments({ spaceId }: { spaceId: string }) {
             />
             <StatCard
               dense
-              label={t('dashboard.financial.collected')}
-              value={formatCurrency(summary.collectedAmount, summary.currencyCode)}
+              label={t('paymentCollection.dayMeals.summary.collected')}
+              value={summaryMoney(summary.collectedAmount)}
               icon={
                 <Box
                   sx={{
@@ -686,8 +717,8 @@ function TenantDayMealPayments({ spaceId }: { spaceId: string }) {
             />
             <StatCard
               dense
-              label={t('dashboard.financial.expected')}
-              value={formatCurrency(summary.totalAmount, summary.currencyCode)}
+              label={t('paymentCollection.dayMeals.summary.pending')}
+              value={summaryMoney(summary.pendingAmount)}
               icon={
                 <Box
                   sx={{
@@ -702,6 +733,27 @@ function TenantDayMealPayments({ spaceId }: { spaceId: string }) {
                   }}
                 >
                   <BarChart3 size={16} />
+                </Box>
+              }
+            />
+            <StatCard
+              dense
+              label={t('paymentCollection.dayMeals.summary.payments')}
+              value={String(summary.pendingCount)}
+              icon={
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
+                    bgcolor: '#F3F4F6',
+                    color: '#374151',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <FileText size={16} />
                 </Box>
               }
             />

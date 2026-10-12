@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { LoadingFallback } from '@/shared/components/LoadingBoundary';
+import { resolveRoleOnboardingAccess } from '@/modules/onboarding/utils/roleOnboardingAccess';
 import { resolveStartupSpace } from '@/modules/onboarding/utils/resolveStartupSpace';
 import {
   ROUTES,
@@ -14,6 +15,9 @@ import { useSpaceStore } from '@/store/spaceStore';
 export function AuthenticatedRootRedirect() {
   const user = useAuthStore((state) => state.user);
   const selectSpace = useSpaceStore((state) => state.selectSpace);
+  const mySpaces = useSpaceStore((state) => state.mySpaces);
+  const selectedSpaceId = useSpaceStore((state) => state.selectedSpaceId);
+  const spaceError = useSpaceStore((state) => state.error);
   const [target, setTarget] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -56,6 +60,19 @@ export function AuthenticatedRootRedirect() {
   }
 
   if (failed) {
+    const access = resolveRoleOnboardingAccess(
+      mySpaces.map((space) => space.spaceId),
+      selectedSpaceId,
+    );
+    if (access.status === 'space') {
+      return <Navigate to={spaceDashboardPath(access.spaceId)} replace />;
+    }
+    if (access.status === 'picker') {
+      return <Navigate to={ROUTES.mySpaces} replace />;
+    }
+    if (spaceError) {
+      return <LoadingFallback />;
+    }
     return <Navigate to={ROUTES.onboarding} replace />;
   }
 

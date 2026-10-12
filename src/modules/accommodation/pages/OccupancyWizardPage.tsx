@@ -30,6 +30,11 @@ import { WidgetCard } from '@/shared/components/WidgetCard';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { spaceAccommodationPath, spaceBedInventoryPath, spaceDashboardPath } from '@/routes/paths';
+import { allocateNeedsVacantBedPick } from '@/modules/accommodation/utils/moveInEntry';
+import {
+  allocationTargetFromKnownBed,
+  wizardNeedsTargetSearch,
+} from '@/modules/accommodation/utils/knownAllocationTarget';
 import { useMembers } from '@/modules/members/hooks/useMembers';
 import { accommodationApi } from '../api/accommodationApi';
 import { occupancyApi } from '../api/occupancyApi';
@@ -121,6 +126,15 @@ export function OccupancyWizardPage() {
   const allowedTargets = getAllowedTargetTypes(spaceType);
   const primaryTargetType = allowedTargets[0];
 
+  const needsTargetSearch = wizardNeedsTargetSearch(steps);
+  const rentParam = searchParams.get('defaultRent');
+  const depositParam = searchParams.get('defaultDeposit');
+  const knownBedQuery = useQuery({
+    queryKey: ['wizard-known-bed', spaceId, initialBedId],
+    queryFn: () => accommodationApi.getBed(spaceId, initialBedId!),
+    enabled: Boolean(initialBedId) && !needsTargetSearch && rentParam == null,
+    staleTime: 60_000,
+  });
   const targetsQuery = useQuery({
     queryKey: [
       'allocation-targets',
@@ -137,7 +151,7 @@ export function OccupancyWizardPage() {
         selectableOnly: true,
         size: 40,
       }),
-    enabled: steps.includes('target') || Boolean(initialBedId || initialUnitId),
+    enabled: needsTargetSearch,
     staleTime: 10_000,
   });
 
@@ -164,7 +178,43 @@ export function OccupancyWizardPage() {
     );
   }, [initialBedId, initialUnitId, targetsQuery.data]);
 
-  const effectiveTarget = selectedTarget ?? matchedTarget;
+  const knownBedTarget = useMemo(() => {
+    if (!initialBedId || needsTargetSearch) {
+      return null;
+    }
+    const bed = knownBedQuery.data;
+    const rent =
+      rentParam != null && rentParam !== '' && Number.isFinite(Number(rentParam))
+        ? Number(rentParam)
+        : bed?.defaultRent;
+    const deposit =
+      depositParam != null && depositParam !== '' && Number.isFinite(Number(depositParam))
+        ? Number(depositParam)
+        : bed?.defaultDeposit;
+    return allocationTargetFromKnownBed({
+      bedId: initialBedId,
+      roomId: initialRoomId ?? bed?.roomId,
+      unitId: initialUnitId,
+      buildingId: initialBuildingId,
+      bedLabel: searchParams.get('bedLabel') ?? bed?.name,
+      displayPath: searchParams.get('displayPath') ?? bed?.name,
+      defaultRent: rent,
+      defaultDeposit: deposit,
+      status: bed?.status,
+    });
+  }, [
+    depositParam,
+    initialBedId,
+    initialBuildingId,
+    initialRoomId,
+    initialUnitId,
+    knownBedQuery.data,
+    needsTargetSearch,
+    rentParam,
+    searchParams,
+  ]);
+
+  const effectiveTarget = selectedTarget ?? matchedTarget ?? knownBedTarget;
   const effectiveMemberId = memberId || occupancyQuery.data?.memberId || '';
 
   const currentStep: OccupancyWizardStep | undefined = steps[stepIndex];
@@ -260,6 +310,10 @@ export function OccupancyWizardPage() {
         (targetIds.bedId ? 'BED' : targetIds.unitId ? 'UNIT' : 'ROOM');
 
       if (mode === 'ALLOCATE') {
+        if (effectiveTarget && effectiveTarget.selectable === false) {
+          enqueueSnackbar(t('occupancy.errors.targetUnavailable'), { variant: 'error' });
+          return;
+        }
         const { body, errorKey } = buildAllocateRequest(
           effectiveMemberId,
           spaceType,
@@ -365,6 +419,15 @@ export function OccupancyWizardPage() {
       <PageContainer>
         <Typography>{t('common.errors.forbidden')}</Typography>
       </PageContainer>
+    );
+  }
+
+  if (allocateNeedsVacantBedPick(mode, { bedId: initialBedId, unitId: initialUnitId })) {
+    return (
+      <Navigate
+        to={spaceBedInventoryPath(spaceId, 'AVAILABLE', { intent: 'allocate' })}
+        replace
+      />
     );
   }
 

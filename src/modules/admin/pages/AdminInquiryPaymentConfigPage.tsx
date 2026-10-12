@@ -6,22 +6,26 @@ import {
   CircularProgress,
   FormControl,
   FormControlLabel,
-  InputLabel,
+  IconButton,
+  InputAdornment,
   MenuItem,
   Select,
   Stack,
   Switch,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
-import { Image, Save, Trash2, Upload } from 'lucide-react';
+import { Copy, Image, Info, Lightbulb, Mail, Save, Trash2, Upload } from 'lucide-react';
 import { useSnackbar } from 'notistack';
 import { useEffect, useRef, useState } from 'react';
 import { inquiryCreditsAdminApi } from '@/modules/admin/api/inquiryCreditsAdminApi';
-import { filesApi } from '@/shared/api/filesApi';
+import { FileImageViewer } from '@/shared/components/files/FileImageViewer';
 import { getErrorMessage } from '@/shared/api/errors';
-import { uploadLocalFile } from '@/shared/services/fileUploadService';
+import {
+  fetchDisplayableFileUrl,
+  revokeDisplayableFileUrl,
+  uploadLocalFile,
+} from '@/shared/services/fileUploadService';
 import type {
   AndroidInquiryBillingMode,
   InquiryClientChannel,
@@ -51,61 +55,90 @@ function packageToDraft(pkg: InquiryPackage): DraftPackage {
   };
 }
 
+const fieldSx = {
+  '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: '#fff' },
+} as const;
+
+function FieldLabel({ children }: { children: string }) {
+  return (
+    <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 0.75, color: '#0F172A' }}>
+      {children}
+    </Typography>
+  );
+}
+
 function PackageEditor({
   title,
   hint,
+  footer,
   packages,
   onChange,
 }: {
   title: string;
   hint: string;
+  footer: string;
   packages: DraftPackage[];
   onChange: (key: string, field: keyof DraftPackage, value: string | number | boolean) => void;
 }) {
   return (
-    <Card elevation={0} sx={{ borderRadius: '14px', border: '1px solid', borderColor: 'divider' }}>
-      <CardContent>
-        <Typography sx={{ fontWeight: 700, mb: 0.5 }}>{title}</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {hint}
+    <Box
+      sx={{
+        mt: 2,
+        p: 1.75,
+        borderRadius: '12px',
+        bgcolor: '#E8F8EF',
+        border: '1px solid #D3F0E0',
+      }}>
+      <Typography sx={{ fontWeight: 700, fontSize: 14 }}>{title}</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontSize: 12.5 }}>
+        {hint}
+      </Typography>
+      {packages.length === 0 ? (
+        <Typography color="text.secondary" variant="body2">
+          No package seeded for this channel yet. Run the latest backend migration.
         </Typography>
-        {packages.length === 0 ? (
-          <Typography color="text.secondary" variant="body2">
-            No package seeded for this channel yet. Run the latest backend migration.
-          </Typography>
-        ) : (
-          <Stack spacing={1.5}>
-            {packages.map((pkg) => (
+      ) : (
+        <Stack spacing={1.5}>
+          {packages.map((pkg) => (
+            <Box key={pkg._key}>
               <Stack
-                key={pkg._key}
                 direction={{ xs: 'column', sm: 'row' }}
                 spacing={1.25}
-                sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}>
-                <TextField
-                  label="Name"
-                  size="small"
-                  value={pkg.name}
-                  onChange={(e) => onChange(pkg._key, 'name', e.target.value)}
-                  sx={{ flex: 2, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                />
-                <TextField
-                  label="Credits"
-                  type="number"
-                  size="small"
-                  value={pkg.credits}
-                  onChange={(e) => onChange(pkg._key, 'credits', e.target.value)}
-                  sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                  slotProps={{ htmlInput: { min: 1 } }}
-                />
-                <TextField
-                  label="Price (₹)"
-                  type="number"
-                  size="small"
-                  value={pkg.priceAmount}
-                  onChange={(e) => onChange(pkg._key, 'priceAmount', e.target.value)}
-                  sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                  slotProps={{ htmlInput: { min: 0 } }}
-                />
+                sx={{ alignItems: { xs: 'stretch', sm: 'flex-end' } }}>
+                <Box sx={{ flex: 1.6, minWidth: 0 }}>
+                  <FieldLabel>Package name</FieldLabel>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    value={pkg.name}
+                    onChange={(e) => onChange(pkg._key, 'name', e.target.value)}
+                    sx={fieldSx}
+                  />
+                </Box>
+                <Box sx={{ flex: 0.7, minWidth: 0 }}>
+                  <FieldLabel>Credits</FieldLabel>
+                  <TextField
+                    type="number"
+                    size="small"
+                    fullWidth
+                    value={pkg.credits}
+                    onChange={(e) => onChange(pkg._key, 'credits', e.target.value)}
+                    sx={fieldSx}
+                    slotProps={{ htmlInput: { min: 1 } }}
+                  />
+                </Box>
+                <Box sx={{ flex: 0.7, minWidth: 0 }}>
+                  <FieldLabel>Price (₹)</FieldLabel>
+                  <TextField
+                    type="number"
+                    size="small"
+                    fullWidth
+                    value={pkg.priceAmount}
+                    onChange={(e) => onChange(pkg._key, 'priceAmount', e.target.value)}
+                    sx={fieldSx}
+                    slotProps={{ htmlInput: { min: 0 } }}
+                  />
+                </Box>
                 <FormControlLabel
                   control={
                     <Switch
@@ -116,14 +149,17 @@ function PackageEditor({
                     />
                   }
                   label="Enabled"
-                  sx={{ flexShrink: 0, m: 0 }}
+                  sx={{ flexShrink: 0, m: 0, mb: 0.5 }}
                 />
               </Stack>
-            ))}
-          </Stack>
-        )}
-      </CardContent>
-    </Card>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, textAlign: { sm: 'right' } }}>
+                {footer}
+              </Typography>
+            </Box>
+          ))}
+        </Stack>
+      )}
+    </Box>
   );
 }
 
@@ -138,17 +174,23 @@ export function AdminInquiryPaymentConfigPage() {
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [instructions, setInstructions] = useState('');
   const [qrFileId, setQrFileId] = useState<string | null>(null);
-  const [qrPreviewUrl, setQrPreviewUrl] = useState<string | null>(null);
+  const [resolvedQr, setResolvedQr] = useState<{ fileId: string; url: string | null } | null>(null);
   const [packages, setPackages] = useState<DraftPackage[]>([]);
 
   const [webFreeDailyLimit, setWebFreeDailyLimit] = useState(5);
+  const [viewHereDailyLimit, setViewHereDailyLimit] = useState(5);
+  const [webViewHereEnabled, setWebViewHereEnabled] = useState(true);
+  const [androidViewHereEnabled, setAndroidViewHereEnabled] = useState(true);
+  const [androidViewHereDailyLimit, setAndroidViewHereDailyLimit] = useState(5);
   const [androidBillingMode, setAndroidBillingMode] =
     useState<AndroidInquiryBillingMode>('FREE');
   const [androidFreeDailyLimit, setAndroidFreeDailyLimit] = useState(5);
   const [androidHourlyRateLimit, setAndroidHourlyRateLimit] = useState(20);
 
   const [qrUploading, setQrUploading] = useState(false);
+  const [qrViewerOpen, setQrViewerOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const qrObjectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     inquiryCreditsAdminApi
@@ -168,22 +210,49 @@ export function AdminInquiryPaymentConfigPage() {
     setQrFileId(cfg.qrFileId ?? null);
     setPackages(cfg.packages.map(packageToDraft));
     setWebFreeDailyLimit(cfg.webFreeDailyLimit ?? 5);
+    setViewHereDailyLimit(cfg.viewHereDailyLimit ?? 5);
+    setWebViewHereEnabled(cfg.webViewHereEnabled !== false);
+    setAndroidViewHereEnabled(cfg.androidViewHereEnabled !== false);
+    setAndroidViewHereDailyLimit(cfg.androidViewHereDailyLimit ?? 5);
     setAndroidBillingMode(cfg.androidBillingMode ?? 'FREE');
     setAndroidFreeDailyLimit(cfg.androidFreeDailyLimit ?? 5);
     setAndroidHourlyRateLimit(cfg.androidHourlyRateLimit ?? 20);
-    if (cfg.qrUrl) {
-      setQrPreviewUrl(cfg.qrUrl);
+  }
+
+  useEffect(() => {
+    if (!qrFileId) {
+      revokeDisplayableFileUrl(qrObjectUrlRef.current);
+      qrObjectUrlRef.current = null;
       return;
     }
-    if (cfg.qrFileId) {
-      filesApi
-        .getContentUrl(cfg.qrFileId)
-        .then((r) => setQrPreviewUrl(r.contentUrl))
-        .catch(() => setQrPreviewUrl(null));
-    } else {
-      setQrPreviewUrl(null);
-    }
-  }
+    let cancelled = false;
+    void fetchDisplayableFileUrl(qrFileId)
+      .then((url) => {
+        if (cancelled) {
+          revokeDisplayableFileUrl(url);
+          return;
+        }
+        revokeDisplayableFileUrl(qrObjectUrlRef.current);
+        qrObjectUrlRef.current = url.startsWith('blob:') ? url : null;
+        setResolvedQr({ fileId: qrFileId, url });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setResolvedQr({ fileId: qrFileId, url: null });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [qrFileId]);
+
+  const qrPreviewUrl = qrFileId && resolvedQr?.fileId === qrFileId ? resolvedQr.url : null;
+
+  useEffect(() => {
+    return () => {
+      revokeDisplayableFileUrl(qrObjectUrlRef.current);
+    };
+  }, []);
 
   async function handleQrFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -192,8 +261,7 @@ export function AdminInquiryPaymentConfigPage() {
     try {
       const fileId = await uploadLocalFile(file, { purpose: 'INQUIRY_PAYMENT_QR' });
       setQrFileId(fileId);
-      const { contentUrl } = await filesApi.getContentUrl(fileId);
-      setQrPreviewUrl(contentUrl);
+      await inquiryCreditsAdminApi.updatePaymentConfig({ qrFileId: fileId });
     } catch (err) {
       enqueueSnackbar(getErrorMessage(err, 'QR upload failed. Please try again.'), {
         variant: 'error',
@@ -218,6 +286,10 @@ export function AdminInquiryPaymentConfigPage() {
         qrFileId: qrFileId || null,
         instructions: instructions.trim() || null,
         webFreeDailyLimit: Number(webFreeDailyLimit),
+        viewHereDailyLimit: Math.max(0, Math.trunc(Number(viewHereDailyLimit) || 0)),
+        webViewHereEnabled,
+        androidViewHereEnabled,
+        androidViewHereDailyLimit: Math.max(0, Math.trunc(Number(androidViewHereDailyLimit) || 0)),
         androidBillingMode,
         androidFreeDailyLimit: Number(androidFreeDailyLimit),
         androidHourlyRateLimit: Number(androidHourlyRateLimit),
@@ -241,6 +313,17 @@ export function AdminInquiryPaymentConfigPage() {
       enqueueSnackbar(getErrorMessage(err, 'Failed to save configuration.'), { variant: 'error' });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function copyValue(value: string) {
+    const text = value.trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      enqueueSnackbar('Copied.', { variant: 'success' });
+    } catch {
+      enqueueSnackbar('Unable to copy.', { variant: 'error' });
     }
   }
 
@@ -288,265 +371,483 @@ export function AdminInquiryPaymentConfigPage() {
         </Button>
       </Stack>
 
-      <Stack spacing={2.5}>
-        <Card elevation={0} sx={{ borderRadius: '14px', border: '1px solid', borderColor: 'divider' }}>
-          <CardContent>
-            <FormControlLabel
-              control={
+      <Stack spacing={2}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: '1.15fr 0.85fr' },
+            gap: 2,
+          }}>
+          <Card elevation={0} sx={{ borderRadius: '16px', border: '1px solid #E6EAF0' }}>
+            <CardContent>
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
                 <Switch
                   checked={enabled}
                   onChange={(e) => setEnabled(e.target.checked)}
                   color="success"
                 />
-              }
-              label={
                 <Box>
                   <Typography sx={{ fontWeight: 700 }}>Enable credit purchases</Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                     On: free daily limit then ₹9 / 30 UPI + WhatsApp screenshot flow. Off: no daily
-                    limit and no paywall on web or mobile. Add UPI, QR, and WhatsApp below; approve
-                    under Credit payments.
+                    limit and no paywall on web or mobile.
                   </Typography>
                 </Box>
-              }
-            />
-          </CardContent>
-        </Card>
-
-        <Card elevation={0} sx={{ borderRadius: '14px', border: '1px solid', borderColor: 'divider' }}>
-          <CardContent>
-            <Typography sx={{ fontWeight: 700, mb: 2 }}>Payment details</Typography>
-            <Stack spacing={2}>
-              <TextField
-                label="UPI ID"
-                value={upiId}
-                onChange={(e) => setUpiId(e.target.value)}
-                fullWidth
-                placeholder="yourupi@bank"
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-              />
-              <TextField
-                label="WhatsApp number for payment screenshots"
-                value={whatsappNumber}
-                onChange={(e) => setWhatsappNumber(e.target.value)}
-                fullWidth
-                placeholder="9198XXXXXXXX"
-                helperText="Seekers pay on UPI, then send the screenshot here. Use country code, e.g. 9198XXXXXXXX. Admin approves the request to add 30 enquiries."
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-              />
-              <TextField
-                label="Instructions (shown to seekers)"
-                value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
-                fullWidth
-                multiline
-                minRows={3}
-                placeholder="Transfer the amount to the UPI ID above, then enter your UTR below."
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-              />
-            </Stack>
-          </CardContent>
-        </Card>
-
-        <Card elevation={0} sx={{ borderRadius: '14px', border: '1px solid', borderColor: 'divider' }}>
-          <CardContent>
-            <Typography sx={{ fontWeight: 700, mb: 2 }}>Payment QR code</Typography>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={(e) => void handleQrFileChange(e)}
-            />
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={2}
-              sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}>
-              <Box
-                sx={{
-                  width: { xs: '100%', sm: 140 },
-                  maxWidth: 180,
-                  height: 140,
-                  borderRadius: 2,
-                  border: '1.5px dashed',
-                  borderColor: 'divider',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                  bgcolor: '#FAFBFC',
-                  flexShrink: 0,
-                  alignSelf: { xs: 'center', sm: 'flex-start' },
-                }}>
-                {qrPreviewUrl ? (
-                  <Box
-                    component="img"
-                    src={qrPreviewUrl}
-                    alt="QR preview"
-                    sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  />
-                ) : (
-                  <Image size={36} color="#CBD5E1" />
-                )}
-              </Box>
-              <Stack spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                <Button
-                  variant="outlined"
-                  startIcon={qrUploading ? <CircularProgress size={14} /> : <Upload size={14} />}
-                  disabled={qrUploading}
-                  onClick={() => fileInputRef.current?.click()}
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 700,
-                    borderRadius: '10px',
-                    width: { xs: '100%', sm: 'auto' },
-                  }}>
-                  {qrUploading ? 'Uploading…' : qrPreviewUrl ? 'Replace QR' : 'Upload QR'}
-                </Button>
-                {qrFileId ? (
-                  <Tooltip title="Remove QR image">
-                    <Button
-                      size="small"
-                      startIcon={<Trash2 size={14} />}
-                      color="error"
-                      onClick={() => {
-                        setQrFileId(null);
-                        setQrPreviewUrl(null);
-                      }}
-                      sx={{
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        borderRadius: '10px',
-                        width: { xs: '100%', sm: 'auto' },
-                      }}>
-                      Remove
-                    </Button>
-                  </Tooltip>
-                ) : null}
-                <Typography variant="caption" color="text.secondary">
-                  PNG or JPG, max 5 MB.
-                </Typography>
               </Stack>
-            </Stack>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+          <Box
+            sx={{
+              borderRadius: '16px',
+              bgcolor: '#E8F8EF',
+              border: '1px solid #D3F0E0',
+              p: 2,
+              display: 'flex',
+              gap: 1.5,
+              alignItems: 'flex-start',
+            }}>
+            <Lightbulb size={18} color="#16A34A" />
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: 14 }}>How it works</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Add UPI, QR, and WhatsApp below. Users can purchase credits after using their free
+                daily limit. Admin approves the request.
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
 
-        <Card elevation={0} sx={{ borderRadius: '14px', border: '1px solid', borderColor: 'divider' }}>
+        <Card elevation={0} sx={{ borderRadius: '16px', border: '1px solid #E6EAF0' }}>
           <CardContent>
-            <Typography sx={{ fontWeight: 700, mb: 0.5 }}>
-              Email / web enquiry access
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Seekers on web (email contact path) get this many free enquiries per day, then use paid
-              credits from the email package below.
-            </Typography>
-            <TextField
-              label="Free email enquiries per day"
-              type="number"
-              size="small"
-              value={webFreeDailyLimit}
-              onChange={(e) => setWebFreeDailyLimit(Number(e.target.value))}
+            <Box
               sx={{
-                width: { xs: '100%', sm: 280 },
-                maxWidth: '100%',
-                '& .MuiOutlinedInput-root': { borderRadius: '10px' },
-              }}
-              slotProps={{ htmlInput: { min: 0 } }}
-            />
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', lg: '1.35fr 0.85fr' },
+                gap: 3,
+              }}>
+              <Box>
+                <Typography sx={{ fontWeight: 700 }}>Payment details</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Configure UPI and payment instructions for credit purchases.
+                </Typography>
+                <FieldLabel>UPI ID</FieldLabel>
+                <TextField
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                  fullWidth
+                  size="small"
+                  placeholder="yourupi@bank"
+                  sx={fieldSx}
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            aria-label="Copy UPI ID"
+                            disabled={!upiId.trim()}
+                            onClick={() => void copyValue(upiId)}>
+                            <Copy size={16} />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, mb: 2 }}>
+                  Users will see this UPI ID to make payments.
+                </Typography>
+                <FieldLabel>WhatsApp number for payment screenshots</FieldLabel>
+                <TextField
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value)}
+                  fullWidth
+                  size="small"
+                  placeholder="9198XXXXXXXX"
+                  sx={fieldSx}
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            aria-label="Copy WhatsApp number"
+                            disabled={!whatsappNumber.trim()}
+                            onClick={() => void copyValue(whatsappNumber)}>
+                            <Copy size={16} />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, mb: 2 }}>
+                  Users will send the payment screenshot to this number. Include the country code,
+                  for example 9198XXXXXXXX.
+                </Typography>
+                <FieldLabel>Payment instructions (shown to seekers)</FieldLabel>
+                <TextField
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  fullWidth
+                  size="small"
+                  multiline
+                  minRows={2}
+                  placeholder="Transfer the amount to the UPI ID above, then enter your UTR below."
+                  sx={fieldSx}
+                />
+                <Stack direction="row" sx={{ mt: 0.75, justifyContent: 'space-between', gap: 2 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    These instructions will be visible to users on the payment screen.
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
+                    {instructions.length}/500
+                  </Typography>
+                </Stack>
+              </Box>
+
+              <Box>
+                <Typography sx={{ fontWeight: 700, mb: 1.5 }}>Payment QR code</Typography>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => void handleQrFileChange(e)}
+                />
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
+                  <Box
+                    sx={{
+                      width: 88,
+                      height: 88,
+                      borderRadius: '10px',
+                      border: '1px solid',
+                      borderColor: qrPreviewUrl ? '#E6EAF0' : 'divider',
+                      borderStyle: qrPreviewUrl ? 'solid' : 'dashed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                      bgcolor: '#fff',
+                      flexShrink: 0,
+                    }}>
+                    {qrPreviewUrl ? (
+                      <Box
+                        component="button"
+                        type="button"
+                        onClick={() => setQrViewerOpen(true)}
+                        aria-label="Open payment QR"
+                        sx={{
+                          border: 0,
+                          p: 0.5,
+                          m: 0,
+                          width: '100%',
+                          height: '100%',
+                          bgcolor: 'transparent',
+                          cursor: 'zoom-in',
+                          display: 'block',
+                        }}>
+                        <Box
+                          component="img"
+                          src={qrPreviewUrl}
+                          alt="QR preview"
+                          sx={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                        />
+                      </Box>
+                    ) : (
+                      <Image size={28} color="#CBD5E1" />
+                    )}
+                  </Box>
+                  <Stack spacing={1} sx={{ minWidth: 0 }}>
+                    <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={qrUploading ? <CircularProgress size={14} /> : <Upload size={14} />}
+                        disabled={qrUploading}
+                        onClick={() => fileInputRef.current?.click()}
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 700,
+                          borderRadius: '10px',
+                          color: '#16A34A',
+                          borderColor: '#86EFAC',
+                        }}>
+                        {qrUploading ? 'Uploading…' : qrPreviewUrl ? 'Replace QR' : 'Upload QR'}
+                      </Button>
+                      {qrFileId ? (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          startIcon={<Trash2 size={14} />}
+                          onClick={() => {
+                            setQrFileId(null);
+                            setQrViewerOpen(false);
+                          }}
+                          sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '10px' }}>
+                          Remove
+                        </Button>
+                      ) : null}
+                    </Stack>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      Supported formats: PNG or JPG
+                      <br />
+                      Max size: 5 MB
+                    </Typography>
+                  </Stack>
+                </Stack>
+                <Box
+                  sx={{
+                    mt: 2,
+                    display: 'flex',
+                    gap: 1,
+                    alignItems: 'flex-start',
+                    bgcolor: '#F3F7FF',
+                    borderRadius: '10px',
+                    px: 1.5,
+                    py: 1.25,
+                  }}>
+                  <Info size={16} color="#3B82F6" />
+                  <Typography variant="caption" color="text.secondary">
+                    This QR code will be shown to users on the payment screen.
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
           </CardContent>
         </Card>
 
-        <PackageEditor
-          title="Credit package — email / web"
-          hint="Used when seekers enquire from the website (email delivery). Wallet credits are shared."
-          packages={emailPackages}
-          onChange={updatePkg}
-        />
-
-        <Card elevation={0} sx={{ borderRadius: '14px', border: '1px solid', borderColor: 'divider' }}>
-          <CardContent>
-            <Typography sx={{ fontWeight: 700, mb: 0.5 }}>Mobile app enquiry access</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Controls whether in-app enquiries stay free or consume credits after a daily free
-              allowance.
-            </Typography>
-            <Stack spacing={2} direction={{ xs: 'column', md: 'row' }} sx={{ alignItems: 'stretch' }}>
-              <FormControl size="small" sx={{ width: { xs: '100%', md: 220 }, minWidth: 0 }}>
-                <InputLabel id="android-billing-mode">Billing mode</InputLabel>
-                <Select
-                  labelId="android-billing-mode"
-                  label="Billing mode"
-                  value={androidBillingMode}
-                  onChange={(e) =>
-                    setAndroidBillingMode(e.target.value as AndroidInquiryBillingMode)
-                  }
-                  sx={{ borderRadius: '10px' }}>
-                  <MenuItem value="FREE">Free (rate limit only)</MenuItem>
-                  <MenuItem value="CREDITS">Credits (after free quota)</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                label="Free mobile enquiries per day"
-                type="number"
-                size="small"
-                disabled={androidBillingMode === 'FREE'}
-                value={androidFreeDailyLimit}
-                onChange={(e) => setAndroidFreeDailyLimit(Number(e.target.value))}
-                sx={{
-                  width: { xs: '100%', md: 280 },
-                  maxWidth: '100%',
-                  '& .MuiOutlinedInput-root': { borderRadius: '10px' },
-                }}
-                slotProps={{ htmlInput: { min: 0 } }}
-                helperText={
-                  androidBillingMode === 'FREE'
-                    ? 'Only used when billing mode is Credits'
-                    : undefined
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
+            gap: 2,
+          }}>
+          <Card elevation={0} sx={{ borderRadius: '16px', border: '1px solid #E6EAF0' }}>
+            <CardContent>
+              <Typography sx={{ fontWeight: 700 }}>Email / web enquiry access</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Seekers on web (email contact path) get this many free enquiries per day, then use
+                paid credits from the email package below.
+              </Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: { sm: 'flex-end' } }}>
+                <Box sx={{ width: { xs: '100%', sm: 220 }, flexShrink: 0 }}>
+                  <FieldLabel>Free email enquiries per day</FieldLabel>
+                  <TextField
+                    type="number"
+                    size="small"
+                    fullWidth
+                    value={webFreeDailyLimit}
+                    onChange={(e) => setWebFreeDailyLimit(Number(e.target.value))}
+                    sx={fieldSx}
+                    slotProps={{ htmlInput: { min: 0 } }}
+                  />
+                </Box>
+                <Box
+                  sx={{
+                    flex: 1,
+                    display: 'flex',
+                    gap: 1,
+                    alignItems: 'flex-start',
+                    bgcolor: '#F3F7FF',
+                    borderRadius: '10px',
+                    px: 1.5,
+                    py: 1.25,
+                  }}>
+                  <Mail size={16} color="#3B82F6" />
+                  <Typography variant="caption" color="text.secondary">
+                    After the free limit, users need to purchase enquiry credits using the package
+                    below.
+                  </Typography>
+                </Box>
+              </Stack>
+              <FormControlLabel
+                sx={{ mt: 2, alignItems: 'flex-start' }}
+                control={
+                  <Switch
+                    checked={webViewHereEnabled}
+                    onChange={(e) => setWebViewHereEnabled(e.target.checked)}
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography sx={{ fontWeight: 700 }}>
+                      Free contact viewing on the website
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Shows the owner or vendor contact on the listing itself. This is separate
+                      from email enquiries and from paid credits.
+                    </Typography>
+                  </Box>
                 }
               />
-              <TextField
-                label="Hourly rate limit"
-                type="number"
-                size="small"
-                value={androidHourlyRateLimit}
-                onChange={(e) => setAndroidHourlyRateLimit(Number(e.target.value))}
-                sx={{
-                  width: { xs: '100%', md: 200 },
-                  maxWidth: '100%',
-                  '& .MuiOutlinedInput-root': { borderRadius: '10px' },
-                }}
-                slotProps={{ htmlInput: { min: 1 } }}
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1.5}
+                sx={{ alignItems: { sm: 'flex-end' }, mt: 2 }}>
+                <Box sx={{ width: { xs: '100%', sm: 220 }, flexShrink: 0 }}>
+                  <FieldLabel>Free contact views on the website per day</FieldLabel>
+                  <TextField
+                    type="number"
+                    size="small"
+                    fullWidth
+                    disabled={!webViewHereEnabled}
+                    value={viewHereDailyLimit}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      if (next.trim() === '') {
+                        setViewHereDailyLimit(0);
+                        return;
+                      }
+                      const parsed = Number(next);
+                      if (!Number.isFinite(parsed)) return;
+                      setViewHereDailyLimit(Math.max(0, Math.trunc(parsed)));
+                    }}
+                    sx={fieldSx}
+                    slotProps={{ htmlInput: { min: 0, step: 1, inputMode: 'numeric' } }}
+                  />
+                </Box>
+                <Box
+                  sx={{
+                    flex: 1,
+                    display: 'flex',
+                    gap: 1,
+                    alignItems: 'flex-start',
+                    bgcolor: '#F3F7FF',
+                    borderRadius: '10px',
+                    px: 1.5,
+                    py: 1.25,
+                  }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Instant views shown on the listing. 0 hides the option. Email delivery and
+                    credit packages below are unchanged.
+                  </Typography>
+                </Box>
+              </Stack>
+              <PackageEditor
+                title="Credit package — email / web"
+                hint="Used when seekers enquire from the website (email delivery). Wallet credits are shared."
+                footer="This package will be shown to users on web."
+                packages={emailPackages}
+                onChange={updatePkg}
               />
-            </Stack>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <PackageEditor
-          title="Credit package — mobile app"
-          hint="Shown on Android when billing mode is Credits and purchases are enabled. Creating new packages is not supported yet."
-          packages={mobilePackages}
-          onChange={updatePkg}
-        />
+          <Card elevation={0} sx={{ borderRadius: '16px', border: '1px solid #E6EAF0' }}>
+            <CardContent>
+              <Typography sx={{ fontWeight: 700 }}>Mobile app enquiry access</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Controls whether in-app enquiries stay free or consume credits after a daily free
+                allowance.
+              </Typography>
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{ alignItems: 'stretch' }}>
+                <FormControl size="small" sx={{ flex: 1.1, minWidth: 0 }}>
+                  <FieldLabel>Billing mode</FieldLabel>
+                  <Select
+                    value={androidBillingMode}
+                    onChange={(e) =>
+                      setAndroidBillingMode(e.target.value as AndroidInquiryBillingMode)
+                    }
+                    sx={{ borderRadius: '10px', bgcolor: '#fff' }}>
+                    <MenuItem value="FREE">Free (rate limit only)</MenuItem>
+                    <MenuItem value="CREDITS">Credits (after free quota)</MenuItem>
+                  </Select>
+                </FormControl>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <FieldLabel>Free mobile enquiries per day</FieldLabel>
+                  <TextField
+                    type="number"
+                    size="small"
+                    fullWidth
+                    disabled={androidBillingMode === 'FREE'}
+                    value={androidFreeDailyLimit}
+                    onChange={(e) => setAndroidFreeDailyLimit(Number(e.target.value))}
+                    sx={fieldSx}
+                    slotProps={{ htmlInput: { min: 0 } }}
+                  />
+                </Box>
+                <Box sx={{ flex: 0.8, minWidth: 0 }}>
+                  <FieldLabel>Hourly rate limit</FieldLabel>
+                  <TextField
+                    type="number"
+                    size="small"
+                    fullWidth
+                    value={androidHourlyRateLimit}
+                    onChange={(e) => setAndroidHourlyRateLimit(Number(e.target.value))}
+                    sx={fieldSx}
+                    slotProps={{ htmlInput: { min: 1 } }}
+                  />
+                </Box>
+              </Stack>
+              {androidBillingMode === 'FREE' ? (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+                  The free enquiry count is only used when billing mode is Credits. The hourly rate
+                  limit still applies.
+                </Typography>
+              ) : null}
+              <FormControlLabel
+                sx={{ mt: 2, alignItems: 'flex-start' }}
+                control={
+                  <Switch
+                    checked={androidViewHereEnabled}
+                    onChange={(e) => setAndroidViewHereEnabled(e.target.checked)}
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography sx={{ fontWeight: 700 }}>
+                      Free contact viewing in the mobile app
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Shows the owner or vendor contact on the listing itself. This is separate
+                      from in-app enquiries, the hourly rate limit, and paid credits.
+                    </Typography>
+                  </Box>
+                }
+              />
+              <Box sx={{ width: { xs: '100%', sm: 280 }, mt: 1.5 }}>
+                <FieldLabel>Free contact views in the mobile app per day</FieldLabel>
+                <TextField
+                  type="number"
+                  size="small"
+                  fullWidth
+                  disabled={!androidViewHereEnabled}
+                  value={androidViewHereDailyLimit}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    if (next.trim() === '') {
+                      setAndroidViewHereDailyLimit(0);
+                      return;
+                    }
+                    const parsed = Number(next);
+                    if (!Number.isFinite(parsed)) return;
+                    setAndroidViewHereDailyLimit(Math.max(0, Math.trunc(parsed)));
+                  }}
+                  sx={fieldSx}
+                  slotProps={{ htmlInput: { min: 0, step: 1, inputMode: 'numeric' } }}
+                />
+              </Box>
+              <PackageEditor
+                title="Credit package — mobile app"
+                hint="Shown on Android when billing mode is Credits and purchases are enabled. Creating new packages is not supported yet."
+                footer="This package will be shown to users in the mobile app."
+                packages={mobilePackages}
+                onChange={updatePkg}
+              />
+            </CardContent>
+          </Card>
+        </Box>
       </Stack>
-
-      <Stack direction="row" sx={{ mt: 2.5, justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
-        <Button
-          variant="contained"
-          startIcon={saving ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : <Save size={16} />}
-          disabled={saving}
-          onClick={() => void handleSave()}
-          sx={{
-            textTransform: 'none',
-            fontWeight: 700,
-            bgcolor: '#22C55E',
-            borderRadius: '10px',
-            px: 2.5,
-            width: { xs: '100%', sm: 'auto' },
-            '&:hover': { bgcolor: '#16A34A' },
-          }}>
-          {saving ? 'Saving…' : 'Save'}
-        </Button>
-      </Stack>
+      <FileImageViewer
+        open={qrViewerOpen}
+        onClose={() => setQrViewerOpen(false)}
+        fileId={qrFileId}
+        imageUrl={qrPreviewUrl}
+        title="Payment QR code"
+        downloadFilename="payment-qr.png"
+      />
     </Box>
   );
 }

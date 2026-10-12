@@ -21,6 +21,7 @@ import { LoadingState } from '@/shared/components/LoadingState';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { membershipRoleLabelKey } from '@/modules/members/utils/memberRoles';
 
 function formatDate(value: string): string {
   const date = new Date(value);
@@ -153,7 +154,7 @@ export function PendingInvitationsPanel({
                         { defaultValue: invite.spaceType },
                       )}
                       {' · '}
-                      {t(`spaces.roles.${invite.role}`)}
+                      {t(membershipRoleLabelKey(invite.role, invite.spaceType))}
                     </Typography>
                     <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted, mt: 0.5 }}>
                       {t('onboarding.memberHome.inviteHint')}

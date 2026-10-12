@@ -71,6 +71,7 @@ export function useMemberMutations(spaceId: string | undefined) {
     }
     await queryClient.invalidateQueries({ queryKey: ['members', spaceId] });
     await queryClient.invalidateQueries({ queryKey: ['pending-invitations', spaceId] });
+    await queryClient.invalidateQueries({ queryKey: ['import-candidates', spaceId] });
     if (memberId) {
       await queryClient.invalidateQueries({ queryKey: ['member', spaceId, memberId] });
       await queryClient.invalidateQueries({ queryKey: ['member-history', spaceId, memberId] });

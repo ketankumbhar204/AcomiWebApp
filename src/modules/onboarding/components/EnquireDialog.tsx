@@ -9,7 +9,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -26,13 +26,15 @@ import { inquiryCreditsApi, needsInquiryPayment, isUnlimitedQuota, paidCreditsOf
 import { enquiryErrorMessage } from '@/shared/api/enquiryErrors';
 import { ApiError } from '@/shared/api/errors';
 import type { UserResponse } from '@/shared/types/auth';
-import type { SpaceEnquiryResponse } from '@/shared/types/enquiry';
+import type { OwnerContactResponse, SpaceEnquiryResponse } from '@/shared/types/enquiry';
 import type { InquiryQuota } from '@/shared/types/inquiryCredits';
 import { openAcomiAndroidApp } from '@/shared/utils/openAcomiAndroidApp';
 import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
 import { colors } from '@/shared/theme/colors';
 import { useAuthStore } from '@/store/authStore';
-import { inquirySentViaFromEnquiry, markInquiredListing } from '@/shared/hooks/useAlreadyInquired';
+import { inquirySentViaFromEnquiry, markContactViewed, markInquiredListing } from '@/shared/hooks/useAlreadyInquired';
+import { ContactMethodChooser } from './ContactMethodChooser';
+import { beginEnquirySend, endEnquirySend, showEnquiryToast } from '@/modules/onboarding/enquiryFeedback';
 import { InquiryLimitDialog } from './InquiryLimitDialog';
 import { contactWasEmailed } from '@/modules/onboarding/utils/enquiryContactDelivery';
 import { env } from '@/shared/config/env';
@@ -43,9 +45,21 @@ type EnquireDialogProps = {
   spaceName: string;
   ownedByCurrentUser: boolean;
   onClose: () => void;
+  onOpen?: () => void;
+  onViewedHere?: (contact: OwnerContactResponse) => void;
 };
 
+type EnquireResume = {
+  spaceId: string;
+  step: Step;
+  error: string | null;
+  submitted: SpaceEnquiryResponse | null;
+};
+
+let enquireResume: EnquireResume | null = null;
+
 type Step =
+  | 'choose'
   | 'submitting'
   | 'ready'
   | 'pending'
@@ -100,13 +114,16 @@ export function EnquireDialog({
   spaceName,
   ownedByCurrentUser,
   onClose,
+  onOpen,
+  onViewedHere,
 }: EnquireDialogProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const refreshUser = useAuthStore((state) => state.refreshUser);
   const savedEmails = useMemo(() => savedEnquiryEmails(user), [user]);
-  const [step, setStep] = useState<Step>(ownedByCurrentUser ? 'own' : 'submitting');
+  const [step, setStep] = useState<Step>(ownedByCurrentUser ? 'own' : 'choose');
+  const [pendingIntent, setPendingIntent] = useState<'app' | 'email' | 'view' | null>(null);
   const [email, setEmail] = useState(savedEmails[0] ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -114,8 +131,9 @@ export function EnquireDialog({
   const [packageOffer, setPackageOffer] = useState<{ amount: string; credits: number } | null>(null);
   const [quota, setQuota] = useState<InquiryQuota | null>(null);
   const submittingRef = useRef(false);
-  const autoSubmitKeyRef = useRef<string | null>(null);
+  const openedForRef = useRef<string | null>(null);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
   const creditsFooter = useMemo(() => {
     if (!quota || isUnlimitedQuota(quota)) return null;
@@ -147,11 +165,12 @@ export function EnquireDialog({
     }
   }
 
-  async function onResetLocalQuota() {
+  async function onResetLocalQuota(target: 'EMAIL' | 'VIEW_HERE' = 'EMAIL') {
     try {
-      const next = await inquiryCreditsApi.resetQuota();
+      const next = await inquiryCreditsApi.resetQuota(target);
       setQuota(next);
       setLimitDialogOpen(false);
+      setStep('choose');
     } catch {
       /* local-only helper */
     }
@@ -196,17 +215,58 @@ export function EnquireDialog({
     }
   }, [step, quota]);
 
-  async function submit(options?: { emailOverride?: string }) {
+  function sentToast(address: string, already: boolean) {
+    showEnquiryToast({
+      title: already
+        ? t('spaces.findPlace.enquire.alreadyTitleShort')
+        : t('spaces.findPlace.enquire.sentToastTitle', { defaultValue: 'Enquiry sent!' }),
+      body: address
+        ? t('spaces.findPlace.enquire.sentToastBody', {
+            email: address,
+            defaultValue: 'Check your email inbox, we have sent owner contact details to {{email}}.',
+          })
+        : t('spaces.findPlace.enquire.sentToastBodyNoEmail', {
+            defaultValue: 'Check your email inbox. We have sent the owner contact details.',
+          }),
+    });
+  }
+
+  function rememberEnquiry(created: SpaceEnquiryResponse) {
+    markInquiredListing(queryClient, created.spaceId || spaceId, inquirySentViaFromEnquiry(created), {
+      sentToEmail: contactWasEmailed(created) ? created.requesterEmail : null,
+      sentAt: created.emailDeliveredAt || created.contactEmailSentAt || created.requestedAt,
+    });
+  }
+
+  function reopen(step: Step, error: string | null, submittedEnquiry: SpaceEnquiryResponse | null) {
+    enquireResume = { spaceId, step, error, submitted: submittedEnquiry };
+    setDismissed(false);
+    onOpen?.();
+  }
+
+  function hideForBackgroundSend() {
+    beginEnquirySend(spaceId);
+    setDismissed(true);
+    onClose();
+  }
+
+  async function submit(options?: {
+    emailOverride?: string;
+    deliveryChannel?: 'APP' | 'EMAIL' | 'VIEW_HERE';
+    stayOpen?: boolean;
+  }) {
     if (submittingRef.current) {
       return;
     }
     const provided = options?.emailOverride?.trim();
     if (provided === '') {
+      setDismissed(false);
       setError(t('spaces.findPlace.enquire.submitError'));
       setStep('email');
       return;
     }
     if (provided && !isValidEmail(provided)) {
+      setDismissed(false);
       setError(t('spaces.findPlace.enquire.emailInvalid'));
       setStep('email');
       return;
@@ -215,47 +275,81 @@ export function EnquireDialog({
     submittingRef.current = true;
     setSubmitting(true);
     setError(null);
-    setStep('submitting');
+    const stayOpen = options?.stayOpen === true || options?.deliveryChannel === 'VIEW_HERE';
+    if (!stayOpen) {
+      hideForBackgroundSend();
+    } else {
+      setStep('submitting');
+    }
     try {
-      // Empty payload → backend uses authenticated account email.
-      const created = await enquiryApi.create(spaceId, provided ? { email: provided } : {});
+      const created = await enquiryApi.create(spaceId, {
+        ...(provided ? { email: provided } : {}),
+        ...(options?.deliveryChannel ? { deliveryChannel: options.deliveryChannel } : {}),
+      });
       setSubmitted(created);
-      markInquiredListing(queryClient, created.spaceId || spaceId, inquirySentViaFromEnquiry(created));
-      setStep(resultStepFromEnquiry(created));
+      if (options?.deliveryChannel === 'VIEW_HERE') {
+        markContactViewed(queryClient, created.spaceId || spaceId, created.deliveredAt || created.requestedAt);
+        setDismissed(true);
+        onViewedHere?.(created.ownerContact ?? { available: false });
+        void refreshQuota();
+        onClose();
+        return;
+      }
+      rememberEnquiry(created);
       void refreshUser();
-      // New WEB enquiry consumes free quota (unless reused). Refresh remaining count.
       if (!created.reusedExisting) {
         void refreshQuota();
       }
+      const nextStep = resultStepFromEnquiry(created);
+      if (nextStep === 'emailSent' || (created.reusedExisting && contactWasEmailed(created))) {
+        sentToast(created.requesterEmail, Boolean(created.reusedExisting));
+        if (stayOpen) {
+          setDismissed(false);
+          setStep('emailSent');
+        }
+        return;
+      }
+      if (stayOpen) {
+        setDismissed(false);
+        setStep(nextStep);
+        return;
+      }
+      reopen(nextStep, null, created);
     } catch (err) {
+      if (
+        err instanceof ApiError &&
+        (err.errorCode === 'VIEW_HERE_LIMIT_REACHED' || err.errorCode === 'VIEW_HERE_DISABLED')
+      ) {
+        void refreshQuota();
+        setDismissed(false);
+        setStep('choose');
+        return;
+      }
       if (err instanceof ApiError && err.errorCode === 'SELF_ENQUIRY_NOT_ALLOWED') {
-        setStep('own');
+        reopen('own', null, null);
         return;
       }
       if (
         err instanceof ApiError &&
         (err.errorCode === 'WEB_FREE_LIMIT_REACHED' || err.errorCode === 'INQUIRY_CREDITS_REQUIRED')
       ) {
-        setLimitDialogOpen(true);
-        setStep('limit');
+        reopen('limit', null, null);
         return;
       }
       if (err instanceof ApiError && err.errorCode === 'REQUESTER_EMAIL_REQUIRED') {
-        setStep('email');
-        setError(null);
+        reopen('email', null, null);
         return;
       }
-      setError(
-        enquiryErrorMessage(
-          err,
-          t('spaces.findPlace.enquire.submitError'),
-          t('spaces.findPlace.enquire.listingUnavailable'),
-        ),
+      const message = enquiryErrorMessage(
+        err,
+        t('spaces.findPlace.enquire.submitError'),
+        t('spaces.findPlace.enquire.listingUnavailable'),
       );
-      setStep(provided ? 'email' : 'error');
+      reopen(provided ? 'email' : 'error', message, null);
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
+      endEnquirySend(spaceId);
     }
   }
 
@@ -268,60 +362,80 @@ export function EnquireDialog({
       setError(t('spaces.findPlace.enquire.emailInvalid'));
       return;
     }
+    const existing = submitted;
     submittingRef.current = true;
     setSubmitting(true);
     setError(null);
+    hideForBackgroundSend();
     try {
-      const updated = await enquiryApi.deliverContactByEmail(submitted.enquiryId, value);
+      const updated = await enquiryApi.deliverContactByEmail(existing.enquiryId, value);
       setSubmitted(updated);
-      setStep(updated.status === 'SHARED' && contactWasEmailed(updated) ? 'emailSent' : 'pending');
+      rememberEnquiry(updated);
       void refreshUser();
       void refreshQuota();
+      if (updated.status === 'SHARED' && contactWasEmailed(updated)) {
+        sentToast(updated.requesterEmail || value, false);
+        return;
+      }
+      reopen(updated.status === 'SHARED' ? 'ready' : 'pending', null, updated);
     } catch (err) {
-      setError(
+      reopen(
+        'email',
         enquiryErrorMessage(
           err,
           t('spaces.findPlace.enquire.submitError'),
           t('spaces.findPlace.enquire.listingUnavailable'),
         ),
+        existing,
       );
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
+      endEnquirySend(spaceId);
     }
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) {
+      openedForRef.current = null;
+      setDismissed(false);
       setError(null);
       setSubmitting(false);
       submittingRef.current = false;
       setSubmitted(null);
       setLimitDialogOpen(false);
-      autoSubmitKeyRef.current = null;
       return;
     }
+    const resume = enquireResume?.spaceId === spaceId ? enquireResume : null;
+    if (resume) {
+      enquireResume = null;
+      openedForRef.current = `${spaceId}:${user?.id ?? ''}`;
+      setDismissed(false);
+      setSubmitted(resume.submitted);
+      setError(resume.error);
+      setStep(resume.step);
+      setLimitDialogOpen(resume.step === 'limit');
+      return;
+    }
+    const key = `${spaceId}:${user?.id ?? ''}:${ownedByCurrentUser ? 'own' : 'choose'}`;
+    if (openedForRef.current === key) {
+      return;
+    }
+    openedForRef.current = key;
     setEmail(savedEmails[0] ?? user?.email?.trim() ?? '');
-    if (ownedByCurrentUser) {
-      setStep('own');
-      return;
-    }
-    const key = `${spaceId}:${user?.id ?? ''}`;
-    if (autoSubmitKeyRef.current === key) {
-      return;
-    }
-    autoSubmitKeyRef.current = key;
-    void submit();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- submit once per open+space+user
-  }, [open, ownedByCurrentUser, spaceId, user?.id]);
+    setPendingIntent(null);
+    setDismissed(false);
+    setStep(ownedByCurrentUser ? 'own' : 'choose');
+  }, [open, ownedByCurrentUser, spaceId, user?.id, user?.email, savedEmails]);
 
   function resetAndClose() {
-    if (submittingRef.current) {
-      return;
-    }
-    setError(null);
+    submittingRef.current = false;
     setSubmitting(false);
-    setStep(ownedByCurrentUser ? 'own' : 'submitting');
+    endEnquirySend(spaceId);
+    setError(null);
+    setPendingIntent(null);
+    setDismissed(false);
+    setStep(ownedByCurrentUser ? 'own' : 'choose');
     onClose();
   }
 
@@ -367,8 +481,26 @@ export function EnquireDialog({
     >
       <CircularProgress size={32} />
       <Typography sx={{ mt: 2, fontWeight: 700 }}>
-        {t('spaces.findPlace.enquire.submittingShort')}
+        {pendingIntent === 'view'
+          ? t('spaces.findPlace.enquire.viewingShort', { defaultValue: 'Opening contact details...' })
+          : t('spaces.findPlace.enquire.submittingShort')}
       </Typography>
+      <Typography sx={{ mt: 0.5, fontSize: 13, color: 'text.secondary' }}>
+        {pendingIntent === 'view'
+          ? t('spaces.findPlace.enquire.viewingBody', {
+              defaultValue: 'Please wait while we load the owner’s contact details.',
+            })
+          : pendingIntent === 'email'
+            ? t('spaces.findPlace.enquire.sendingEmailBody', {
+                defaultValue: 'Please wait while we send owner contact details to your email.',
+              })
+            : t('spaces.findPlace.enquire.sendingAppBody', {
+                defaultValue: 'Please wait while we send your enquiry to ACOMI.',
+              })}
+      </Typography>
+      <Button onClick={resetAndClose} sx={{ ...ghostButtonSx, mt: 2 }}>
+        {t('common.cancel', { defaultValue: 'Cancel' })}
+      </Button>
     </Box>
   ) : null;
 
@@ -381,14 +513,15 @@ export function EnquireDialog({
           onClose();
         }}
         onQuotaReset={env.isDevelopment ? () => void onResetLocalQuota() : undefined}
+        freeUsedToday={quota?.freeUsedToday}
         availableCredits={paidCreditsOf(quota)}
         onContinueWithCredits={
           paidCreditsOf(quota) > 0 ? continueWithPaidCredits : undefined
         }
       />
       <Dialog
-        open={open && !limitDialogOpen}
-        onClose={busy ? undefined : resetAndClose}
+        open={open && !dismissed && !limitDialogOpen}
+        onClose={resetAndClose}
         fullWidth
         maxWidth="xs"
         slotProps={{
@@ -402,7 +535,44 @@ export function EnquireDialog({
           },
         }}
       >
-        {step === 'own' ? (
+        {step === 'choose' ? (
+          <DialogContent sx={{ pt: 3, pb: 2 }}>
+            <ContactMethodChooser
+              quota={quota}
+              packageOffer={packageOffer}
+              disabled={submitting}
+              onApp={() => {
+                setPendingIntent('app');
+                void submit({ deliveryChannel: 'APP', stayOpen: true });
+              }}
+              onViewHere={() => {
+                setPendingIntent('view');
+                void submit({ deliveryChannel: 'VIEW_HERE', stayOpen: true });
+              }}
+              onEmail={() => {
+                setPendingIntent('email');
+                openEmailStep();
+              }}
+            />
+            <Button fullWidth onClick={resetAndClose} sx={{ ...ghostButtonSx, mt: 1.5 }}>
+              {t('spaces.findPlace.enquire.done', { defaultValue: 'Done' })}
+            </Button>
+            {env.isDevelopment ? (
+              <>
+                <Button fullWidth onClick={() => void onResetLocalQuota('EMAIL')} disabled={submitting} sx={{ ...ghostButtonSx, mt: 0.5 }}>
+                  {t('spaces.findPlace.enquire.limitResetQuota', {
+                    defaultValue: "Reset today's email limit (local only)",
+                  })}
+                </Button>
+                <Button fullWidth onClick={() => void onResetLocalQuota('VIEW_HERE')} disabled={submitting} sx={{ ...ghostButtonSx, mt: 0.5 }}>
+                  {t('spaces.findPlace.enquire.limitResetViewHere', {
+                    defaultValue: "Reset today's view here limit (local only)",
+                  })}
+                </Button>
+              </>
+            ) : null}
+          </DialogContent>
+        ) : step === 'own' ? (
           <>
             <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
               {t('spaces.findPlace.enquire.ownTitle')}
@@ -446,10 +616,7 @@ export function EnquireDialog({
             <DialogActions sx={{ flexDirection: 'column', gap: 1, px: 3, pb: 3 }}>
               <Button
                 fullWidth
-                onClick={() => {
-                  autoSubmitKeyRef.current = null;
-                  void submit();
-                }}
+                onClick={() => setStep('choose')}
                 sx={dashContainedButtonSx}
               >
                 {t('common.retry')}
@@ -492,7 +659,7 @@ export function EnquireDialog({
                   if (submitted) {
                     void sendDetailsByEmail();
                   } else {
-                    void submit({ emailOverride: email });
+                    void submit({ emailOverride: email, deliveryChannel: 'EMAIL', stayOpen: true });
                   }
                 }}
                 sx={{ textAlign: 'left' }}
@@ -832,8 +999,10 @@ export function EnquireDialog({
                 {t('spaces.findPlace.enquire.done')}
               </Button>
               {env.isDevelopment ? (
-                <Button fullWidth onClick={() => void onResetLocalQuota()} sx={ghostButtonSx}>
-                  Reset today's limit (local only)
+                <Button fullWidth onClick={() => void onResetLocalQuota('EMAIL')} sx={ghostButtonSx}>
+                  {t('spaces.findPlace.enquire.limitResetQuota', {
+                    defaultValue: "Reset today's email limit (local only)",
+                  })}
                 </Button>
               ) : null}
             </DialogActions>

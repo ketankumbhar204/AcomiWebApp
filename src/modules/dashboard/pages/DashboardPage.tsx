@@ -1,5 +1,5 @@
 import { Box, Button, Stack, Typography, useTheme } from '@mui/material';
-import { memo, useEffect, useMemo } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AccommodationOpsWidget } from '../components/AccommodationOpsWidget';
@@ -11,10 +11,11 @@ import { MessOperationsWidget } from '../components/MessOperationsWidget';
 import { PendingActionsPanel } from '../components/PendingActionsPanel';
 import { SpaceOverviewCard } from '../components/SpaceOverviewCard';
 import { usePendingActions } from '../hooks/usePendingActions';
-import { useSpaceDashboard } from '../hooks/useSpaceDashboard';
+import { useDashboardMonthFinancial, useSpaceDashboard } from '../hooks/useSpaceDashboard';
 import { useSpaceLifecycleSignals } from '../hooks/useSpaceLifecycleSignals';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
 import { todayIsoDate } from '@/modules/meals/utils/mealDates';
+import { currentMonthKey } from '@/shared/utils/dashboardFinancial';
 import { ContentCard } from '@/shared/components/ContentCard';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { LoadingState } from '@/shared/components/LoadingState';
@@ -69,7 +70,22 @@ export function DashboardPage() {
     !isOperator && (isTenant || isCustomer) ? spaceId : null,
   );
 
+  const [summaryMonth, setSummaryMonth] = useState(currentMonthKey);
+  useEffect(() => {
+    setSummaryMonth(currentMonthKey());
+  }, [spaceId]);
   const dashboard = useSpaceDashboard(spaceId, spaceType, isOperator);
+  const monthFinancial = useDashboardMonthFinancial(
+    spaceId,
+    spaceType,
+    summaryMonth,
+    isOperator,
+  );
+  const showingCurrentMonth = summaryMonth === currentMonthKey();
+  const paymentFinancial = showingCurrentMonth ? dashboard.financial : monthFinancial.financial;
+  const paymentFinancialLoading = showingCurrentMonth
+    ? dashboard.loading && dashboard.financial == null
+    : monthFinancial.loading;
   const pending = usePendingActions(
     spaceId,
     true,
@@ -276,12 +292,17 @@ export function DashboardPage() {
               {/* Row 2 — Mess: Payment 4-card strip (+ Mess ops). PG: Payment | Property */}
               {isMess ? (
                 <>
-                  {dashboard.financial ? (
+                  {paymentFinancial || paymentFinancialLoading || monthFinancial.error ? (
                     <FinancialSummaryWidget
                       spaceId={spaceId}
-                      financial={dashboard.financial}
+                      financial={paymentFinancial}
                       emptyHint={t('dashboard.financial.emptyHintMess')}
                       layout="row"
+                      month={summaryMonth}
+                      onMonthChange={setSummaryMonth}
+                      loading={paymentFinancialLoading}
+                      error={monthFinancial.error}
+                      onRetry={monthFinancial.reload}
                     />
                   ) : null}
                   {dashboard.messOperations ? (
@@ -308,11 +329,16 @@ export function DashboardPage() {
                     alignItems: 'stretch',
                   }}
                 >
-                  {dashboard.financial ? (
+                  {paymentFinancial || paymentFinancialLoading || monthFinancial.error ? (
                     <FinancialSummaryWidget
                       spaceId={spaceId}
-                      financial={dashboard.financial}
+                      financial={paymentFinancial}
                       layout="board"
+                      month={summaryMonth}
+                      onMonthChange={setSummaryMonth}
+                      loading={paymentFinancialLoading}
+                      error={!showingCurrentMonth && monthFinancial.error}
+                      onRetry={monthFinancial.reload}
                     />
                   ) : (
                     <Box />

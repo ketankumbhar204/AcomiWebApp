@@ -19,6 +19,8 @@ import {
   Upload,
   Wallet,
   XCircle,
+  ChevronDown,
+  ChevronUp,
   type LucideIcon,
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
@@ -40,6 +42,7 @@ import type {
   UniversalPaymentMethod,
 } from '@/shared/types/payments';
 import { usePaymentDetail, usePaymentMutations, usePaymentTimeline } from '../hooks/usePayments';
+import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import {
   canOwnerMarkPaymentReceived,
   canReviewPayment,
@@ -48,6 +51,7 @@ import {
   paymentStatusTone,
 } from '../utils/paymentHelpers';
 import { PaymentReceivedConfirmDialog } from './PaymentReceivedConfirmDialog';
+import { openReminderWhatsApp } from '../utils/paymentReminderLaunch';
 import { ReceiptPreview } from './ReceiptPreview';
 import { StoredImagePreview } from '@/shared/components/files/StoredImagePreview';
 
@@ -139,6 +143,177 @@ function DetailGrid({
   );
 }
 
+function PaymentDetailsHeader({
+  payment,
+  spaceName,
+  allocationOpen,
+  onToggleAllocation,
+}: {
+  payment: SpacePaymentResponse;
+  spaceName?: string | null;
+  allocationOpen: boolean;
+  onToggleAllocation: () => void;
+}) {
+  const { t } = useTranslation();
+  const theme = useTheme();
+  const s = dashSurfaces(theme.palette.mode);
+  const status = payment.paymentStatus ?? payment.status ?? 'PENDING';
+  const name = payment.memberName?.trim() || payment.title;
+  const initial = name.charAt(0).toUpperCase() || '?';
+  const period = payment.month
+    ? new Date(`${payment.month}-01T00:00:00`).toLocaleDateString('en-IN', {
+        month: 'long',
+        year: 'numeric',
+      })
+    : '';
+  const heading =
+    period && !payment.title.toLowerCase().includes(period.toLowerCase())
+      ? `${payment.title} — ${period}`
+      : payment.title;
+  const place = [spaceName, payment.targetLabel].filter(Boolean).join(' · ');
+  const amount = formatCurrency(payment.amount, payment.currencyCode);
+  const outstanding =
+    payment.outstandingAmount != null
+      ? formatCurrency(payment.outstandingAmount, payment.currencyCode)
+      : null;
+  const base =
+    payment.baseAmount != null
+      ? formatCurrency(payment.baseAmount, payment.currencyCode)
+      : null;
+
+  return (
+    <Box
+      sx={{
+        p: 1.5,
+        borderRadius: `${DASHBOARD_UX.radius}px`,
+        border: `1px solid ${s.border}`,
+        bgcolor: s.surface,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1.25,
+      }}
+    >
+      <Box sx={{ display: 'flex', gap: 1.25 }}>
+        <Box
+          sx={{
+            width: 40,
+            height: 40,
+            borderRadius: '20px',
+            bgcolor: '#ECFDF5',
+            color: '#047857',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 700,
+            flexShrink: 0,
+          }}
+        >
+          {initial}
+        </Box>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontWeight: 700, color: s.textPrimary }}>{name}</Typography>
+          {payment.memberMobile ? (
+            <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary }}>
+              {payment.memberMobile}
+            </Typography>
+          ) : null}
+          {place ? (
+            <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary }}>{place}</Typography>
+          ) : null}
+        </Box>
+      </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+        <Typography sx={{ fontWeight: 700, fontSize: 18, color: s.textPrimary, flex: 1 }}>
+          {heading}
+        </Typography>
+        <StatusChip
+          label={payment.isOverdue ? t('paymentCollection.overdue.badge') : t(paymentStatusLabelKey(status))}
+          tone={payment.isOverdue ? 'error' : paymentStatusTone(status)}
+        />
+      </Box>
+      <Typography sx={{ fontWeight: 800, fontSize: 28, lineHeight: 1.2, color: s.textPrimary }}>
+        {amount}
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Box>
+          <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
+            {t('paymentCollection.fields.dueDate', { defaultValue: 'Due date' })}
+          </Typography>
+          <Typography sx={{ fontWeight: 700 }}>{payment.dueDate}</Typography>
+        </Box>
+        {period ? (
+          <Box>
+            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
+              {t('paymentCollection.detail.fields.billingPeriod', { defaultValue: 'Period' })}
+            </Typography>
+            <Typography sx={{ fontWeight: 700 }}>{period}</Typography>
+          </Box>
+        ) : null}
+      </Box>
+      {payment.isOverdue ? (
+        <Box sx={{ bgcolor: '#FEF2F2', borderRadius: 1.5, p: 1.25 }}>
+          <Typography sx={{ color: '#B91C1C', fontWeight: 700 }}>
+            {t('paymentCollection.overdue.compact', { count: payment.daysOverdue ?? 0 })}
+          </Typography>
+          {outstanding ? (
+            <Typography sx={{ color: '#991B1B', fontSize: 13 }}>
+              {t('paymentCollection.overdue.outstanding', { amount: outstanding })}
+            </Typography>
+          ) : null}
+        </Box>
+      ) : null}
+      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        {base ? (
+          <Box>
+            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
+              {t('paymentCollection.detail.fields.baseAmount', { defaultValue: 'Rent amount' })}
+            </Typography>
+            <Typography sx={{ fontWeight: 700 }}>{base}</Typography>
+          </Box>
+        ) : null}
+        {outstanding ? (
+          <Box>
+            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
+              {t('paymentCollection.fields.outstanding', { defaultValue: 'Outstanding' })}
+            </Typography>
+            <Typography sx={{ fontWeight: 700, color: '#B91C1C' }}>{outstanding}</Typography>
+          </Box>
+        ) : null}
+      </Box>
+      {payment.targetLabel ? (
+        <Box sx={{ borderTop: `1px solid ${s.border}`, pt: 1 }}>
+          <Box
+            component="button"
+            type="button"
+            onClick={onToggleAllocation}
+            sx={{
+              display: 'flex',
+              width: '100%',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              border: 0,
+              bgcolor: 'transparent',
+              p: 0,
+              cursor: 'pointer',
+              font: 'inherit',
+            }}
+          >
+            <Typography sx={{ fontWeight: 700 }}>
+              {t('paymentCollection.allocationDetails', { defaultValue: 'Allocation details' })}
+            </Typography>
+            {allocationOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </Box>
+          {allocationOpen ? (
+            <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mt: 0.5 }}>
+              {payment.targetLabel.replaceAll(' · ', ' → ')}
+            </Typography>
+          ) : null}
+        </Box>
+      ) : null}
+    </Box>
+  );
+}
+
 function timelineIcon(eventType: PaymentTimelineEventType): {
   Icon: LucideIcon;
   accent: string;
@@ -179,9 +354,11 @@ export function PaymentInspector({
   const detail = usePaymentDetail(spaceId, paymentId ?? undefined, Boolean(paymentId));
   const timeline = usePaymentTimeline(spaceId, paymentId ?? undefined, Boolean(paymentId));
   const mutations = usePaymentMutations(spaceId);
+  const permissions = useSpacePermissions(spaceId);
   const [rejectCode, setRejectCode] = useState<PaymentRejectionReason>('OTHER');
   const [remarks, setRemarks] = useState('');
   const [receivedOpen, setReceivedOpen] = useState(false);
+  const [allocationOpen, setAllocationOpen] = useState(true);
 
   if (!paymentId) {
     return (
@@ -258,28 +435,30 @@ export function PaymentInspector({
   const runSendReminder = async () => {
     try {
       const result = await mutations.sendReminder.mutateAsync(payment.paymentId);
-      if (result.deliveryStatus === 'SENT') {
-        enqueueSnackbar(t('paymentCollection.reminder.sent'), { variant: 'success' });
-        return;
+      const launch = await openReminderWhatsApp(result);
+      if (result.inAppFailureCode === 'NOTIFICATION_FAILED') {
+        enqueueSnackbar(t('paymentCollection.reminder.notificationFailed'), { variant: 'error' });
+      } else if (result.inAppFailureCode === 'MEMBER_NOT_ON_ACOMI') {
+        enqueueSnackbar(t('paymentCollection.reminder.memberNotOnAcomi'), { variant: 'warning' });
+      } else if (result.inAppRecorded && launch !== 'opened') {
+        enqueueSnackbar(t('paymentCollection.reminder.inAppSaved'), { variant: 'success' });
       }
-      const code = `${result.failureCode || ''} ${result.failureReason || ''}`;
-      if (result.deliveryStatus === 'SKIPPED' || code.includes('already')) {
-        enqueueSnackbar(t('paymentCollection.reminder.alreadySentToday'), { variant: 'info' });
-        return;
+      if (launch === 'opened') {
+        enqueueSnackbar(
+          t(
+            result.inAppRecorded
+              ? 'paymentCollection.reminder.openedWhatsApp'
+              : 'paymentCollection.reminder.whatsAppReady',
+          ),
+          { variant: 'success' },
+        );
+      } else if (launch === 'copied') {
+        enqueueSnackbar(t('paymentCollection.reminder.copied'), { variant: 'warning' });
+      } else if (launch === 'invalid') {
+        enqueueSnackbar(t('paymentCollection.reminder.invalidRecipient'), { variant: 'error' });
+      } else {
+        enqueueSnackbar(t('paymentCollection.reminder.whatsAppFailed'), { variant: 'error' });
       }
-      if (
-        !result.providerConfigured ||
-        code.includes('WHATSAPP_PROVIDER_NOT_CONFIGURED') ||
-        code.includes('PROVIDER_NOT_CONFIGURED')
-      ) {
-        enqueueSnackbar(t('paymentCollection.reminder.providerUnavailable'), { variant: 'warning' });
-        return;
-      }
-      if (code.includes('INVALID_RECIPIENT') || code.includes('RECIPIENT_MOBILE_MISSING')) {
-        enqueueSnackbar(t('paymentCollection.reminder.invalidRecipient'), { variant: 'warning' });
-        return;
-      }
-      enqueueSnackbar(t('paymentCollection.reminder.failed'), { variant: 'error' });
     } catch {
       enqueueSnackbar(t('paymentCollection.reminder.failed'), { variant: 'error' });
     }
@@ -395,9 +574,11 @@ export function PaymentInspector({
       }
     >
       <Stack spacing={`${DASHBOARD_UX.cardGap}px`}>
-        <StatusChip
-          label={t(paymentStatusLabelKey(status))}
-          tone={paymentStatusTone(status)}
+        <PaymentDetailsHeader
+          payment={payment}
+          spaceName={permissions.space?.spaceName}
+          allocationOpen={allocationOpen}
+          onToggleAllocation={() => setAllocationOpen((open) => !open)}
         />
 
         <InspectorCard title={t('payments.inspector.summaryTitle', { defaultValue: 'Summary' })}>
@@ -478,6 +659,10 @@ export function PaymentInspector({
               {
                 label: t('paymentCollection.fields.category'),
                 value: t(`paymentCollection.category.${payment.paymentCategory}`),
+              },
+              {
+                label: t('paymentCollection.addRecord.description'),
+                value: payment.description,
               },
               {
                 label: t('paymentCollection.fields.method'),
@@ -619,6 +804,7 @@ export function PaymentInspector({
     <PaymentReceivedConfirmDialog
       open={receivedOpen}
       payments={[payment]}
+      spaceName={permissions.space?.spaceName}
       confirming={mutations.markReceived.isPending}
       onConfirm={() => void runMarkReceived()}
       onClose={() => setReceivedOpen(false)}

@@ -62,6 +62,7 @@ export type InventoryItem = {
   minimumStock: number;
   location?: string | null;
   supplierId?: string | null;
+  supplierName?: string | null;
   purchasePrice?: number | null;
   averagePrice?: number | null;
   barcode?: string | null;
@@ -112,6 +113,7 @@ export type CreateInventoryItemRequest = {
   minimumStock: number;
   location?: string | null;
   supplierId?: string | null;
+  supplierName?: string | null;
   purchasePrice?: number | null;
   barcode?: string | null;
   notes?: string | null;
@@ -124,6 +126,7 @@ export type UpdateInventoryItemRequest = {
   minimumStock?: number;
   location?: string | null;
   supplierId?: string | null;
+  supplierName?: string | null;
   purchasePrice?: number | null;
   averagePrice?: number | null;
   barcode?: string | null;

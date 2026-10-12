@@ -24,7 +24,8 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useSnackbar } from 'notistack';
 import {
   useBuildings,
   useFloors,
@@ -46,7 +47,8 @@ import { PersistedBedInteractionHost } from '@/modules/accommodation/components/
 import { usePersistedBedInteraction } from '@/modules/accommodation/hooks/usePersistedBedInteraction';
 import { formatBedDisplayLabel } from '@/modules/accommodation/utils/formatBedDisplayLabel';
 import { formatPricingMoney } from '@/modules/accommodation/utils/commitBedPricing';
-import { ROUTES, spaceBedInventoryPath, spaceDashboardPath } from '@/routes/paths';
+import { bedIsSelectableForMoveIn } from '@/modules/accommodation/utils/moveInEntry';
+import { ROUTES, spaceBedInventoryPath, spaceDashboardPath, spaceOccupancyWizardPath } from '@/routes/paths';
 import type { BedSpaceListItem } from '../api/dashboardDrilldownApi';
 import { BedInventoryCard } from '../components/BedInventoryCard';
 import { useSpaceBedInventory } from '../hooks/useSpaceBedInventory';
@@ -115,9 +117,12 @@ export function BedInventoryPage() {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const { spaceId = '' } = useParams<{ spaceId: string }>();
+  const navigate = useNavigate();
+  const { enqueueSnackbar } = useSnackbar();
   const permissions = useSpacePermissions(spaceId);
   const [searchParams, setSearchParams] = useSearchParams();
   const status = searchParams.get('status') ?? 'AVAILABLE';
+  const allocateIntent = searchParams.get('intent') === 'allocate';
   const [search, setSearch] = useState('');
   const [buildingId, setBuildingId] = useState('');
   const [floorId, setFloorId] = useState('');
@@ -141,6 +146,7 @@ export function BedInventoryPage() {
     unitId: unitId || undefined,
   });
   const canManage = permissions.canManageOccupancy === true;
+  const selectingForMoveIn = allocateIntent && status === 'AVAILABLE' && canManage;
   const copy = pageCopy(status, t);
   const returnTo = spaceBedInventoryPath(spaceId, status);
   const bedInteraction = usePersistedBedInteraction({
@@ -160,7 +166,27 @@ export function BedInventoryPage() {
     [beds.items],
   );
 
+  const openForMoveIn = (bed: BedSpaceListItem) => {
+    if (!bedIsSelectableForMoveIn(bed.status)) {
+      enqueueSnackbar(t('occupancy.errors.targetUnavailable'), { variant: 'warning' });
+      return;
+    }
+    navigate(
+      spaceOccupancyWizardPath(spaceId, 'ALLOCATE', {
+        bedId: bed.bedId,
+        roomId: bed.roomId,
+        unitId: bed.unitId,
+        buildingId: bed.buildingId,
+        returnTo: spaceBedInventoryPath(spaceId, 'AVAILABLE', { intent: 'allocate' }),
+      }),
+    );
+  };
+
   const openBed = (bed: BedSpaceListItem) => {
+    if (selectingForMoveIn) {
+      openForMoveIn(bed);
+      return;
+    }
     bedInteraction.open({
       bedId: bed.bedId,
       roomId: bed.roomId ?? '',

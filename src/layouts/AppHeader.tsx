@@ -2,6 +2,7 @@ import { AppBar, Box, IconButton, Toolbar, Tooltip, Typography, useTheme } from 
 import { Menu, Moon, Sun } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { SUPPORTED_LANGUAGES, type AppLanguage } from '@/i18n';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { LanguagePicker } from '@/modules/profile/components/LanguagePicker';
@@ -30,6 +31,8 @@ export function AppHeader({
   onMenuClick,
 }: AppHeaderProps) {
   const { t, i18n } = useTranslation();
+  const location = useLocation();
+  const hideLanguage = /\/spaces\/[^/]+\/members(?:\/|$)/.test(location.pathname);
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const themeMode = useAppStore((state) => state.themeMode);
@@ -110,7 +113,7 @@ export function AppHeader({
           }}
         >
           {actions}
-          <LanguagePicker value={currentLanguage} compact />
+          {hideLanguage ? null : <LanguagePicker value={currentLanguage} compact />}
           <Tooltip title={themeLabel}>
             <IconButton onClick={toggleThemeMode} aria-label={themeLabel}>
               {themeMode === 'light' ? (

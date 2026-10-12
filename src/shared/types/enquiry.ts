@@ -27,6 +27,11 @@ export interface SpaceEnquiryResponse {
   contactEmailSent?: boolean;
   ownerContact?: OwnerContactResponse | null;
   reusedExisting?: boolean;
+  deliveredAt?: string | null;
+  emailDeliveredAt?: string | null;
+  alreadyDelivered?: boolean;
+  deliveryChannel?: EnquiryDeliveryChannel | null;
+  appDeliveredAt?: string | null;
 }
 
 export interface OwnerContactResponse {
@@ -38,8 +43,38 @@ export interface OwnerContactResponse {
   available: boolean;
 }
 
+export type EnquiryInboxMode = 'MINE' | 'RECEIVED';
+
+export interface EnquiryInboxListing {
+  spaceId: string;
+  name: string;
+  spaceType?: SpaceType | null;
+}
+
+export interface EnquiryInboxResponse {
+  mode: EnquiryInboxMode;
+  listings: EnquiryInboxListing[];
+}
+
+export interface ReceivedEnquiry {
+  enquiryId: string;
+  spaceId: string;
+  spaceName: string;
+  spaceType?: SpaceType | null;
+  locationLabel?: string | null;
+  requesterName?: string | null;
+  requesterEmail?: string | null;
+  requesterMobile?: string | null;
+  status: SpaceEnquiryStatus;
+  requestedAt: string;
+  expiresAt?: string | null;
+}
+
+export type EnquiryDeliveryChannel = 'APP' | 'EMAIL' | 'VIEW_HERE';
+
 export interface CreateSpaceEnquiryRequest {
   email?: string;
+  deliveryChannel?: EnquiryDeliveryChannel;
 }
 
 export interface UserNotification {

@@ -34,6 +34,29 @@ export function isBedDraftUnchanged(
   );
 }
 
+/**
+ * Apply a saved bed-details draft onto the open drawer target.
+ * The bed id and location stay put so the drawer can remain open.
+ */
+export function bedTargetAfterDetailsSave<
+  T extends {
+    bedId: string;
+    bedNumber: string;
+    label: string;
+    rent?: number | null;
+    deposit?: number | null;
+  },
+>(target: T, draft: BedInteractionDraft): T {
+  const bedNumber = draft.bedNumber.trim();
+  return {
+    ...target,
+    bedNumber,
+    label: bedNumber,
+    rent: draft.rent,
+    deposit: draft.deposit,
+  };
+}
+
 export function hasBedPricingChange(
   current: Pick<BedInteractionDraft, 'rent' | 'deposit'>,
   next: Pick<BedInteractionDraft, 'rent' | 'deposit'>,

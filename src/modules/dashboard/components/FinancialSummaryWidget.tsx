@@ -1,10 +1,16 @@
-import { Box, Typography, useTheme } from '@mui/material';
-import { Clock, Inbox, IndianRupee, Wallet } from 'lucide-react';
+import { Box, Button, CircularProgress, IconButton, Typography, useTheme } from '@mui/material';
+import { ChevronLeft, ChevronRight, Clock, Inbox, IndianRupee, Wallet } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import type { DashboardFinancialSummary } from '@/shared/types/dashboard';
-import { formatCurrency } from '@/shared/utils/dashboardFinancial';
+import {
+  currentMonthKey,
+  formatCurrency,
+  formatMonthYear,
+  isFutureMonth,
+  shiftMonthKey,
+} from '@/shared/utils/dashboardFinancial';
 import { spacePaymentsPath } from '@/routes/paths';
 import { colors, pastels } from '@/shared/theme/colors';
 import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
@@ -15,10 +21,15 @@ import { DASHBOARD_UX, dashSurfaces, metricValueSx } from '../theme/dashboardUx'
 
 type FinancialSummaryWidgetProps = {
   spaceId: string;
-  financial: DashboardFinancialSummary;
+  financial: DashboardFinancialSummary | null;
   emptyHint?: string;
   /** Mess: 4 separate cards in one row. PG: 2×2 board. */
   layout?: 'board' | 'row';
+  month?: string;
+  onMonthChange?: (month: string) => void;
+  loading?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
 };
 
 type PayMetric = {
@@ -44,18 +55,23 @@ export function FinancialSummaryWidget({
   spaceId,
   financial,
   layout = 'board',
+  month,
+  onMonthChange,
+  loading = false,
+  error = false,
+  onRetry,
 }: FinancialSummaryWidgetProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
-  const currency = financial.currencyCode || 'INR';
+  const currency = financial?.currencyCode || 'INR';
 
   const items: PayMetric[] = [
     {
       id: 'expected',
       label: t('dashboard.financial.expected'),
-      value: formatCurrency(financial.expectedCharges, currency),
+      value: formatCurrency(financial?.expectedCharges, currency),
       accent: TILE.expected.fg,
       tone: 'accent',
       surface: TILE.expected,
@@ -69,7 +85,7 @@ export function FinancialSummaryWidget({
     {
       id: 'collected',
       label: t('dashboard.financial.collected'),
-      value: formatCurrency(financial.collected, currency),
+      value: formatCurrency(financial?.collected, currency),
       accent: TILE.collected.fg,
       tone: 'success',
       surface: TILE.collected,
@@ -83,7 +99,7 @@ export function FinancialSummaryWidget({
     {
       id: 'underReview',
       label: t('dashboard.financial.underReview'),
-      value: formatCurrency(financial.underReview, currency),
+      value: formatCurrency(financial?.underReview, currency),
       accent: '#3B82F6',
       tone: 'info',
       icon: (
@@ -96,7 +112,7 @@ export function FinancialSummaryWidget({
     {
       id: 'pending',
       label: t('dashboard.financial.pending'),
-      value: formatCurrency(financial.pending, currency),
+      value: formatCurrency(financial?.pending, currency),
       accent: '#F59E0B',
       tone: 'warning',
       icon: (
@@ -107,6 +123,69 @@ export function FinancialSummaryWidget({
       onClick: () => navigate(spacePaymentsPath(spaceId, undefined, { filter: 'pending' })),
     },
   ];
+
+  const nextMonth = month ? shiftMonthKey(month, 1) : currentMonthKey();
+  const nextDisabled = !onMonthChange || isFutureMonth(nextMonth);
+  const amountsEmpty =
+    !loading &&
+    !error &&
+    (financial?.expectedCharges ?? 0) === 0 &&
+    (financial?.collected ?? 0) === 0 &&
+    (financial?.underReview ?? 0) === 0 &&
+    (financial?.pending ?? 0) === 0;
+  const monthNav =
+    month && onMonthChange ? (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1, minHeight: 36 }}>
+        <IconButton
+          size="small"
+          aria-label={t('dashboard.financial.previousMonth')}
+          onClick={() => onMonthChange(shiftMonthKey(month, -1))}
+          sx={{
+            color: colors.primaryDark,
+            border: `1px solid ${s.border}`,
+            borderRadius: `${DASHBOARD_UX.radius}px`,
+            width: 32,
+            height: 32,
+          }}
+        >
+          <ChevronLeft size={16} />
+        </IconButton>
+        <Typography
+          sx={{ ...DASHBOARD_UX.button, color: colors.primaryDark, flex: 1, textAlign: 'center', minWidth: 0 }}
+          noWrap
+        >
+          {formatMonthYear(month, i18n.language)}
+        </Typography>
+        <IconButton
+          size="small"
+          aria-label={t('dashboard.financial.nextMonth')}
+          disabled={nextDisabled}
+          onClick={() => onMonthChange(nextMonth)}
+          sx={{
+            color: colors.primaryDark,
+            border: `1px solid ${s.border}`,
+            borderRadius: `${DASHBOARD_UX.radius}px`,
+            width: 32,
+            height: 32,
+          }}
+        >
+          <ChevronRight size={16} />
+        </IconButton>
+      </Box>
+    ) : null;
+  const statusLine = loading ? (
+    <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
+      <CircularProgress size={22} />
+    </Box>
+  ) : error ? (
+    <Button size="small" onClick={onRetry} sx={{ alignSelf: 'flex-start', textTransform: 'none' }}>
+      {t('dashboard.financial.loadFailed')} {t('dashboard.financial.retry')}
+    </Button>
+  ) : amountsEmpty ? (
+    <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted, mb: 1 }}>
+      {emptyHint ?? t('dashboard.financial.monthEmpty')}
+    </Typography>
+  ) : null;
 
   if (layout === 'row') {
     return (
@@ -123,10 +202,9 @@ export function FinancialSummaryWidget({
           <Typography sx={{ ...DASHBOARD_UX.sectionHeading, color: s.textPrimary }}>
             {t('dashboard.financial.title')}
           </Typography>
-          <Typography sx={{ ...DASHBOARD_UX.sectionSubtitle, color: s.textMuted }}>
-            {t('dashboard.financial.period')}
-          </Typography>
         </Box>
+        {monthNav}
+        {statusLine}
 
         <Box
           sx={{
@@ -218,10 +296,9 @@ export function FinancialSummaryWidget({
   }
 
   return (
-    <DashboardSection
-      title={t('dashboard.financial.title')}
-      subtitle={t('dashboard.financial.period')}
-    >
+    <DashboardSection title={t('dashboard.financial.title')}>
+      {monthNav}
+      {statusLine}
       <MetricRow
         columns={2}
         embedded

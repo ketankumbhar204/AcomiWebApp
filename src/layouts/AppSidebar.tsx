@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, UserRound } from 'lucide-react';
+import { UserRound } from 'lucide-react';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { APP_NAME } from '@/shared/constants/app';
 import { colors } from '@/shared/theme/colors';
@@ -49,20 +49,18 @@ function BrandMark({ collapsed }: { collapsed: boolean }) {
       }}
     >
       <Box
-        aria-hidden
+        component="img"
+        src="/brand/icon-light.png"
+        alt=""
         sx={{
           width: 32,
           height: 32,
-          borderRadius: '50%',
-          bgcolor: colors.primary,
-          color: '#fff',
-          display: 'grid',
-          placeItems: 'center',
+          borderRadius: '8px',
+          objectFit: 'cover',
           flexShrink: 0,
+          display: 'block',
         }}
-      >
-        <Home size={16} strokeWidth={2.25} />
-      </Box>
+      />
       {!collapsed ? (
         <Typography
           sx={{

@@ -1,5 +1,5 @@
 import type { MembershipRole } from './space';
-import type { MemberGender } from './auth';
+import type { MemberGender, UserResponse } from './auth';
 import type { MealBillingType, PrepaidBalanceUnit } from './dashboard';
 
 export type { MemberGender, MealBillingType, PrepaidBalanceUnit };
@@ -143,6 +143,8 @@ export type MemberDetailsResponse = {
   assignedAmenities?: { code: string; label: string }[] | null;
   createdAt: string;
   updatedAt?: string;
+  /** Present when the caller is allowed to see the linked app user's profile. */
+  linkedUserProfile?: UserResponse | null;
 };
 
 export type MemberImportCandidateResponse = {

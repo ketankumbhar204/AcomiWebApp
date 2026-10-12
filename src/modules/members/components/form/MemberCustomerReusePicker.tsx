@@ -20,7 +20,6 @@ type MemberCustomerReusePickerProps = {
   members: ResidentPickerItem[];
   loading: boolean;
   pickerMode: MemberPickerMode;
-  onPickerModeChange: (mode: MemberPickerMode) => void;
   selectedMemberId?: string;
   onSelect: (member: ResidentPickerItem) => void;
   newMemberName: string;
@@ -38,7 +37,6 @@ export function MemberCustomerReusePicker({
   members,
   loading,
   pickerMode,
-  onPickerModeChange,
   selectedMemberId,
   onSelect,
   newMemberName,
@@ -54,50 +52,6 @@ export function MemberCustomerReusePicker({
 
   return (
     <Box sx={{ mb: 2 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          gap: 0.75,
-          p: 0.5,
-          mb: 1.5,
-          borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-          bgcolor: s.elevated,
-        }}
-      >
-        {(
-          [
-            { key: 'search' as const, label: t('membership.add.memberMode.search') },
-            { key: 'addNew' as const, label: t('membership.add.memberMode.addNew') },
-          ] as const
-        ).map((tab) => {
-          const mode: MemberPickerMode = tab.key === 'search' ? 'search' : 'new';
-          const active = pickerMode === mode;
-          return (
-            <Box
-              key={tab.key}
-              component="button"
-              type="button"
-              disabled={disabled}
-              onClick={() => onPickerModeChange(mode)}
-              sx={{
-                flex: 1,
-                border: 'none',
-                cursor: disabled ? 'default' : 'pointer',
-                borderRadius: `${DASHBOARD_UX.buttonRadius - 2}px`,
-                bgcolor: active ? s.surface : 'transparent',
-                color: active ? colors.primaryDark : s.textMuted,
-                py: 1,
-                px: 1,
-                ...DASHBOARD_UX.button,
-                boxShadow: active ? s.shadow : 'none',
-              }}
-            >
-              {tab.label}
-            </Box>
-          );
-        })}
-      </Box>
-
       {pickerMode === 'search' ? (
         <Stack spacing={1.25}>
           <TextField

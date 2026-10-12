@@ -43,6 +43,7 @@ type MemberDocumentsSectionProps = {
   spaceId: string;
   memberId: string;
   canEdit: boolean;
+  embedded?: boolean;
 };
 
 function formatDate(value: string): string {
@@ -61,6 +62,7 @@ export function MemberDocumentsSection({
   spaceId,
   memberId,
   canEdit,
+  embedded = false,
 }: MemberDocumentsSectionProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -134,7 +136,7 @@ export function MemberDocumentsSection({
   return (
     <>
       <PageSection
-        title={t('membership.detailTabs.documents')}
+        title={embedded ? undefined : t('membership.detailTabs.documents')}
         actions={
           canEdit ? (
             <Button size="small" onClick={openAdd} sx={dashOutlinedButtonSx}>

@@ -19,6 +19,7 @@ import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dash
 import type { TreeSelection } from './HierarchyTree';
 import { BulkCreateDialog } from './BulkCreateDialog';
 import { BedPricingDisplay } from './BedPricingDisplay';
+import { OccupiedBedPaymentFace } from './OccupiedBedPaymentFace';
 import { formatBedDisplayLabel } from '../utils/formatBedDisplayLabel';
 import { formatPricingMoney } from '../utils/commitBedPricing';
 import { PersistedBedInteractionHost } from './PersistedBedInteractionHost';
@@ -1287,7 +1288,17 @@ export function CenterWorkspace({
                               <ChevronRight size={18} color={surfaces.textMuted} />
                             </Stack>
                           }
-                          footer={<BedPricingDisplay rent={bed.defaultRent} deposit={bed.defaultDeposit} />}
+                          footer={
+                            bed.status === 'OCCUPIED' ? (
+                              <OccupiedBedPaymentFace spaceId={spaceId} bedId={bed.bedId} />
+                            ) : (
+                              <BedPricingDisplay
+                                rent={bed.defaultRent}
+                                deposit={bed.defaultDeposit}
+                                layout="rows"
+                              />
+                            )
+                          }
                           menu={entityMenu(
                             {
                               type: 'bed',

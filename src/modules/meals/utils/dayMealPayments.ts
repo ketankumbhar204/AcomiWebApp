@@ -16,7 +16,9 @@ export type DayMealPaymentDisplayStatus =
 
 export type DayMealPaymentListItem = {
   date: string;
-  amount: number;
+  /** Outstanding currency for the day. Null when meal prices are not configured. */
+  amount: number | null;
+  amountKnown: boolean;
   currencyCode: string;
   paymentStatus: MealPollPaymentStatus | null;
   displayStatus: DayMealPaymentDisplayStatus;
@@ -26,6 +28,42 @@ export type DayMealPaymentListItem = {
 };
 
 export type DayMealPaymentsSection = 'all' | 'actionNeeded' | 'underReview' | 'history';
+
+function positiveAmount(value: number | null | undefined): number | null {
+  if (value == null || Number.isNaN(Number(value))) return null;
+  const amount = Number(value);
+  return amount > 0 ? amount : null;
+}
+
+/** Payable amount for one activity day. A missing meal price stays unknown instead of becoming zero. */
+export function resolveDayMealPayableAmount(day: MemberMealActivityDay): {
+  amount: number | null;
+  amountKnown: boolean;
+} {
+  if (day.amountKnown === false) {
+    return { amount: null, amountKnown: false };
+  }
+  const live = positiveAmount(day.dayTotal);
+  if (live != null) {
+    return { amount: live, amountKnown: true };
+  }
+  const slots = Array.isArray(day.slots) ? day.slots : [];
+  const accepted = slots.filter((slot) => slot.status === 'ACCEPTED');
+  if (accepted.length === 0) {
+    return { amount: 0, amountKnown: true };
+  }
+  const missingSlotPrice = accepted.some((slot) => positiveAmount(slot.slotAmount) == null);
+  if (!missingSlotPrice) {
+    const slotSum = accepted.reduce((sum, slot) => sum + (positiveAmount(slot.slotAmount) ?? 0), 0);
+    return { amount: slotSum, amountKnown: true };
+  }
+  return { amount: null, amountKnown: false };
+}
+
+function sumKnownAmounts(items: DayMealPaymentListItem[]): number | null {
+  if (items.some((item) => !item.amountKnown || item.amount == null)) return null;
+  return items.reduce((sum, item) => sum + (item.amount ?? 0), 0);
+}
 
 function acceptedMealTypes(day: MemberMealActivityDay): MealType[] {
   const slots = Array.isArray(day.slots) ? day.slots : [];
@@ -92,17 +130,19 @@ export function buildDayMealPaymentListItems(
     .map(normalizeActivityDay)
     .flatMap((day) => {
       if (!day.date) return [];
-      const amount = day.dayTotal != null ? Number(day.dayTotal) : 0;
+      const payable = resolveDayMealPayableAmount(day);
+      const amount = payable.amount;
       const mealTypes = acceptedMealTypes(day);
-      const hasCharge = amount > 0 || mealTypes.length > 0;
+      const hasCharge = (amount != null && amount > 0) || mealTypes.length > 0 || !payable.amountKnown;
       if (!hasCharge && day.paymentStatus == null) return [];
       if (!hasCharge && day.paymentStatus === 'PAID') return [];
-      if (amount <= 0 && mealTypes.length === 0) return [];
+      if ((amount == null || amount <= 0) && mealTypes.length === 0 && payable.amountKnown) return [];
 
       const paymentStatus = day.paymentStatus ?? null;
       const item: DayMealPaymentListItem = {
         date: day.date,
-        amount: amount > 0 ? amount : 0,
+        amount: payable.amountKnown ? amount : null,
+        amountKnown: payable.amountKnown,
         currencyCode: day.currencyCode ?? activity.summary.currencyCode ?? 'INR',
         paymentStatus,
         displayStatus: resolveDayMealPaymentDisplayStatus(paymentStatus, day.date, todayIso),
@@ -168,30 +208,25 @@ export function resolvePreferredDayMealPaymentsSection(
 
 export function summarizeDayMealPayments(items: DayMealPaymentListItem[]) {
   const currencyCode = items[0]?.currencyCode ?? 'INR';
-  let pendingAmount = 0;
-  let collectedAmount = 0;
-  let reviewAmount = 0;
-  let pendingCount = 0;
-  for (const item of items) {
-    if (
+  const actionNeeded = items.filter(
+    (item) =>
       item.displayStatus === 'PENDING' ||
       item.displayStatus === 'OVERDUE' ||
-      item.displayStatus === 'REJECTED'
-    ) {
-      pendingAmount += item.amount;
-      pendingCount += 1;
-    } else if (item.displayStatus === 'PENDING_APPROVAL') {
-      reviewAmount += item.amount;
-      pendingAmount += item.amount;
-    } else if (item.displayStatus === 'PAID') {
-      collectedAmount += item.amount;
-    }
-  }
+      item.displayStatus === 'REJECTED',
+  );
+  const underReview = items.filter((item) => item.displayStatus === 'PENDING_APPROVAL');
+  const paid = items.filter((item) => item.displayStatus === 'PAID');
+  const pendingAmount = sumKnownAmounts(actionNeeded);
+  const collectedAmount = sumKnownAmounts(paid);
+  const reviewAmount = sumKnownAmounts(underReview);
   return {
     pendingAmount,
     collectedAmount,
-    totalAmount: pendingAmount + collectedAmount,
-    pendingCount,
+    totalAmount:
+      pendingAmount == null || collectedAmount == null || reviewAmount == null
+        ? null
+        : pendingAmount + collectedAmount + reviewAmount,
+    pendingCount: actionNeeded.length,
     reviewAmount,
     currencyCode,
   };

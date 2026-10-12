@@ -9,18 +9,17 @@ import {
   Select,
   Skeleton,
   Stack,
-  Tab,
-  Tabs,
   TextField,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
 import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
-import { Building2, MapPin, Search, SlidersHorizontal, UtensilsCrossed, X } from 'lucide-react';
+import { Building2, ChevronDown, MapPin, Search, SlidersHorizontal, UtensilsCrossed, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { ROUTES } from '@/routes/paths';
 import {
   ActiveDiscoverFilterChips,
   DiscoverFiltersPanel,
@@ -32,6 +31,7 @@ import {
   type DiscoverFilterState,
 } from '@/modules/onboarding/utils/discoverFilterModel';
 import { DiscoverInfiniteSentinel } from '@/modules/onboarding/components/DiscoverInfiniteSentinel';
+import { spaceTypeLabelKey } from '@/modules/onboarding/components/createSpace/createSpaceVisuals';
 import { DiscoverSpaceCard } from '@/modules/onboarding/components/DiscoverSpaceCard';
 import { DiscoverSpaceDetailDrawer } from '@/modules/onboarding/components/DiscoverSpaceDetailDrawer';
 import { EnquireDialog } from '@/modules/onboarding/components/EnquireDialog';
@@ -98,10 +98,11 @@ export function FindAPlacePage() {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const isNarrow = useMediaQuery(theme.breakpoints.down('lg'));
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const parsed = useMemo(() => parseDiscoverUrlState(searchParams), [searchParams]);
-
-  const [category, setCategory] = useState<DiscoverCategory>(parsed.category);
+  const category: DiscoverCategory = location.pathname.startsWith(ROUTES.findAMeal) ? 'mess' : 'places';
   const [search, setSearch] = useState(parsed.query);
   const [debounced, setDebounced] = useState(parsed.query);
   const [selectedLocation, setSelectedLocation] = useState<SelectedDiscoverLocation | null>(
@@ -118,6 +119,9 @@ export function FindAPlacePage() {
     () => searchParams.get('enquire') === '1' && Boolean(searchParams.get('space')?.trim()),
   );
   const [enquireSpace, setEnquireSpace] = useState<DiscoverSpaceCardResponse | null>(null);
+  const enquireHold = useRef<DiscoverSpaceCardResponse | null>(null);
+  if (enquireSpace) enquireHold.current = enquireSpace;
+  const enquireTarget = enquireSpace ?? enquireHold.current;
   const [routeReady, setRouteReady] = useState(false);
   const enquireUrlConsumed = useRef(searchParams.get('enquire') !== '1');
   const locationPromptedFor = useRef<DiscoverCategory | null>(null);
@@ -129,8 +133,8 @@ export function FindAPlacePage() {
   const shouldEnquire = searchParams.get('enquire') === '1';
 
   useEffect(() => {
-    document.title = `${t('navigation.findAPlace')} · ${t('common.appName')}`;
-  }, [t]);
+    document.title = `${category === 'mess' ? t('navigation.findAMeal', { defaultValue: 'Search for a meal' }) : t('navigation.findAPlace')} · ${t('common.appName')}`;
+  }, [category, t]);
 
   useEffect(() => {
     const key = searchParams.toString();
@@ -138,14 +142,14 @@ export function FindAPlacePage() {
       setRouteReady(true);
       return;
     }
+    if (!location.pathname.startsWith(ROUTES.findAMeal) && searchParams.get('tab') === 'mess') {
+      const next = new URLSearchParams(searchParams);
+      next.delete('tab');
+      navigate({ pathname: ROUTES.findAMeal, search: next.toString() }, { replace: true });
+      return;
+    }
     appliedUrlKey.current = key;
     const next = parseDiscoverUrlState(searchParams);
-    setCategory((current) => {
-      if (current !== next.category) {
-        skipCategoryReset.current = true;
-      }
-      return next.category;
-    });
     setSelectedLocation(next.selectedLocation);
     if (next.query) {
       setSearch(next.query);
@@ -153,7 +157,7 @@ export function FindAPlacePage() {
       setSearch(enquireName);
     }
     setRouteReady(true);
-  }, [enquireName, searchParams]);
+  }, [enquireName, location.pathname, navigate, searchParams]);
 
   useEffect(() => {
     const id = window.setTimeout(() => setDebounced(search.trim()), 300);
@@ -187,6 +191,9 @@ export function FindAPlacePage() {
     if (!routeReady) {
       return;
     }
+    if (!location.pathname.startsWith(ROUTES.findAMeal) && searchParams.get('tab') === 'mess') {
+      return;
+    }
     const current = buildDiscoverUrlParams({
       category,
       selectedLocation,
@@ -204,7 +211,7 @@ export function FindAPlacePage() {
         { replace: true },
       );
     }
-  }, [category, debounced, routeReady, searchParams, selectedLocation, setSearchParams]);
+  }, [category, debounced, location.pathname, routeReady, searchParams, selectedLocation, setSearchParams]);
 
   useEffect(() => {
     if (
@@ -263,12 +270,15 @@ export function FindAPlacePage() {
   }, [selectedLocation]);
 
   const isMess = category === 'mess';
+  const servicedApartment = !isMess && filters.servicedApartment;
   const placeTypes =
-    !isMess && filters.types.length === 0
-      ? PLACE_SPACE_TYPES
-      : !isMess && filters.types.length > 1
+    isMess || filters.types.length === 1
+      ? undefined
+      : filters.types.length > 1
         ? filters.types
-        : undefined;
+        : servicedApartment
+          ? undefined
+          : PLACE_SPACE_TYPES;
   const apiType: SpaceType | undefined = isMess
     ? 'MESS'
     : filters.types.length === 1
@@ -281,21 +291,38 @@ export function FindAPlacePage() {
       location: selectedLocation?.location || undefined,
       type: apiType,
       types: placeTypes,
-      minRent: isMess ? null : filters.minPrice,
-      maxRent: isMess ? null : filters.maxPrice,
+      minRent: filters.minPrice,
+      maxRent: filters.maxPrice,
       amenities: isMess || filters.amenities.length === 0 ? undefined : filters.amenities,
+      genders: isMess || filters.genders.length === 0 ? undefined : filters.genders,
+      sharings: isMess || filters.sharings.length === 0 ? undefined : filters.sharings,
+      foods: isMess || filters.foods.length === 0 ? undefined : filters.foods,
+      furnishings: isMess || filters.furnishings.length === 0 ? undefined : filters.furnishings,
+      contactAvailable: filters.contactAvailable ? true : undefined,
+      mealTypes: isMess && filters.mealTypes.length > 0 ? filters.mealTypes : undefined,
+      foodTypes: isMess && filters.foodTypes.length > 0 ? filters.foodTypes : undefined,
+      servicedApartment: servicedApartment || undefined,
       size: DISCOVER_PAGE_SIZE,
-      sort: 'newest' as const,
+      sort,
     }),
     [
       apiType,
       debounced,
       filters.amenities,
+      filters.contactAvailable,
+      filters.foodTypes,
+      filters.foods,
+      filters.furnishings,
+      filters.genders,
       filters.maxPrice,
+      filters.mealTypes,
       filters.minPrice,
+      filters.sharings,
       isMess,
       placeTypes,
       selectedLocation?.location,
+      servicedApartment,
+      sort,
     ],
   );
   const filterKey = discoverFilterKey(discoverParams);
@@ -385,20 +412,34 @@ export function FindAPlacePage() {
     : t('spaces.findPlace.selectLocation');
 
   const clearFilters = () => setFilters(EMPTY_DISCOVER_FILTERS);
+  const activeFilterCount =
+    filters.types.length +
+    filters.amenities.length +
+    filters.genders.length +
+    filters.sharings.length +
+    filters.foods.length +
+    filters.furnishings.length +
+    filters.mealTypes.length +
+    filters.foodTypes.length +
+    (filters.contactAvailable ? 1 : 0) +
+    (filters.servicedApartment ? 1 : 0) +
+    (filters.minPrice != null || filters.maxPrice != null ? 1 : 0);
   const isFiltering = Boolean(debounced) || Boolean(selectedLocation?.location) ||
     filters.types.length > 0 ||
     filters.amenities.length > 0 ||
+    filters.genders.length > 0 ||
+    filters.sharings.length > 0 ||
+    filters.foods.length > 0 ||
+    filters.furnishings.length > 0 ||
+    filters.contactAvailable ||
+    filters.servicedApartment ||
+    filters.mealTypes.length > 0 ||
+    filters.foodTypes.length > 0 ||
     filters.minPrice != null ||
     filters.maxPrice != null;
 
-  const eyebrow =
-    category === 'mess' ? t('spaces.findPlace.tabs.messEyebrow') : t('spaces.findPlace.eyebrow');
   const title =
-    category === 'mess' ? t('spaces.findPlace.tabs.messTitle') : t('spaces.findPlace.heroTitle');
-  const subtitle =
-    category === 'mess'
-      ? t('spaces.findPlace.tabs.messSubtitle')
-      : t('spaces.findPlace.heroSubtitle');
+    category === 'mess' ? t('spaces.findPlace.tabs.messTitle') : t('navigation.findAPlace');
   const searchPlaceholder =
     category === 'mess'
       ? t('spaces.findPlace.tabs.messSearchPlaceholder')
@@ -433,10 +474,6 @@ export function FindAPlacePage() {
     />
   );
 
-  const handleCategoryChange = (_: unknown, next: DiscoverCategory) => {
-    setCategory(next);
-  };
-
   const handleLocationConfirm = (record: Parameters<typeof toSelectedDiscoverLocation>[0]) => {
     const next = toSelectedDiscoverLocation(record);
     setSelectedLocation(next);
@@ -449,223 +486,291 @@ export function FindAPlacePage() {
     writeUrl(null, search, category);
   };
 
+  const selectCategory = (next: DiscoverCategory) => {
+    if (next === category) return;
+    navigate({
+      pathname: next === 'mess' ? ROUTES.findAMeal : ROUTES.findAPlace,
+      search: buildDiscoverUrlParams({
+        category: next,
+        selectedLocation,
+        query: search,
+        extras: searchParams,
+      }).toString(),
+    });
+  };
+
+  const selectedPlaceType = filters.types.length === 1 ? filters.types[0] : 'ALL';
+
   return (
-    <Box sx={{ flex: 1, bgcolor: pageBg, py: { xs: 2.5, sm: 3 } }}>
+    <Box sx={{ flex: 1, bgcolor: pageBg, py: { xs: 1.5, sm: 2 } }}>
       <Box sx={{ width: '100%', px: { xs: 1.5, sm: 2 } }}>
-        <Tabs
-          value={category}
-          onChange={handleCategoryChange}
-          sx={{
-            minHeight: 44,
-            mb: 2,
-            '& .MuiTab-root': {
-              textTransform: 'none',
-              fontWeight: 700,
-              minHeight: 44,
-              fontSize: '0.95rem',
-            },
-            '& .Mui-selected': { color: `${colors.primary} !important` },
-            '& .MuiTabs-indicator': { bgcolor: colors.primary, height: 3, borderRadius: 2 },
-          }}
-        >
-          <Tab
-            value="places"
-            icon={<Building2 size={16} />}
-            iconPosition="start"
-            label={t('spaces.findPlace.tabs.places')}
-          />
-          <Tab
-            value="mess"
-            icon={<UtensilsCrossed size={16} />}
-            iconPosition="start"
-            label={t('spaces.findPlace.tabs.mess')}
-          />
-        </Tabs>
-
-        <Typography
-          sx={{
-            fontSize: '0.68rem',
-            fontWeight: 700,
-            letterSpacing: '0.18em',
-            color: colors.primary,
-            textTransform: 'uppercase',
-          }}
-        >
-          {eyebrow}
-        </Typography>
-        <Typography
-          component="h1"
-          sx={{
-            mt: 1,
-            fontSize: { xs: '1.85rem', sm: '2.2rem' },
-            fontWeight: 700,
-            letterSpacing: '-0.02em',
-            color: textPrimary,
-            lineHeight: 1.15,
-          }}
-        >
-          {title}
-        </Typography>
-        <Typography sx={{ mt: 1, fontSize: { xs: '0.875rem', sm: '0.9375rem' }, color: textSecondary }}>
-          {subtitle}
-        </Typography>
-
-        <Box
-          sx={{
-            mt: 2.5,
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', lg: '240px minmax(0, 1fr)' },
-            gap: 2,
-            alignItems: 'start',
-          }}
-        >
-          <Box
-            component="aside"
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          <Typography
+            component="h1"
             sx={{
-              display: { xs: 'none', lg: 'block' },
-              minHeight: 'calc(100dvh - 8rem)',
-              borderRadius: '16px',
-              border: '1px solid #8fd4b0',
-              bgcolor: '#d6f3e4',
-              p: 2,
+              fontSize: { xs: '1.35rem', sm: '1.5rem' },
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              color: textPrimary,
+              lineHeight: 1.15,
             }}
           >
-            <Typography sx={{ fontSize: '0.875rem', fontWeight: 700, color: textPrimary, mb: 2 }}>
-              {t('spaces.findPlace.filters.title')}
-            </Typography>
-            {filtersPanel}
-          </Box>
-
-          <Box sx={{ minWidth: 0 }}>
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                alignItems: { sm: 'center' },
-                gap: 1,
-                p: 1,
-                borderRadius: '16px',
-                border: `1px solid ${isDark ? theme.palette.divider : 'rgba(15,23,42,0.06)'}`,
-                bgcolor: colors.surface,
-                boxShadow: isDark ? 'none' : '0 1px 3px rgba(15,23,42,0.06)',
-              }}
-            >
-              <TextField
-                fullWidth
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={searchPlaceholder}
-                slotProps={{
-                  htmlInput: { 'aria-label': t('spaces.findPlace.searchLabel') },
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Search size={16} color={colors.muted} />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
+            {title}
+          </Typography>
+          <IconButton
+            onClick={() => setFilterSheetOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={filterSheetOpen}
+            aria-label={t('spaces.findPlace.filterButton')}
+            sx={{
+              width: 40,
+              height: 40,
+              border: `1px solid ${isDark ? theme.palette.divider : 'rgba(15,23,42,0.08)'}`,
+              bgcolor: colors.surface,
+            }}
+          >
+            <SlidersHorizontal size={18} color={textPrimary} />
+            {activeFilterCount > 0 ? (
+              <Box
+                component="span"
                 sx={{
-                  flex: 1,
-                  '& .MuiOutlinedInput-root': {
-                    bgcolor: 'transparent',
-                    borderRadius: '12px',
-                    minHeight: 44,
-                    '& fieldset': { borderColor: 'transparent' },
-                    '&:hover fieldset': { borderColor: 'transparent' },
-                    '&.Mui-focused fieldset': { borderColor: colors.primary },
-                  },
+                  position: 'absolute',
+                  top: 6,
+                  right: 6,
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  bgcolor: colors.primary,
                 }}
               />
-              <Stack
-                direction="row"
-                spacing={1}
-                sx={{ alignItems: 'center', px: { sm: 0.5 }, flexShrink: 0 }}
-              >
+            ) : null}
+          </IconButton>
+        </Box>
+
+        <Box sx={{ mt: 1.25, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box
+            role="tablist"
+            sx={{
+              display: 'flex',
+              gap: 1,
+              p: 0.5,
+              borderRadius: '999px',
+              border: `1px solid ${isDark ? theme.palette.divider : 'rgba(15,23,42,0.08)'}`,
+              bgcolor: colors.surface,
+            }}
+          >
+            {(
+              [
+                ['places', t('spaces.findPlace.tabs.places'), Building2],
+                ['mess', t('spaces.findPlace.tabs.mess'), UtensilsCrossed],
+              ] as const
+            ).map(([id, label, Icon]) => {
+              const selected = category === id;
+              return (
                 <Button
-                  onClick={() => setLocationOpen(true)}
-                  startIcon={<MapPin size={16} color={colors.primary} />}
-                  aria-label={locationLabel}
+                  key={id}
+                  role="tab"
+                  aria-selected={selected}
+                  onClick={() => selectCategory(id)}
+                  startIcon={<Icon size={16} />}
                   sx={{
+                    flex: 1,
+                    minHeight: 40,
+                    borderRadius: '999px',
                     textTransform: 'none',
-                    fontWeight: 600,
-                    color: textPrimary,
-                    bgcolor: colors.mintSubtle,
-                    borderRadius: '12px',
-                    px: 1.5,
-                    py: 1,
-                    minHeight: 44,
-                    maxWidth: { xs: '100%', sm: 220 },
+                    fontWeight: 700,
+                    color: selected ? '#fff' : textSecondary,
+                    bgcolor: selected ? colors.primary : 'transparent',
+                    '&:hover': { bgcolor: selected ? colors.primaryHover : colors.mintSubtle },
                   }}
                 >
-                  <Typography noWrap sx={{ fontSize: '0.8125rem', fontWeight: 600 }}>
-                    {locationLabel}
-                  </Typography>
+                  {label}
                 </Button>
-                {selectedLocation ? (
-                  <IconButton
-                    onClick={handleLocationClear}
-                    aria-label={t('spaces.findPlace.clearLocation')}
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      border: `1px solid ${colors.border}`,
-                      bgcolor: colors.surface,
-                    }}
-                  >
-                    <X size={16} />
-                  </IconButton>
-                ) : null}
-                <FormControl size="small" sx={{ minWidth: 140 }}>
-                  <Select
-                    value={sort}
-                    onChange={(event) =>
-                      setSort(event.target.value as 'recommended' | 'newest')
-                    }
-                    aria-label={t('spaces.findPlace.sortLabel')}
-                    sx={{ borderRadius: '12px', fontSize: '0.8125rem', bgcolor: 'transparent' }}
-                  >
-                    <MenuItem value="recommended">{t('spaces.findPlace.sort.recommended')}</MenuItem>
-                    <MenuItem value="newest">{t('spaces.findPlace.sort.newest')}</MenuItem>
-                  </Select>
-                </FormControl>
-              </Stack>
-            </Box>
+              );
+            })}
+          </Box>
 
-            <Stack
-              direction="row"
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', minWidth: 0 }}>
+            <Button
+              onClick={() => setLocationOpen(true)}
+              aria-haspopup="dialog"
+              aria-label={t('spaces.findPlace.selectLocation')}
               sx={{
-                mt: 2,
-                mb: 1,
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 1,
-                flexWrap: 'wrap',
+                flex: 1,
+                justifyContent: 'flex-start',
+                textTransform: 'none',
+                fontWeight: 600,
+                color: textPrimary,
+                bgcolor: colors.surface,
+                border: `1px solid ${isDark ? theme.palette.divider : 'rgba(15,23,42,0.08)'}`,
+                borderRadius: '999px',
+                px: 1.5,
+                minHeight: 44,
+                minWidth: 0,
+                '&:hover': { bgcolor: colors.mintSubtle },
               }}
             >
-              <Typography sx={{ fontSize: '0.875rem', color: textSecondary }}>
-                {discoverQuery.isPending
-                  ? t('spaces.findPlace.loading')
-                  : !discoverQuery.isError
-                    ? category === 'mess'
-                      ? t('spaces.findPlace.tabs.messResultCount', { count: totalElements })
-                      : t('spaces.findPlace.resultCount', { count: totalElements })
-                    : ' '}
+              <MapPin size={16} color={colors.primary} />
+              <Typography noWrap sx={{ ml: 0.75, fontSize: '14px', fontWeight: 600 }}>
+                {locationLabel}
               </Typography>
-              <Button
-                variant="text"
-                startIcon={<SlidersHorizontal size={16} />}
-                onClick={() => setFilterSheetOpen(true)}
+            </Button>
+            {selectedLocation ? (
+              <IconButton
+                onClick={handleLocationClear}
+                aria-label={t('spaces.findPlace.clearLocation')}
+                sx={{ width: 40, height: 40, border: `1px solid ${isDark ? theme.palette.divider : 'rgba(15,23,42,0.08)'}` }}
+              >
+                <X size={16} />
+              </IconButton>
+            ) : null}
+          </Stack>
+
+          <TextField
+            fullWidth
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={searchPlaceholder}
+            slotProps={{
+              htmlInput: { 'aria-label': t('spaces.findPlace.searchLabel') },
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search size={16} color={colors.muted} />
+                  </InputAdornment>
+                ),
+              },
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                bgcolor: colors.surface,
+                borderRadius: '999px',
+                minHeight: 44,
+                fontSize: '14px',
+              },
+            }}
+          />
+
+          <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 0.25, scrollbarWidth: 'thin' }}>
+            {isMess
+              ? (
+                [
+                  ['ALL', t('spaces.findPlace.typeAll')],
+                  ['BREAKFAST', 'Breakfast'],
+                  ['LUNCH', 'Lunch'],
+                  ['DINNER', 'Dinner'],
+                ] as const
+              ).map(([id, label]) => {
+                const selected =
+                  id === 'ALL'
+                    ? filters.mealTypes.length === 0
+                    : filters.mealTypes.includes(id);
+                return (
+                  <Button
+                    key={id}
+                    onClick={() =>
+                      setFilters((current) => ({
+                        ...current,
+                        mealTypes:
+                          id === 'ALL'
+                            ? []
+                            : current.mealTypes.includes(id)
+                              ? current.mealTypes.filter((value) => value !== id)
+                              : [...current.mealTypes, id],
+                      }))
+                    }
+                    aria-pressed={selected}
+                    sx={{
+                      flex: '0 0 auto',
+                      minHeight: 34,
+                      px: 1.5,
+                      borderRadius: '999px',
+                      textTransform: 'none',
+                      fontWeight: 700,
+                      fontSize: '13px',
+                      color: selected ? '#fff' : colors.primaryDark,
+                      bgcolor: selected ? colors.primary : colors.lightGreen ?? '#E8F8EF',
+                      border: `1px solid ${colors.primary}`,
+                      '&:hover': { bgcolor: selected ? colors.primaryHover : colors.mintSubtle },
+                    }}
+                  >
+                    {label}
+                  </Button>
+                );
+              })
+              : (
+                [
+                  ['ALL', t('spaces.findPlace.typeAll')] as const,
+                  ...PLACE_SPACE_TYPES.map((type) => [type, t(spaceTypeLabelKey(type))] as const),
+                ]
+              ).map(([id, label]) => {
+                const selected = selectedPlaceType === id;
+                return (
+                  <Button
+                    key={id}
+                    onClick={() =>
+                      setFilters((current) => ({
+                        ...current,
+                        types: id === 'ALL' ? [] : [id as SpaceType],
+                      }))
+                    }
+                    aria-pressed={selected}
+                    sx={{
+                      flex: '0 0 auto',
+                      minHeight: 34,
+                      px: 1.5,
+                      borderRadius: '999px',
+                      textTransform: 'none',
+                      fontWeight: 700,
+                      fontSize: '13px',
+                      color: selected ? '#fff' : colors.primaryDark,
+                      bgcolor: selected ? colors.primary : '#E7F6EE',
+                      border: `1px solid ${selected ? colors.primary : 'rgba(15,107,76,0.25)'}`,
+                      '&:hover': { bgcolor: selected ? colors.primaryHover : colors.mintSubtle },
+                    }}
+                  >
+                    {label}
+                  </Button>
+                );
+              })}
+          </Box>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, minWidth: 0 }}>
+            <Typography noWrap sx={{ flex: 1, minWidth: 0, fontSize: '0.875rem', color: textSecondary }}>
+              {discoverQuery.isPending
+                ? t('spaces.findPlace.loading')
+                : discoverQuery.isError
+                  ? ' '
+                  : !selectedLocation
+                    ? category === 'mess'
+                      ? t('spaces.findPlace.tabs.messFoundAll', { count: totalElements })
+                      : t('spaces.findPlace.foundAll', { count: totalElements })
+                    : category === 'mess'
+                      ? t('spaces.findPlace.tabs.messResultCount', { count: totalElements })
+                      : t('spaces.findPlace.resultCount', { count: totalElements })}
+            </Typography>
+            <FormControl size="small" sx={{ minWidth: 132, flexShrink: 0 }}>
+              <Select
+                value={sort}
+                onChange={(event) => setSort(event.target.value as 'recommended' | 'newest')}
+                aria-label={t('spaces.findPlace.sortLabel')}
+                startAdornment={
+                  <InputAdornment position="start">
+                    <ChevronDown size={14} color={colors.muted} />
+                  </InputAdornment>
+                }
                 sx={{
-                  display: { xs: 'inline-flex', lg: 'none' },
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  color: textPrimary,
+                  borderRadius: '999px',
+                  fontSize: '13px',
+                  minHeight: 36,
+                  bgcolor: colors.surface,
                 }}
               >
-                {t('spaces.findPlace.filters.title')}
-              </Button>
-            </Stack>
+                <MenuItem value="recommended">{t('spaces.findPlace.sort.recommended')}</MenuItem>
+                <MenuItem value="newest">{t('spaces.findPlace.sort.newest')}</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
 
             <Box sx={{ mb: 1.5 }}>
               <ActiveDiscoverFilterChips
@@ -681,13 +786,9 @@ export function FindAPlacePage() {
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: {
-                    xs: '1fr',
-                    sm: 'repeat(2, minmax(0, 1fr))',
-                    md: 'repeat(3, minmax(0, 1fr))',
-                    xl: 'repeat(4, minmax(0, 1fr))',
-                  },
-                  gap: 2,
+                  gap: 1.5,
+                  mt: 2,
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 19.25rem), 1fr))',
                 }}
               >
                 {Array.from({ length: isNarrow ? 3 : 8 }).map((_, index) => (
@@ -722,12 +823,9 @@ export function FindAPlacePage() {
                 <Box
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: {
-                      xs: '1fr',
-                      sm: 'repeat(2, minmax(0, 1fr))',
-                      lg: 'repeat(3, minmax(0, 1fr))',
-                    },
-                    gap: 2,
+                    gap: 1.5,
+                    mt: 2,
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 19.25rem), 1fr))',
                   }}
                 >
                   {listings.map((space: DiscoverSpaceCardResponse) => (
@@ -784,21 +882,20 @@ export function FindAPlacePage() {
       />
 
       <Drawer
-        anchor="bottom"
+        anchor="right"
         open={filterSheetOpen}
         onClose={() => setFilterSheetOpen(false)}
         slotProps={{
           paper: {
             sx: {
-              maxHeight: '85dvh',
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              p: 2.5,
-              bgcolor: '#d6f3e4',
+              width: 'min(100%, 22.5rem)',
+              maxWidth: '100%',
+              bgcolor: colors.surface,
             },
           },
         }}
       >
+        <Box sx={{ p: 2.5, overflow: 'auto', height: '100%' }}>
         <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography sx={{ fontWeight: 700 }}>{t('spaces.findPlace.filters.title')}</Typography>
           <Button onClick={() => setFilterSheetOpen(false)} sx={{ textTransform: 'none' }}>
@@ -806,6 +903,7 @@ export function FindAPlacePage() {
           </Button>
         </Stack>
         {filtersPanel}
+        </Box>
       </Drawer>
 
       <DiscoverSpaceDetailDrawer
@@ -817,13 +915,19 @@ export function FindAPlacePage() {
           setDetailSpaceId(null);
         }}
       />
-      {enquireSpace ? (
+      {enquireTarget ? (
         <EnquireDialog
-          open
-          spaceId={enquireSpace.spaceId}
-          spaceName={enquireSpace.name}
-          ownedByCurrentUser={Boolean(enquireSpace.ownedByCurrentUser)}
+          open={Boolean(enquireSpace)}
+          spaceId={enquireTarget.spaceId}
+          spaceName={enquireTarget.name}
+          ownedByCurrentUser={Boolean(enquireTarget.ownedByCurrentUser)}
           onClose={() => setEnquireSpace(null)}
+          onOpen={() => {
+            if (enquireHold.current) setEnquireSpace(enquireHold.current);
+          }}
+          onViewedHere={() => {
+            if (enquireTarget) setDetailSpaceId(enquireTarget.spaceId);
+          }}
         />
       ) : null}
     </Box>

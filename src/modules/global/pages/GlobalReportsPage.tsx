@@ -9,6 +9,7 @@ import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { StatusChip } from '@/shared/components/StatusChip';
 import type { GlobalSpaceStatus } from '@/shared/types/dashboard';
 import type { SpaceType } from '@/shared/types/space';
+import { membershipRoleLabelKey } from '@/modules/members/utils/memberRoles';
 import { spaceDashboardPath } from '@/routes/paths';
 import { useSpaceStore } from '@/store/spaceStore';
 
@@ -65,7 +66,10 @@ export function GlobalReportsPage() {
     {
       id: 'role',
       header: t('accountDirectory.role'),
-      accessor: (row) => t(`spaces.roles.${row.membershipRole}`, { defaultValue: row.membershipRole }),
+      accessor: (row) =>
+        t(membershipRoleLabelKey(row.membershipRole, row.spaceType as SpaceType | undefined), {
+          defaultValue: row.membershipRole,
+        }),
     },
     {
       id: 'pending',

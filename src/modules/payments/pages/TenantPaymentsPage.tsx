@@ -27,6 +27,8 @@ import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import {
   currentMonthKey,
   formatCurrency,
+  isFutureMonth,
+  shiftMonthKey,
 } from '@/shared/utils/dashboardFinancial';
 import { spaceDayMealsPath } from '@/routes/paths';
 import type {
@@ -40,9 +42,12 @@ import {
   formatMonthLabel,
   paymentStatusLabelKey,
   paymentStatusTone,
-  shiftMonth,
 } from '../utils/paymentHelpers';
 import { useMySubscriptionStatus } from '@/modules/meals/hooks/useSubscriptionPlans';
+import {
+  summarizePersonalPayments,
+  usesDayMealPayments,
+} from '../utils/personalPaymentSummary';
 
 export function TenantPaymentsPage() {
   const { t } = useTranslation();
@@ -59,13 +64,30 @@ export function TenantPaymentsPage() {
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [proofOpen, setProofOpen] = useState(false);
 
-  const isPayPerMeal = statusQuery.data?.prepaidBilling === false;
+  const isPayPerMeal = usesDayMealPayments({
+    spaceType: permissions.space?.spaceType,
+    prepaidBilling: statusQuery.data?.prepaidBilling,
+    mealBillingType: statusQuery.data?.mealBillingType,
+  });
 
   const list = useSpacePaymentsList(
     spaceId,
-    { month, status: status || undefined, sync: false },
+    { month, sync: false },
     !isPayPerMeal && !statusQuery.isLoading,
   );
+
+  const personalSummary = useMemo(
+    () => summarizePersonalPayments(list.payments),
+    [list.payments],
+  );
+  const summaryCurrency = list.payments.find((payment) => payment.currencyCode)?.currencyCode ?? 'INR';
+
+  const rows = useMemo(() => {
+    const filtered = status
+      ? list.payments.filter((payment) => (payment.paymentStatus ?? payment.status) === status)
+      : list.payments;
+    return filtered.map((payment) => ({ ...payment, id: payment.paymentId }));
+  }, [list.payments, status]);
 
   useEffect(() => {
     document.title = `${t('navigation.payments')} · ${t('common.appName')}`;
@@ -102,11 +124,6 @@ export function TenantPaymentsPage() {
       </PageContainer>
     );
   }
-
-  const rows = useMemo(
-    () => list.payments.map((p) => ({ ...p, id: p.paymentId })),
-    [list.payments],
-  );
 
   const columns: DataTableColumn<SpacePaymentResponse & { id: string }>[] = [
     {
@@ -165,9 +182,10 @@ export function TenantPaymentsPage() {
             <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
               <PeriodMonthNav
                 month={month}
-                onPrevious={() => setMonth(shiftMonth(month, -1))}
-                onNext={() => setMonth(shiftMonth(month, 1))}
+                onPrevious={() => setMonth(shiftMonthKey(month, -1))}
+                onNext={() => setMonth(shiftMonthKey(month, 1))}
                 onMonthSelect={setMonth}
+                disableNext={isFutureMonth(shiftMonthKey(month, 1))}
                 size="compact"
               />
               <IconButton
@@ -187,6 +205,62 @@ export function TenantPaymentsPage() {
             </Stack>
           }
         />
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: `${DASHBOARD_UX.cardGap}px`,
+            gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, minmax(0, 1fr))' },
+          }}
+        >
+          {(
+            [
+              ['due', personalSummary.totalDue],
+              ['paid', personalSummary.amountPaid],
+              ['outstanding', personalSummary.outstanding],
+            ] as const
+          ).map(([key, amount]) => (
+            <Box
+              key={key}
+              sx={{
+                border: `1px solid ${s.border}`,
+                borderRadius: `${DASHBOARD_UX.radius}px`,
+                bgcolor: s.surface,
+                px: 1.5,
+                py: 1.25,
+              }}
+            >
+              <Box sx={{ color: 'text.secondary', fontSize: 12 }}>
+                {t(`payments.tenant.summary.${key}`)}
+              </Box>
+              <Box sx={{ fontWeight: 700, mt: 0.5 }}>
+                {list.loading && list.payments.length === 0
+                  ? '…'
+                  : amount == null
+                    ? '—'
+                    : formatCurrency(amount, summaryCurrency)}
+              </Box>
+            </Box>
+          ))}
+          <Box
+            sx={{
+              border: `1px solid ${s.border}`,
+              borderRadius: `${DASHBOARD_UX.radius}px`,
+              bgcolor: s.surface,
+              px: 1.5,
+              py: 1.25,
+            }}
+          >
+            <Box sx={{ color: 'text.secondary', fontSize: 12 }}>
+              {t('payments.tenant.summary.nextDue')}
+            </Box>
+            <Box sx={{ fontWeight: 700, mt: 0.5 }}>
+              {list.loading && list.payments.length === 0
+                ? '…'
+                : (personalSummary.nextDueDate ?? '—')}
+            </Box>
+          </Box>
+        </Box>
 
         <Box
           sx={{

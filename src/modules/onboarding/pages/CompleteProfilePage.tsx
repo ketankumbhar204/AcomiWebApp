@@ -18,7 +18,6 @@ import {
   FileText,
   Image as ImageIcon,
   Mail,
-  MapPin,
   Phone,
   UserRound,
 } from 'lucide-react';
@@ -34,6 +33,12 @@ import { FileImageViewer } from '@/shared/components/files/FileImageViewer';
 import { FileUploadUserError } from '@/shared/utils/fileLimits';
 import { prepareFileForUpload } from '@/shared/utils/optimizeImageFile';
 import { useCompleteProfile } from '@/modules/onboarding/hooks/useCompleteProfile';
+import { AddressLocationFields } from '@/shared/components/AddressLocationFields';
+import {
+  addressCaptureIssue,
+  captureFromParts,
+  composeStoredAddress,
+} from '@/modules/onboarding/utils/locationAutocomplete';
 import {
   isGenericUserName,
   profileCompletionPercentage,
@@ -489,6 +494,14 @@ export function CompleteProfilePage() {
   const [removeProfilePhoto, setRemoveProfilePhoto] = useState(false);
   const [profileViewerOpen, setProfileViewerOpen] = useState(false);
   const [permanentAddress, setPermanentAddress] = useState(user?.permanentAddress ?? '');
+  const [location, setLocation] = useState(() =>
+    captureFromParts({
+      addressLine: user?.permanentAddress,
+      city: user?.city,
+      state: user?.state,
+      pincode: user?.pincode,
+    }),
+  );
   const [city, setCity] = useState(user?.city ?? '');
   const [stateName, setStateName] = useState(user?.state ?? '');
   const [pincode, setPincode] = useState(user?.pincode ?? '');
@@ -523,6 +536,14 @@ export function CompleteProfilePage() {
     setCity(current.city ?? '');
     setStateName(current.state ?? '');
     setPincode(current.pincode ?? '');
+    setLocation(
+      captureFromParts({
+        addressLine: current.permanentAddress,
+        city: current.city,
+        state: current.state,
+        pincode: current.pincode,
+      }),
+    );
   }, [userId]);
 
   const progress = useMemo(() => profileCompletionPercentage(user), [user]);
@@ -551,6 +572,12 @@ export function CompleteProfilePage() {
       }
       if (!pincode.trim()) {
         setFieldError(t('profileCompletion.errors.pincodeRequired'));
+        return false;
+      }
+      if (addressCaptureIssue(location, { required: true, pincodeRequired: true })) {
+        setFieldError(
+          t('locationCapture.selectionRequired', { defaultValue: 'Select a location from the suggestions.' }),
+        );
         return false;
       }
     }
@@ -926,40 +953,17 @@ export function CompleteProfilePage() {
                 gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
               }}
             >
-              <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
-                <IconField
-                  label={t('profileCompletion.fields.permanentAddress')}
-                  value={permanentAddress}
-                  onChange={setPermanentAddress}
-                  placeholder={t('profileCompletion.fields.permanentAddressPlaceholder')}
-                  icon={<MapPin size={16} />}
-                  required
-                  multiline
-                />
-              </Box>
-              <IconField
-                label={t('profileCompletion.fields.city')}
-                value={city}
-                onChange={setCity}
-                placeholder={t('profileCompletion.fields.cityPlaceholder')}
-                icon={<MapPin size={16} />}
+              <AddressLocationFields
+                value={location}
                 required
-              />
-              <IconField
-                label={t('profileCompletion.fields.state')}
-                value={stateName}
-                onChange={setStateName}
-                placeholder={t('profileCompletion.fields.statePlaceholder')}
-                icon={<MapPin size={16} />}
-                required
-              />
-              <IconField
-                label={t('profileCompletion.fields.pincode')}
-                value={pincode}
-                onChange={setPincode}
-                placeholder={t('profileCompletion.fields.pincodePlaceholder')}
-                icon={<MapPin size={16} />}
-                required
+                pincodeRequired
+                onChange={(next) => {
+                  setLocation(next);
+                  setPermanentAddress(composeStoredAddress(next));
+                  setCity(next.city);
+                  setStateName(next.state);
+                  setPincode(next.pincode);
+                }}
               />
             </Box>
           ) : null}

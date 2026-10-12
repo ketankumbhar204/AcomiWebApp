@@ -13,6 +13,7 @@ import {
   UtensilsCrossed,
   Wallet,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -23,6 +24,7 @@ import { DASHBOARD_UX } from '@/modules/dashboard/theme/dashboardUx';
 import { useGlobalDashboard } from '@/modules/global/hooks/useGlobalDashboard';
 import { getAccountIntent } from '@/modules/onboarding/utils/accountIntent';
 import { RequesterNotificationBell } from '@/modules/onboarding/components/RequesterNotificationBell';
+import { enquiryApi } from '@/shared/api/enquiryApi';
 import { useAuthSession } from '@/shared/hooks/useAuthSession';
 import { colors } from '@/shared/theme/colors';
 import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
@@ -95,6 +97,12 @@ export function GlobalShellLayout() {
   const mySpaces = useSpaceStore((state) => state.mySpaces);
   const hasSpaces = mySpaces.length > 0;
   const isOwnerIntent = getAccountIntent() === 'owner';
+  const enquiryUnread = useQuery({
+    queryKey: ['enquiry-unread-count'],
+    queryFn: () => enquiryApi.listNotifications({ size: 1 }),
+    staleTime: 30_000,
+  });
+  const enquiryBadge = enquiryUnread.data?.unreadCount ?? 0;
   const accountHome = hasSpaces
     ? ROUTES.mySpaces
     : isOwnerIntent
@@ -127,12 +135,21 @@ export function GlobalShellLayout() {
               label: t('navigation.findAPlace'),
               to: ROUTES.findAPlace,
               icon: <Search size={16} />,
+              end: true,
+            },
+            {
+              id: 'findAMeal',
+              label: t('navigation.findAMeal', { defaultValue: 'Search for a meal' }),
+              to: ROUTES.findAMeal,
+              icon: <UtensilsCrossed size={16} />,
+              end: true,
             },
             {
               id: 'enquiries',
               label: t('navigation.enquiries', { defaultValue: 'Enquiries' }),
               to: ROUTES.myEnquiries,
               icon: <MessageCircle size={16} />,
+              badgeCount: enquiryBadge > 0 ? enquiryBadge : undefined,
             },
             {
               id: 'profile',
@@ -160,12 +177,21 @@ export function GlobalShellLayout() {
             label: t('navigation.findAPlace'),
             to: ROUTES.findAPlace,
             icon: <Search size={16} />,
+            end: true,
+          },
+          {
+            id: 'findAMeal',
+            label: t('navigation.findAMeal', { defaultValue: 'Search for a meal' }),
+            to: ROUTES.findAMeal,
+            icon: <UtensilsCrossed size={16} />,
+            end: true,
           },
           {
             id: 'enquiries',
             label: t('navigation.enquiries', { defaultValue: 'Enquiries' }),
             to: ROUTES.myEnquiries,
             icon: <MessageCircle size={16} />,
+            badgeCount: enquiryBadge > 0 ? enquiryBadge : undefined,
           },
           ...(hasSpaces
             ? [
@@ -216,7 +242,7 @@ export function GlobalShellLayout() {
         ],
       },
     ];
-  }, [hasSpaces, isOwnerIntent, t]);
+  }, [enquiryBadge, hasSpaces, isOwnerIntent, t]);
 
   const profileLeading = (
     <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: 0 }}>

@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { invalidateStayPaymentCache } from '@/modules/accommodation/utils/stayChargeIndex';
 import { paymentsApi } from '../api/paymentsApi';
 import type {
+  CreateSpacePaymentRequest,
   ListSpacePaymentsParams,
   PaymentsReviewQueueParam,
   ReviewPaymentRequest,
@@ -167,8 +169,12 @@ export function usePaymentMutations(spaceId: string | undefined) {
   const queryClient = useQueryClient();
 
   const invalidate = async () => {
+    invalidateStayPaymentCache();
     await queryClient.invalidateQueries({
-      predicate: (q) => String(q.queryKey[0]).includes('payment'),
+      predicate: (q) => {
+        const key = String(q.queryKey[0]);
+        return key.includes('payment') || key === 'dashboard-summary' || key === 'pending-actions';
+      },
     });
   };
 
@@ -199,6 +205,10 @@ export function usePaymentMutations(spaceId: string | undefined) {
     }),
     sendReminder: useMutation({
       mutationFn: (paymentId: string) => paymentsApi.sendPaymentReminder(spaceId!, paymentId),
+      onSuccess: invalidate,
+    }),
+    createPayment: useMutation({
+      mutationFn: (body: CreateSpacePaymentRequest) => paymentsApi.createPayment(spaceId!, body),
       onSuccess: invalidate,
     }),
     markReceived: useMutation({

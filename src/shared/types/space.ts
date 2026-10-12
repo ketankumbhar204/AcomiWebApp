@@ -20,6 +20,8 @@ export interface DiscoverSpaceCardResponse {
   amenityCodes?: string[];
   amenityLabels?: string[];
   foodIncludedInRent: boolean;
+  foodAvailability?: 'INCLUDED' | 'AVAILABLE' | 'NONE' | null;
+  sharingNotes?: string | null;
   genderPolicy?: GenderPolicy | null;
   alreadyMember: boolean;
   /** Converted from a test-lead registration (shown in local discovery). */
@@ -28,6 +30,7 @@ export interface DiscoverSpaceCardResponse {
   coverImageUrl?: string | null;
   imageUrl?: string | null;
   startingPrice?: number | string | null;
+  priceBasis?: ListingPriceBasis | null;
   monthlyPrice?: number | string | null;
   mealPrice?: number | string | null;
   mapUrl?: string | null;
@@ -122,6 +125,8 @@ export interface SpaceDetailsResponse {
   name: string;
   type: SpaceType;
   address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   contactNumber?: string;
   ownerId: string;
   foodIncludedInRent?: boolean;
@@ -140,6 +145,8 @@ export interface CreateSpaceRequest {
   name: string;
   type: SpaceType;
   address?: string;
+  latitude?: number;
+  longitude?: number;
   contactNumber?: string;
   ownerId: string;
   genderPolicy?: GenderPolicy | null;
@@ -149,6 +156,8 @@ export interface CreateSpaceRequest {
 export interface UpdateSpaceRequest {
   name?: string;
   address?: string;
+  latitude?: number;
+  longitude?: number;
   contactNumber?: string;
   genderPolicy?: GenderPolicy | null;
   amenities?: AmenityAssignment[];

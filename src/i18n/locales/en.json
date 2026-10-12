@@ -85,6 +85,7 @@
     "mySpaces": "My Spaces",
     "home": "Home",
     "findAPlace": "Search for a place",
+    "findAMeal": "Search for a meal",
     "onboarding": "Get started",
     "joinSpace": "Join Space",
     "acceptInvitations": "Invitations",
@@ -96,7 +97,8 @@
     "reports": "Reports",
     "globalAttention": "Needs Attention",
     "globalActivity": "Recent Activity",
-    "enquiries": "Enquiries"
+    "enquiries": "Enquiries",
+    "favorites": "Favorites"
   },
   "auth": {
     "backToWebsite": "Back to website",
@@ -380,9 +382,9 @@
       "paginationAria": "Spaces pages"
     },
     "findPlace": {
-      "eyebrow": "Search for a place",
-      "heroTitle": "Search for a place",
-      "heroSubtitle": "Search PGs, hostels, rentals and co-living spaces around you.",
+      "eyebrow": "Find a place",
+      "heroTitle": "Find your new place",
+      "heroSubtitle": "PGs, Hostels, Rentals & Co-living spaces listed on ACOMI.",
       "subtitle": "Browse active spaces on ACOMI. Joining still requires an owner invitation.",
       "searchLabel": "Search places",
       "searchPlaceholder": "Search by city, area or property name",
@@ -435,6 +437,7 @@
         "recommended": "Recommended",
         "newest": "Newest"
       },
+      "filterButton": "Filter",
       "filters": {
         "title": "Filters",
         "location": "Location",
@@ -448,12 +451,13 @@
       },
       "tabs": {
         "places": "Places",
-        "mess": "Mess",
-        "messEyebrow": "Search for a meal service",
-        "messTitle": "Search for a meal service",
-        "messSubtitle": "Messes · Meal services",
-        "messSearchPlaceholder": "Search by mess or meal name",
+        "mess": "Meals",
+        "messEyebrow": "Find meals",
+        "messTitle": "Find meals near you",
+        "messSubtitle": "Mess, tiffin and meal services listed on ACOMI.",
+        "messSearchPlaceholder": "Search by city, area or mess name",
         "messFiltersHint": "Use the location selector and search to find meals. Results are filtered on the server.",
+        "messFoundAll": "{{count}} messes across all locations. Choose a location to narrow this list.",
         "messResultCount_one": "{{count}} mess found",
         "messResultCount_other": "{{count}} messes found",
         "messEmptyTitle": "No meals found",
@@ -461,6 +465,7 @@
         "messLocationEmptyTitle": "No meals found in {{location}}",
         "messLocationEmptyDescription": "Try another location or adjust your filters."
       },
+      "foundAll": "{{count}} places across all locations. Choose a location to narrow this list.",
       "resultCount_one": "{{count}} place found",
       "resultCount_other": "{{count}} places found",
       "sortRecommended": "Sort by · Recommended",
@@ -471,13 +476,15 @@
       "alreadyMember": "You're a member",
       "testBadge": "Test",
       "view": "View",
-      "viewDetails": "View details",
+      "viewDetails": "View Details",
       "getContactDetails": "Get Contact Details",
       "inquirySent": "Inquiry sent",
       "inquirySentByEmail": "Sent to your email",
       "inquirySentInApp": "Sent in the ACOMI app",
       "inquirySentEmailAndApp": "Sent to your email and the ACOMI app",
       "infoAvailable": "Information available",
+      "availableInformation": "Available Information",
+      "viewAllInfo": "View all",
       "infoContact": "Contact",
       "infoAddress": "Address",
       "infoMap": "Map",
@@ -491,15 +498,32 @@
       "infoFood": "Food",
       "infoAvailableState": "{{field}} information is on this listing",
       "infoUnavailableState": "{{field}} information is not on this listing",
+      "representativeImage": "Representative image",
+      "representativeImageAria": "Representative image for {{category}} listing",
+      "representativeCategory": {
+        "PG": "PG",
+        "HOSTEL": "hostel",
+        "CO_LIVING": "co-living",
+        "RENTAL": "rental",
+        "SERVICED": "serviced apartment",
+        "MESS": "mess",
+        "GENERIC": "accommodation"
+      },
       "priceOnRequest": "Price on request",
       "mealPriceSuffix": "/ meal",
       "priceSuffix": {
-        "PG": "/ month",
-        "HOSTEL": "/ month",
-        "RENTAL": "/ month",
-        "CO_LIVING": "/ month",
-        "MESS": "/ month"
+        "PG": "per bed / month",
+        "HOSTEL": "per bed / month",
+        "RENTAL": "per month",
+        "CO_LIVING": "per room / month",
+        "MESS": "per month"
       },
+      "priceBasis": {
+        "PER_BED": "per bed / month",
+        "PER_ROOM": "per room / month",
+        "PER_UNIT": "per month"
+      },
+      "pricingUnit": "Pricing unit",
       "detailTitle": "Place details",
       "amenities": "Amenities",
       "reviewsRatings": "Review & Ratings",
@@ -563,13 +587,14 @@
         "limitQrAlt": "UPI QR code",
         "limitUtrLabel": "UTR / Transaction reference (optional)",
         "limitUtrPlaceholder": "e.g. 123456789012",
-        "limitPaymentUnavailable": "Payment details are not set yet. Ask an admin to add UPI, QR, and WhatsApp under Credits config.",
+        "limitPaymentUnavailable": "Payment details are currently unavailable. Please try again later.",
         "limitPaymentSubmit": "I've paid — notify admin",
         "limitPaymentSubmitError": "Could not submit payment request. Please try again.",
         "limitPaymentPendingTitle": "Request submitted!",
         "limitPaymentPendingBody": "After you pay and share the screenshot on WhatsApp, an admin will add credits to your account.",
         "limitDismiss": "Done",
-        "limitResetQuota": "Reset today's limit (local only)",
+        "limitResetQuota": "Reset today's email limit (local only)",
+        "limitResetViewHere": "Reset today's view here limit (local only)",
         "limitOpenApp": "Get the ACOMI App",
         "requestTitle": "Request contact details",
         "requestBody": "Owner contact details are not displayed on ACOMI. Submit an enquiry and ACOMI will email the contact details when the listing is eligible.",
@@ -702,6 +727,8 @@
       "typeRequired": "Please select a space type.",
       "successTitle": "Space created",
       "successMessage": "\"{{name}}\" was created successfully.",
+      "notAllowedTitle": "Cannot create a space",
+      "notAllowed": "Only an owner can create a space. Tenant and customer access does not include this.",
       "wizard": {
         "panelTitle": "One place to run your property & meals",
         "chooseTypeTitle": "Choose your space type",
@@ -801,7 +828,9 @@
       "MANAGER": "Manager",
       "TENANT": "Tenant",
       "CUSTOMER": "Customer",
-      "STAFF": "Staff"
+      "STAFF": "Staff",
+      "MEMBER": "Member",
+      "ADMIN": "Admin"
     },
     "details": {
       "eyebrow": "Space",
@@ -1021,6 +1050,7 @@
       "uploadProof": "Upload payment proof",
       "previewMore": "+{{count}} more",
       "youHaveSelected": "You have selected",
+      "notAvailable": "Not available",
       "notSelected": "Not selected"
     },
     "health": {
@@ -1142,6 +1172,11 @@
     "financial": {
       "title": "Payment Summary",
       "period": "This month",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "monthEmpty": "No charges recorded for this month.",
+      "loadFailed": "Couldn't load this month's summary.",
+      "retry": "Retry",
       "emptyHintMess": "No payments yet. Payments will appear after customers begin placing orders.",
       "expectedCharges": "Expected charges",
       "expectedRevenue": "Expected Revenue",
@@ -1302,12 +1337,27 @@
       "joinedThisMonth": "Joined This Month",
       "joinedThisMonthHint": "New members"
     },
+    "dues": {
+      "summary": "Pending Payments",
+      "summaryHint": "Outstanding this month",
+      "pending": "Pending: {{amount}}",
+      "review": "Under review: {{amount}}",
+      "clear": "No pending dues",
+      "overdue": "Overdue: {{amount}}",
+      "nextDue": "Next due: {{date}}",
+      "filterTitle": "Payments",
+      "filterAll": "All members",
+      "filterPending": "Pending payments",
+      "filterClear": "No pending dues",
+      "loadFailed": "Payment totals could not be loaded."
+    },
     "members": {
       "emptyTitle": "No members yet",
       "emptyDescription": "Add your first tenant, customer, or staff member to this space.",
       "listSubtitle": "People in this space",
       "onAcomi": "On ACOMI",
       "notOnAcomiYet": "Not on ACOMI yet",
+      "mobileNotAvailable": "Mobile not available",
       "mobile": "Mobile: {{value}}",
       "created": "Added: {{date}}",
       "remove": "Remove Member"
@@ -1339,6 +1389,20 @@
       "memberMode": {
         "search": "From another space",
         "addNew": "New customer"
+      },
+      "choice": {
+        "titleCustomer": "Add a customer",
+        "titleMember": "Add a member",
+        "subtitle": "How would you like to add them?",
+        "addNewCustomer": "Add new customer",
+        "addNewMember": "Add new member",
+        "addNewDescription": "Enter their details and add them to this space.",
+        "import": "Import from another space",
+        "importDescription": "Choose someone already added to another ACOMI space.",
+        "importAvailable_one": "{{count}} member available",
+        "importAvailable_other": "{{count}} members available",
+        "importAvailableCustomer_one": "{{count}} customer available",
+        "importAvailableCustomer_other": "{{count}} customers available"
       },
       "searchCustomerPlaceholder": "Search people from your other spaces",
       "createNewHint": "Enter their name and mobile for this mess.",
@@ -1380,6 +1444,10 @@
       "role": "Role",
       "mealBilling": "Meal billing",
       "created": "Created",
+      "updated": "Updated",
+      "appStatus": "ACOMI",
+      "notProvided": "Not provided",
+      "actionsHeading": "Account actions",
       "edit": "Edit Member"
     },
     "gender": {
@@ -1539,7 +1607,7 @@
       "remarks": "Remarks",
       "paymentHistory": "Payment history",
       "paymentMonth": "Month {{month}}",
-      "noPayments": "No payments this month",
+      "noPayments": "No payments for this member.",
       "noPaymentsBody": "Payments linked to this member will appear here.",
       "amount": "Amount",
       "category": "Category",
@@ -2350,6 +2418,7 @@
       "reservedOn": "Reserved on",
       "reservedOnShort": "Reserved",
       "timelineEmpty": "—",
+      "notSet": "Not set",
       "status": "Occupancy status",
       "location": "Current location",
       "notAllocated": "Not allocated to any bed, room, or unit."
@@ -2378,8 +2447,10 @@
     },
     "actions": {
       "allocate": "Allocate",
+      "openingAllocation": "Opening allocation…",
       "allocateAccommodation": "Allocate Accommodation",
       "reserve": "Reserve",
+      "openingReservation": "Opening reservation…",
       "walkInAllocate": "Allocate today",
       "moveIn": "Move in",
       "cancelReservation": "Cancel reservation",
@@ -2467,7 +2538,7 @@
     },
     "contract": {
       "rent": "Monthly rent",
-      "deposit": "Deposit",
+      "deposit": "Security deposit (one-time)",
       "foodEnabled": "Include food charges",
       "agreementSigned": "Agreement signed",
       "remarks": "Remarks",
@@ -2857,10 +2928,25 @@
       "dayStatusNotSharedYet": "Today's menu hasn't been shared yet. After sharing, customers will receive meal confirmations.",
       "dayShare": {
         "notShared": "Not shared",
+        "notSharedHint": "Today's menu has not been shared yet",
         "shared": "Shared",
+        "sharedHint": "Today's menu has been shared",
         "updated": "Updated since last share",
+        "updatedHint": "Share again so members see the latest menu",
+        "failed": "Sharing failed",
+        "failedHint": "The menu was not shared. Try again.",
         "action": "Share today's menu",
-        "subtitle": "Share Breakfast, Lunch and Dinner together"
+        "subtitle": "Share Breakfast, Lunch and Dinner together",
+        "reshare": "Reshare today's menu",
+        "emptyHint": "Plan at least one meal before sharing.",
+        "closePoll": "Close poll",
+        "closePollTitle": "Close today's meal poll?",
+        "closePollMessage": "Members will no longer be able to submit or change their meal selections for this poll.",
+        "closePollConfirm": "Close poll",
+        "pollClosed": "Poll closed",
+        "pollClosedHint": "Members can no longer submit or change their selections",
+        "closePollSuccess": "Meal poll closed successfully.",
+        "closePollFailed": "Could not close the meal poll. Try again."
       },
       "selector": {
         "notPlanned": "Not planned",
@@ -2972,12 +3058,14 @@
       "progressive": {
         "stepOf": "Step {{current}} of {{total}}",
         "mealsSelectedNextExtras": "✓ Meals selected  ·  Next: Review extras",
+        "selectedMealsNextExtras_one": "✓ {{count}} meal selected · Next: Review extras",
+        "selectedMealsNextExtras_other": "✓ {{count}} meals selected · Next: Review extras",
         "readyToSave": "✓ Meals selected  ·  ✓ Extras reviewed  ·  Ready to save",
         "nextStep": "Next step",
         "nextStepA11y": "Next step: Review extras",
         "reviewExtrasTitle": "Review extras (optional)",
         "reviewExtrasHint": "Extras help you offer beverages, desserts and add-ons.",
-        "continueToExtras": "Continue to Extras ↓",
+        "continueToExtras": "Continue to Extras →",
         "continueToExtrasHint": "Scrolls to the Extras section on this page",
         "emptyExtrasTitle": "No extras available.",
         "emptyExtrasBody": "Create extras later if needed. Continue to save your menu."
@@ -3053,11 +3141,18 @@
       "shareToOtherSpacesHint": "Select additional spaces",
       "shareToOtherSpacesOpenHint": "Choose spaces below, or tap to hide",
       "shareToOtherSpacesSelected": "{{count}} additional space(s) selected",
+      "shareToOtherCount_one": "{{count}} other space selected",
+      "shareToOtherCount_other": "{{count}} other spaces selected",
+      "shareToOtherNone": "No additional spaces selected",
+      "shareToSelectAll": "Select all spaces ({{count}})",
+      "shareToSearch": "Search spaces",
       "shareToCurrent": "This space",
       "shareToCurrentSpace": "Current space",
       "shareToSpaceIncompatible": "{{space}} is missing menu items: {{items}}. Add matching combos/items in that space’s library, then try again.",
       "shareToSpaceFailed": "Could not copy menu to {{space}}. Current space was still shared.",
       "shareToSpacesSuccess": "Also shared to {{count}} other space(s)",
+      "savingMenu": "Saving menu…",
+      "sharingToSpaces": "Sharing to other spaces…",
       "shareToNoOtherSpaces": "No other meal-enabled spaces available to share to.",
       "shareNotPublished": "Menu for {{meal}} is not planned yet.",
       "shareDraft": "Menu for {{meal}} has no items yet.",
@@ -3065,6 +3160,8 @@
       "shareSelectAtLeastOne": "Select at least one meal to share.",
       "sharePublishedSlots": "{{count}} meal(s) ready",
       "shareHint": "Sharing opens in-app polls automatically. Members pick the same numbered options in the app.",
+      "reviewSaveTitle": "Review meal",
+      "reviewSaveHint": "Confirm to save this meal and open the poll. Members can respond in the app. WhatsApp is not opened.",
       "copyMessage": "Share menu",
       "shareEmpty": "No menus planned for this date yet.",
       "shareNotAvailableOption": "Not available for {{meal}}",
@@ -3968,6 +4065,8 @@
       "changePlan": "Change plan",
       "savePlan": "Save plan",
       "saveDraft": "Save draft",
+      "save": "Save",
+      "share": "Share",
       "shareMeal": "Share meal",
       "deleteDraft": "Delete draft",
       "publish": "Publish menu"
@@ -4036,6 +4135,90 @@
   },
   "paymentCollection": {
     "payNow": "Pay Now",
+    "addRecord": {
+      "action": "Add payment",
+      "createAction": "Create payment",
+      "createTitle": "Create payment record",
+      "createSubmit": "Create payment",
+      "searchPlaceholder": "Search by name, mobile, or member ID",
+      "title": "Add payment record",
+      "member": "Member",
+      "category": "Charge category",
+      "categoryDerived": "Category",
+      "type": "Charge type",
+      "searchChargeType": "Search charge type...",
+      "recent": "Recent",
+      "allChargeTypes": "All charge types",
+      "autoSelected": "Auto-selected from charge type",
+      "noChargeTypes": "No charge types found",
+      "tryAnotherSearch": "Try another search term.",
+      "clearChargeType": "Clear charge type",
+      "amount": "Amount",
+      "dueDate": "Due date",
+      "description": "Description",
+      "notes": "Notes",
+      "customType": "Custom charge type",
+      "cancel": "Cancel",
+      "submit": "Add payment",
+      "success": "Payment record added.",
+      "depositExists": "A security deposit already exists for this member. Add payment again to record another deposit.",
+      "errors": {
+        "member": "Select a member.",
+        "category": "Select a charge category.",
+        "type": "Select a charge type.",
+        "customType": "Enter a charge type.",
+        "amount": "Enter a valid amount.",
+        "failed": "Could not add this payment record."
+      }
+    },
+    "chargeCatalog": {
+      "categories": {
+        "RENT": "Rent",
+        "DEPOSIT": "Deposit",
+        "MAINTENANCE": "Maintenance",
+        "UTILITY": "Utility",
+        "MEALS": "Meals",
+        "SERVICE": "Service",
+        "PENALTY": "Penalty",
+        "OTHER": "Other"
+      },
+      "types": {
+        "RENT": "Rent",
+        "ADVANCE_RENT": "Advance rent",
+        "NOTICE_PERIOD": "Notice period charge",
+        "SECURITY_DEPOSIT": "Security deposit",
+        "DEPOSIT_ADJUSTMENT": "Deposit adjustment",
+        "MAINTENANCE": "Maintenance",
+        "REPAIR": "Repair",
+        "DAMAGE": "Damage",
+        "FURNITURE_DAMAGE": "Furniture damage",
+        "EQUIPMENT_DAMAGE": "Equipment damage",
+        "ELECTRICITY": "Electricity",
+        "WATER": "Water",
+        "GAS": "Gas",
+        "INTERNET": "Internet/Wi-Fi",
+        "OTHER_UTILITY": "Other utility",
+        "MEAL_PLAN": "Meal plan",
+        "EXTRA_MEALS": "Extra meals",
+        "MEAL_ADJUSTMENT": "Meal adjustment",
+        "OTHER_MEAL": "Other meal charge",
+        "LAUNDRY": "Laundry",
+        "CLEANING": "Cleaning",
+        "PARKING": "Parking",
+        "KEY_REPLACEMENT": "Key replacement",
+        "ACCESS_CARD": "Access card replacement",
+        "APPLIANCE": "Appliance usage",
+        "MOVE_IN": "Move-in charge",
+        "MOVE_OUT": "Move-out charge",
+        "ROOM_CHANGE": "Room/bed change charge",
+        "OTHER_SERVICE": "Other service",
+        "LATE_FEE": "Late payment fee",
+        "FINE": "Penalty/fine",
+        "OTHER_PENALTY": "Other penalty",
+        "MISCELLANEOUS": "Miscellaneous",
+        "OTHER": "Other"
+      }
+    },
     "uploadAgain": "Update Payment",
     "updatePayment": "Update Payment",
     "dueDate": "Due: {{date}}",
@@ -4043,6 +4226,11 @@
     "dayMeals": {
       "detailTitle": "Meals",
       "totalAmount": "Total amount",
+      "amountDueLabel": "Amount due",
+      "amountDue": "Amount due {{amount}}",
+      "amountPaid": "Paid {{amount}}",
+      "amountRemaining": "Remaining {{amount}}",
+      "amountUnavailable": "Meal price not set",
       "mealsFallback": "Meals",
       "batchId": "Batch {{id}}",
       "paymentReference": "Ref {{id}}",
@@ -4108,6 +4296,9 @@
       "RENT": "Rent",
       "DEPOSIT": "Deposit",
       "MAINTENANCE": "Maintenance",
+      "UTILITY": "Utility",
+      "SERVICE": "Service",
+      "PENALTY": "Penalty",
       "OTHER": "Other"
     },
     "category": {
@@ -4119,6 +4310,7 @@
       "REFUND": "Refund",
       "ELECTRICITY": "Electricity",
       "WATER": "Water",
+      "GAS": "Gas",
       "INTERNET": "Internet",
       "OTHER": "Other"
     },
@@ -4378,8 +4570,11 @@
       "badge": "OVERDUE",
       "chip": "OVERDUE · {{days}}d",
       "days": "{{days}} day(s) overdue",
+      "compact_one": "{{count}} day overdue",
+      "compact_other": "{{count}} days overdue",
       "outstanding": "{{amount}} outstanding"
     },
+    "allocationDetails": "Allocation details",
     "reminder": {
       "send": "Send reminder",
       "sent": "Reminder recorded",
@@ -4388,6 +4583,13 @@
       "alreadySentToday": "Reminder already processed for today",
       "providerUnavailable": "WhatsApp delivery is not configured yet",
       "invalidRecipient": "Member mobile number is missing or invalid for WhatsApp",
+      "openedWhatsApp": "In-app reminder saved. WhatsApp is open so you can review and send the message.",
+      "whatsAppReady": "WhatsApp is open. Review the message and send it yourself. The payment was not marked as received.",
+      "inAppSaved": "In-app reminder saved. This does not mark the payment as received.",
+      "memberNotOnAcomi": "This member is not on ACOMI yet, so no in-app reminder was created.",
+      "notificationFailed": "The in-app reminder could not be saved. You can try again.",
+      "copied": "WhatsApp did not open. The reminder message was copied.",
+      "whatsAppFailed": "WhatsApp could not be opened. The in-app reminder was not removed.",
       "statusLabel": "Reminder",
       "eligible": "Eligible to remind",
       "notEligible": "Not reminder-eligible"
@@ -4412,6 +4614,12 @@
       "review": "Pending review",
       "history": "History"
     },
+    "records": {
+      "heading": "Payments",
+      "search": "Search member, mobile, title, or type",
+      "emptyTitle": "No payments found",
+      "emptyDescription": "No payment records match the selected month or filters."
+    },
     "accessDenied": {
       "title": "Payments unavailable",
       "description": "Only space owners and managers can view payment summaries."
@@ -4428,6 +4636,10 @@
     "emptyPending": {
       "title": "No pending dues",
       "description": "Everyone is up to date for this month."
+    },
+    "emptyMismatch": {
+      "title": "Payment list is incomplete",
+      "description": "This month still has an outstanding balance, but no matching payment records were returned. Refresh payments to load them."
     },
     "attention": {
       "title_one": "{{count}} payment needs your review",
@@ -4532,7 +4744,13 @@
     },
     "tenant": {
       "subtitle": "Your charges for {{month}}.",
-      "empty": "No payments this month."
+      "empty": "No payments this month.",
+      "summary": {
+        "due": "Amount due",
+        "paid": "Paid",
+        "outstanding": "Outstanding",
+        "nextDue": "Next due"
+      }
     }
   },
   "complaints": {
@@ -5446,6 +5664,7 @@
       "yes": "Yes",
       "emDash": "—",
       "testYes": "Test: Yes",
+      "testBadge": "TEST",
       "testNo": "Test: No",
       "onboardingPrefix": "Onboarding:"
     },
@@ -5481,7 +5700,7 @@
         "space": "Space (optional)",
         "spaceHint": "Required — select the space this membership belongs to.",
         "spaceOptionalHint": "Optional — leave empty to create a user with no space membership.",
-        "spacePickRoleFirst": "Select a space role first (Manager, Tenant, Customer, or Staff).",
+        "spacePickRoleFirst": "Select a space role first (Manager, Member, Customer, or Staff).",
         "spaceName": "Space name (optional)",
         "spaceNameHint": "Defaults to “QA - {full name}” if left blank.",
         "spaceType": "Space type"
@@ -5489,7 +5708,7 @@
       "createTestUserRoles": {
         "OWNER": "Owner",
         "MANAGER": "Manager",
-        "TENANT": "Tenant",
+        "TENANT": "Member",
         "CUSTOMER": "Customer",
         "STAFF": "Staff"
       },
@@ -5799,7 +6018,7 @@
       "subtitle": "Upload an Excel file and map the columns to Acomi fields. Suggestions are provided to make it easier.",
       "bulkUpload": "Bulk upload",
       "optionalFieldsHint": "All columns are optional. Admin-verified rows become live discoverable Spaces automatically (owner name optional). Test leads stay hidden from Member Search.",
-      "uploadHint": "Download the template or choose your own .xlsx file. Only .xlsx is supported (max 1000 filled rows). Large imports can take several minutes.",
+      "uploadHint": "Download the template or choose your own .xlsx file. Only .xlsx is supported (max 2000 filled rows). Files over that limit are rejected before validation.",
       "downloadTemplate": "Download template",
       "chooseFile": "Choose .xlsx file",
       "selectedFile": "Selected: {{name}}",
@@ -5842,10 +6061,13 @@
       "continuePreview": "Continue to preview",
       "previewHint": "Review Valid, Invalid, Blank, and Duplicate rows before importing. Duplicates are not saved until you Keep them.",
       "previewCardTitle": "Preview imported data",
+      "previewErrorsByColumn": "Errors by column",
       "previewCardHint": "Review the data from your Excel file. Invalid rows will not be imported.",
       "previewCardHintDuplicates": "Review rows before import. Likely duplicates are flagged — choose Keep or Skip. On invalid rows, correct any column with the dropdown or text box. The Excel value stays visible. Skipped duplicates are never saved.",
       "summaryTotal": "Total rows",
       "summaryValid": "Valid rows",
+      "summaryWarning": "Warnings",
+      "summaryNormalized": "{{count}} auto-normalized values",
       "summaryDuplicate": "Duplicates",
       "summaryInvalid": "Invalid rows",
       "summaryBlank": "Blank rows",
@@ -5865,6 +6087,7 @@
       "filterAll": "All rows",
       "filterValid": "Valid only",
       "filterDuplicate": "Duplicates only",
+      "filterWarning": "Warnings only",
       "filterInvalid": "Invalid only",
       "filterBlank": "Blank only",
       "viewErrorsOnly": "View errors only",
@@ -5883,6 +6106,7 @@
       "showingRows": "Showing {{from}} to {{to}} of {{total}} rows",
       "noPreviewRows": "No rows match your filters.",
       "statusValid": "Valid",
+      "statusWarning": "Warning",
       "statusDuplicate": "Duplicate",
       "statusInvalid": "Invalid",
       "statusBlank": "Blank",

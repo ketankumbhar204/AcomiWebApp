@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 import { QueryProvider } from './QueryProvider';
 import { SnackbarProvider } from './SnackbarProvider';
 import { ThemeProvider } from './ThemeProvider';
+import { EnquiryResultToast } from '@/modules/onboarding/enquiryFeedback';
 
 type AppProvidersProps = {
   children: ReactNode;
@@ -27,6 +28,7 @@ export function AppProviders({ children }: AppProvidersProps) {
         <ThemeProvider>
           <SnackbarProvider>
             <AuthBootstrap>{children}</AuthBootstrap>
+            <EnquiryResultToast />
           </SnackbarProvider>
         </ThemeProvider>
       </QueryProvider>

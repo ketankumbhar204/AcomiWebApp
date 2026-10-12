@@ -306,6 +306,18 @@ export function MealMenuEditorPage() {
     })} · ${t('common.appName')}`;
   }, [mealType, t]);
 
+  const menuContextKey = `${spaceId}|${menuDate}|${mealType ?? ''}`;
+
+  useEffect(() => {
+    setHydrated(false);
+    setOptions([]);
+    setNotes('');
+    setPriceDrafts({});
+    setExtrasReviewed(false);
+    loadHadMealsRef.current = false;
+    baselineRef.current = '';
+  }, [menuContextKey]);
+
   useEffect(() => {
     if (!mealType || menus.loading || hydrated) return;
     const seeded = optionsFromMenu(menu);
@@ -840,7 +852,7 @@ export function MealMenuEditorPage() {
     mutations.deleteDailyMenu.isPending ||
     mutations.copyDailyMenu.isPending;
 
-  const persist = async (thenShare: boolean) => {
+  const persist = async (intent?: 'save' | 'share') => {
     if (!mealType || !canManage) return;
     if (mainOptions.length === 0) {
       enqueueSnackbar(t('meals.errors.optionsRequired'), { variant: 'warning' });
@@ -858,13 +870,13 @@ export function MealMenuEditorPage() {
           notes: notes.trim() || null,
         },
       });
-      enqueueSnackbar(t('meals.success.saved'), { variant: 'success' });
       baselineRef.current = snapshotDraft(options, notes, priceDrafts);
-      if (thenShare) {
+      if (intent) {
         allowLeaveRef.current = true;
-        navigate(spaceMealsSharePath(spaceId, menuDate));
+        navigate(spaceMealsSharePath(spaceId, menuDate, intent));
         return;
       }
+      enqueueSnackbar(t('meals.success.saved'), { variant: 'success' });
       goBack();
     } catch {
       enqueueSnackbar(t('meals.errors.saveFailed'), { variant: 'error' });
@@ -1533,16 +1545,25 @@ export function MealMenuEditorPage() {
       </Box>
 
       {showActionFooter ? (
-        <Box sx={{ flexShrink: 0, zIndex: 2 }}>
+        <Box
+          sx={{
+            flexShrink: 0,
+            zIndex: 2,
+            px: { xs: 1.5, md: 2 },
+            pt: 0.5,
+            pb: 'max(10px, env(safe-area-inset-bottom))',
+          }}
+        >
           <ProgressiveMealPlanningBar
             phase={phase}
+            selectedCount={mainOptions.length}
             saving={saving}
             saveDisabled={mainOptions.length === 0}
             shareDisabled={mainOptions.length === 0}
             canDeleteDraft={menu?.status === 'DRAFT' && options.length > 0}
             onContinueToExtras={continueToExtras}
-            onSaveDraft={() => void persist(false)}
-            onShareMeal={() => void persist(true)}
+            onSaveDraft={() => void persist()}
+            onShareMeal={() => void persist('share')}
             onDeleteDraft={() => void clearDraft()}
           />
         </Box>
@@ -1590,7 +1611,7 @@ export function MealMenuEditorPage() {
           <Button
             onClick={() => {
               setLeaveOpen(false);
-              void persist(false);
+              void persist();
             }}
             sx={dashOutlinedButtonSx}
           >

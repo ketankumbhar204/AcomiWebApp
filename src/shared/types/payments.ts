@@ -2,7 +2,15 @@ import type { DashboardFinancialSummary } from './dashboard';
 import type { SpaceType } from './space';
 import type { PagedResponse } from './api';
 
-export type UniversalPaymentType = 'MEAL' | 'RENT' | 'DEPOSIT' | 'MAINTENANCE' | 'OTHER';
+export type UniversalPaymentType =
+  | 'MEAL'
+  | 'RENT'
+  | 'DEPOSIT'
+  | 'MAINTENANCE'
+  | 'UTILITY'
+  | 'SERVICE'
+  | 'PENALTY'
+  | 'OTHER';
 
 export type UniversalPaymentMethod = 'UPI' | 'BANK_TRANSFER' | 'CASH' | 'CHEQUE' | 'OTHER';
 
@@ -23,8 +31,22 @@ export type PaymentCategory =
   | 'REFUND'
   | 'ELECTRICITY'
   | 'WATER'
+  | 'GAS'
   | 'INTERNET'
   | 'OTHER';
+
+export interface CreateSpacePaymentRequest {
+  memberId: string;
+  paymentType: UniversalPaymentType;
+  paymentCategory: PaymentCategory;
+  amount: number;
+  month?: string;
+  dueDate?: string;
+  title?: string;
+  description?: string;
+  remarks?: string;
+  confirmDuplicateDeposit?: boolean;
+}
 
 export type PaymentRejectionReason =
   | 'PAYMENT_AMOUNT_MISMATCH'
@@ -69,10 +91,12 @@ export type SpacePaymentResponse = {
   spaceId: string;
   memberId: string;
   memberName: string;
+  memberMobile?: string | null;
   occupancyId?: string | null;
   paymentType: UniversalPaymentType;
   paymentCategory: PaymentCategory;
   title: string;
+  description?: string | null;
   amount: number;
   currencyCode: string;
   dueDate: string;

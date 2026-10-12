@@ -28,6 +28,7 @@ import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { ROUTES } from '@/routes/paths';
 import { useAuthSession } from '@/shared/hooks/useAuthSession';
+import { membershipRoleLabelKey } from '@/modules/members/utils/memberRoles';
 import { useSpaceStore } from '@/store/spaceStore';
 
 function formatDate(value: string): string {
@@ -180,7 +181,7 @@ export function AcceptInvitationsPage() {
                             { defaultValue: invite.spaceType },
                           )}
                           {' · '}
-                          {t(`spaces.roles.${invite.role}`)}
+                          {t(membershipRoleLabelKey(invite.role, invite.spaceType))}
                         </Typography>
                         <Typography sx={{ ...DASHBOARD_UX.body, color: s.textMuted, mt: 0.5 }}>
                           {t('spaces.details.createdAt')}: {formatDate(invite.createdAt)}
@@ -197,7 +198,10 @@ export function AcceptInvitationsPage() {
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-                      <StatusChip label={t(`spaces.roles.${invite.role}`)} tone="info" />
+                      <StatusChip
+                        label={t(membershipRoleLabelKey(invite.role, invite.spaceType))}
+                        tone="info"
+                      />
                       <Button
                         variant="contained"
                         disabled={isSubmitting}

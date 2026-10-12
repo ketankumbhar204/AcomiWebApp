@@ -47,6 +47,13 @@ import {
 } from '@/modules/onboarding/utils/amenities';
 import { isSpaceOwner } from '@/modules/onboarding/utils/spaceOwnership';
 import {
+  addressCaptureIssue,
+  captureFromFreeText,
+  composeStoredAddress,
+  googleMapsLink,
+} from '@/modules/onboarding/utils/locationAutocomplete';
+import { AddressLocationFields } from '@/shared/components/AddressLocationFields';
+import {
   PROPERTY_CATEGORY_VALUES,
   propertyCategoryLabelKey,
   supportsSpacePropertyCategory,
@@ -171,7 +178,18 @@ function EditSpaceForm({
 
   const [tab, setTab] = useState<EditTab>('general');
   const [name, setName] = useState(details.name);
-  const [address, setAddress] = useState(details.address ?? '');
+  const [location, setLocation] = useState(() => {
+    const captured = captureFromFreeText(details.address);
+    return {
+      ...captured,
+      latitude: typeof details.latitude === 'number' ? details.latitude : captured.latitude,
+      longitude: typeof details.longitude === 'number' ? details.longitude : captured.longitude,
+      mapUrl:
+        typeof details.latitude === 'number' && typeof details.longitude === 'number'
+          ? googleMapsLink(details.latitude, details.longitude)
+          : captured.mapUrl,
+    };
+  });
   const [contactNumber, setContactNumber] = useState(details.contactNumber ?? '');
   const [genderPolicy, setGenderPolicy] = useState<GenderPolicy | ''>(
     details.genderPolicy ?? '',
@@ -284,6 +302,13 @@ function EditSpaceForm({
       setTab('general');
       return;
     }
+    if (addressCaptureIssue(location) === 'selection') {
+      setFormError(
+        t('locationCapture.selectionRequired', { defaultValue: 'Select a location from the suggestions.' }),
+      );
+      setTab('general');
+      return;
+    }
     setNameError(null);
     setFormError(null);
     setSaving(true);
@@ -291,7 +316,10 @@ function EditSpaceForm({
     try {
       await spaceApi.updateSpace(spaceId, {
         name: name.trim(),
-        address: address.trim() || undefined,
+        address: composeStoredAddress(location) || undefined,
+        ...(location.latitude != null && location.longitude != null
+          ? { latitude: location.latitude, longitude: location.longitude }
+          : {}),
         contactNumber: contactNumber.trim() || undefined,
         genderPolicy: showCategory ? genderPolicy || null : undefined,
         amenities: amenitiesPayload,
@@ -569,17 +597,7 @@ function EditSpaceForm({
                 </EditField>
 
                 <EditField icon={MapPin} fullWidth>
-                  <TextField
-                    label={t('spaces.createSpace.addressLabel')}
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder={t('spaces.createSpace.addressPlaceholder')}
-                    fullWidth
-                    size="small"
-                    multiline
-                    minRows={3}
-                    sx={fieldSx}
-                  />
+                  <AddressLocationFields value={location} onChange={setLocation} />
                 </EditField>
 
                 {showCategory ? (

@@ -11,17 +11,12 @@ import {
 } from '@mui/material';
 import {
   ArrowLeft,
-  Building2,
   Calendar,
   Check,
-  Crosshair,
   FileText,
   Home,
   IndianRupee,
   Lightbulb,
-  Link2,
-  Map,
-  MapPin,
   Phone,
   Save,
   User,
@@ -33,9 +28,18 @@ import { adminApi } from '@/modules/admin/api/adminApi';
 import { AdminNumberedFormSection } from '@/modules/admin/components/AdminNumberedFormSection';
 import { AdminPropertyTypePicker } from '@/modules/admin/components/AdminPropertyTypePicker';
 import { AdminSavedAddressPicker } from '@/modules/admin/components/AdminSavedAddressPicker';
+import { AddressLocationFields } from '@/shared/components/AddressLocationFields';
+import {
+  EMPTY_ADDRESS_CAPTURE,
+  addressCaptureIssue,
+  captureFromParts,
+} from '@/modules/onboarding/utils/locationAutocomplete';
 import { AdminTestLeadOption } from '@/modules/admin/components/AdminTestLeadOption';
 import { IndianMobileTextField } from '@/modules/admin/components/IndianMobileTextField';
+import { PriceBasisSelect } from '@/shared/components/PriceBasisSelect';
 import { StickyFooter, StickyFooterClearance } from '@/shared/components/StickyFooter';
+import type { ListingPriceBasis } from '@/shared/types/space';
+import { defaultPriceBasis } from '@/shared/utils/priceBasis';
 import { ROUTES } from '@/routes/paths';
 import { isValidIndianMobile, normalizeIndianMobileDigits } from '@/shared/utils/indianMobile';
 import type { AdminCreatePropertyRegistrationRequest } from '@/shared/types/admin';
@@ -67,14 +71,9 @@ export function AdminAddPropertyPage() {
   const [ownerName, setOwnerName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [alternateMobileNumber, setAlternateMobileNumber] = useState('');
-  const [addressLine, setAddressLine] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [pincode, setPincode] = useState('');
-  const [mapUrl, setMapUrl] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
+  const [location, setLocation] = useState(EMPTY_ADDRESS_CAPTURE);
   const [startingPrice, setStartingPrice] = useState('');
+  const [priceBasis, setPriceBasis] = useState<ListingPriceBasis>(defaultPriceBasis('PG'));
   const [availableFrom, setAvailableFrom] = useState('');
   const [testLead, setTestLead] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,33 +99,22 @@ export function AdminAddPropertyPage() {
       setError(t('admin.property.errors.alternateDifferent'));
       return;
     }
-    if (pincode.trim() && !isValidPincode(pincode.trim())) {
+    const locationIssue = addressCaptureIssue(location, { pincodeRequired: false, allowManual: true });
+    if (locationIssue === 'selection') {
+      setError(t('locationCapture.selectionRequired', { defaultValue: 'Select a location from the suggestions.' }));
+      return;
+    }
+    if (locationIssue === 'building') {
+      setError(t('locationCapture.buildingRequired', { defaultValue: 'Enter the apartment or building name.' }));
+      return;
+    }
+    if (locationIssue === 'pincode' || (location.pincode.trim() && !isValidPincode(location.pincode.trim()))) {
       setError(t('admin.property.errors.pincode'));
       return;
     }
-    if (mapUrl.trim() && !isValidMapUrl(mapUrl)) {
+    if (location.mapUrl.trim() && !isValidMapUrl(location.mapUrl)) {
       setError(t('admin.property.errors.mapUrl'));
       return;
-    }
-    const latRaw = latitude.trim();
-    const lngRaw = longitude.trim();
-    let latValue: number | undefined;
-    let lngValue: number | undefined;
-    if (latRaw || lngRaw) {
-      if (!latRaw || !lngRaw) {
-        setError(t('admin.common.coordinatesPair'));
-        return;
-      }
-      latValue = Number(latRaw);
-      lngValue = Number(lngRaw);
-      if (!Number.isFinite(latValue) || latValue < -90 || latValue > 90) {
-        setError(t('admin.common.invalidLatitude'));
-        return;
-      }
-      if (!Number.isFinite(lngValue) || lngValue < -180 || lngValue > 180) {
-        setError(t('admin.common.invalidLongitude'));
-        return;
-      }
     }
     let price: number | undefined;
     if (startingPrice.trim()) {
@@ -142,11 +130,11 @@ export function AdminAddPropertyPage() {
     const owner = optionalText(ownerName);
     const mobile = optionalText(mobileNumber);
     const alternateMobile = optionalText(alternateMobileNumber);
-    const address = optionalText(addressLine);
-    const cityValue = optionalText(city);
-    const stateValue = optionalText(state);
-    const pincodeValue = optionalText(pincode);
-    const map = optionalText(mapUrl);
+    const address = optionalText(location.selected ? location.address : location.query);
+    const cityValue = optionalText(location.city);
+    const stateValue = optionalText(location.state);
+    const pincodeValue = optionalText(location.pincode);
+    const map = optionalText(location.mapUrl);
     if (name) payload.propertyName = name;
     if (owner) payload.ownerName = owner;
     if (mobile) payload.mobileNumber = mobile;
@@ -156,9 +144,12 @@ export function AdminAddPropertyPage() {
     if (stateValue) payload.state = stateValue;
     if (pincodeValue) payload.pincode = pincodeValue;
     if (map) payload.mapUrl = map;
-    if (latValue !== undefined) payload.latitude = latValue;
-    if (lngValue !== undefined) payload.longitude = lngValue;
+    if (location.latitude != null && location.longitude != null) {
+      payload.latitude = location.latitude;
+      payload.longitude = location.longitude;
+    }
     if (price !== undefined) payload.startingPrice = price;
+    payload.priceBasis = priceBasis;
     if (testLead) payload.testLead = true;
     if (availableFrom.trim()) {
       payload.description = `Available from: ${availableFrom.trim()}`;
@@ -260,7 +251,13 @@ export function AdminAddPropertyPage() {
               title={t('admin.property.detailsTitle')}
               description={t('admin.property.detailsHint')}>
               <Box sx={{ gridColumn: { md: '1 / -1' } }}>
-                <AdminPropertyTypePicker value={propertyType} onChange={setPropertyType} />
+                <AdminPropertyTypePicker
+                  value={propertyType}
+                  onChange={(next) => {
+                    setPropertyType(next);
+                    setPriceBasis(defaultPriceBasis(next));
+                  }}
+                />
               </Box>
               <TextField
                 label={`${t('admin.property.name')} *`}
@@ -331,147 +328,43 @@ export function AdminAddPropertyPage() {
               title={t('admin.common.location')}
               description={t('admin.common.locationHintProperty')}>
               <AdminSavedAddressPicker
-                value={{ addressLine, city, state, pincode, mapUrl }}
-                onChange={(next) => {
-                  setAddressLine(next.addressLine);
-                  setCity(next.city);
-                  setState(next.state);
-                  setPincode(next.pincode);
-                  setMapUrl(next.mapUrl);
+                value={{
+                  addressLine: location.address,
+                  city: location.city,
+                  state: location.state,
+                  pincode: location.pincode,
+                  mapUrl: location.mapUrl,
                 }}
+                onChange={(next) => setLocation(captureFromParts(next))}
               />
-              <TextField
-                label={`${t('admin.common.addressLine')} *`}
-                value={addressLine}
-                onChange={(e) => setAddressLine(e.target.value)}
-                fullWidth
-                size="small"
-                sx={{ ...fieldSx, gridColumn: { md: '1 / -1' } }}
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <MapPin size={16} color="#94A3B8" />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
-              <TextField
-                label={t('admin.common.city')}
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                fullWidth
-                size="small"
-                sx={fieldSx}
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Building2 size={16} color="#94A3B8" />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
-              <TextField
-                label={t('admin.common.state')}
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                fullWidth
-                size="small"
-                sx={fieldSx}
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Map size={16} color="#94A3B8" />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
-              <TextField
-                label={t('admin.common.pincode')}
-                value={pincode}
-                onChange={(e) => setPincode(e.target.value)}
-                fullWidth
-                size="small"
-                sx={fieldSx}
-                slotProps={{
-                  htmlInput: { maxLength: 6, inputMode: 'numeric' },
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Crosshair size={16} color="#94A3B8" />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
-              <TextField
-                label={t('admin.common.latitude')}
-                value={latitude}
-                onChange={(e) => setLatitude(e.target.value)}
-                placeholder={t('admin.common.latitudePlaceholder')}
-                fullWidth
-                size="small"
-                sx={fieldSx}
-                slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-              />
-              <TextField
-                label={t('admin.common.longitude')}
-                value={longitude}
-                onChange={(e) => setLongitude(e.target.value)}
-                placeholder={t('admin.common.longitudePlaceholder')}
-                fullWidth
-                size="small"
-                sx={fieldSx}
-                slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-              />
-              <TextField
-                label={t('admin.property.mapLinkOptional')}
-                value={mapUrl}
-                onChange={(e) => setMapUrl(e.target.value)}
-                placeholder={t('admin.common.mapLinkPlaceholder')}
-                helperText={t('admin.common.mapEitherHint')}
-                fullWidth
-                size="small"
-                sx={{ ...fieldSx, gridColumn: { md: '1 / -1' } }}
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Link2 size={16} color="#94A3B8" />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
+              <AddressLocationFields value={location} onChange={setLocation} showBuildingName={false} allowManual />
             </AdminNumberedFormSection>
 
             <AdminNumberedFormSection
               step={4}
               title={t('admin.common.pricingOptions')}
               description={t('admin.common.pricingOptionsHint')}>
-              <TextField
-                label={t('admin.property.expectedRent')}
-                value={startingPrice}
-                onChange={(e) => setStartingPrice(e.target.value)}
-                fullWidth
-                size="small"
-                sx={fieldSx}
-                slotProps={{
-                  htmlInput: { inputMode: 'decimal' },
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <IndianRupee size={16} color="#94A3B8" />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.5, gridColumn: { md: '1 / -1' } }}>
+                <TextField
+                  label={t('admin.property.expectedRent')}
+                  value={startingPrice}
+                  onChange={(e) => setStartingPrice(e.target.value)}
+                  fullWidth
+                  size="small"
+                  sx={fieldSx}
+                  slotProps={{
+                    htmlInput: { inputMode: 'decimal' },
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <IndianRupee size={16} color="#94A3B8" />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+                <PriceBasisSelect value={priceBasis} onChange={setPriceBasis} />
+              </Box>
               <TextField
                 label={t('admin.property.availableFrom')}
                 type="date"

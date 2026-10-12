@@ -9,8 +9,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { BedSingle, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { StatusChip } from '@/shared/components/StatusChip';
@@ -23,6 +23,7 @@ import {
   type BedInteractionDraft,
 } from '../utils/bedInteractionDraft';
 import { OccupancyActionButtons } from './OccupancyActionButtons';
+import { OccupiedBedStaySection } from './OccupiedBedStaySection';
 
 type OccupancyButtons = {
   status?: AccommodationStatus | string;
@@ -42,6 +43,8 @@ type BedInteractionDialogProps = {
   open: boolean;
   mode?: 'persisted' | 'preview';
   label: string;
+  spaceId?: string;
+  bedId?: string;
   bedNumber: string;
   locationLine?: string;
   status?: AccommodationStatus;
@@ -58,6 +61,8 @@ export function BedInteractionDialog({
   open,
   mode = 'persisted',
   label,
+  spaceId,
+  bedId,
   bedNumber,
   locationLine,
   status,
@@ -76,9 +81,13 @@ export function BedInteractionDialog({
   const [rentError, setRentError] = useState<string | null>(null);
   const [depositError, setDepositError] = useState<string | null>(null);
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [busyAction, setBusyAction] = useState<'allocate' | 'reserve' | null>(null);
+  const busyRef = useRef(false);
 
   useEffect(() => {
     if (open) {
+      busyRef.current = false;
+      setBusyAction(null);
       setNumberText(bedNumber);
       setRentText(rent == null ? '' : String(rent));
       setDepositText(deposit == null ? '' : String(deposit));
@@ -106,13 +115,15 @@ export function BedInteractionDialog({
     [depositText, numberText, rentText],
   );
 
+  const occupiedStay = mode === 'persisted' && status === 'OCCUPIED' && Boolean(spaceId && bedId);
+  const structureEditable = canEdit && !occupiedStay;
   const unchanged = isBedDraftUnchanged(current, draft);
 
   const requestClose = () => {
     if (saving) {
       return;
     }
-    if (canEdit && !unchanged) {
+    if (structureEditable && !unchanged) {
       setDiscardOpen(true);
       return;
     }
@@ -133,6 +144,18 @@ export function BedInteractionDialog({
     return !rentMissing && !depositMissing;
   };
 
+  const runOccupancyAction = (action: 'allocate' | 'reserve', run?: () => void) => {
+    if (!run || busyRef.current || saving) {
+      return;
+    }
+    if (!validateOccupancyPricing()) {
+      return;
+    }
+    busyRef.current = true;
+    setBusyAction(action);
+    run();
+  };
+
   const saveLabel =
     mode === 'preview'
       ? t('common.save')
@@ -145,9 +168,24 @@ export function BedInteractionDialog({
         onClose={saving || discardOpen ? undefined : requestClose}
         fullWidth
         maxWidth="sm"
+        transitionDuration={0}
+        slotProps={{ paper: { sx: { maxHeight: '85vh' } } }}
       >
         <DialogTitle sx={{ pr: 1 }}>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+            <Stack
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: 1.25,
+                bgcolor: '#ECFBF3',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <BedSingle size={18} color="#059669" />
+            </Stack>
             <Stack spacing={0.5} sx={{ flex: 1, minWidth: 0 }}>
               <Typography sx={{ fontWeight: 700, fontSize: 18 }}>{label}</Typography>
               {locationLine ? (
@@ -169,6 +207,15 @@ export function BedInteractionDialog({
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
+            {occupiedStay && spaceId && bedId ? (
+              <OccupiedBedStaySection
+                spaceId={spaceId}
+                bedId={bedId}
+                bedNumber={bedNumber}
+                locationLine={locationLine}
+              />
+            ) : (
+              <>
             <Typography sx={{ fontWeight: 700, fontSize: 14 }}>
               {t('accommodation.beds.detailsSection', { defaultValue: 'Bed details' })}
             </Typography>
@@ -176,7 +223,7 @@ export function BedInteractionDialog({
               label={t('accommodation.beds.bedNumberLabel', { defaultValue: 'Bed number' })}
               value={numberText}
               onChange={(event) => setNumberText(event.target.value)}
-              disabled={!canEdit}
+              disabled={!structureEditable}
               fullWidth
             />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
@@ -189,7 +236,7 @@ export function BedInteractionDialog({
                     setRentError(null);
                   }
                 }}
-                disabled={!canEdit}
+                disabled={!structureEditable}
                 type="number"
                 placeholder={t('accommodation.fields.enterRent', { defaultValue: 'Enter rent' })}
                 error={Boolean(rentError)}
@@ -211,7 +258,7 @@ export function BedInteractionDialog({
                     setDepositError(null);
                   }
                 }}
-                disabled={!canEdit}
+                disabled={!structureEditable}
                 type="number"
                 placeholder={t('accommodation.fields.enterDeposit', {
                   defaultValue: 'Enter deposit',
@@ -228,7 +275,7 @@ export function BedInteractionDialog({
               />
             </Stack>
 
-            {canEdit ? (
+            {structureEditable ? (
               <Button
                 variant="contained"
                 disabled={saving || unchanged}
@@ -237,6 +284,8 @@ export function BedInteractionDialog({
                 {saveLabel}
               </Button>
             ) : null}
+              </>
+            )}
 
             {occupancy ? (
               <OccupancyActionButtons
@@ -247,22 +296,15 @@ export function BedInteractionDialog({
                 title={t('occupancy.accommodationActions.title', {
                   defaultValue: 'Occupancy actions',
                 })}
+                pendingAction={busyAction}
                 onAllocate={
                   occupancy.onAllocate
-                    ? () => {
-                        if (validateOccupancyPricing()) {
-                          occupancy.onAllocate?.();
-                        }
-                      }
+                    ? () => runOccupancyAction('allocate', occupancy.onAllocate)
                     : undefined
                 }
                 onReserve={
                   occupancy.onReserve
-                    ? () => {
-                        if (validateOccupancyPricing()) {
-                          occupancy.onReserve?.();
-                        }
-                      }
+                    ? () => runOccupancyAction('reserve', occupancy.onReserve)
                     : undefined
                 }
                 onMoveIn={occupancy.onMoveIn}

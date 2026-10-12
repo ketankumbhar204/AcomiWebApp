@@ -9,7 +9,6 @@ import {
   IconButton,
   InputAdornment,
   MenuItem,
-  Pagination,
   Select,
   Stack,
   Tab,
@@ -36,7 +35,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useSnackbar } from 'notistack';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
@@ -59,7 +58,7 @@ import type {
   RegistrationStatus,
 } from '@/shared/types/admin';
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 20;
 
 type LeadScope = 'open' | 'my' | 'claimed' | 'unclaimed' | 'website' | 'admin';
 type DeleteTarget =
@@ -117,9 +116,13 @@ export function AdminPropertyListPage() {
   const [leads, setLeads] = useState<PropertyRegistrationListItem[]>([]);
   const [activeAll, setActiveAll] = useState<AdminActiveSpace[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [leadPage, setLeadPage] = useState(0);
+  const [leadHasMore, setLeadHasMore] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [totalElements, setTotalElements] = useState(0);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
   const [sourceFilter, setSourceFilter] = useState<RegistrationSource | ''>('');
@@ -137,14 +140,10 @@ export function AdminPropertyListPage() {
   const [activeFilterKey, setActiveFilterKey] = useState(filterKey);
   if (activeFilterKey !== filterKey) {
     setActiveFilterKey(filterKey);
-    setPage(0);
+    setLeadPage(0);
+    setVisibleCount(PAGE_SIZE);
+    setLeadHasMore(false);
     setSelected(new Set());
-  }
-
-  const requestKey = `${filterKey}|${page}`;
-  const [activeRequestKey, setActiveRequestKey] = useState(requestKey);
-  if (activeRequestKey !== requestKey) {
-    setActiveRequestKey(requestKey);
     setLoading(true);
   }
 
@@ -201,15 +200,15 @@ export function AdminPropertyListPage() {
         if (tab === 'leads') {
           const result = await adminApi.listPropertyRegistrations({
             ...listParams,
-            page,
+            page: leadPage,
             size: PAGE_SIZE,
           });
           if (!cancelled) {
-            setLeads(result.content);
-            setTotalPages(result.totalPages);
+            setLeads((prev) => (leadPage === 0 ? result.content : [...prev, ...result.content]));
             setTotalElements(result.totalElements);
+            setLeadHasMore(!result.last && result.content.length > 0);
           }
-        } else {
+        } else if (leadPage === 0) {
           const spaces = await adminApi.listActiveSpaces();
           if (!cancelled) {
             const filtered = spaces
@@ -228,22 +227,26 @@ export function AdminPropertyListPage() {
               .filter((s) => !sourceFilter || s.source === sourceFilter);
             setActiveAll(filtered);
             setTotalElements(filtered.length);
-            setTotalPages(Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)));
           }
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setLoadingMore(false);
+          loadingMoreRef.current = false;
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [debouncedQ, listParams, page, sourceFilter, tab]);
+  }, [debouncedQ, listParams, leadPage, sourceFilter, tab]);
 
-  const activePage = useMemo(() => {
-    const start = page * PAGE_SIZE;
-    return activeAll.slice(start, start + PAGE_SIZE);
-  }, [activeAll, page]);
+  const activeVisible = useMemo(
+    () => activeAll.slice(0, visibleCount),
+    [activeAll, visibleCount],
+  );
+  const hasMore = tab === 'leads' ? leadHasMore : visibleCount < activeAll.length;
 
   const stats = useMemo(
     () => [
@@ -317,7 +320,7 @@ export function AdminPropertyListPage() {
     setSearchParams(params, { replace: true });
   }
 
-  const rowIds = tab === 'leads' ? leads.map((l) => l.id) : activePage.map((s) => s.id);
+  const rowIds = tab === 'leads' ? leads.map((l) => l.id) : activeVisible.map((s) => s.id);
   const allSelected = rowIds.length > 0 && rowIds.every((id) => selected.has(id));
 
   function toggleAll() {
@@ -432,9 +435,34 @@ export function AdminPropertyListPage() {
 
   const selectedCount = selected.size;
 
-  const showingFrom = totalElements === 0 ? 0 : page * PAGE_SIZE + 1;
-  const showingTo = Math.min((page + 1) * PAGE_SIZE, totalElements);
-  const pages = tab === 'leads' ? totalPages : Math.max(1, Math.ceil(totalElements / PAGE_SIZE));
+  const shownCount = tab === 'leads' ? leads.length : Math.min(visibleCount, activeAll.length);
+  const showingFrom = totalElements === 0 ? 0 : 1;
+  const showingTo = shownCount;
+
+  function loadMore() {
+    if (loading || loadingMoreRef.current || !hasMore) return;
+    loadingMoreRef.current = true;
+    if (tab === 'leads') {
+      setLoadingMore(true);
+      setLeadPage((current) => current + 1);
+      return;
+    }
+    setVisibleCount((current) => current + PAGE_SIZE);
+    loadingMoreRef.current = false;
+  }
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || loading || loadingMore || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) loadMore();
+      },
+      { rootMargin: '240px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  });
 
   return (
     <Box>
@@ -830,7 +858,7 @@ export function AdminPropertyListPage() {
                                 fontSize: 12,
                                 fontWeight: 700,
                               }}>
-                              {t('admin.common.yes')}
+                              {t('admin.labels.testBadge')}
                             </Box>
                           ) : (
                             <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
@@ -886,7 +914,7 @@ export function AdminPropertyListPage() {
                     );
                   })
                 )
-              ) : activePage.length === 0 ? (
+              ) : activeVisible.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7}>
                     <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
@@ -895,7 +923,7 @@ export function AdminPropertyListPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                activePage.map((space) => {
+                activeVisible.map((space) => {
                   const created = formatCreated(space.createdAt);
                   const chipSx = sourceChipSx(space.source);
                   const detailPath = space.registrationId
@@ -992,7 +1020,7 @@ export function AdminPropertyListPage() {
                               fontSize: 12,
                               fontWeight: 700,
                             }}>
-                            {t('admin.common.yes')}
+                            {t('admin.labels.testBadge')}
                           </Box>
                         ) : (
                           <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
@@ -1072,22 +1100,11 @@ export function AdminPropertyListPage() {
               total: totalElements,
             })}
           </Typography>
-          {pages > 1 ? (
-            <Pagination
-              count={pages}
-              page={page + 1}
-              onChange={(_, value) => setPage(value - 1)}
-              color="primary"
-              shape="rounded"
-              sx={{
-                '& .Mui-selected': {
-                  bgcolor: '#22C55E !important',
-                  color: '#FFFFFF',
-                },
-              }}
-            />
+          {loadingMore ? (
+            <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{t('common.loading')}</Typography>
           ) : null}
         </Stack>
+        <Box ref={sentinelRef} sx={{ height: 1 }} />
       </Card>
 
       <ConfirmDialog

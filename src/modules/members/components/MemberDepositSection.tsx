@@ -19,12 +19,14 @@ type MemberDepositSectionProps = {
   spaceId: string;
   member: MemberDetailsResponse;
   canEdit: boolean;
+  embedded?: boolean;
 };
 
 export function MemberDepositSection({
   spaceId,
   member,
   canEdit,
+  embedded = false,
 }: MemberDepositSectionProps) {
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
@@ -84,7 +86,7 @@ export function MemberDepositSection({
     (member.depositRefunded ?? 0) === 0
   ) {
     return (
-      <PageSection title={t('membership.detailTabs.deposit')}>
+      <PageSection title={embedded ? undefined : t('membership.detailTabs.deposit')}>
         <EmptyState
           title={t('membership.deposit.emptyTitle')}
           description={t('membership.deposit.emptyDescription')}
@@ -95,7 +97,7 @@ export function MemberDepositSection({
 
   if (editing && canEdit) {
     return (
-      <PageSection title={t('membership.detailTabs.deposit')}>
+      <PageSection title={embedded ? undefined : t('membership.detailTabs.deposit')}>
         <Stack spacing={1.5}>
           <TextField
             size="small"
@@ -154,7 +156,7 @@ export function MemberDepositSection({
 
   return (
     <PageSection
-      title={t('membership.detailTabs.deposit')}
+      title={embedded ? undefined : t('membership.detailTabs.deposit')}
       actions={
         canEdit ? (
           <Button size="small" onClick={() => setEditing(true)} sx={dashOutlinedButtonSx}>

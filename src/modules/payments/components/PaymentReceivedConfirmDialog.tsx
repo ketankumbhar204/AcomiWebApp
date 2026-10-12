@@ -8,14 +8,26 @@ import type { SpacePaymentResponse } from '@/shared/types/payments';
 type PaymentReceivedConfirmDialogProps = {
   open: boolean;
   payments: SpacePaymentResponse[];
+  spaceName?: string | null;
   confirming?: boolean;
   onConfirm: () => void;
   onClose: () => void;
 };
 
+function periodLabel(month?: string | null): string | null {
+  if (!month) return null;
+  const match = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!match) return month;
+  return new Date(Number(match[1]), Number(match[2]) - 1, 1).toLocaleDateString('en-GB', {
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
 export function PaymentReceivedConfirmDialog({
   open,
   payments,
+  spaceName,
   confirming = false,
   onConfirm,
   onClose,
@@ -39,16 +51,33 @@ export function PaymentReceivedConfirmDialog({
             <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
               {primary.memberName}
             </Typography>
-            {payments.map((payment) => (
-              <Typography key={payment.paymentId} sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
-                {payment.title} · {formatCurrency(payment.amount, payment.currencyCode)}
-              </Typography>
-            ))}
-            {primary.targetLabel ? (
-              <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
-                {primary.targetLabel}
-              </Typography>
+            {spaceName ? (
+              <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>{spaceName}</Typography>
             ) : null}
+            {payments.map((payment) => {
+              const outstanding = payment.outstandingAmount ?? payment.amount;
+              const period = periodLabel(payment.month);
+              return (
+                <Stack key={payment.paymentId} spacing={0.25}>
+                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
+                    {payment.title}
+                  </Typography>
+                  {payment.targetLabel ? (
+                    <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
+                      {payment.targetLabel}
+                    </Typography>
+                  ) : null}
+                  {period ? (
+                    <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
+                      {period}
+                    </Typography>
+                  ) : null}
+                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
+                    {formatCurrency(outstanding, payment.currencyCode)}
+                  </Typography>
+                </Stack>
+              );
+            })}
             <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, pt: 1 }}>
               {t('paymentCollection.received.skipProof')}
             </Typography>

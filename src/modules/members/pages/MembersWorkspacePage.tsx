@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Checkbox,
+  CircularProgress,
   FormControl,
   Grid,
   IconButton,
@@ -22,6 +23,7 @@ import {
 import {
   CalendarPlus,
   Download,
+  IndianRupee,
   Mail,
   MailPlus,
   MoreVertical,
@@ -33,6 +35,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
@@ -48,18 +51,32 @@ import { StatCard } from '@/shared/components/StatCard';
 import { StatusChip } from '@/shared/components/StatusChip';
 import type { MemberResponse, MemberStatus, PendingInvitationResponse } from '@/shared/types/member';
 import type { MembershipRole } from '@/shared/types/space';
+import { paymentsApi } from '@/modules/payments/api/paymentsApi';
+import { usePaymentsSummary } from '@/modules/payments/hooks/usePayments';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import {
-  spaceAddCustomersHubPath,
   spaceImportPeoplePath,
   spaceMemberPath,
   spaceMembersPath,
 } from '@/routes/paths';
 import { colors } from '@/shared/theme/colors';
+import { canManagePayments, currentMonthKey } from '@/shared/utils/dashboardFinancial';
 import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import {
+  addPersonNoun,
+  countImportableCandidates,
+  destinationForAddPersonChoice,
+  shouldOfferImportChoice,
+} from '../addPersonChoice';
+import { AddPersonChoiceDialog } from '../components/AddPersonChoiceDialog';
 import { MemberFormDrawer } from '../components/MemberFormDrawer';
+import type { MemberPickerMode } from '../components/form/MemberCustomerReusePicker';
 import { InviteMemberDialog } from '../components/InviteMemberDialog';
 import { MemberInspector } from '../components/MemberInspector';
+import {
+  importCandidatesQueryKey,
+  loadImportPickerItems,
+} from '../hooks/useResidentImportSearch';
 import {
   useMemberDetails,
   useMemberMutations,
@@ -81,6 +98,14 @@ import {
   type MemberListFilterState,
   type MemberSortOption,
 } from '../utils/memberListQuery';
+import {
+  formatDuesAmount,
+  memberDuesCue,
+  type MemberDuesSnapshot,
+  type MemberPaymentDuesFilter,
+} from '../utils/memberDues';
+import { membershipRoleLabelKey } from '../utils/memberRoles';
+import { formatMemberContactNumber } from '@/shared/utils/indianMobile';
 
 type ListTab = 'members' | 'pending';
 
@@ -100,6 +125,57 @@ const filterControlSx = {
   },
 } as const;
 
+function MemberDuesLine({
+  snapshot,
+  onOpen,
+}: {
+  snapshot: MemberDuesSnapshot | undefined;
+  onOpen: () => void;
+}) {
+  const { t } = useTranslation();
+  const cue = memberDuesCue(snapshot);
+  if (!cue) {
+    return null;
+  }
+  const currency = snapshot?.currencyCode || 'INR';
+  const text =
+    cue.kind === 'due'
+      ? t('membership.dues.pending', {
+          amount: formatDuesAmount(cue.amount, currency),
+          defaultValue: 'Pending: {{amount}}',
+        })
+      : cue.kind === 'review'
+        ? t('membership.dues.review', {
+            amount: formatDuesAmount(cue.amount, currency),
+            defaultValue: 'Under review: {{amount}}',
+          })
+        : t('membership.dues.clear', { defaultValue: 'No pending dues' });
+  const color = cue.kind === 'due' ? '#D97706' : cue.kind === 'review' ? '#2563EB' : colors.primaryDark;
+  return (
+    <Typography
+      component="button"
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen();
+      }}
+      sx={{
+        ...DASHBOARD_UX.metricCaption,
+        display: 'block',
+        p: 0,
+        border: 0,
+        background: 'none',
+        cursor: 'pointer',
+        textAlign: 'left',
+        fontWeight: 700,
+        color,
+      }}
+    >
+      {text}
+    </Typography>
+  );
+}
+
 function initials(name: string): string {
   return name
     .split(/\s+/)
@@ -109,7 +185,7 @@ function initials(name: string): string {
     .join('');
 }
 
-type MembersKpiFocus = 'total' | 'active' | 'pending' | 'joinedThisMonth';
+type MembersKpiFocus = 'total' | 'active' | 'pending' | 'joinedThisMonth' | 'pendingPayments';
 
 function MemberRowActions({
   onView,
@@ -233,11 +309,48 @@ export function MembersWorkspacePage() {
   const { t } = useTranslation();
   const { spaceId = '', memberId } = useParams<{ spaceId: string; memberId?: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const importPreview = useQuery({
+    queryKey: importCandidatesQueryKey(spaceId),
+    queryFn: () => loadImportPickerItems(spaceId),
+    enabled: Boolean(spaceId),
+    staleTime: 15_000,
+  });
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const permissions = useSpacePermissions(spaceId);
   const spaceType = permissions.space?.spaceType;
+  const canSeeDues = canManagePayments(permissions.membershipRole);
+  const duesMonth = currentMonthKey();
+  const duesSummary = usePaymentsSummary(spaceId, duesMonth, canSeeDues);
+  const duesMembersQuery = useQuery({
+    queryKey: ['members-dues', spaceId, duesMonth],
+    enabled: canSeeDues && Boolean(spaceId),
+    staleTime: 15_000,
+    queryFn: async () => {
+      const first = await paymentsApi.getPaymentsMembers(spaceId, {
+        month: duesMonth,
+        page: 0,
+        size: 100,
+      });
+      const rows = [...first.page.content];
+      const extraPages = Math.min(first.page.totalPages, 10) - 1;
+      if (extraPages > 0) {
+        const rest = await Promise.all(
+          Array.from({ length: extraPages }, (_, index) =>
+            paymentsApi.getPaymentsMembers(spaceId, {
+              month: duesMonth,
+              page: index + 1,
+              size: 100,
+            }),
+          ),
+        );
+        rest.forEach((page) => rows.push(...page.page.content));
+      }
+      return rows;
+    },
+  });
 
   const membersQuery = useMembers(spaceId, permissions.canManageMembers);
   const invitationsQuery = usePendingInvitations(spaceId, permissions.canManageMembers);
@@ -249,6 +362,10 @@ export function MembersWorkspacePage() {
   const [filters, setFilters] = useState<MemberListFilterState>(defaultMemberListFilters());
   const [kpiFocus, setKpiFocus] = useState<MembersKpiFocus | null>(null);
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
+  const [choiceOpen, setChoiceOpen] = useState(false);
+  const [importableCount, setImportableCount] = useState(0);
+  const [resolvingClick, setResolvingClick] = useState(false);
+  const [createPickerMode, setCreatePickerMode] = useState<MemberPickerMode>('new');
   const [editTarget, setEditTarget] = useState<MemberResponse | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invitePrefill, setInvitePrefill] = useState<{
@@ -265,15 +382,115 @@ export function MembersWorkspacePage() {
     document.title = `${t('navigation.members')} · ${t('common.appName')}`;
   }, [t]);
 
-  useEffect(() => {
-    if (searchParams.get('create') === '1') {
-      setFormMode('create');
-      setEditTarget(null);
-      const next = new URLSearchParams(searchParams);
-      next.delete('create');
-      setSearchParams(next, { replace: true });
+  const choiceFromQuery =
+    searchParams.get('addChoice') === '1' || searchParams.get('create') === '1';
+
+  const clearChoiceQuery = () => {
+    if (!choiceFromQuery) {
+      return;
     }
-  }, [searchParams, setSearchParams]);
+    const next = new URLSearchParams(searchParams);
+    next.delete('addChoice');
+    next.delete('create');
+    setSearchParams(next, { replace: true });
+  };
+
+  const closeChoice = () => {
+    setChoiceOpen(false);
+    clearChoiceQuery();
+  };
+
+  const startCreate = (pickerMode: MemberPickerMode) => {
+    setCreatePickerMode(pickerMode);
+    setEditTarget(null);
+    setFormMode('create');
+    setChoiceOpen(false);
+    clearChoiceQuery();
+  };
+
+  const chooseAddNew = () => {
+    startCreate('new');
+  };
+
+  const chooseImport = () => {
+    const destination = destinationForAddPersonChoice(spaceType, 'import');
+    if (destination.type === 'import-page') {
+      closeChoice();
+      navigate(spaceImportPeoplePath(spaceId));
+      return;
+    }
+    startCreate(destination.pickerMode);
+  };
+
+  const applyImportDecision = async (isActive: () => boolean = () => true) => {
+    const people = await queryClient.fetchQuery({
+      queryKey: importCandidatesQueryKey(spaceId),
+      queryFn: () => loadImportPickerItems(spaceId),
+      staleTime: 15_000,
+    });
+    if (!isActive()) {
+      return;
+    }
+    const count = countImportableCandidates(people);
+    setImportableCount(count);
+    if (shouldOfferImportChoice(count)) {
+      setChoiceOpen(true);
+      clearChoiceQuery();
+      return;
+    }
+    startCreate('new');
+  };
+
+  const openAddChoice = () => {
+    if (resolvingClick) {
+      return;
+    }
+    if (importPreview.data) {
+      const count = countImportableCandidates(importPreview.data);
+      setImportableCount(count);
+      if (shouldOfferImportChoice(count)) {
+        setChoiceOpen(true);
+        clearChoiceQuery();
+      } else {
+        startCreate('new');
+      }
+      return;
+    }
+    setResolvingClick(true);
+    void applyImportDecision()
+      .catch(() => {
+        startCreate('new');
+      })
+      .finally(() => {
+        setResolvingClick(false);
+      });
+  };
+
+  const importablePreviewCount = countImportableCandidates(importPreview.data ?? []);
+  const deepLinkSettled = choiceFromQuery && importPreview.isFetched;
+  const deepLinkChoice =
+    deepLinkSettled &&
+    importPreview.isSuccess &&
+    shouldOfferImportChoice(importablePreviewCount);
+  const deepLinkForm =
+    deepLinkSettled &&
+    (!importPreview.isSuccess || !shouldOfferImportChoice(importablePreviewCount));
+
+  const resolvingEntry =
+    resolvingClick || (choiceFromQuery && !importPreview.isFetched && formMode == null);
+
+  const duesByMemberId = useMemo(() => {
+    const map = new Map<string, MemberDuesSnapshot>();
+    (duesMembersQuery.data ?? []).forEach((item) => {
+      map.set(item.memberId, {
+        pending: item.pending,
+        underReview: item.underReview,
+        expectedCharges: item.expectedCharges,
+        currencyCode: item.currencyCode,
+      });
+    });
+    return map;
+  }, [duesMembersQuery.data]);
 
   const filteredMembers = useMemo(
     () =>
@@ -281,8 +498,9 @@ export function MembersWorkspacePage() {
         search,
         filters,
         spaceType,
+        duesByMemberId,
       }),
-    [filters, membersQuery.members, search, spaceType],
+    [duesByMemberId, filters, membersQuery.members, search, spaceType],
   );
 
   const filteredInvites = useMemo(
@@ -317,6 +535,14 @@ export function MembersWorkspacePage() {
       });
       return;
     }
+    if (next === 'pendingPayments') {
+      setListTab('members');
+      setFilters({
+        ...defaultMemberListFilters(),
+        paymentDues: 'pending',
+      });
+      return;
+    }
     setListTab('members');
     setFilters({
       ...defaultMemberListFilters(),
@@ -344,7 +570,8 @@ export function MembersWorkspacePage() {
   const activeFilterCount = countMemberListFilters(filters, spaceType);
   const inspectorOpen = Boolean(memberId);
 
-  const openMember = (id: string) => navigate(spaceMemberPath(spaceId, id));
+  const openMember = (id: string, tab?: 'payments') =>
+    navigate(tab ? `${spaceMemberPath(spaceId, id)}?tab=payments` : spaceMemberPath(spaceId, id));
 
   const memberColumns: DataTableColumn<MemberRow>[] = [
     {
@@ -384,6 +611,7 @@ export function MembersWorkspacePage() {
               ? t('membership.members.onAcomi')
               : t('membership.members.notOnAcomiYet')}
           </Typography>
+          {canSeeDues ? <MemberDuesLine snapshot={duesByMemberId.get(row.memberId)} onOpen={() => openMember(row.memberId, 'payments')} /> : null}
         </Box>
       ),
       sortable: true,
@@ -398,7 +626,26 @@ export function MembersWorkspacePage() {
     {
       id: 'role',
       header: t('membership.workspace.columns.role'),
-      accessor: (row) => <StatusChip label={t(`spaces.roles.${row.role}`)} tone="info" />,
+      accessor: (row) => {
+        const contact =
+          formatMemberContactNumber(row.mobileNumber) ??
+          t('membership.members.mobileNotAvailable');
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.75, minWidth: 0 }}>
+            <StatusChip label={t(membershipRoleLabelKey(row.role, spaceType))} tone="info" />
+            <Typography
+              component="span"
+              sx={{
+                ...DASHBOARD_UX.caption,
+                color: s.textSecondary,
+                overflowWrap: 'anywhere',
+              }}
+            >
+              {`·  ${contact}`}
+            </Typography>
+          </Box>
+        );
+      },
     },
     {
       id: 'joined',
@@ -451,7 +698,9 @@ export function MembersWorkspacePage() {
     {
       id: 'role',
       header: t('membership.workspace.columns.role'),
-      accessor: (row) => <StatusChip label={t(`spaces.roles.${row.role}`)} tone="info" />,
+      accessor: (row) => (
+        <StatusChip label={t(membershipRoleLabelKey(row.role, spaceType))} tone="info" />
+      ),
     },
     {
       id: 'invitedBy',
@@ -573,6 +822,34 @@ export function MembersWorkspacePage() {
         </Select>
       </FormControl>
 
+      {canSeeDues ? (
+        <FormControl size="small" sx={filterControlSx}>
+          <InputLabel id="member-dues-filter">
+            {t('membership.dues.filterTitle', { defaultValue: 'Payments' })}
+          </InputLabel>
+          <Select
+            labelId="member-dues-filter"
+            label={t('membership.dues.filterTitle', { defaultValue: 'Payments' })}
+            value={filters.paymentDues ?? 'all'}
+            onChange={(e) => {
+              setPage(0);
+              setFilters((prev) => ({
+                ...prev,
+                paymentDues: e.target.value as MemberPaymentDuesFilter,
+              }));
+            }}
+          >
+            <MenuItem value="all">{t('membership.dues.filterAll', { defaultValue: 'All members' })}</MenuItem>
+            <MenuItem value="pending">
+              {t('membership.dues.filterPending', { defaultValue: 'Pending payments' })}
+            </MenuItem>
+            <MenuItem value="clear">
+              {t('membership.dues.filterClear', { defaultValue: 'No pending dues' })}
+            </MenuItem>
+          </Select>
+        </FormControl>
+      ) : null}
+
       {activeFilterCount > 0 ? (
         <Button
           size="small"
@@ -595,7 +872,9 @@ export function MembersWorkspacePage() {
         size="small"
         startIcon={<RefreshCw size={14} />}
         onClick={() =>
-          void (listTab === 'members' ? membersQuery.reload() : invitationsQuery.reload())
+          void (listTab === 'members' ? membersQuery.reload() : invitationsQuery.reload());
+          void duesSummary.reload();
+          void duesMembersQuery.refetch();
         }
         sx={dashOutlinedButtonSx}
       >
@@ -632,13 +911,16 @@ export function MembersWorkspacePage() {
               {spaceType === 'MESS' ? (
                 <Button
                   variant="outlined"
-                  startIcon={<UserPlus size={14} />}
-                  onClick={() => navigate(spaceAddCustomersHubPath(spaceId))}
+                  startIcon={
+                    resolvingEntry ? <CircularProgress size={14} color="inherit" /> : <UserPlus size={14} />
+                  }
+                  disabled={resolvingEntry}
+                  onClick={openAddChoice}
                   sx={dashOutlinedButtonSx}
                 >
                   {t('membership.addCustomersHub.navTitle')}
                 </Button>
-              ) : (
+              ) : countImportableCandidates(importPreview.data ?? []) > 0 ? (
                 <Button
                   variant="outlined"
                   startIcon={<Users size={14} />}
@@ -647,7 +929,7 @@ export function MembersWorkspacePage() {
                 >
                   {t('membership.importPeople.title')}
                 </Button>
-              )}
+              ) : null}
               <Button
                 variant="outlined"
                 startIcon={<MailPlus size={14} />}
@@ -661,11 +943,11 @@ export function MembersWorkspacePage() {
               </Button>
               <Button
                 variant="contained"
-                startIcon={<Plus size={14} />}
-                onClick={() => {
-                  setEditTarget(null);
-                  setFormMode('create');
-                }}
+                startIcon={
+                  resolvingEntry ? <CircularProgress size={14} color="inherit" /> : <Plus size={14} />
+                }
+                disabled={resolvingEntry}
+                onClick={openAddChoice}
                 sx={{
                   ...dashContainedButtonSx,
                   minHeight: DASHBOARD_UX.buttonHeight,
@@ -694,7 +976,7 @@ export function MembersWorkspacePage() {
 
         {/* Summary KPIs — Dashboard StatCard dense */}
         <Grid container spacing={1.5}>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <StatCard
               dense
               tone="success"
@@ -710,7 +992,7 @@ export function MembersWorkspacePage() {
               }
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <StatCard
               dense
               tone="info"
@@ -726,7 +1008,7 @@ export function MembersWorkspacePage() {
               }
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <StatCard
               dense
               tone="warning"
@@ -742,7 +1024,7 @@ export function MembersWorkspacePage() {
               onClick={() => applyKpiFocus('pending')}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <StatCard
               dense
               tone="purple"
@@ -758,6 +1040,41 @@ export function MembersWorkspacePage() {
               }
             />
           </Grid>
+          {canSeeDues ? (
+            <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+              <StatCard
+                dense
+                tone="warning"
+                label={t('membership.dues.summary', { defaultValue: 'Pending Payments' })}
+                value={
+                  duesSummary.loading
+                    ? '…'
+                    : duesSummary.summary?.financial.pending != null
+                      ? formatDuesAmount(
+                          duesSummary.summary.financial.pending,
+                          duesSummary.summary.financial.currencyCode,
+                        )
+                      : '—'
+                }
+                hint={
+                  duesSummary.error
+                    ? t('membership.dues.loadFailed', {
+                        defaultValue: 'Payment totals could not be loaded.',
+                      })
+                    : t('membership.dues.summaryHint', {
+                        defaultValue: 'Outstanding this month',
+                      })
+                }
+                selected={kpiFocus === 'pendingPayments'}
+                onClick={() => applyKpiFocus('pendingPayments')}
+                icon={
+                  <IconBadge tone="warning">
+                    <IndianRupee />
+                  </IconBadge>
+                }
+              />
+            </Grid>
+          ) : null}
         </Grid>
 
         <Tabs
@@ -878,6 +1195,7 @@ export function MembersWorkspacePage() {
           <MemberInspector
             spaceId={spaceId}
             memberId={memberId}
+            initialTab={searchParams.get('tab') === 'payments' ? 'payments' : 'profile'}
             onClose={() => navigate(spaceMembersPath(spaceId))}
             onEdit={() => {
               setEditTarget(selectedDetails.member ?? null);
@@ -898,21 +1216,33 @@ export function MembersWorkspacePage() {
         ) : null}
       </AppDrawer>
 
+      <AddPersonChoiceDialog
+        open={choiceOpen || deepLinkChoice}
+        noun={addPersonNoun(spaceType)}
+        importableCount={importPreview.data ? importablePreviewCount : importableCount}
+        onAddNew={chooseAddNew}
+        onImportFromAnotherSpace={chooseImport}
+        onClose={closeChoice}
+      />
+
       <MemberFormDrawer
-        open={formMode != null}
+        open={formMode != null || deepLinkForm}
         mode={formMode === 'edit' ? 'edit' : 'create'}
         spaceId={spaceId}
         spaceType={spaceType}
+        initialPickerMode={createPickerMode}
         member={
           formMode === 'edit' ? (editTarget ?? selectedDetails.member ?? null) : null
         }
         onClose={() => {
           setFormMode(null);
           setEditTarget(null);
+          clearChoiceQuery();
         }}
         onInvite={() => {
           setFormMode(null);
           setEditTarget(null);
+          clearChoiceQuery();
           setInvitePrefill({});
           setInviteOpen(true);
         }}

@@ -56,6 +56,17 @@ export function AuthCard({ children }: AuthCardProps) {
         >
           {t('common.appName')}
         </Typography>
+        <Typography
+          sx={{
+            mt: 0.35,
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            letterSpacing: '0.04em',
+            color: a.textMuted ?? 'text.secondary',
+          }}
+        >
+          Spaces · Meals · People belong
+        </Typography>
       </Box>
       {children}
     </Paper>

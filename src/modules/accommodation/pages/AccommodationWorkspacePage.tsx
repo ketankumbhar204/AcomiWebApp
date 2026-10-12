@@ -44,7 +44,7 @@ import {
 import { currentMonthKey } from '@/shared/utils/dashboardFinancial';
 import {
   spaceAccommodationQuickSetupPath,
-  spaceOccupancyWizardPath,
+  spaceBedInventoryPath,
 } from '@/routes/paths';
 import { HierarchyTree, type TreeSelection } from '../components/HierarchyTree';
 import { CenterWorkspace } from '../components/CenterWorkspace';
@@ -446,7 +446,9 @@ export function AccommodationWorkspacePage() {
                 <Button
                   size="small"
                   variant="outlined"
-                  onClick={() => navigate(spaceOccupancyWizardPath(spaceId, 'ALLOCATE'))}
+                  onClick={() =>
+                    navigate(spaceBedInventoryPath(spaceId, 'AVAILABLE', { intent: 'allocate' }))
+                  }
                   sx={occupancyActionButtonSx(occupancyActionTint.allocate)}
                 >
                   {t('occupancy.actions.allocate')}

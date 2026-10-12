@@ -10,6 +10,8 @@ import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { StatusChip } from '@/shared/components/StatusChip';
 import type { MemberResponse } from '@/shared/types/member';
 import { resolveSpacePermissions } from '@/shared/utils/spacePermissions';
+import { membershipRoleLabelKey } from '@/modules/members/utils/memberRoles';
+import type { SpaceType } from '@/shared/types/space';
 import { spaceDashboardPath, spaceMemberPath } from '@/routes/paths';
 import { useSpaceStore } from '@/store/spaceStore';
 
@@ -17,6 +19,7 @@ type GlobalMemberRow = MemberResponse & {
   id: string;
   spaceId: string;
   spaceName: string;
+  spaceType: SpaceType;
 };
 
 export function GlobalMembersPage() {
@@ -38,6 +41,7 @@ export function GlobalMembersPage() {
         id: `${space.spaceId}:${member.memberId}`,
         spaceId: space.spaceId,
         spaceName: space.spaceName,
+        spaceType: space.spaceType,
       }));
     },
   );
@@ -73,7 +77,8 @@ export function GlobalMembersPage() {
     {
       id: 'role',
       header: t('accountDirectory.role'),
-      accessor: (row) => t(`spaces.roles.${row.role}`, { defaultValue: row.role }),
+      accessor: (row) =>
+        t(membershipRoleLabelKey(row.role, row.spaceType), { defaultValue: row.role }),
     },
     {
       id: 'status',
