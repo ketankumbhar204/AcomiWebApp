@@ -40,6 +40,7 @@ import { discoverDefaultImageUrl } from '@/modules/onboarding/utils/discoverDefa
 import { adminEnquiryApi } from '@/shared/api/enquiryApi';
 import { getErrorMessage } from '@/shared/api/errors';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { ReferenceCode } from '@/shared/components/ReferenceCode';
 import { adminEnquiryDetailPath, ROUTES } from '@/routes/paths';
 import type {
   AdminEnquirySummary,
@@ -74,6 +75,7 @@ function exportCsv(rows: AdminSpaceEnquiryListItem[]) {
     'Requested At',
     'Status',
     'Test Lead',
+    'Reference',
   ];
   const lines = rows.map((row) =>
     [
@@ -87,6 +89,7 @@ function exportCsv(rows: AdminSpaceEnquiryListItem[]) {
       row.requestedAt,
       row.status,
       row.testLead ? 'Yes' : 'No',
+      row.referenceCode || '',
     ]
       .map((value) => `"${String(value).replaceAll('"', '""')}"`)
       .join(','),
@@ -673,6 +676,7 @@ export function AdminEnquiryListPage() {
                             <Typography sx={{ fontWeight: 700, fontSize: 14 }} noWrap>
                               {row.spaceName}
                             </Typography>
+                            <ReferenceCode value={row.referenceCode} />
                             <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
                               <MapPin size={12} color="#94A3B8" />
                               <Typography sx={{ fontSize: 12, color: 'text.secondary' }} noWrap>

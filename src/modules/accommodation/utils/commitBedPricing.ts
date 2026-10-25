@@ -13,7 +13,7 @@ export function formatPricingMoney(value: number | null | undefined, notSet = 'N
   if (value == null || Number.isNaN(value)) {
     return notSet;
   }
-  return `₹${value.toLocaleString('en-IN')}`;
+  return `₹${Math.round(value).toLocaleString('en-IN')}`;
 }
 
 export function buildSubmittedBedPricingValues(

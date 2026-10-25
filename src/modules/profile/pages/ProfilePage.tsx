@@ -39,6 +39,7 @@ import { ContentCard } from '@/shared/components/ContentCard';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
+import { ReferenceCode } from '@/shared/components/ReferenceCode';
 import { StatusChip } from '@/shared/components/StatusChip';
 import type { AppLanguage } from '@/i18n';
 import { ROUTES } from '@/routes/paths';
@@ -241,6 +242,7 @@ export function ProfilePage() {
                   <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mt: 0.25 }}>
                     {user.mobileNumber}
                   </Typography>
+                  <ReferenceCode value={user.referenceCode} />
                   <Button
                     variant="text"
                     size="small"

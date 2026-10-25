@@ -1,6 +1,6 @@
 import type { MealBillingType, PrepaidBalanceUnit } from './dashboard';
 
-export type SpaceType = 'PG' | 'MESS' | 'HOSTEL' | 'CO_LIVING' | 'RENTAL';
+export type SpaceType = 'PG' | 'MESS' | 'HOSTEL' | 'CO_LIVING' | 'RENTAL' | 'CORPORATE_STAY';
 
 export type MembershipRole = 'OWNER' | 'MANAGER' | 'TENANT' | 'CUSTOMER' | 'STAFF';
 
@@ -83,6 +83,7 @@ export interface SpacePermissionsResponse {
 
 export interface MySpaceResponse {
   spaceId: string;
+  referenceCode?: string | null;
   spaceName: string;
   spaceType: SpaceType;
   membershipRole: MembershipRole;
@@ -96,18 +97,21 @@ export interface MySpaceResponse {
 
 export interface DefaultSpaceResponse {
   spaceId: string;
+  referenceCode?: string | null;
   spaceName: string;
   spaceType: SpaceType;
 }
 
 export interface SetDefaultSpaceResponse {
   spaceId: string;
+  referenceCode?: string | null;
   spaceName: string;
   isDefault: boolean;
 }
 
 export interface SpaceResponse {
   id: string;
+  referenceCode?: string | null;
   name: string;
   type: SpaceType;
   address?: string;
@@ -122,6 +126,7 @@ export interface SpaceResponse {
 
 export interface SpaceDetailsResponse {
   id: string;
+  referenceCode?: string | null;
   name: string;
   type: SpaceType;
   address?: string;

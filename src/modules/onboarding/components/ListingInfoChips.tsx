@@ -6,13 +6,15 @@ import {
   listingInfoFlags,
   type ListingInfoFlags,
   type ListingInfoSource,
+  type ListingSection,
 } from '@/shared/utils/listingInfo';
 
 type ListingInfoChipsProps = {
   listing: ListingInfoSource;
   variant: 'card' | 'detail';
   surface?: 'places' | 'meals';
-  onEnquire?: () => void;
+  /** Opens the matching section on the listing detail. */
+  onSelect?: (section: ListingSection) => void;
   /** Opens the existing listing detail. Used by the card layout only. */
   onViewAll?: () => void;
 };
@@ -39,7 +41,7 @@ export function ListingInfoChips({
   listing,
   variant,
   surface = 'places',
-  onEnquire,
+  onSelect,
   onViewAll,
 }: ListingInfoChipsProps) {
   const { t } = useTranslation();
@@ -119,9 +121,9 @@ export function ListingInfoChips({
                 }}
               >
                 <Box
-                  component={onEnquire ? 'button' : 'div'}
-                  type={onEnquire ? 'button' : undefined}
-                  onClick={onEnquire}
+                  component={onSelect ? 'button' : 'div'}
+                  type={onSelect ? 'button' : undefined}
+                  onClick={() => onSelect?.(key)}
                   aria-label={state}
                   sx={{
                     display: 'flex',
@@ -134,7 +136,7 @@ export function ListingInfoChips({
                     p: 0,
                     color: 'inherit',
                     font: 'inherit',
-                    cursor: onEnquire ? 'pointer' : 'default',
+                    cursor: onSelect ? 'pointer' : 'default',
                   }}
                 >
                 <Box
@@ -202,9 +204,9 @@ export function ListingInfoChips({
             sx={{ minWidth: 0 }}
           >
             <Box
-              component={onEnquire ? 'button' : 'div'}
-              type={onEnquire ? 'button' : undefined}
-              onClick={onEnquire}
+              component={onSelect ? 'button' : 'div'}
+              type={onSelect ? 'button' : undefined}
+              onClick={() => onSelect?.(key)}
               aria-label={state}
               sx={{
                 display: 'flex',
@@ -218,7 +220,7 @@ export function ListingInfoChips({
                 borderColor: available ? '#C6EBD7' : '#E6E8EC',
                 bgcolor: available ? '#F3FBF7' : '#F4F5F7',
                 color: available ? '#0F172A' : '#8B95A1',
-                cursor: onEnquire ? 'pointer' : 'default',
+                cursor: onSelect ? 'pointer' : 'default',
                 textAlign: 'left',
               }}
             >

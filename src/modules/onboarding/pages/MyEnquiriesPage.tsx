@@ -9,66 +9,33 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
-import {
-  Building2,
-  ChevronRight,
-  Mail,
-  MessageCircle,
-  Phone,
-  RefreshCw,
-  UserRound,
-  X,
-} from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useQueries, useQuery } from '@tanstack/react-query';
+import { MessageCircle, RefreshCw } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { contactWasEmailed } from '@/modules/onboarding/utils/enquiryContactDelivery';
+import { DiscoverSpaceCard } from '@/modules/onboarding/components/DiscoverSpaceCard';
+import { DiscoverSpaceDetailDrawer } from '@/modules/onboarding/components/DiscoverSpaceDetailDrawer';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { ROUTES } from '@/routes/paths';
+import { ReferenceCode } from '@/shared/components/ReferenceCode';
 import { enquiryApi } from '@/shared/api/enquiryApi';
 import { spaceDiscoverApi } from '@/shared/api/spaceDiscoverApi';
-import { PhotoRequestAction } from '@/modules/onboarding/components/PhotoRequestAction';
-import { AppDrawer } from '@/shared/components/AppDrawer';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { ReceivedEnquiriesPage } from '@/modules/onboarding/pages/ReceivedEnquiriesPage';
-import type {
-  OwnerContactResponse,
-  SpaceEnquiryResponse,
-  SpaceEnquiryStatus,
-} from '@/shared/types/enquiry';
+import type { SpaceEnquiryResponse, SpaceEnquiryStatus } from '@/shared/types/enquiry';
+import type { DiscoverSpaceCardResponse } from '@/shared/types/space';
+import type { ListingSection } from '@/shared/utils/listingInfo';
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function statusKey(status: SpaceEnquiryStatus): string {
   return `spaces.enquiries.status.${status}`;
-}
-
-function hintKey(enquiry: SpaceEnquiryResponse): string | null {
-  if (enquiry.status === 'SHARED') {
-    return contactWasEmailed(enquiry)
-      ? 'spaces.enquiries.sharedHint'
-      : canShowOwnerContact(enquiry)
-        ? 'spaces.enquiries.ownerContactReady'
-        : 'spaces.enquiries.sharedInAppHint';
-  }
-  if (enquiry.status === 'PENDING') return 'spaces.enquiries.pendingHint';
-  if (enquiry.status === 'REJECTED') return 'spaces.enquiries.rejectedHint';
-  if (enquiry.status === 'EXPIRED') return 'spaces.enquiries.expiredHint';
-  return null;
-}
-
-function canShowOwnerContact(item: SpaceEnquiryResponse): boolean {
-  return (
-    item.status === 'SHARED' &&
-    !contactWasEmailed(item) &&
-    Boolean(item.ownerContact?.available)
-  );
 }
 
 function statusTone(status: SpaceEnquiryStatus): { bg: string; fg: string } {
@@ -101,271 +68,17 @@ function formatRequestedDate(iso: string): string {
   }
 }
 
-function contactMobiles(contact: OwnerContactResponse): string[] {
-  return [contact.mobileNumber, contact.alternateMobileNumber, contact.additionalMobileNumber]
-    .map((v) => v?.trim())
-    .filter((v): v is string => Boolean(v));
-}
-
-function EnquiryInspector({
-  enquiry,
-  framed,
-  onClose,
-}: {
-  enquiry: SpaceEnquiryResponse | null;
-  framed: boolean;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  const theme = useTheme();
-  const s = dashSurfaces(theme.palette.mode);
-  const photosQuery = useQuery({
-    queryKey: ['discover-photo-request', enquiry?.spaceId],
-    queryFn: () => spaceDiscoverApi.getDiscoverSpaceDetail(enquiry!.spaceId),
-    enabled: Boolean(enquiry?.spaceId && enquiry.status === 'SHARED' && enquiry.ownerContact?.available),
-    staleTime: 60_000,
-  });
-
-  if (!enquiry) {
-    return (
-      <Box
-        sx={{
-          height: '100%',
-          borderRadius: framed ? `${DASHBOARD_UX.radius}px` : 0,
-          border: framed ? `1px solid ${s.border}` : 'none',
-          bgcolor: s.surface,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          p: 3,
-        }}
-      >
-        <Typography color="text.secondary" sx={{ textAlign: 'center', fontSize: 14 }}>
-          {t('spaces.enquiries.selectHint', {
-            defaultValue: 'Select an enquiry to see status and owner contact details.',
-          })}
-        </Typography>
-      </Box>
-    );
-  }
-
-  const hint = hintKey(enquiry);
-  const tone = statusTone(enquiry.status);
-  const showContact = canShowOwnerContact(enquiry);
-  const contact = enquiry.ownerContact;
-  const mobiles = contact ? contactMobiles(contact) : [];
-
-  return (
-    <Box
-      sx={{
-        height: '100%',
-        borderRadius: framed ? `${DASHBOARD_UX.radius}px` : 0,
-        border: framed ? `1px solid ${s.border}` : 'none',
-        bgcolor: s.surface,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}
-    >
-      <Box
-        sx={{
-          px: 2.5,
-          pt: 2.5,
-          pb: 1.5,
-          borderBottom: `1px solid ${s.border}`,
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 1,
-        }}
-      >
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', lineHeight: 1.3 }}>
-            {enquiry.spaceName}
-          </Typography>
-          <Typography sx={{ mt: 0.5, fontSize: 12, color: 'text.secondary' }}>
-            {formatRequestedDate(enquiry.requestedAt)}
-          </Typography>
-        </Box>
-        <IconButton size="small" onClick={onClose} aria-label={t('common.close')}>
-          <X size={16} />
-        </IconButton>
-      </Box>
-
-      <Box sx={{ flex: 1, overflow: 'auto', p: 2.5 }}>
-        <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }}>
-          <Chip
-            size="small"
-            label={t(statusKey(enquiry.status))}
-            sx={{ bgcolor: tone.bg, color: tone.fg, fontWeight: 700 }}
-          />
-          {enquiry.locationLabel ? (
-            <Chip size="small" variant="outlined" label={enquiry.locationLabel} />
-          ) : null}
-        </Stack>
-
-        {hint ? (
-          <Box
-            sx={{
-              mb: 2,
-              px: 1.5,
-              py: 1.25,
-              borderRadius: 2,
-              bgcolor: colors.mintSubtle,
-              color: colors.tealDark,
-              fontSize: 13,
-              fontWeight: 600,
-            }}
-          >
-            {t(hint)}
-          </Box>
-        ) : null}
-
-        {showContact && contact ? (
-          <Stack spacing={1.5}>
-            <Typography sx={{ fontWeight: 800, fontSize: 14 }}>
-              {t('spaces.enquiries.contactDetails', { defaultValue: 'Owner contact' })}
-            </Typography>
-
-            {contact.ownerName?.trim() ? (
-              <ContactRow
-                icon={<UserRound size={16} />}
-                label={t('spaces.enquiries.ownerName', { defaultValue: 'Name' })}
-                value={contact.ownerName.trim()}
-              />
-            ) : null}
-
-            {mobiles.map((mobile, index) => (
-              <ContactRow
-                key={`${mobile}-${index}`}
-                icon={<Phone size={16} />}
-                label={
-                  index === 0
-                    ? t('spaces.enquiries.mobile', { defaultValue: 'Mobile' })
-                    : t('spaces.enquiries.alternateMobile', { defaultValue: 'Alternate mobile' })
-                }
-                value={mobile}
-                action={
-                  <Button
-                    size="small"
-                    href={`tel:${mobile}`}
-                    sx={{ ...dashContainedButtonSx, minWidth: 72 }}
-                  >
-                    {t('spaces.enquiries.callOwner', { defaultValue: 'Call' })}
-                  </Button>
-                }
-              />
-            ))}
-
-            {mobiles[0] ? (
-              <ContactRow
-                icon={<MessageCircle size={16} />}
-                label={t('spaces.enquiries.messageOwner', { defaultValue: 'Message' })}
-                value={t('spaces.enquiries.messageOwnerHint', {
-                  defaultValue: 'Open your messaging app',
-                })}
-                action={
-                  <Button
-                    size="small"
-                    href={`sms:${mobiles[0]}`}
-                    sx={{ ...dashOutlinedButtonSx, minWidth: 88 }}
-                  >
-                    {t('spaces.enquiries.messageOwner', { defaultValue: 'Message' })}
-                  </Button>
-                }
-              />
-            ) : null}
-
-            {contact.email?.trim() ? (
-              <ContactRow
-                icon={<Mail size={16} />}
-                label={t('spaces.enquiries.ownerEmail', { defaultValue: 'Email' })}
-                value={contact.email.trim()}
-                action={
-                  <Button
-                    size="small"
-                    href={`mailto:${contact.email.trim()}`}
-                    sx={{ ...dashOutlinedButtonSx, minWidth: 72 }}
-                  >
-                    {t('spaces.enquiries.emailOwner', { defaultValue: 'Email' })}
-                  </Button>
-                }
-              />
-            ) : null}
-
-            {photosQuery.isSuccess || photosQuery.isError ? (
-              <PhotoRequestAction
-                kind={enquiry.spaceType === 'MESS' ? 'mess' : 'property'}
-                name={enquiry.spaceName}
-                spaceType={enquiry.spaceType}
-                location={enquiry.locationLabel}
-                photoUrls={[
-                  photosQuery.data?.listingImageUrl,
-                  photosQuery.data?.coverImageUrl,
-                  photosQuery.data?.imageUrl,
-                ]}
-                phones={mobiles}
-                contactAuthorized
-              />
-            ) : null}
-          </Stack>
-        ) : enquiry.status === 'SHARED' && contactWasEmailed(enquiry) ? (
-          <Typography color="text.secondary" sx={{ fontSize: 13 }}>
-            {t('spaces.enquiries.sharedHint')}
-          </Typography>
-        ) : null}
-      </Box>
-    </Box>
-  );
-}
-
-function ContactRow({
-  icon,
-  label,
-  value,
-  action,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  action?: ReactNode;
-}) {
-  return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1.25,
-        p: 1.25,
-        borderRadius: 2,
-        border: `1px solid ${colors.border}`,
-        bgcolor: colors.surfaceSecondary,
-      }}
-    >
-      <Box
-        sx={{
-          width: 32,
-          height: 32,
-          borderRadius: '10px',
-          bgcolor: colors.mintSubtle,
-          color: colors.tealDark,
-          display: 'grid',
-          placeItems: 'center',
-          flexShrink: 0,
-        }}
-      >
-        {icon}
-      </Box>
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography sx={{ fontSize: 11, fontWeight: 700, color: 'text.secondary' }}>
-          {label}
-        </Typography>
-        <Typography sx={{ fontSize: 13, fontWeight: 700, wordBreak: 'break-word' }}>
-          {value}
-        </Typography>
-      </Box>
-      {action}
-    </Box>
-  );
+function cardFromEnquiry(row: SpaceEnquiryResponse): DiscoverSpaceCardResponse {
+  return {
+    spaceId: row.spaceId,
+    name: row.spaceName,
+    type: row.spaceType ?? 'PG',
+    address: row.locationLabel,
+    amenityLabels: row.amenityLabels ?? [],
+    sharingNotes: row.sharingNotes,
+    foodIncludedInRent: Boolean(row.foodIncludedInRent),
+    alreadyMember: false,
+  };
 }
 
 function MemberEnquiriesPage() {
@@ -376,7 +89,10 @@ function MemberEnquiriesPage() {
   const s = dashSurfaces(theme.palette.mode);
   const [params] = useSearchParams();
   const highlightId = UUID_RE.test(params.get('id') ?? '') ? params.get('id') : null;
-  const [selectedId, setSelectedId] = useState<string | null>(highlightId);
+  const [detailSpaceId, setDetailSpaceId] = useState<string | null>(null);
+  const [focusSection, setFocusSection] = useState<ListingSection | null>(null);
+  const [focusNonce, setFocusNonce] = useState(0);
+  const openedInitialDetail = useRef(false);
 
   const query = useQuery({
     queryKey: ['my-enquiries'],
@@ -393,35 +109,24 @@ function MemberEnquiriesPage() {
     );
   }, [highlightId, query.data?.content]);
 
-  const selected = useMemo(
-    () => rows.find((row) => row.enquiryId === selectedId) ?? null,
-    [rows, selectedId],
-  );
+  const detailQueries = useQueries({
+    queries: rows.map((row) => ({
+      queryKey: ['spaces-discover-detail', row.spaceId],
+      queryFn: () => spaceDiscoverApi.getDiscoverSpaceDetail(row.spaceId),
+      staleTime: 60_000,
+    })),
+  });
 
   useEffect(() => {
-    if (highlightId) {
-      setSelectedId(highlightId);
-    }
-  }, [highlightId]);
-
-  useEffect(() => {
-    if (!selectedId && !isLgDown && rows.length > 0) {
-      setSelectedId(rows[0]!.enquiryId);
-    }
-  }, [isLgDown, rows, selectedId]);
+    if (openedInitialDetail.current || isLgDown || rows.length === 0) return;
+    openedInitialDetail.current = true;
+    const highlighted = rows.find((row) => row.enquiryId === highlightId);
+    setDetailSpaceId((highlighted ?? rows[0])!.spaceId);
+  }, [highlightId, isLgDown, rows]);
 
   useEffect(() => {
     document.title = `${t('spaces.enquiries.title')} · ${t('common.appName')}`;
   }, [t]);
-
-  const showDesktopPanel = !isLgDown;
-  const inspector = (
-    <EnquiryInspector
-      enquiry={selected}
-      framed={showDesktopPanel}
-      onClose={() => setSelectedId(null)}
-    />
-  );
 
   return (
     <PageContainer gap={0}>
@@ -474,141 +179,55 @@ function MemberEnquiriesPage() {
           <Box
             sx={{
               display: 'grid',
-              gap: `${DASHBOARD_UX.cardGap}px`,
-              gridTemplateColumns: showDesktopPanel
-                ? 'minmax(0, 1.85fr) minmax(0, 0.95fr)'
-                : '1fr',
-              alignItems: 'start',
+              gap: 1.5,
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 19.25rem), 1fr))',
             }}
           >
-            <Stack spacing={1.25} sx={{ minWidth: 0 }}>
-              {rows.map((row) => {
-                const hint = hintKey(row);
-                const tone = statusTone(row.status);
-                const selectedRow = selectedId === row.enquiryId;
-                const showContact = canShowOwnerContact(row);
-                return (
-                  <Box
-                    key={row.enquiryId}
-                    id={`enquiry-${row.enquiryId}`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelectedId(row.enquiryId)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        setSelectedId(row.enquiryId);
-                      }
+            {rows.map((row, index) => {
+              const detail = detailQueries[index]?.data;
+              const space = detail ?? cardFromEnquiry(row);
+              const tone = statusTone(row.status);
+              return (
+                <Stack key={row.enquiryId} id={`enquiry-${row.enquiryId}`} spacing={0.75}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
+                    <Chip
+                      size="small"
+                      label={t(statusKey(row.status))}
+                      sx={{ bgcolor: tone.bg, color: tone.fg, fontWeight: 700 }}
+                    />
+                    <Typography variant="body2" color="text.secondary" noWrap>
+                      {t('spaces.enquiries.requestedDot', {
+                        date: formatRequestedDate(row.requestedAt),
+                        defaultValue: 'Requested · {{date}}',
+                      })}
+                    </Typography>
+                    <ReferenceCode value={row.referenceCode} />
+                  </Stack>
+                  <DiscoverSpaceCard
+                    space={space}
+                    onViewDetails={(spaceId, section) => {
+                      setFocusSection(section ?? null);
+                      setFocusNonce((value) => value + 1);
+                      setDetailSpaceId(spaceId);
                     }}
-                    sx={{
-                      p: 2,
-                      borderRadius: `${DASHBOARD_UX.radius}px`,
-                      border: `1px solid ${selectedRow ? colors.primary : s.border}`,
-                      bgcolor: selectedRow ? colors.mintSubtle : s.surface,
-                      cursor: 'pointer',
-                      '&:hover': { borderColor: colors.primary },
-                    }}
-                  >
-                    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
-                      <Box
-                        sx={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: '12px',
-                          bgcolor: colors.mintSubtle,
-                          color: colors.primary,
-                          display: 'grid',
-                          placeItems: 'center',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <Building2 size={18} />
-                      </Box>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography sx={{ fontWeight: 800 }} noWrap>
-                          {row.spaceName}
-                        </Typography>
-                        {row.locationLabel ? (
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            noWrap
-                            sx={{ mt: 0.25 }}
-                          >
-                            {row.locationLabel}
-                          </Typography>
-                        ) : null}
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                          {t('spaces.enquiries.requestedDot', {
-                            date: formatRequestedDate(row.requestedAt),
-                            defaultValue: 'Requested · {{date}}',
-                          })}
-                        </Typography>
-                        <Chip
-                          size="small"
-                          label={t(statusKey(row.status))}
-                          sx={{ mt: 1, bgcolor: tone.bg, color: tone.fg, fontWeight: 700 }}
-                        />
-                        {hint ? (
-                          <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
-                            {t(hint)}
-                          </Typography>
-                        ) : null}
-                        {showContact ? (
-                          <Stack
-                            direction="row"
-                            spacing={0.5}
-                            sx={{
-                              mt: 1.25,
-                              alignItems: 'center',
-                              color: colors.primary,
-                              fontWeight: 700,
-                              fontSize: 13,
-                            }}
-                          >
-                            <span>
-                              {t('spaces.enquiries.viewContactDetails', {
-                                defaultValue: 'View contact details',
-                              })}
-                            </span>
-                            <ChevronRight size={16} />
-                          </Stack>
-                        ) : null}
-                      </Box>
-                    </Stack>
-                  </Box>
-                );
-              })}
-            </Stack>
-
-            {showDesktopPanel ? (
-              <Box
-                sx={{
-                  position: 'sticky',
-                  top: 12,
-                  alignSelf: 'start',
-                  height: 'calc(100vh - 112px)',
-                  maxHeight: 'calc(100vh - 112px)',
-                  minHeight: 360,
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column',
-                }}
-              >
-                {inspector}
-              </Box>
-            ) : null}
+                  />
+                </Stack>
+              );
+            })}
           </Box>
         )}
       </Stack>
 
-      <AppDrawer
-        open={Boolean(selectedId) && isLgDown}
-        onClose={() => setSelectedId(null)}
-        width={400}
-      >
-        {inspector}
-      </AppDrawer>
+      <DiscoverSpaceDetailDrawer
+        spaceId={detailSpaceId}
+        open={Boolean(detailSpaceId)}
+        focusSection={focusSection}
+        focusNonce={focusNonce}
+        onClose={() => {
+          setDetailSpaceId(null);
+          setFocusSection(null);
+        }}
+      />
     </PageContainer>
   );
 }

@@ -62,6 +62,7 @@ export type AccommodationActionMetadata = {
 
 export type BuildingResponse = {
   buildingId: string;
+  referenceCode?: string | null;
   spaceId: string;
   name: string;
   code?: string | null;
@@ -98,6 +99,7 @@ export type BuildingSummaryResponse = {
 
 export type FloorResponse = {
   floorId: string;
+  referenceCode?: string | null;
   buildingId: string;
   name: string;
   floorNumber: number;
@@ -122,6 +124,7 @@ export type FloorListItemResponse = {
 
 export type UnitResponse = {
   unitId: string;
+  referenceCode?: string | null;
   buildingId: string;
   floorId?: string | null;
   name: string;
@@ -154,6 +157,7 @@ export type UnitListItemResponse = {
 
 export type RoomResponse = {
   roomId: string;
+  referenceCode?: string | null;
   buildingId?: string | null;
   floorId?: string | null;
   unitId?: string | null;
@@ -191,6 +195,7 @@ export type BedOccupantSummary = {
 
 export type BedResponse = {
   bedId: string;
+  referenceCode?: string | null;
   roomId: string;
   name: string;
   bedNumber: string;
@@ -222,6 +227,7 @@ export type BedListItemResponse = {
 
 export type BedSpaceListItemResponse = {
   bedId: string;
+  referenceCode?: string | null;
   label: string;
   status: AccommodationStatus;
   buildingId: string;
@@ -509,6 +515,7 @@ export type MoveInOccupancyRequest = {
 
 export type OccupancyResponse = {
   occupancyId: string;
+  referenceCode?: string | null;
   spaceId: string;
   memberId: string;
   memberName: string;

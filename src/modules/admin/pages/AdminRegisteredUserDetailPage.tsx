@@ -46,7 +46,13 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
+import { AdminResetPasswordPanel } from '@/modules/admin/components/AdminResetPasswordPanel';
 import { AdminTestLeadOption } from '@/modules/admin/components/AdminTestLeadOption';
+import {
+  describeAdminAccountActivity,
+  formatActivityFact,
+  type ActivityFact,
+} from '@/modules/admin/utils/adminAccountStatus';
 import {
   formatAdminAssociatedSpaces,
   formatAdminDate,
@@ -58,6 +64,7 @@ import { ROUTES } from '@/routes/paths';
 import { getErrorMessage } from '@/shared/api/errors';
 import { normalizeIndianMobileDigits } from '@/shared/utils/indianMobile';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { ReferenceCode } from '@/shared/components/ReferenceCode';
 import type { AdminRegisteredUser } from '@/shared/types/admin';
 
 const MOBILE_RE = /^[6-9]\d{9}$/;
@@ -384,6 +391,31 @@ export function AdminRegisteredUserDetailPage() {
 
   const emailHref = user.email ? `mailto:${user.email}` : undefined;
   const smsHref = user.mobileNumber ? `sms:+91${user.mobileNumber}` : undefined;
+  const accountActivity = describeAdminAccountActivity(user);
+  const activityLabels = {
+    never: t('admin.users.detail.activityNever'),
+    unknown: t('admin.users.detail.activityUnknown'),
+    justNow: t('admin.users.detail.activityJustNow'),
+    minutesAgo: (count: number) => t('admin.users.detail.activityMinutesAgo', { count }),
+    hoursAgo: (count: number) => t('admin.users.detail.activityHoursAgo', { count }),
+    daysAgo: (count: number) => t('admin.users.detail.activityDaysAgo', { count }),
+  };
+  const accountStatusLabel =
+    accountActivity.status === 'active'
+      ? t('admin.users.detail.accountStatusActive')
+      : accountActivity.status === 'deactivated'
+        ? t('admin.users.detail.accountStatusDeactivated')
+        : t('admin.users.detail.accountStatusUnknown');
+  const accountStatusTone =
+    accountActivity.status === 'active'
+      ? 'successSoft'
+      : accountActivity.status === 'deactivated'
+        ? 'danger'
+        : 'neutral';
+
+  function activityText(fact: ActivityFact): string {
+    return formatActivityFact(fact, activityLabels);
+  }
 
   return (
     <Box>
@@ -431,6 +463,7 @@ export function AdminRegisteredUserDetailPage() {
                 <Typography sx={{ fontWeight: 800, fontSize: 20, letterSpacing: -0.3 }}>
                   {name}
                 </Typography>
+                <ReferenceCode value={user?.referenceCode} />
                 <Typography sx={{ color: 'text.secondary', fontSize: 13, mt: 0.35 }}>
                   {displayUserCode(user.id)}
                 </Typography>
@@ -441,14 +474,7 @@ export function AdminRegisteredUserDetailPage() {
                   label={user.mobileVerified ? t('admin.labels.verified') : t('admin.labels.notVerified')}
                   tone={user.mobileVerified ? 'successSolid' : 'neutral'}
                 />
-                <StatusPill
-                  label={
-                    user.active === false
-                      ? t('admin.users.detail.inactive')
-                      : t('admin.users.detail.active')
-                  }
-                  tone={user.active === false ? 'danger' : 'successSoft'}
-                />
+                <StatusPill label={accountStatusLabel} tone={accountStatusTone} />
               </Stack>
             </Stack>
 
@@ -581,6 +607,49 @@ export function AdminRegisteredUserDetailPage() {
                       </Button>
                     </Stack>
                   </Stack>
+
+                  <Box
+                    sx={{
+                      mb: 2.5,
+                      p: 2,
+                      borderRadius: '12px',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      bgcolor: '#F8FAFC',
+                    }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: 13, letterSpacing: 0.4, color: 'text.secondary', textTransform: 'uppercase', mb: 1.5 }}>
+                      {t('admin.users.detail.accountStatusSection')}
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid size={{ xs: 12, sm: 4 }}>
+                        <Typography sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary' }}>
+                          {t('admin.users.detail.accountStatus')}
+                        </Typography>
+                        <Box sx={{ mt: 0.5 }}>
+                          <StatusPill label={accountStatusLabel} tone={accountStatusTone} />
+                        </Box>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 4 }}>
+                        <Typography sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary' }}>
+                          {t('admin.users.detail.lastActive')}
+                        </Typography>
+                        <Typography sx={{ fontWeight: 700, mt: 0.5, whiteSpace: 'pre-line' }}>
+                          {activityText(accountActivity.lastActive)}
+                        </Typography>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 4 }}>
+                        <Typography sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary' }}>
+                          {t('admin.users.detail.lastLogin')}
+                        </Typography>
+                        <Typography sx={{ fontWeight: 700, mt: 0.5, whiteSpace: 'pre-line' }}>
+                          {activityText(accountActivity.lastLogin)}
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                    <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 1.5 }}>
+                      {t('admin.users.detail.accountStatusHint')}
+                    </Typography>
+                  </Box>
 
                   <Box sx={{ mb: 2.5 }}>
                     <AdminTestLeadOption
@@ -741,6 +810,12 @@ export function AdminRegisteredUserDetailPage() {
                       {t('admin.users.detail.addNote')}
                     </Button>
                   </Box>
+
+                  <AdminResetPasswordPanel
+                    userId={user.id}
+                    displayName={name}
+                    mobileNumber={user.mobileNumber}
+                  />
                 </Box>
 
                 <Box

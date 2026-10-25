@@ -95,7 +95,8 @@
     "reports": "रिपोर्ट्स",
     "globalAttention": "Needs Attention",
     "globalActivity": "Recent Activity",
-    "inviteMember": "सदस्य आमंत्रित करें"
+    "inviteMember": "सदस्य आमंत्रित करें",
+    "serviceContacts": "सेवा संपर्क"
   },
   "auth": {
     "login": {
@@ -398,7 +399,9 @@
       "attentionMoreUpdates_one": "+{{count}} more update",
       "attentionMoreUpdates_other": "+{{count}} more updates",
       "paginationShowing": "Showing {{from}} to {{to}} of {{total}} spaces",
-      "paginationAria": "स्पेस पृष्ठ"
+      "paginationAria": "स्पेस पृष्ठ",
+      "serviceContacts": "सेवा संपर्क",
+      "serviceContactsSubtitle": "अपने सेवा प्रदाताओं को सहेजें और प्रबंधित करें"
     },
     "switcher": {
       "open": "स्पेस बदलें",
@@ -474,7 +477,8 @@
           "MESS": "For mess and canteen operations.",
           "HOSTEL": "For hostel accommodations.",
           "CO_LIVING": "For shared living spaces.",
-          "RENTAL": "For rental properties."
+          "RENTAL": "For rental properties.",
+          "CORPORATE_STAY": "Company accommodation."
         }
       }
     },
@@ -499,6 +503,10 @@
       "rental": {
         "label": "किराया",
         "description": "फ्लैट / कमरे"
+      },
+      "corporateStay": {
+        "label": "कॉर्पोरेट स्टे",
+        "description": "कंपनी आवास"
       }
     },
     "propertyCategory": {
@@ -4313,7 +4321,7 @@
         "due": "देय राशि",
         "paid": "भुगतान",
         "outstanding": "बकाया",
-        "nextDue": "अगली देय तिथि"
+        "underReview": "समीक्षाधीन"
       }
     }
   },
@@ -5079,6 +5087,41 @@
         "onboarding": "ऑनबोर्डिंग",
         "registered": "पंजीकृत",
         "space": "स्पेस"
+      },
+      "detail": {
+        "accountStatusSection": "खाता स्थिति",
+        "accountStatus": "स्थिति",
+        "accountStatusActive": "सक्रिय",
+        "accountStatusDeactivated": "निष्क्रिय",
+        "accountStatusUnknown": "अज्ञात",
+        "accountStatusHint": "यह खाता साइन इन कर सकता है या नहीं। यह मोबाइल सत्यापन और ऑनबोर्डिंग से अलग है। अंतिम सक्रिय समय रिकॉर्ड किया उपयोग है, लाइव सेशन नहीं।",
+        "lastActive": "अंतिम सक्रिय",
+        "lastLogin": "अंतिम लॉगिन",
+        "activityNever": "कभी नहीं",
+        "activityUnknown": "दर्ज नहीं",
+        "activityJustNow": "अभी",
+        "activityMinutesAgo": "{{count}} मिनट पहले",
+        "activityHoursAgo": "{{count}} घंटे पहले",
+        "activityDaysAgo": "{{count}} दिन पहले",
+        "reset": {
+          "title": "पासवर्ड रीसेट करें",
+          "hint": "अस्थायी पासवर्ड बनाएँ या खुद दर्ज करें।",
+          "self": "अपना पासवर्ड बदलने के लिए खाता पुनर्प्राप्ति का उपयोग करें।",
+          "newPassword": "नया पासवर्ड",
+          "confirmPassword": "पासवर्ड की पुष्टि करें",
+          "policy": "8 से 72 अक्षरों का उपयोग करें।",
+          "generate": "ऑटोजेनरेट",
+          "generateFailed": "पासवर्ड नहीं बन सका। खुद दर्ज करें।",
+          "copy": "कॉपी",
+          "submit": "पासवर्ड रीसेट करें",
+          "passwordCopied": "पासवर्ड कॉपी हो गया",
+          "passwordCopyFailed": "पासवर्ड कॉपी नहीं हो सका।",
+          "generatedNotApplied": "यह बनाया गया पासवर्ड अभी लागू नहीं हुआ है।",
+          "confirmTitle": "यह पासवर्ड रीसेट करें?",
+          "confirmBody": "इससे {{name}} ({{mobile}}) के लिए नया पासवर्ड सेट होगा। उनके मौजूदा सत्र काम करना बंद कर देंगे। मौजूदा पासवर्ड नहीं दिखाया जाता।",
+          "success": "पासवर्ड अपडेट हो गया। उपयोगकर्ता नए पासवर्ड से साइन इन कर सकता है।",
+          "failed": "पासवर्ड रीसेट नहीं हो सका।"
+        }
       }
     },
     "list": {
@@ -5303,5 +5346,70 @@
     "chooseGallery": "Choose from gallery",
     "attached": "Attached",
     "sizeHint": "JPEG, PNG, or WebP. Maximum {{maxMb}} MB after compression."
+  },
+  "serviceContacts": {
+    "title": "सेवा संपर्क",
+    "subtitle": "अपने सेवा प्रदाताओं को सहेजें और प्रबंधित करें",
+    "add": "संपर्क जोड़ें",
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "edit": "संपादित करें",
+    "archive": "संग्रहित करें",
+    "call": "कॉल",
+    "whatsapp": "व्हाट्सऐप",
+    "email": "ईमेल",
+    "searchPlaceholder": "संपर्क, श्रेणी या फ़ोन खोजें...",
+    "category": "श्रेणी",
+    "categoryAll": "सभी",
+    "spaceAll": "सभी स्थान",
+    "sortUpdated": "हाल में अपडेट",
+    "sortName": "नाम",
+    "sortCategory": "श्रेणी",
+    "count": "{{count}} संपर्क",
+    "emptyTitle": "अभी कोई सेवा संपर्क नहीं",
+    "emptyDescription": "आपूर्तिकर्ताओं और तकनीशियनों को एक बार सहेजें, फिर उन्हें अपने स्थानों में दोबारा उपयोग करें।",
+    "noResultsTitle": "कोई संपर्क नहीं मिला",
+    "noResultsDescription": "कोई दूसरा नाम, फ़ोन नंबर या फ़िल्टर आज़माएँ।",
+    "loadError": "सेवा संपर्क लोड नहीं हो सके।",
+    "retry": "फिर कोशिश करें",
+    "saved": "सेवा संपर्क सहेजा गया।",
+    "archived": "सेवा संपर्क संग्रहित किया गया।",
+    "saveError": "यह संपर्क सहेजा नहीं जा सका।",
+    "archiveConfirmTitle": "इस संपर्क को संग्रहित करें?",
+    "archiveConfirmBody": "संग्रहित संपर्क निर्देशिका से छिप जाते हैं। इससे कोई स्थान या सदस्य नहीं हटता।",
+    "requiredName": "संपर्क का नाम आवश्यक है।",
+    "requiredCategory": "श्रेणी आवश्यक है।",
+    "requiredCustom": "इस श्रेणी का नाम लिखें।",
+    "requiredMethod": "फ़ोन नंबर, व्हाट्सऐप नंबर या ईमेल जोड़ें।",
+    "invalidPhone": "मान्य मोबाइल नंबर लिखें।",
+    "invalidEmail": "मान्य ईमेल पता लिखें।",
+    "duplicateTitle": "संभव डुप्लिकेट",
+    "duplicateBody": "आपकी निर्देशिका में इस फ़ोन नंबर का संपर्क पहले से है। आप वापस जा सकते हैं या इसे अलग संपर्क के रूप में सहेज सकते हैं।",
+    "duplicateStrong": "व्यवसाय का नाम और फ़ोन नंबर दोनों एक मौजूदा संपर्क से मेल खाते हैं।",
+    "saveAnyway": "फिर भी सहेजें",
+    "reuseHint": "यह संपर्क आपकी सेवा संपर्क निर्देशिका में सहेजा जाता है और स्थानों में दोबारा उपयोग किया जा सकता है।",
+    "spacesLabel": "जुड़े स्थान",
+    "noSpaces": "कोई स्थान नहीं जुड़ा",
+    "businessName": "संपर्क / व्यवसाय का नाम",
+    "customCategory": "कस्टम श्रेणी",
+    "contactPerson": "प्राथमिक संपर्क व्यक्ति",
+    "primaryPhone": "प्राथमिक फ़ोन नंबर",
+    "alternatePhone": "वैकल्पिक फ़ोन नंबर",
+    "whatsappNumber": "व्हाट्सऐप नंबर",
+    "emailLabel": "ईमेल पता",
+    "description": "सेवा विवरण",
+    "address": "पता या सेवा क्षेत्र",
+    "notes": "नोट्स",
+    "optional": "वैकल्पिक",
+    "details": "संपर्क विवरण",
+    "openFailed": "इस डिवाइस पर यह क्रिया नहीं खुल सकी।",
+    "unsavedTitle": "बिना सहेजे बदलाव छोड़ें?",
+    "unsavedBody": "आपके बदलाव सहेजे नहीं गए हैं।",
+    "discard": "छोड़ें",
+    "loading": "सेवा संपर्क लोड हो रहे हैं...",
+    "formTitleAdd": "संपर्क जोड़ें",
+    "formTitleEdit": "संपर्क संपादित करें",
+    "previous": "पिछला",
+    "next": "अगला"
   }
 }

@@ -1,11 +1,11 @@
 import { Box, Typography, useTheme } from '@mui/material';
-import { Check, Moon, Sun, Sunrise } from 'lucide-react';
+import { Check, Moon, Sun, SunMedium } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
-import { StatusChip } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
 import type { DailyMenuResponse, MealType } from '@/shared/types/meals';
+import { MealStatusBadge } from './MealStatusBadge';
 import {
   getSlotShareState,
   resolveMealStatusKind,
@@ -14,8 +14,8 @@ import {
 import { mealTypeTheme } from '../utils/mealTypeTheme';
 
 const ICONS: Record<MealType, LucideIcon> = {
-  BREAKFAST: Sunrise,
-  LUNCH: Sun,
+  BREAKFAST: Sun,
+  LUNCH: SunMedium,
   DINNER: Moon,
 };
 
@@ -45,22 +45,6 @@ export function ShareMealSlotCheckbox({
   const mealTheme = mealTypeTheme(mealType);
   const accent = mealTheme.accent;
   const mealLabel = t(`meals.mealType.${mealType}`);
-
-  const statusTone =
-    statusKind === 'shared'
-      ? 'success'
-      : statusKind === 'draft' || statusKind === 'needs_reshare' || statusKind === 'empty'
-        ? 'warning'
-        : 'neutral';
-
-  const statusLabel =
-    statusKind === 'empty'
-      ? t('meals.planning.emptySlot')
-      : statusKind === 'needs_reshare'
-        ? t('meals.status.needsReshare', { defaultValue: 'Needs reshare' })
-        : statusKind === 'shared'
-          ? t('meals.status.shared', { defaultValue: 'Shared' })
-          : t('meals.status.notShared', { defaultValue: 'Draft' });
 
   const hint = !shareable
     ? state === 'empty' || state === 'draft'
@@ -121,7 +105,7 @@ export function ShareMealSlotCheckbox({
           <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
             {mealLabel}
           </Typography>
-          <StatusChip label={statusLabel} tone={statusTone} />
+          <MealStatusBadge kind={statusKind} size="compact" />
         </Box>
         {hint ? (
           <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted, mt: 0.35 }}>

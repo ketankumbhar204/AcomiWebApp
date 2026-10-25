@@ -39,7 +39,7 @@ export function MealsPermissionGate() {
   }
 
   const isOpsRoute =
-    /\/meals\/(share|poll|participation|edit|plans\/customer)/.test(location.pathname) ||
+    /\/meals\/(share|poll|participation|edit|responses|plans\/customer)/.test(location.pathname) ||
     /\/meal-headcount/.test(location.pathname);
   if (
     permissions.canManageMeals &&

@@ -10,7 +10,7 @@ import {
 } from '../utils/occupantPaymentSummary';
 
 function money(amount: number): string {
-  return `₹${amount.toLocaleString('en-IN')}`;
+  return `₹${Math.round(amount).toLocaleString('en-IN')}`;
 }
 
 export function occupiedPaymentCopy(

@@ -7,6 +7,7 @@ import { ErrorState } from '@/shared/components/ErrorState';
 import { InfoRow } from '@/shared/components/InfoRow';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { formatMemberContactNumber } from '@/shared/utils/indianMobile';
 import type { MemberDetailsResponse } from '@/shared/types/member';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { useMemberOccupancies } from '../../hooks/useMemberDetailData';
@@ -108,7 +109,7 @@ export function MemberProfilePanel({
         <InfoRow label={t('settings.profile.fullNameLabel')} value={display(profile?.fullName ?? member.fullName)} />
         <InfoRow
           label={t('membership.details.mobile')}
-          value={display(profile?.mobileNumber ?? member.mobileNumber)}
+          value={display(formatMemberContactNumber(profile?.mobileNumber ?? member.mobileNumber))}
         />
         <InfoRow label={t('settings.profile.emailLabel')} value={display(profile?.email)} />
         <InfoRow
@@ -160,7 +161,7 @@ export function MemberProfilePanel({
         />
         <InfoRow
           label={t('membership.emergency.mobile')}
-          value={member.emergencyContactMobile ?? missing}
+          value={formatMemberContactNumber(member.emergencyContactMobile) ?? missing}
         />
       </ProfileDisclosure>
 

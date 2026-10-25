@@ -7,6 +7,7 @@ import {
   Droplets,
   GlassWater,
   House,
+  Briefcase,
   KeyRound,
   Refrigerator,
   Shirt,
@@ -22,7 +23,14 @@ import type { SpaceType } from '@/shared/types/space';
 import type { AmenityCode } from '@/modules/onboarding/utils/amenities';
 import { colors, spaceTypePalette } from '@/shared/theme/colors';
 
-export const SPACE_TYPE_ORDER: SpaceType[] = ['MESS', 'PG', 'HOSTEL', 'CO_LIVING', 'RENTAL'];
+export const SPACE_TYPE_ORDER: SpaceType[] = [
+  'MESS',
+  'PG',
+  'HOSTEL',
+  'CO_LIVING',
+  'RENTAL',
+  'CORPORATE_STAY',
+];
 
 export type SpaceTypeVisual = {
   icon: ComponentType<LucideProps>;
@@ -37,6 +45,7 @@ export const SPACE_TYPE_VISUAL: Record<SpaceType, SpaceTypeVisual> = {
   HOSTEL: { icon: Building2, ...spaceTypePalette.HOSTEL },
   CO_LIVING: { icon: Users, ...spaceTypePalette.CO_LIVING },
   RENTAL: { icon: KeyRound, ...spaceTypePalette.RENTAL },
+  CORPORATE_STAY: { icon: Briefcase, ...spaceTypePalette.CORPORATE_STAY },
 };
 
 export type AmenityVisual = {
@@ -60,8 +69,11 @@ export const AMENITY_VISUAL: Record<Exclude<AmenityCode, 'CUSTOM'>, AmenityVisua
   WARDROBE: { icon: Shirt, accent: colors.teal, tint: '#F0FDFA' },
 };
 
-export function spaceTypeI18nKey(type: SpaceType): 'pg' | 'mess' | 'hostel' | 'coLiving' | 'rental' {
+export function spaceTypeI18nKey(
+  type: SpaceType,
+): 'pg' | 'mess' | 'hostel' | 'coLiving' | 'rental' | 'corporateStay' {
   if (type === 'CO_LIVING') return 'coLiving';
+  if (type === 'CORPORATE_STAY') return 'corporateStay';
   return type.toLowerCase() as 'pg' | 'mess' | 'hostel' | 'rental';
 }
 

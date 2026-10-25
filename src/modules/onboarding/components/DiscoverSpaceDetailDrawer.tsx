@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import { BadgeCheck, Check, Map, MapPin, Phone, X } from 'lucide-react';
 import type { TFunction } from 'i18next';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -30,6 +30,7 @@ import {
   formatListingAddress,
   formatListingPriceInr,
   humanizeAmenityCode,
+  openableMapsUrl,
 } from '@/modules/onboarding/utils/listingLocation';
 import { listingPriceSuffix } from '@/shared/utils/priceBasis';
 import { ListingFacts, TypeChip } from '@/modules/onboarding/components/ListingFacts';
@@ -39,10 +40,12 @@ import { spaceDiscoverApi } from '@/shared/api/spaceDiscoverApi';
 import { AppDrawer } from '@/shared/components/AppDrawer';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { useAlreadyInquired, useContactViewed } from '@/shared/hooks/useAlreadyInquired';
+import { useDirectContactReveal } from '@/shared/hooks/useDirectContactReveal';
 import type { OwnerContactResponse } from '@/shared/types/enquiry';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
 import { spaceDashboardPath } from '@/routes/paths';
+import type { ListingSection } from '@/shared/utils/listingInfo';
 import type { AmenityAssignment, DiscoverSpaceDetailResponse } from '@/shared/types/space';
 
 type DiscoverSpaceDetailDrawerProps = {
@@ -51,6 +54,10 @@ type DiscoverSpaceDetailDrawerProps = {
   onClose: () => void;
   /** Continue the public-site Contact / Enquire flow after sign-in. */
   autoEnquire?: boolean;
+  /** Scroll the open listing to this section. */
+  focusSection?: ListingSection | null;
+  /** Bumps when the same section is chosen again so the drawer scrolls again. */
+  focusNonce?: number;
 };
 
 function amenityLabel(item: AmenityAssignment): string {
@@ -92,6 +99,8 @@ export function DiscoverSpaceDetailDrawer({
   open,
   onClose,
   autoEnquire = false,
+  focusSection = null,
+  focusNonce = 0,
 }: DiscoverSpaceDetailDrawerProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -104,6 +113,7 @@ export function DiscoverSpaceDetailDrawer({
   const contactViewed = useContactViewed(spaceId);
   const sendingEnquiry = useIsEnquirySending(spaceId);
   const autoEnquireOpened = useRef(false);
+  const scrollerRef = useRef<HTMLDivElement>(null);
 
   const detailQuery = useQuery({
     queryKey: ['spaces-discover-detail', spaceId],
@@ -116,9 +126,14 @@ export function DiscoverSpaceDetailDrawer({
     queryFn: () => enquiryApi.revealedContact(spaceId!),
     enabled: open && Boolean(spaceId) && contactViewed && !liveContact,
   });
-  const revealed = liveContact ?? revealedQuery.data ?? null;
-
   const detail = detailQuery.data;
+  const reveal = useDirectContactReveal(
+    spaceId,
+    open && Boolean(detail) && !detail?.alreadyMember && !detail?.ownedByCurrentUser,
+  );
+  const revealed = reveal.contact ?? liveContact ?? revealedQuery.data ?? null;
+  const revealing =
+    reveal.phase === 'checking' || reveal.phase === 'revealing' || reveal.phase === 'revealed';
   const amenityItems =
     detail?.amenities?.filter((a) => a.label || a.code) ??
     (detail?.amenityLabels ?? []).map((label) => ({ code: label, label }));
@@ -132,12 +147,19 @@ export function DiscoverSpaceDetailDrawer({
       autoEnquireOpened.current = false;
       return;
     }
+    if (
+      reveal.phase === 'checking' ||
+      reveal.phase === 'revealing' ||
+      reveal.phase === 'revealed'
+    ) {
+      return;
+    }
     if (!autoEnquire || !detail || detail.alreadyMember || alreadyInquired || autoEnquireOpened.current) {
       return;
     }
     autoEnquireOpened.current = true;
     setEnquireOpen(true);
-  }, [alreadyInquired, autoEnquire, detail, open]);
+  }, [alreadyInquired, autoEnquire, detail, open, reveal.phase]);
 
   const formattedAddress = detail
     ? formatListingAddress({
@@ -151,7 +173,28 @@ export function DiscoverSpaceDetailDrawer({
   const priceParts = detail ? detailPriceParts(detail, t) : { amount: null, suffix: null };
   const description = detail?.description?.trim() || null;
   const unlocked = Boolean(revealed) || contactViewed || alreadyInquired;
-  const mapHref = detail?.mapUrl?.trim() || '';
+  const mapHref = openableMapsUrl(detail?.mapUrl);
+
+  const scrollToSection = useCallback((section: ListingSection) => {
+    const scroller = scrollerRef.current;
+    const target = scroller?.querySelector<HTMLElement>(`#listing-section-${section}`);
+    if (!scroller || !target) return;
+    const top =
+      target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 12;
+    scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    if (!open || !focusSection || !detail) return;
+    const first = window.setTimeout(() => scrollToSection(focusSection), 80);
+    const second = window.setTimeout(() => scrollToSection(focusSection), 450);
+    const third = window.setTimeout(() => scrollToSection(focusSection), 900);
+    return () => {
+      window.clearTimeout(first);
+      window.clearTimeout(second);
+      window.clearTimeout(third);
+    };
+  }, [detail, focusNonce, focusSection, open, revealed, reveal.phase, scrollToSection]);
 
   const textPrimary = isDark ? theme.palette.text.primary : colors.textPrimary;
   const textSecondary = isDark ? theme.palette.text.secondary : colors.textSecondary;
@@ -188,7 +231,7 @@ export function DiscoverSpaceDetailDrawer({
           </Box>
         </Stack>
 
-        <Box sx={{ flex: 1, overflow: 'auto' }}>
+        <Box ref={scrollerRef} sx={{ flex: 1, overflow: 'auto' }}>
           {detailQuery.isLoading ? (
             <Stack spacing={1.5} sx={{ p: 2.5 }}>
               <Skeleton variant="rounded" height={200} sx={{ borderRadius: '24px' }} />
@@ -250,7 +293,7 @@ export function DiscoverSpaceDetailDrawer({
                 ) : null}
               </Box>
 
-              <Box sx={{ mt: 2 }}>
+              <Box id="listing-section-food" sx={{ mt: 2 }}>
                 <ListingFacts
                   leading={<TypeChip label={t(spaceTypeLabelKey(detail.type))} />}
                   genderPolicy={detail.genderPolicy}
@@ -273,15 +316,18 @@ export function DiscoverSpaceDetailDrawer({
                 {detail.name}
               </Typography>
 
-              {contactViewed ? (
+              <Box id="listing-section-contact">
+              {contactViewed || reveal.contact ? (
                 <Typography sx={{ mt: 1.5, fontSize: 13, fontWeight: 700, color: '#0F6B4C' }}>
                   {t('spaces.findPlace.contactDetailsViewed', { defaultValue: 'Contact details viewed' })}
                 </Typography>
               ) : null}
 
               <OwnerContactCard contact={revealed} mapUrl={unlocked ? detail.mapUrl : null} />
+              </Box>
               {alreadyInquired ? <InquirySentDetails listingId={detail.spaceId} /> : null}
 
+              <Box id="listing-section-address">
               {formattedAddress ? (
                 <Typography
                   sx={{
@@ -297,7 +343,9 @@ export function DiscoverSpaceDetailDrawer({
                   {formattedAddress}
                 </Typography>
               ) : null}
+              </Box>
 
+              <Box id="listing-section-rent">
               {priceParts.amount ? (
                 <Typography sx={{ mt: 2, fontWeight: 600, fontSize: '1.35rem', color: textPrimary }}>
                   {priceParts.amount}
@@ -312,6 +360,7 @@ export function DiscoverSpaceDetailDrawer({
                   {t('spaces.findPlace.priceOnRequest', { defaultValue: 'Price on request' })}
                 </Typography>
               )}
+              </Box>
 
               {description ? (
                 <Box sx={{ mt: 2.5 }}>
@@ -335,6 +384,7 @@ export function DiscoverSpaceDetailDrawer({
                 </Box>
               ) : null}
 
+              <Box id="listing-section-amenities">
               {amenityItems.length > 0 ? (
                 <Box sx={{ mt: 2.5 }}>
                   <Typography sx={{ fontSize: 14, fontWeight: 700, color: textPrimary }}>
@@ -371,6 +421,7 @@ export function DiscoverSpaceDetailDrawer({
                   </Box>
                 </Box>
               ) : null}
+              </Box>
 
               <Box sx={{ mt: 2.5 }}>
                 <Typography sx={{ fontSize: '0.95rem', color: textPrimary, lineHeight: 1.5 }}>
@@ -390,24 +441,18 @@ export function DiscoverSpaceDetailDrawer({
                   </Typography>
                 )}
                 <PhotoRequestAction
+                  spaceId={detail.spaceId}
                   kind={detail.type === 'MESS' ? 'mess' : 'property'}
                   name={detail.name}
                   spaceType={detail.type}
                   location={formattedAddress}
                   photoUrls={[detail.listingImageUrl, detail.coverImageUrl, detail.imageUrl]}
-                  phones={
-                    revealed
-                      ? [revealed.mobileNumber, revealed.alternateMobileNumber, revealed.additionalMobileNumber]
-                      : []
-                  }
-                  contactAuthorized={Boolean(revealed)}
-                  onNeedContact={revealed || contactViewed ? undefined : () => setEnquireOpen(true)}
                 />
               </Box>
 
-              <Box sx={{ mt: 'auto', pt: 2.5 }}>
+              <Box id="listing-section-map" sx={{ mt: 'auto', pt: 2.5 }}>
                 <Box sx={{ borderRadius: '16px', bgcolor: '#EAF8F2', p: 1.25 }}>
-                  {mapHref && unlocked ? (
+                  {mapHref ? (
                     <Box
                       component="a"
                       href={mapHref}
@@ -542,7 +587,7 @@ export function DiscoverSpaceDetailDrawer({
                       listing={detail}
                       variant="detail"
                       surface={detail.type === 'MESS' ? 'meals' : 'places'}
-                      onEnquire={unlocked ? undefined : () => setEnquireOpen(true)}
+                      onSelect={scrollToSection}
                     />
                   </Box>
                 </Box>
@@ -570,7 +615,22 @@ export function DiscoverSpaceDetailDrawer({
                   >
                     {t('spaces.findPlace.enquire.ownCta')}
                   </Button>
-                ) : contactViewed && !sendingEnquiry ? null : alreadyInquired && !sendingEnquiry ? (
+                ) : reveal.phase === 'disabled' || reveal.phase === 'exhausted' || reveal.phase === 'error' ? (
+                  <Typography sx={{ mt: 2, fontSize: 13, color: textSecondary }}>
+                    {reveal.phase === 'exhausted'
+                      ? t('spaces.findPlace.enquire.viewHereExhausted', {
+                          defaultValue: 'You have used all instant contact views for today.',
+                        })
+                      : reveal.phase === 'error'
+                        ? t('spaces.findPlace.enquire.viewHereFailed', {
+                            defaultValue: 'Contact details could not be loaded. Try again.',
+                          })
+                        : t('spaces.findPlace.enquire.viewHereDisabled', {
+                            defaultValue: 'Instant contact viewing is turned off. You can still request details.',
+                          })}
+                  </Typography>
+                ) : null}
+                {revealing || (contactViewed && !sendingEnquiry) ? null : alreadyInquired && !sendingEnquiry ? (
                   <Button
                     fullWidth
                     disabled

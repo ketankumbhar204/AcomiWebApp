@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { enquiryApi } from '@/shared/api/enquiryApi';
-import { myEnquiriesPath } from '@/routes/paths';
+import { findAPlaceListingPath, myEnquiriesPath, ROUTES } from '@/routes/paths';
+import { isPhotoRequestNotification } from '@/shared/utils/photoRequest';
 import type { UserNotification } from '@/shared/types/enquiry';
 
 function isSafeEnquiryId(value: string | null | undefined): value is string {
@@ -48,6 +49,21 @@ export function RequesterNotificationBell() {
       }
     } catch {
       // Navigation still proceeds; read-state is best-effort.
+    }
+    if (isPhotoRequestNotification(item) && item.spaceId) {
+      navigate(findAPlaceListingPath(item.spaceId));
+      return;
+    }
+    if (item.notificationType === 'PASSWORD_CHANGED') {
+      navigate(ROUTES.profile);
+      return;
+    }
+    if (
+      item.notificationType === 'INQUIRY_CREDIT_PAYMENT_APPROVED' ||
+      item.notificationType === 'INQUIRY_CREDIT_PAYMENT_REJECTED'
+    ) {
+      navigate(ROUTES.findAPlace);
+      return;
     }
     navigate(myEnquiriesPath(isSafeEnquiryId(item.enquiryId) ? item.enquiryId : undefined));
   }

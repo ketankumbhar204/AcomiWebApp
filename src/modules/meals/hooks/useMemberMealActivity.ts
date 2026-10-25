@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 import { mealsApi } from '../api/mealsApi';
 import type { MemberMealActivityMonth } from '@/shared/types/meals';
+import { normalizeActivityPollStatus } from '../utils/memberMealActivityHistory';
 
 function currentMonthKey(): string {
   const now = new Date();
@@ -41,7 +42,16 @@ function normalizeMonthActivity(data: MemberMealActivityMonth): MemberMealActivi
       amountPaidThisMonth:
         summary.amountPaidThisMonth != null ? Number(summary.amountPaidThisMonth) : null,
     },
-    days: data.days ?? [],
+    days: (data.days ?? []).map((day) => ({
+      ...day,
+      slots: (day.slots ?? []).map((slot) => {
+        const raw = slot as typeof slot & { poll_status?: string | null };
+        return {
+          ...slot,
+          pollStatus: normalizeActivityPollStatus(raw.pollStatus ?? raw.poll_status),
+        };
+      }),
+    })),
   };
 }
 

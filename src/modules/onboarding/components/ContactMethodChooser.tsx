@@ -2,7 +2,7 @@ import { Box, ButtonBase, Typography } from '@mui/material';
 import { ChevronRight, Eye, Lock, Mail, MessageCircle, Smartphone, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { InquiryQuota } from '@/shared/types/inquiryCredits';
-import { isUnlimitedQuota, needsInquiryPayment, paidCreditsOf } from '@/shared/api/inquiryCreditsApi';
+import { canViewContactDirectly, isUnlimitedQuota, needsInquiryPayment, paidCreditsOf } from '@/shared/api/inquiryCreditsApi';
 
 type ContactMethodChooserProps = {
   quota: InquiryQuota | null;
@@ -42,7 +42,7 @@ export function ContactMethodChooser({
   const showPaidRemaining = remainingKnown && remainingToday <= 0 && paidLeft > 0;
   const viewHereLimit = quota?.viewHereDailyLimit ?? 0;
   const viewHereRemaining = quota?.viewHereRemainingToday ?? 0;
-  const showViewHere = viewHereLimit > 0 && viewHereRemaining > 0;
+  const showViewHere = canViewContactDirectly(quota);
   const showViewHereExhausted = viewHereLimit > 0 && viewHereRemaining <= 0;
 
   return (

@@ -21,10 +21,12 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
+  CreditCard,
   Filter,
   LayoutGrid,
   List,
   Mail,
+  Contact,
   Plus,
   Search,
   X,
@@ -45,7 +47,9 @@ import { useConsumerSpacesAttention } from '@/modules/global/hooks/useConsumerSp
 import { isConsumerMembershipRole } from '@/modules/onboarding/utils/profileCompletion';
 import { getAccountIntent } from '@/modules/onboarding/utils/accountIntent';
 import { canCreateSpace } from '@/modules/onboarding/utils/spaceCreationAccess';
+import { canOpenServiceContacts } from '@/modules/serviceContacts/utils/serviceContactAccess';
 import { PendingInvitationsPanel } from '@/modules/onboarding/components/PendingInvitationsPanel';
+import { PendingListingsPanel } from '@/modules/onboarding/components/PendingListingsPanel';
 import { invitationApi } from '@/modules/onboarding/api/invitationApi';
 import { mySpacesApi } from '@/shared/api/mySpacesApi';
 import { ContentCard } from '@/shared/components/ContentCard';
@@ -60,6 +64,7 @@ import {
   spaceDashboardPath,
   spaceDetailsPath,
   spaceEditPath,
+  spacePendingActionsPath,
 } from '@/routes/paths';
 import { useAuthSession } from '@/shared/hooks/useAuthSession';
 import { useSpaceStore } from '@/store/spaceStore';
@@ -174,10 +179,74 @@ export function MySpacesPage() {
   const isSearching = Boolean(debounced);
   const showGlobalOverview = !isSearching && (spaces.length > 0 || storeSpaces.length > 0);
   const globalDashboard = useGlobalDashboard(showGlobalOverview);
+  const memberSpaces = storeSpaces.length > 0 ? storeSpaces : spaces;
   const consumerAttention = useConsumerSpacesAttention(
-    storeSpaces.length > 0 ? storeSpaces : spaces,
+    memberSpaces,
     hasConsumerSpace && !isSearching,
   );
+
+  const memberPendingRows = useMemo(() => {
+    const invitations = invitationsQuery.data ?? [];
+    const invitedSpaceIds = new Set(invitations.map((invitation) => invitation.spaceId));
+    const rows: Array<{
+      key: string;
+      spaceId: string;
+      title: string;
+      subtitle: string;
+      icon: typeof CreditCard;
+      onClick: () => void;
+    }> = [];
+
+    for (const space of memberSpaces) {
+      if (!isConsumerMembershipRole(space.membershipRole)) {
+        continue;
+      }
+      const summary = consumerAttention.bySpaceId[space.spaceId];
+      for (const item of summary?.items ?? []) {
+        if (item.actionType === 'PAYMENT_UPDATE_REQUESTED') {
+          rows.push({
+            key: `payment-${space.spaceId}`,
+            spaceId: space.spaceId,
+            title: t('dashboard.pendingActions.paymentRequiresUpdate', {
+              defaultValue: 'Payment requires update',
+            }),
+            subtitle: item.detail?.trim() || space.spaceName,
+            icon: CreditCard,
+            onClick: () => navigate(spacePendingActionsPath(space.spaceId)),
+          });
+        } else if (
+          item.actionType === 'PENDING_INVITATION' &&
+          !invitedSpaceIds.has(space.spaceId)
+        ) {
+          rows.push({
+            key: `invite-action-${space.spaceId}`,
+            spaceId: space.spaceId,
+            title: t('dashboard.pendingActions.spaceInvitation', {
+              defaultValue: 'Space invitation',
+            }),
+            subtitle: item.detail?.trim() || space.spaceName,
+            icon: Mail,
+            onClick: () => navigate(ROUTES.acceptInvitations),
+          });
+        }
+      }
+    }
+
+    for (const invitation of invitations) {
+      rows.push({
+        key: `invite-${invitation.invitationId}`,
+        spaceId: invitation.spaceId,
+        title: t('dashboard.pendingActions.spaceInvitation', {
+          defaultValue: 'Space invitation',
+        }),
+        subtitle: invitation.spaceName,
+        icon: Mail,
+        onClick: () => navigate(ROUTES.acceptInvitations),
+      });
+    }
+
+    return rows;
+  }, [consumerAttention.bySpaceId, invitationsQuery.data, memberSpaces, navigate, t]);
 
   const pendingBySpace = useMemo(() => {
     const map = new Map<string, number>();
@@ -209,6 +278,9 @@ export function MySpacesPage() {
 
     const sorted = [...list];
     sorted.sort((a, b) => {
+      if (a.isDefault !== b.isDefault) {
+        return a.isDefault ? -1 : 1;
+      }
       switch (sort) {
         case 'nameDesc':
           return b.spaceName.localeCompare(a.spaceName);
@@ -246,6 +318,11 @@ export function MySpacesPage() {
 
   const attentionSpaces = globalDashboard.data?.attentionRequired?.length ?? 0;
   const attentionCount = globalDashboard.data?.totalAttentionCount ?? 0;
+  const memberAttentionCount = memberPendingRows.length;
+  const overviewAttentionCount = hasOperatorSpace ? attentionCount : memberAttentionCount;
+  const overviewAttentionSpaces = hasOperatorSpace
+    ? attentionSpaces
+    : new Set(memberPendingRows.map((row) => row.spaceId)).size;
   const latestActivity = globalDashboard.data?.recentActivity?.[0];
 
   const pageCount = Math.max(1, Math.ceil(filteredSpaces.length / PAGE_SIZE));
@@ -393,6 +470,21 @@ export function MySpacesPage() {
               >
                 {t('spaces.findPlace.ctaFindPlace')}
               </Button>
+              {canOpenServiceContacts(storeSpaces.length > 0 ? storeSpaces : spaces, getAccountIntent() === 'owner') ? (
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<Contact size={14} />}
+                  onClick={() => navigate(ROUTES.serviceContacts)}
+                  sx={{
+                    ...primaryOutlinedSx,
+                    borderColor: colors.primary,
+                    bgcolor: colors.lightGreen,
+                  }}
+                >
+                  {t('spaces.mySpaces.serviceContacts')}
+                </Button>
+              ) : null}
             </Stack>
           </Box>
 
@@ -402,7 +494,62 @@ export function MySpacesPage() {
             </Box>
           ) : null}
 
+          <PendingListingsPanel />
+
           {/* Compact KPI strip — Dashboard payment-card height, card-width capped */}
+          {!isSearching && memberPendingRows.length > 0 ? (
+            <Box id="member-pending" sx={{ scrollMarginTop: 24 }}>
+            <ContentCard>
+              <Stack spacing={1}>
+                <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+                  {t('dashboard.attention.pendingActions')}
+                </Typography>
+                {memberPendingRows.map((row) => {
+                  const RowIcon = row.icon;
+                  return (
+                    <Box
+                      key={row.key}
+                      role="button"
+                      tabIndex={0}
+                      onClick={row.onClick}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          row.onClick();
+                        }
+                      }}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.25,
+                        px: 1.25,
+                        py: 1,
+                        borderRadius: `${DASHBOARD_UX.radius}px`,
+                        border: `1px solid ${s.pendingBorder}`,
+                        bgcolor: s.pendingTint,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <IconBadge accent={colors.warning}>
+                        <RowIcon />
+                      </IconBadge>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }} noWrap>
+                          {row.title}
+                        </Typography>
+                        <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }} noWrap>
+                          {row.subtitle}
+                        </Typography>
+                      </Box>
+                      <ChevronRight size={16} color={s.textMuted} aria-hidden />
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </ContentCard>
+            </Box>
+          ) : null}
+
           {showGlobalOverview ? (
             <Box
               sx={{
@@ -412,7 +559,7 @@ export function MySpacesPage() {
                 alignItems: 'stretch',
               }}
             >
-              {attentionCount <= 0 ? (
+              {overviewAttentionCount <= 0 ? (
                 <Box
                   sx={{
                     ...kpiSx,
@@ -434,16 +581,32 @@ export function MySpacesPage() {
                 <Box
                   role="button"
                   tabIndex={0}
-                  onClick={() => navigate(ROUTES.globalAttention)}
+                  onClick={() => {
+                    if (!hasOperatorSpace) {
+                      document.getElementById('member-pending')?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start',
+                      });
+                      return;
+                    }
+                    navigate(ROUTES.globalAttention);
+                  }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
+                      if (!hasOperatorSpace) {
+                        document.getElementById('member-pending')?.scrollIntoView({
+                          behavior: 'smooth',
+                          block: 'start',
+                        });
+                        return;
+                      }
                       navigate(ROUTES.globalAttention);
                     }
                   }}
                   aria-label={t('spaces.globalDashboard.attentionA11y', {
-                    spaces: attentionSpaces,
-                    count: attentionCount,
+                    spaces: overviewAttentionSpaces,
+                    count: overviewAttentionCount,
                   })}
                   sx={{
                     ...kpiSx,
@@ -467,19 +630,19 @@ export function MySpacesPage() {
                         component="span"
                         sx={{ ...DASHBOARD_UX.counterValue, color: s.textPrimary, mr: 0.5 }}
                       >
-                        {attentionSpaces}
+                        {overviewAttentionSpaces}
                       </Box>
-                      {t('spaces.globalDashboard.spacesLabel', { count: attentionSpaces })}
+                      {t('spaces.globalDashboard.spacesLabel', { count: overviewAttentionSpaces })}
                     </Typography>
                     <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
                       <Box
                         component="span"
                         sx={{ ...DASHBOARD_UX.counterValue, color: s.textPrimary, mr: 0.5 }}
                       >
-                        {attentionCount}
+                        {overviewAttentionCount}
                       </Box>
                       {t('spaces.globalDashboard.pendingActionsShort', {
-                        count: attentionCount,
+                        count: overviewAttentionCount,
                       })}
                     </Typography>
                   </Stack>
@@ -778,6 +941,7 @@ export function MySpacesPage() {
                       layout={viewMode}
                       capacityUsed={pending}
                       capacityTotal={capacityTotal}
+                      pendingCount={pending}
                       onOpenDashboard={() => void openSpace(space.spaceId)}
                       onOpenDetails={() => navigate(spaceDetailsPath(space.spaceId))}
                       onSetDefault={() => void setAsDefault(space.spaceId)}

@@ -3,6 +3,7 @@ import {
   Bell,
   Building2,
   ClipboardList,
+  Contact,
   FileBarChart,
   LogOut,
   Megaphone,
@@ -28,6 +29,7 @@ import { enquiryApi } from '@/shared/api/enquiryApi';
 import { useAuthSession } from '@/shared/hooks/useAuthSession';
 import { colors } from '@/shared/theme/colors';
 import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { canOpenServiceContacts } from '@/modules/serviceContacts/utils/serviceContactAccess';
 import { ROUTES } from '@/routes/paths';
 import { useSpaceStore } from '@/store/spaceStore';
 
@@ -81,6 +83,7 @@ function headerCopy(pathname: string, t: (key: string) => string) {
   if (pathname === ROUTES.myEnquiries) {
     return t('navigation.enquiries');
   }
+  if (pathname === ROUTES.serviceContacts) return t('navigation.serviceContacts');
   return t('navigation.mySpaces');
 }
 
@@ -111,6 +114,7 @@ export function GlobalShellLayout() {
   const displayName = user?.fullName?.trim() || user?.mobileNumber || '';
   const initial = (user?.fullName?.trim()?.[0] || user?.mobileNumber?.[0] || 'A').toUpperCase();
   const isMySpaces = location.pathname === ROUTES.mySpaces;
+  const showServiceContacts = canOpenServiceContacts(mySpaces, isOwnerIntent);
   const isProfile = location.pathname === ROUTES.profile;
   const pageTitle = headerCopy(location.pathname, t);
 
@@ -172,6 +176,16 @@ export function GlobalShellLayout() {
             to: ROUTES.mySpaces,
             icon: <Building2 size={16} />,
           },
+          ...(showServiceContacts
+            ? [
+                {
+                  id: 'serviceContacts',
+                  label: t('navigation.serviceContacts'),
+                  to: ROUTES.serviceContacts,
+                  icon: <Contact size={16} />,
+                },
+              ]
+            : []),
           {
             id: 'findAPlace',
             label: t('navigation.findAPlace'),
@@ -242,7 +256,7 @@ export function GlobalShellLayout() {
         ],
       },
     ];
-  }, [enquiryBadge, hasSpaces, isOwnerIntent, t]);
+  }, [enquiryBadge, hasSpaces, isOwnerIntent, showServiceContacts, t]);
 
   const profileLeading = (
     <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: 0 }}>

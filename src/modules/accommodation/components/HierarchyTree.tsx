@@ -417,7 +417,7 @@ function BuildingNode({
         icon={<Building2 size={16} />}
         iconColor={ACC_ACCENTS.building}
         label={building.name}
-        secondary={building.layoutMode}
+        secondary={[building.referenceCode, building.layoutMode].filter(Boolean).join(' · ')}
       />
       <TreeBranch open={open}>
         {profile.showFloors

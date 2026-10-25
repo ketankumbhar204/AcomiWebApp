@@ -4,14 +4,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DiscoverSpaceCard } from '@/modules/onboarding/components/DiscoverSpaceCard';
 import { DiscoverSpaceDetailDrawer } from '@/modules/onboarding/components/DiscoverSpaceDetailDrawer';
-import { EnquireDialog } from '@/modules/onboarding/components/EnquireDialog';
 import { favoritesApi } from '@/shared/api/favoritesApi';
 import { getErrorMessage } from '@/shared/api/errors';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { LoadingState } from '@/shared/components/LoadingState';
-import { useFavoriteIds } from '@/shared/hooks/useFavorites';
+import { useFavoriteIds, useToggleFavorite } from '@/shared/hooks/useFavorites';
 import { loadFavoriteListings } from '@/shared/state/favoriteListings';
 import { colors } from '@/shared/theme/colors';
+import type { ListingSection } from '@/shared/utils/listingInfo';
 import type { DiscoverSpaceCardResponse } from '@/shared/types/space';
 import { useAuthStore } from '@/store/authStore';
 
@@ -19,11 +19,14 @@ export function FavoritesPage() {
   const { t } = useTranslation();
   const userId = useAuthStore((state) => state.userId);
   const favoriteIds = useFavoriteIds();
+  const toggleFavorite = useToggleFavorite();
+  const [filter, setFilter] = useState<'all' | 'places' | 'meals'>('all');
   const [items, setItems] = useState<DiscoverSpaceCardResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [enquireSpace, setEnquireSpace] = useState<DiscoverSpaceCardResponse | null>(null);
+  const [detailFocus, setDetailFocus] = useState<ListingSection | null>(null);
+  const [focusNonce, setFocusNonce] = useState(0);
 
   const load = useCallback(async () => {
     setError(null);
@@ -31,7 +34,13 @@ export function FavoritesPage() {
       if (userId) {
         await loadFavoriteListings(userId, { force: true });
       }
-      setItems(await favoritesApi.list());
+      const rows = await favoritesApi.list();
+      const seen = new Set<string>();
+      setItems(rows.filter((row) => {
+        if (!row.spaceId || seen.has(row.spaceId)) return false;
+        seen.add(row.spaceId);
+        return true;
+      }));
     } catch (err) {
       setError(getErrorMessage(err, t('spaces.favorites.loadFailed', { defaultValue: 'Could not load favorites.' })));
     } finally {
@@ -43,7 +52,24 @@ export function FavoritesPage() {
     void load();
   }, [load]);
 
-  const visible = items.filter((item) => favoriteIds.has(item.spaceId));
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible') void load();
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [load]);
+
+  const saved = items.filter((item) => favoriteIds.has(item.spaceId));
+  const visible = saved.filter((item) => {
+    if (filter === 'meals') return item.type === 'MESS';
+    if (filter === 'places') return item.type !== 'MESS';
+    return true;
+  });
+  const present = new Set(items.map((item) => item.spaceId));
+  const missingIds = !loading && !error && filter === 'all'
+    ? [...favoriteIds].filter((id) => !present.has(id))
+    : [];
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1200, mx: 'auto' }}>
@@ -55,6 +81,24 @@ export function FavoritesPage() {
           defaultValue: 'Places and mess listings you saved on this account.',
         })}
       </Typography>
+      <Box sx={{ display: 'flex', gap: 1, mt: 2 }} role="tablist">
+        {([
+          ['all', t('spaces.favorites.all', { defaultValue: 'All' })],
+          ['places', t('navigation.findAPlace', { defaultValue: 'Places' })],
+          ['meals', t('navigation.findAMeal', { defaultValue: 'Meals' })],
+        ] as const).map(([value, label]) => (
+          <Button
+            key={value}
+            role="tab"
+            aria-selected={filter === value}
+            onClick={() => setFilter(value)}
+            variant={filter === value ? 'contained' : 'outlined'}
+            sx={{ textTransform: 'none', borderRadius: 999 }}
+          >
+            {label}
+          </Button>
+        ))}
+      </Box>
 
       {loading && items.length === 0 ? <LoadingState minHeight={240} label={t('common.loading', { defaultValue: 'Loading' })} /> : null}
 
@@ -64,7 +108,7 @@ export function FavoritesPage() {
         </Box>
       ) : null}
 
-      {!loading && !error && visible.length === 0 ? (
+      {!loading && !error && visible.length === 0 && missingIds.length === 0 ? (
         <Box sx={{ mt: 4, textAlign: 'center', color: colors.textSecondary }}>
           <Heart size={28} />
           <Typography sx={{ mt: 1, fontWeight: 700, color: colors.textPrimary }}>
@@ -78,7 +122,7 @@ export function FavoritesPage() {
         </Box>
       ) : null}
 
-      {visible.length > 0 ? (
+      {visible.length > 0 || missingIds.length > 0 ? (
         <Box
           sx={{
             display: 'grid',
@@ -91,9 +135,22 @@ export function FavoritesPage() {
             <DiscoverSpaceCard
               key={space.spaceId}
               space={space}
-              onViewDetails={setDetailId}
-              onEnquire={setEnquireSpace}
+              onViewDetails={(spaceId, section) => {
+                setDetailFocus(section ?? null);
+                setFocusNonce((value) => value + 1);
+                setDetailId(spaceId);
+              }}
             />
+          ))}
+          {missingIds.map((id) => (
+            <Box key={id} sx={{ border: '1px solid rgba(15,23,42,0.08)', borderRadius: 2, p: 2 }}>
+              <Typography sx={{ fontWeight: 700, color: colors.textPrimary }}>
+                {t('spaces.favorites.unavailable', { defaultValue: 'This listing is no longer available.' })}
+              </Typography>
+              <Button onClick={() => { void toggleFavorite(id); }} sx={{ mt: 1, textTransform: 'none', px: 0 }}>
+                {t('spaces.favorites.removeSaved', { defaultValue: 'Remove from favorites' })}
+              </Button>
+            </Box>
           ))}
         </Box>
       ) : null}
@@ -107,18 +164,13 @@ export function FavoritesPage() {
       <DiscoverSpaceDetailDrawer
         spaceId={detailId}
         open={Boolean(detailId)}
-        onClose={() => setDetailId(null)}
+        focusSection={detailFocus}
+        focusNonce={focusNonce}
+        onClose={() => {
+          setDetailId(null);
+          setDetailFocus(null);
+        }}
       />
-      {enquireSpace ? (
-        <EnquireDialog
-          open
-          spaceId={enquireSpace.spaceId}
-          spaceName={enquireSpace.name}
-          ownedByCurrentUser={Boolean(enquireSpace.ownedByCurrentUser)}
-          onClose={() => setEnquireSpace(null)}
-          onViewedHere={() => setDetailId(enquireSpace.spaceId)}
-        />
-      ) : null}
     </Box>
   );
 }

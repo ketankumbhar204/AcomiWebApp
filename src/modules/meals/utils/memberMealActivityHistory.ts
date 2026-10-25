@@ -1,5 +1,16 @@
-import type { MemberMealActivityDay, MealPollPaymentStatus } from '@/shared/types/meals';
+import type {
+  MemberMealActivityDay,
+  MealPollPaymentStatus,
+} from '@/shared/types/meals';
 import { normalizeActivityDate } from './memberMealActivityCalendar';
+
+export {
+  activityDayPollClosed,
+  canChooseActivityMeals,
+  isUnansweredClosedPoll,
+  normalizeActivityPollStatus,
+  type ActivityPollSlot,
+} from './mealPollActivityStatus';
 
 export type ActivityHistoryFilter = 'ALL' | 'PAID' | 'PENDING' | 'SKIPPED';
 

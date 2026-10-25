@@ -10,6 +10,8 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
+import { ContactNumberLine, StayTrailLine } from '@/shared/components/ContactAndStayMeta';
+import { usePaymentStayTrail } from '../hooks/usePaymentStayTrail';
 import {
   CheckCircle2,
   Clock3,
@@ -46,14 +48,26 @@ import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import {
   canOwnerMarkPaymentReceived,
   canReviewPayment,
+  canEditSubmittedProof,
   canSubmitProof,
   paymentStatusLabelKey,
   paymentStatusTone,
 } from '../utils/paymentHelpers';
 import { PaymentReceivedConfirmDialog } from './PaymentReceivedConfirmDialog';
+import { PaymentReminderComposer } from './PaymentReminderComposer';
+import { buildPaymentReminderMessage } from '../utils/paymentReminderMessage';
 import { openReminderWhatsApp } from '../utils/paymentReminderLaunch';
+import { firstWhatsAppPhone } from '@/shared/utils/photoRequest';
 import { ReceiptPreview } from './ReceiptPreview';
 import { StoredImagePreview } from '@/shared/components/files/StoredImagePreview';
+
+const memberProofButtonSx = {
+  ...dashOutlinedButtonSx,
+  bgcolor: '#ECFDF5',
+  color: colors.primaryDark,
+  borderColor: 'rgba(16, 185, 129, 0.35)',
+  '&:hover': { bgcolor: '#D1FAE5' },
+};
 
 type PaymentInspectorProps = {
   spaceId: string;
@@ -144,16 +158,19 @@ function DetailGrid({
 }
 
 function PaymentDetailsHeader({
+  spaceId,
   payment,
   spaceName,
   allocationOpen,
   onToggleAllocation,
 }: {
+  spaceId: string;
   payment: SpacePaymentResponse;
   spaceName?: string | null;
   allocationOpen: boolean;
   onToggleAllocation: () => void;
 }) {
+  const stayTrail = usePaymentStayTrail(spaceId, payment);
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
@@ -170,7 +187,7 @@ function PaymentDetailsHeader({
     period && !payment.title.toLowerCase().includes(period.toLowerCase())
       ? `${payment.title} — ${period}`
       : payment.title;
-  const place = [spaceName, payment.targetLabel].filter(Boolean).join(' · ');
+  const place = [spaceName, stayTrail].filter(Boolean).join(' → ');
   const amount = formatCurrency(payment.amount, payment.currencyCode);
   const outstanding =
     payment.outstandingAmount != null
@@ -212,13 +229,11 @@ function PaymentDetailsHeader({
         </Box>
         <Box sx={{ minWidth: 0 }}>
           <Typography sx={{ fontWeight: 700, color: s.textPrimary }}>{name}</Typography>
-          {payment.memberMobile ? (
-            <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary }}>
-              {payment.memberMobile}
-            </Typography>
-          ) : null}
-          {place ? (
-            <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary }}>{place}</Typography>
+          <ContactNumberLine value={payment.memberMobile} />
+          {stayTrail ? (
+            <StayTrailLine label={place} />
+          ) : spaceName ? (
+            <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary }}>{spaceName}</Typography>
           ) : null}
         </Box>
       </Box>
@@ -280,7 +295,7 @@ function PaymentDetailsHeader({
           </Box>
         ) : null}
       </Box>
-      {payment.targetLabel ? (
+      {stayTrail ? (
         <Box sx={{ borderTop: `1px solid ${s.border}`, pt: 1 }}>
           <Box
             component="button"
@@ -305,13 +320,40 @@ function PaymentDetailsHeader({
           </Box>
           {allocationOpen ? (
             <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mt: 0.5 }}>
-              {payment.targetLabel.replaceAll(' · ', ' → ')}
+              {stayTrail}
             </Typography>
           ) : null}
         </Box>
       ) : null}
     </Box>
   );
+}
+
+function readablePaymentRemark(
+  remarks: string,
+  t: (key: string, options?: { defaultValue: string }) => string,
+): string {
+  if (remarks.includes('WHATSAPP_PROVIDER_NOT_CONFIGURED') || remarks.includes('PROVIDER_NOT_CONFIGURED')) {
+    return t('paymentCollection.timeline.whatsappDisabled', {
+      defaultValue: 'WhatsApp reminders are turned off, so this reminder was not sent.',
+    });
+  }
+  if (remarks.includes('NO_ACTIVE_DEVICE_TOKEN')) {
+    return t('paymentCollection.timeline.noDevice', {
+      defaultValue: 'No registered device was available for a push notification.',
+    });
+  }
+  if (remarks.includes('FCM_UNAVAILABLE')) {
+    return t('paymentCollection.timeline.fcmUnavailable', {
+      defaultValue: 'Push notifications were unavailable.',
+    });
+  }
+  if (remarks.includes('FCM_REJECTED')) {
+    return t('paymentCollection.timeline.fcmRejected', {
+      defaultValue: 'Firebase did not accept the push notification.',
+    });
+  }
+  return remarks;
 }
 
 function timelineIcon(eventType: PaymentTimelineEventType): {
@@ -358,6 +400,9 @@ export function PaymentInspector({
   const [rejectCode, setRejectCode] = useState<PaymentRejectionReason>('OTHER');
   const [remarks, setRemarks] = useState('');
   const [receivedOpen, setReceivedOpen] = useState(false);
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [reminderMessage, setReminderMessage] = useState('');
+  const [reminderNotice, setReminderNotice] = useState('');
   const [allocationOpen, setAllocationOpen] = useState(true);
 
   if (!paymentId) {
@@ -433,9 +478,23 @@ export function PaymentInspector({
   const canMarkReceived = canManage && canOwnerMarkPaymentReceived(status);
 
   const runSendReminder = async () => {
+    const message = reminderMessage.trim();
+    if (!message) return;
+    setReminderNotice('');
     try {
       const result = await mutations.sendReminder.mutateAsync(payment.paymentId);
-      const launch = await openReminderWhatsApp(result);
+      let launch: Awaited<ReturnType<typeof openReminderWhatsApp>> = 'invalid';
+      try {
+        launch = await openReminderWhatsApp(
+          {
+            ...result,
+            internationalPhone: result.internationalPhone || firstWhatsAppPhone([payment.memberMobile]),
+          },
+          message,
+        );
+      } catch {
+        launch = 'failed';
+      }
       if (result.inAppFailureCode === 'NOTIFICATION_FAILED') {
         enqueueSnackbar(t('paymentCollection.reminder.notificationFailed'), { variant: 'error' });
       } else if (result.inAppFailureCode === 'MEMBER_NOT_ON_ACOMI') {
@@ -455,9 +514,18 @@ export function PaymentInspector({
       } else if (launch === 'copied') {
         enqueueSnackbar(t('paymentCollection.reminder.copied'), { variant: 'warning' });
       } else if (launch === 'invalid') {
-        enqueueSnackbar(t('paymentCollection.reminder.invalidRecipient'), { variant: 'error' });
+        setReminderNotice(
+          t('paymentCollection.reminder.whatsAppUnavailable', {
+            defaultValue:
+              'This number can’t be opened in WhatsApp. You can still save the in-app reminder.',
+          }),
+        );
+        enqueueSnackbar(t('paymentCollection.reminder.invalidRecipient'), { variant: 'warning' });
       } else {
         enqueueSnackbar(t('paymentCollection.reminder.whatsAppFailed'), { variant: 'error' });
+      }
+      if (launch !== 'invalid') {
+        setReminderOpen(false);
       }
     } catch {
       enqueueSnackbar(t('paymentCollection.reminder.failed'), { variant: 'error' });
@@ -493,7 +561,11 @@ export function PaymentInspector({
               <Button
                 variant="outlined"
                 sx={dashOutlinedButtonSx}
-                onClick={() => void runSendReminder()}
+                onClick={() => {
+                  setReminderNotice('');
+                  setReminderMessage(buildPaymentReminderMessage(payment));
+                  setReminderOpen(true);
+                }}
                 disabled={mutations.sendReminder.isPending || mutations.reviewPayment.isPending}
               >
                 {t('paymentCollection.reminder.send')}
@@ -558,6 +630,15 @@ export function PaymentInspector({
               </>
             ) : null}
           </Stack>
+        ) : !canManage && canEditSubmittedProof(status) && onOpenProof ? (
+          <Stack spacing={1}>
+            <Button variant="outlined" onClick={onOpenProof} sx={memberProofButtonSx}>
+              {t('paymentCollection.proof.replaceProof')}
+            </Button>
+            <Button variant="outlined" onClick={onOpenProof} sx={memberProofButtonSx}>
+              {t('paymentCollection.proof.editDetails')}
+            </Button>
+          </Stack>
         ) : !canManage && canSubmitProof(status) && onOpenProof ? (
           <Button
             variant="contained"
@@ -575,6 +656,7 @@ export function PaymentInspector({
     >
       <Stack spacing={`${DASHBOARD_UX.cardGap}px`}>
         <PaymentDetailsHeader
+          spaceId={spaceId}
           payment={payment}
           spaceName={permissions.space?.spaceName}
           allocationOpen={allocationOpen}
@@ -789,7 +871,7 @@ export function PaymentInspector({
                         <Typography
                           sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mt: 0.35 }}
                         >
-                          {event.remarks}
+                          {readablePaymentRemark(event.remarks, t)}
                         </Typography>
                       ) : null}
                     </Box>
@@ -801,6 +883,17 @@ export function PaymentInspector({
         </InspectorCard>
       </Stack>
     </SidePanel>
+    <PaymentReminderComposer
+      open={reminderOpen}
+      memberName={payment.memberName ?? ''}
+      phone={firstWhatsAppPhone([payment.memberMobile])}
+      message={reminderMessage}
+      notice={reminderNotice}
+      submitting={mutations.sendReminder.isPending}
+      onChangeMessage={setReminderMessage}
+      onCancel={() => setReminderOpen(false)}
+      onConfirm={() => void runSendReminder()}
+    />
     <PaymentReceivedConfirmDialog
       open={receivedOpen}
       payments={[payment]}

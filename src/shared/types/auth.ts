@@ -19,6 +19,7 @@ export type MemberGender = 'MALE' | 'FEMALE' | 'OTHER' | 'UNSPECIFIED';
 /** Matches backend / mobile `UserResponse`. */
 export interface UserResponse {
   id: UUID;
+  referenceCode?: string | null;
   mobileNumber: string;
   fullName: string;
   profilePhotoUrl?: string | null;

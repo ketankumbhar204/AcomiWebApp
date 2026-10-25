@@ -98,7 +98,8 @@
     "globalAttention": "Needs Attention",
     "globalActivity": "Recent Activity",
     "enquiries": "Enquiries",
-    "favorites": "Favorites"
+    "favorites": "Favorites",
+    "serviceContacts": "Service Contacts"
   },
   "auth": {
     "backToWebsite": "Back to website",
@@ -379,7 +380,9 @@
       "attentionMoreUpdates_one": "+{{count}} more update",
       "attentionMoreUpdates_other": "+{{count}} more updates",
       "paginationShowing": "Showing {{from}} to {{to}} of {{total}} spaces",
-      "paginationAria": "Spaces pages"
+      "paginationAria": "Spaces pages",
+      "serviceContacts": "Service Contacts",
+      "serviceContactsSubtitle": "Save and manage your service providers"
     },
     "findPlace": {
       "eyebrow": "Find a place",
@@ -650,7 +653,7 @@
     },
     "enquiries": {
       "title": "My Enquiries",
-      "subtitle": "Contact requests you sent for listings. Open one to see status and owner details when shared.",
+      "subtitle": "Contact requests you sent for listings. Each one uses the same listing card and details as Find a place.",
       "empty": "Find a PG, hostel, rental or co-living space and send an enquiry to get started.",
       "requestedOn": "Requested {{date}}",
       "sharedHint": "Contact details were shared with you by ACOMI. Please check your email.",
@@ -753,7 +756,8 @@
           "MESS": "For mess and canteen operations.",
           "HOSTEL": "For hostel accommodations.",
           "CO_LIVING": "For shared living spaces.",
-          "RENTAL": "For rental properties."
+          "RENTAL": "For rental properties.",
+          "CORPORATE_STAY": "For company and corporate stays."
         }
       }
     },
@@ -778,6 +782,10 @@
       "rental": {
         "label": "Rental",
         "description": "Flats / Rooms"
+      },
+      "corporateStay": {
+        "label": "Corporate Stay",
+        "description": "Company accommodation"
       }
     },
     "propertyCategory": {
@@ -1254,6 +1262,8 @@
       "notificationsSubtitle": "View all alerts and updates"
     },
     "pendingActions": {
+      "paymentRequiresUpdate": "Payment requires update",
+      "spaceInvitation": "Space invitation",
       "screenSubtitle": "Review and complete these items to keep operations running smoothly.",
       "empty": "No pending actions right now.",
       "emptyTitle": "All clear",
@@ -2823,6 +2833,25 @@
       "goToToday": "Go to today",
       "goToTomorrow": "Go to tomorrow"
     },
+    "responses": {
+      "title": "{{meal}} responses",
+      "subtitle": "{{meal}} · {{date}}",
+      "filterEligible": "Eligible",
+      "filterResponded": "Responded",
+      "filterNotResponded": "Not responded",
+      "respondedChoice": "Responded",
+      "notRespondedChoice": "Not responded",
+      "emptyRespondedTitle": "No responses yet",
+      "emptyRespondedBody": "Members who reply to this meal will appear here.",
+      "emptyNotRespondedTitle": "Everyone has responded",
+      "emptyNotRespondedBody": "There are no eligible members still waiting to reply.",
+      "emptyEligibleTitle": "No eligible members",
+      "emptyEligibleBody": "No members are eligible for this meal.",
+      "loadErrorTitle": "Could not load responses",
+      "loadErrorBody": "Try again.",
+      "retry": "Try again",
+      "editMenu": "Edit menu"
+    },
     "planning": {
       "title": "Menu planning",
       "subtitle": "Plan breakfast, lunch, and dinner from your menu library.",
@@ -3149,6 +3178,8 @@
       "shareToCurrent": "This space",
       "shareToCurrentSpace": "Current space",
       "shareToSpaceIncompatible": "{{space}} is missing menu items: {{items}}. Add matching combos/items in that space’s library, then try again.",
+      "shareCrossOwner": "{{space}} belongs to a different owner. Menus can only be shared between spaces of the same owner.",
+      "shareComboHidden": "{{space}} has hidden: {{items}}. Turn the combo on in that space’s menu library, then try again.",
       "shareToSpaceFailed": "Could not copy menu to {{space}}. Current space was still shared.",
       "shareToSpacesSuccess": "Also shared to {{count}} other space(s)",
       "savingMenu": "Saving menu…",
@@ -3933,6 +3964,9 @@
       "deactivateItem": "Hide item?",
       "deactivateItemConfirm": "This item will be hidden for this space. Global items stay in the catalog for other spaces.",
       "deactivateCombo": "Deactivate combo?",
+      "hideComboInSpace": "Hide in this space",
+      "showComboInSpace": "Show in this space",
+      "comboHiddenInSpace": "Hidden in this space",
       "deactivateComboConfirm": "This combo will no longer appear when planning menus.",
       "addCustomItemHint": "Tap + Add custom item to create space-specific dishes.",
       "backendPending": "Menu library API not connected yet",
@@ -4749,7 +4783,7 @@
         "due": "Amount due",
         "paid": "Paid",
         "outstanding": "Outstanding",
-        "nextDue": "Next due"
+        "underReview": "Under review"
       }
     }
   },
@@ -5557,7 +5591,8 @@
       "savedAddresses": "Saved addresses",
       "enquiries": "Enquiries",
       "creditsConfig": "Credits config",
-      "creditPayments": "Credit payments"
+      "creditPayments": "Credit payments",
+      "notificationTesting": "Notification Testing"
     },
     "notifications": {
       "title": "Notifications",
@@ -5816,6 +5851,20 @@
         "spaces": "Spaces",
         "active": "Active",
         "inactive": "Inactive",
+        "accountStatusSection": "Account status",
+        "accountStatus": "Status",
+        "accountStatusActive": "Active",
+        "accountStatusDeactivated": "Deactivated",
+        "accountStatusUnknown": "Unknown",
+        "accountStatusHint": "Whether this account can sign in. Separate from mobile verification and onboarding. Last active is recorded use, not a live session.",
+        "lastActive": "Last active",
+        "lastLogin": "Last login",
+        "activityNever": "Never",
+        "activityUnknown": "Not recorded",
+        "activityJustNow": "Just now",
+        "activityMinutesAgo": "{{count}} min ago",
+        "activityHoursAgo": "{{count}} hr ago",
+        "activityDaysAgo": "{{count}} days ago",
         "notProvided": "Not provided",
         "notes": "Notes",
         "notesEmpty": "No additional notes available for this user.",
@@ -5839,7 +5888,26 @@
         "emptyMess": "No mess associations for this user.",
         "emptyEnquiries": "No enquiries linked for this user yet.",
         "emptyAddresses": "No saved addresses linked for this user yet.",
-        "emptyActivity": "No activity entries for this user yet."
+        "emptyActivity": "No activity entries for this user yet.",
+        "reset": {
+          "title": "Reset Password",
+          "hint": "Generate a temporary password or enter one manually.",
+          "self": "Use account recovery to change your own password.",
+          "newPassword": "New password",
+          "confirmPassword": "Confirm password",
+          "policy": "Use 8 to 72 characters.",
+          "generate": "Autogenerate",
+          "generateFailed": "Could not generate a password. Enter one manually.",
+          "copy": "Copy",
+          "submit": "Reset password",
+          "passwordCopied": "Password copied",
+          "passwordCopyFailed": "Could not copy the password.",
+          "generatedNotApplied": "This generated password has not been applied yet.",
+          "confirmTitle": "Reset this password?",
+          "confirmBody": "This sets a new password for {{name}} ({{mobile}}). Their current sessions will stop working. The existing password is not shown.",
+          "success": "Password updated. The user can sign in with the new password.",
+          "failed": "Could not reset the password."
+        }
       }
     },
     "list": {
@@ -6103,6 +6171,7 @@
       "correctColiving": "Co-living",
       "correctRental": "Rental",
       "correctMess": "Mess",
+      "correctCorporateStay": "Corporate Stay",
       "showingRows": "Showing {{from}} to {{to}} of {{total}} rows",
       "noPreviewRows": "No rows match your filters.",
       "statusValid": "Valid",
@@ -6127,8 +6196,8 @@
       "importFailed": "Bulk import failed.",
       "importTimeout": "This import is still running on the server. Large files can take several minutes. Wait a moment, then check Properties before retrying so you do not create duplicates.",
       "resultPartial": "Partial success: {{converted}} live Space(s), {{importedOnly}} lead(s) only, {{failed}} failed of {{total}} ({{blank}} blank skipped).",
-      "resultSuccess": "{{converted}} live Space(s) created from {{total}} rows ({{importedOnly}} lead-only, {{blank}} blank skipped, {{duplicateSkipped}} duplicates skipped).",
-      "resultNone": "No rows imported from {{total}} total ({{failed}} failed, {{blank}} blank skipped, {{duplicateSkipped}} duplicates skipped).",
+      "resultSuccess": "{{converted}} live Space(s) created from {{total}} rows ({{importedOnly}} lead-only, {{blank}} blank skipped, {{duplicateSkipped}} duplicates skipped, {{reviewSkipped}} skipped during review).",
+      "resultNone": "No rows imported from {{total}} total ({{failed}} failed, {{blank}} blank skipped, {{duplicateSkipped}} duplicates skipped, {{reviewSkipped}} skipped during review).",
       "downloadErrorReport": "Download error report (CSV)",
       "importAnother": "Import another file",
       "backToList": "Back to properties",
@@ -6157,7 +6226,8 @@
         "importedOnly": "Lead only: {{count}}",
         "failed": "Failed: {{count}}",
         "blankSkipped": "Blank skipped: {{count}}",
-        "duplicateSkipped": "Duplicates skipped: {{count}}"
+        "duplicateSkipped": "Duplicates skipped: {{count}}",
+        "reviewSkipped": "Skipped during review: {{count}}"
       },
       "columns": {
         "row": "Row",
@@ -6531,5 +6601,70 @@
     "chooseGallery": "Choose from gallery",
     "attached": "Attached",
     "sizeHint": "JPEG, PNG, or WebP. Maximum {{maxMb}} MB after compression."
+  },
+  "serviceContacts": {
+    "title": "Service Contacts",
+    "subtitle": "Save and manage your service providers",
+    "add": "Add Contact",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "archive": "Archive",
+    "call": "Call",
+    "whatsapp": "WhatsApp",
+    "email": "Email",
+    "searchPlaceholder": "Search contacts, category or phone...",
+    "category": "Category",
+    "categoryAll": "All",
+    "spaceAll": "All spaces",
+    "sortUpdated": "Recently updated",
+    "sortName": "Name",
+    "sortCategory": "Category",
+    "count": "{{count}} contacts",
+    "emptyTitle": "No service contacts yet",
+    "emptyDescription": "Save suppliers and technicians once, then reuse them across your spaces.",
+    "noResultsTitle": "No contacts found",
+    "noResultsDescription": "Try a different name, phone number, or filter.",
+    "loadError": "Could not load service contacts.",
+    "retry": "Retry",
+    "saved": "Service contact saved.",
+    "archived": "Service contact archived.",
+    "saveError": "Could not save this contact.",
+    "archiveConfirmTitle": "Archive this contact?",
+    "archiveConfirmBody": "Archived contacts are hidden from the directory. This does not delete a space or a member.",
+    "requiredName": "Contact name is required.",
+    "requiredCategory": "Category is required.",
+    "requiredCustom": "Enter a name for this category.",
+    "requiredMethod": "Add a phone number, WhatsApp number, or email.",
+    "invalidPhone": "Enter a valid mobile number.",
+    "invalidEmail": "Enter a valid email address.",
+    "duplicateTitle": "Possible duplicate",
+    "duplicateBody": "A contact in your directory already uses this phone number. You can go back or save it as a separate contact.",
+    "duplicateStrong": "The business name and phone number both match an existing contact.",
+    "saveAnyway": "Save anyway",
+    "reuseHint": "This contact is saved in your Service Contacts directory and can be reused across spaces.",
+    "spacesLabel": "Associated spaces",
+    "noSpaces": "No spaces associated",
+    "businessName": "Contact / business name",
+    "customCategory": "Custom category",
+    "contactPerson": "Primary contact person",
+    "primaryPhone": "Primary phone number",
+    "alternatePhone": "Alternate phone number",
+    "whatsappNumber": "WhatsApp number",
+    "emailLabel": "Email address",
+    "description": "Service description",
+    "address": "Address or service area",
+    "notes": "Notes",
+    "optional": "Optional",
+    "details": "Contact details",
+    "openFailed": "Could not open this action on this device.",
+    "unsavedTitle": "Discard unsaved changes?",
+    "unsavedBody": "Your changes have not been saved.",
+    "discard": "Discard",
+    "loading": "Loading service contacts...",
+    "formTitleAdd": "Add Contact",
+    "formTitleEdit": "Edit Contact",
+    "previous": "Previous",
+    "next": "Next"
   }
 }

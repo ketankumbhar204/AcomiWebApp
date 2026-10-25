@@ -91,6 +91,7 @@ function SlotEditorBody({
   const filteredCombos = combos.combos.filter(
     (c) =>
       c.isActive &&
+      (c.enabledForSpace !== false || selectedComboIds.has(c.comboId)) &&
       (!search.trim() || c.name.toLowerCase().includes(search.trim().toLowerCase())),
   );
   const filteredItems = items.items.filter(

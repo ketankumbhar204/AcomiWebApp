@@ -1,4 +1,6 @@
 import { Box, Typography } from '@mui/material';
+import { ContactNumberLine, StayTrailLine } from '@/shared/components/ContactAndStayMeta';
+import { usePaymentStayTrail } from '../hooks/usePaymentStayTrail';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StatusChip } from '@/shared/components/StatusChip';
@@ -48,6 +50,7 @@ export function CompactPaymentCard({
   onReminder,
 }: CompactPaymentCardProps) {
   const { t } = useTranslation();
+  const stayLabel = usePaymentStayTrail(payment.spaceId, payment);
   const s = dashSurfaces('light');
   const status = payment.paymentStatus ?? payment.status ?? 'PENDING';
   const showReceived = Boolean(onReceived) && canOwnerMarkPaymentReceived(status);
@@ -127,16 +130,8 @@ export function CompactPaymentCard({
                 tone={payment.isOverdue ? 'error' : paymentStatusTone(status)}
               />
             </Box>
-            {showMember && payment.memberMobile ? (
-              <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary }}>
-                {payment.memberMobile}
-              </Typography>
-            ) : null}
-            {payment.targetLabel ? (
-              <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary }}>
-                {payment.targetLabel}
-              </Typography>
-            ) : null}
+            {showMember ? <ContactNumberLine value={payment.memberMobile} /> : null}
+            <StayTrailLine label={stayLabel} />
           </Box>
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>

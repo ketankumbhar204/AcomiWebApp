@@ -303,6 +303,11 @@ export function useMealMutations(spaceId: string | undefined) {
       mutationFn: (comboId: string) => mealsApi.deactivateMealCombo(spaceId!, comboId),
       onSuccess: invalidateLibrary,
     }),
+    setMealComboEnabled: useMutation({
+      mutationFn: ({ comboId, enabled }: { comboId: string; enabled: boolean }) =>
+        mealsApi.setMealComboEnabled(spaceId!, comboId, enabled),
+      onSuccess: invalidateLibrary,
+    }),
     createParticipation: useMutation({
       mutationFn: (body: CreateMealParticipationRequest) =>
         mealsApi.createMealParticipation(spaceId!, body),

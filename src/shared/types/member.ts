@@ -75,6 +75,8 @@ export type CreateInvitationRequest = {
 
 export type MemberResponse = {
   memberId: string;
+  referenceCode?: string | null;
+  linkedUserReferenceCode?: string | null;
   fullName: string;
   mobileNumber: string;
   role: MembershipRole;
@@ -117,6 +119,7 @@ export type MemberMealParticipationSummary = {
 
 export type MemberDetailsResponse = {
   memberId: string;
+  referenceCode?: string | null;
   spaceId: string;
   fullName: string;
   mobileNumber: string;

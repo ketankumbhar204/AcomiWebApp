@@ -26,6 +26,7 @@ import { SidePanel } from '@/shared/components/SidePanel';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { LoadingState } from '@/shared/components/LoadingState';
+import { ReferenceCode } from '@/shared/components/ReferenceCode';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { FileImageViewer } from '@/shared/components/files/FileImageViewer';
@@ -375,6 +376,7 @@ export function ComplaintInspector({
       framed={framed}
     >
       <Stack spacing={`${DASHBOARD_UX.cardGap}px`}>
+        <ReferenceCode value={complaint.referenceCode} />
         <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
           <StatusChip
             label={t(statusLabelKey(status))}

@@ -6,7 +6,13 @@ import { SPACE_TYPE_VISUAL } from '@/modules/onboarding/components/createSpace/c
 import { colors } from '@/shared/theme/colors';
 import type { SpaceType } from '@/shared/types/space';
 
-const PROPERTY_TYPES: Exclude<SpaceType, 'MESS'>[] = ['PG', 'HOSTEL', 'CO_LIVING', 'RENTAL'];
+const PROPERTY_TYPES: Exclude<SpaceType, 'MESS'>[] = [
+  'PG',
+  'HOSTEL',
+  'CO_LIVING',
+  'RENTAL',
+  'CORPORATE_STAY',
+];
 
 type AdminPropertyTypePickerProps = {
   value: Exclude<SpaceType, 'MESS'>;
@@ -25,7 +31,7 @@ export function AdminPropertyTypePicker({ value, onChange }: AdminPropertyTypePi
       aria-label={t('admin.propertyType.ariaLabel')}
       sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, minmax(0, 1fr))' },
+        gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(auto-fit, minmax(140px, 1fr))' },
         gap: 1.25,
         gridColumn: { md: '1 / -1' },
       }}

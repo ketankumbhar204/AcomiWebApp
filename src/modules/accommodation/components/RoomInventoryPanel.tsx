@@ -106,7 +106,7 @@ function opsFocusLabel(
   return t('dashboard.accommodationOperations.moveInsThisMonth');
 }
 
-/** Full-width room cards with horizontal bed carousels (web mock). */
+/** Full-width room cards. Each room scrolls its beds on one horizontal row. */
 export function RoomInventoryPanel({
   spaceId,
   canManage,

@@ -293,10 +293,11 @@ export function SpaceDetailsPage() {
   const planKey = billingLabelKey(details?.mealBillingType);
   const planLabel = planKey ? t(planKey) : null;
 
+  const displayReference = details?.referenceCode || details?.id;
   const copySpaceId = async () => {
-    if (!details?.id) return;
+    if (!displayReference) return;
     try {
-      await navigator.clipboard.writeText(details.id);
+      await navigator.clipboard.writeText(displayReference);
       enqueueSnackbar(t('spaces.details.copied'), { variant: 'success' });
     } catch {
       enqueueSnackbar(t('common.errors.generic'), { variant: 'error' });
@@ -506,7 +507,7 @@ export function SpaceDetailsPage() {
                       wordBreak: 'break-all',
                     }}
                   >
-                    {details.id}
+                    {displayReference}
                   </Typography>
                   <Tooltip title={t('spaces.details.copyId')}>
                     <IconButton

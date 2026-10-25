@@ -11,12 +11,13 @@ import { useGlobalDashboard } from '@/modules/global/hooks/useGlobalDashboard';
 import { RequesterNotificationBell } from '@/modules/onboarding/components/RequesterNotificationBell';
 import { ROUTES } from '@/routes/paths';
 import { useAuthSession } from '@/shared/hooks/useAuthSession';
+import { useFavoriteIds } from '@/shared/hooks/useFavorites';
 import { colors } from '@/shared/theme/colors';
 import { useSpaceStore } from '@/store/spaceStore';
 
 /**
  * Logged-in customer chrome. Primary navigation lives in the sidebar.
- * The header keeps brand and account utilities only.
+ * The header keeps brand, favorites, and account utilities.
  */
 export function DiscoverShellLayout() {
   const { t } = useTranslation();
@@ -36,6 +37,7 @@ export function DiscoverShellLayout() {
 
   const { data: globalDash } = useGlobalDashboard(true);
   const badgeCount = globalDash?.totalAttentionCount ?? globalDash?.unreadNotificationCount ?? 0;
+  const favoriteCount = useFavoriteIds().size;
 
   const navSections: AppNavSection[] = useMemo(
     () => [
@@ -136,6 +138,36 @@ export function DiscoverShellLayout() {
 
   const headerActions = (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+      <Tooltip title={t('navigation.favorites', { defaultValue: 'Favorites' })}>
+        <IconButton
+          size="small"
+          aria-label={
+            favoriteCount > 0
+              ? t('spaces.favorites.openCount', {
+                  count: favoriteCount,
+                  defaultValue: 'Favorites, {{count}} saved',
+                })
+              : t('navigation.favorites', { defaultValue: 'Favorites' })
+          }
+          onClick={() => navigate(ROUTES.favorites)}
+        >
+          <Badge
+            badgeContent={favoriteCount > 9 ? '9+' : favoriteCount}
+            color="error"
+            invisible={favoriteCount <= 0}
+            max={9}
+            sx={{
+              '& .MuiBadge-badge': {
+                minWidth: 14,
+                height: 14,
+                ...DASHBOARD_UX.badge,
+              },
+            }}
+          >
+            <Heart size={18} fill={favoriteCount > 0 ? '#E11D48' : 'transparent'} color={favoriteCount > 0 ? '#E11D48' : 'currentColor'} />
+          </Badge>
+        </IconButton>
+      </Tooltip>
       <RequesterNotificationBell />
       <Tooltip title={t('notifications.title')}>
         <IconButton

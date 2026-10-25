@@ -234,17 +234,35 @@ export function MealSharePage() {
 
       const validations = await mapWithConcurrency(targets, SHARE_SPACE_CONCURRENCY, async (target) => ({
         target,
-        validation: await validateShareMenusToSpace(menuMap, selectedTypes, target),
+        validation: await validateShareMenusToSpace(
+          menuMap,
+          selectedTypes,
+          target,
+          mySpaces.find((space) => space.spaceId === spaceId),
+        ),
       }));
       const incompatible = validations.find((row) => !row.validation.ok);
       if (incompatible && !incompatible.validation.ok) {
-        enqueueSnackbar(
-          t('meals.planning.shareToSpaceIncompatible', {
-            space: incompatible.validation.spaceName,
-            items: incompatible.validation.missingLabels.join(', '),
-          }),
-          { variant: 'error' },
-        );
+        const blocked = incompatible.validation;
+        const message =
+          blocked.reason === 'cross-owner'
+            ? t('meals.planning.shareCrossOwner', {
+                space: blocked.spaceName,
+                defaultValue:
+                  '{{space}} belongs to a different owner. Menus can only be shared between spaces of the same owner.',
+              })
+            : blocked.reason === 'hidden'
+              ? t('meals.planning.shareComboHidden', {
+                  space: blocked.spaceName,
+                  items: blocked.missingLabels.join(', '),
+                  defaultValue:
+                    '{{space}} has hidden: {{items}}. Turn the combo on in that space’s menu library, then try again.',
+                })
+              : t('meals.planning.shareToSpaceIncompatible', {
+                  space: blocked.spaceName,
+                  items: blocked.missingLabels.join(', '),
+                });
+        enqueueSnackbar(message, { variant: 'error' });
         return;
       }
 

@@ -1,6 +1,13 @@
 import type { MealPollSlot, MemberMealActivityDay, MemberMealActivityMonth } from '@/shared/types/meals';
 import { dayHasActivity } from './memberMealActivityCalendar';
 
+export {
+  remainingPayable,
+  summarizeMemberDashboardLedger,
+  type MemberDashboardLedgerPayment,
+  type MemberDashboardLedgerStats,
+} from './memberDashboardLedgerStats';
+
 /** Count published menu entries (combos/items) across B/L/D polls for the day. */
 export function countMenuItemsFromPolls(polls: MealPollSlot[]): number {
   return polls.reduce((sum, poll) => {
@@ -52,17 +59,44 @@ export function buildRecentOrdersFromActivity(
     }));
 }
 
-export function countUpcomingPayments(activity: MemberMealActivityMonth | null | undefined): number {
+function isUnpaidMealDay(status: string | null | undefined): boolean {
+  return (
+    status === 'PENDING' ||
+    status === 'PENDING_APPROVAL' ||
+    status === 'REJECTED' ||
+    status === 'UPDATE_REQUESTED'
+  );
+}
+
+/**
+ * Unpaid meal days. When `todayIso` is set, only days after today count —
+ * overdue and due-today obligations stay out of "upcoming".
+ * Keep in sync with mobile `src/utils/customerDashboardStats.ts`.
+ */
+export function countUpcomingPayments(
+  activity: MemberMealActivityMonth | null | undefined,
+  todayIso?: string,
+): number {
   if (!activity?.days?.length) {
     return 0;
   }
   return activity.days.filter((day) => {
-    const status = day.paymentStatus;
-    return (
-      status === 'PENDING' ||
-      status === 'PENDING_APPROVAL' ||
-      status === 'REJECTED' ||
-      (status as string) === 'UPDATE_REQUESTED'
-    );
+    if (!isUnpaidMealDay(day.paymentStatus)) {
+      return false;
+    }
+    if (todayIso && day.date <= todayIso) {
+      return false;
+    }
+    return true;
   }).length;
+}
+
+/** Unpaid meal days the member still needs to settle, including overdue. */
+export function countOpenMealPayments(
+  activity: MemberMealActivityMonth | null | undefined,
+): number {
+  if (!activity?.days?.length) {
+    return 0;
+  }
+  return activity.days.filter((day) => isUnpaidMealDay(day.paymentStatus)).length;
 }

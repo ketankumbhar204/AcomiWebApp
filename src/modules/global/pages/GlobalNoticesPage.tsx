@@ -84,6 +84,9 @@ export function GlobalNoticesPage() {
     if (!success) return;
     const entry = findMySpaceEntry(mySpaces, row.spaceId);
     const permissions = resolveSpacePermissions(entry);
+    if (row.status === 'UNREAD' && row.notificationId) {
+      void notificationsApi.markRead(row.spaceId, row.notificationId).catch(() => undefined);
+    }
     navigateFromNotificationType(
       navigate,
       row.spaceId,

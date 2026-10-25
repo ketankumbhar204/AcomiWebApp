@@ -17,12 +17,22 @@ export function reminderWhatsAppTarget(result: {
   return { url, message };
 }
 
-export async function openReminderWhatsApp(result: {
-  messageText?: string | null;
-  whatsAppUrl?: string | null;
-  internationalPhone?: string | null;
-}): Promise<ReminderLaunchResult> {
-  const { url, message } = reminderWhatsAppTarget(result);
+export async function openReminderWhatsApp(
+  result: {
+    messageText?: string | null;
+    whatsAppUrl?: string | null;
+    internationalPhone?: string | null;
+  },
+  editedMessage?: string | null,
+): Promise<ReminderLaunchResult> {
+  const edited = editedMessage?.trim();
+  const target = edited
+    ? {
+        url: result.internationalPhone ? whatsAppChatUrl(result.internationalPhone, edited) : null,
+        message: edited,
+      }
+    : reminderWhatsAppTarget(result);
+  const { url, message } = target;
   if (!url) {
     if (!message) {
       return 'invalid';

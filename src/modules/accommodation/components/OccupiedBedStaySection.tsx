@@ -22,6 +22,7 @@ import { spaceMemberPath } from '@/routes/paths';
 import { memberApi } from '@/modules/members/api/memberApi';
 import { formatCurrency, formatMonthYear } from '@/shared/utils/dashboardFinancial';
 import { colors } from '@/shared/theme/colors';
+import { ReferenceCode } from '@/shared/components/ReferenceCode';
 import { useOccupiedBedStay } from '../hooks/useOccupiedBedStay';
 import {
   bedCardBalanceFace,
@@ -363,6 +364,7 @@ export function OccupiedBedStaySection({
               label={t('occupancy.targetOccupant.member', { defaultValue: 'Member' })}
               value={stay.occupancy.memberName}
             />
+            <ReferenceCode value={stay.occupancy.referenceCode} />
             {mobile ? (
               <DetailRow
                 icon={<Phone size={14} />}

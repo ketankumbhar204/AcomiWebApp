@@ -32,6 +32,7 @@ import { ErrorState } from '@/shared/components/ErrorState';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { PeriodMonthNav } from '@/shared/components/PeriodMonthNav';
+import { ContactNumberLine, StayTrailLine } from '@/shared/components/ContactAndStayMeta';
 import { StatusChip } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashFilterControlSx } from '@/shared/theme/dashButtonSx';
@@ -48,6 +49,7 @@ import type {
   SpacePaymentResponse,
 } from '@/shared/types/payments';
 import { CompactPaymentCard } from '../components/CompactPaymentCard';
+import { usePaymentStayTrail } from '../hooks/usePaymentStayTrail';
 import { PaymentInspector } from '../components/PaymentInspector';
 import {
   PaymentsSummaryFilters,
@@ -59,6 +61,7 @@ import { useOwnerPaymentCardActions } from '../hooks/useOwnerPaymentCardActions'
 import { AddPaymentRecordDialog } from '../components/AddPaymentRecordDialog';
 import { OwnerPaymentRowActions } from '../components/OwnerPaymentRowActions';
 import { PaymentReceivedConfirmDialog } from '../components/PaymentReceivedConfirmDialog';
+import { PaymentReminderComposer } from '../components/PaymentReminderComposer';
 import {
   canOwnerMarkPaymentReceived,
   canOwnerSendPaymentReminder,
@@ -146,9 +149,20 @@ function initials(name: string): string {
     .join('');
 }
 
-function MemberCell({ name, mobile }: { name: string; mobile?: string | null }) {
+function MemberCell({
+  name,
+  mobile,
+  spaceId,
+  payment,
+}: {
+  name: string;
+  mobile?: string | null;
+  spaceId: string;
+  payment: SpacePaymentResponse;
+}) {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
+  const stayLabel = usePaymentStayTrail(spaceId, payment);
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, py: 0.25 }}>
       <Avatar
@@ -166,11 +180,8 @@ function MemberCell({ name, mobile }: { name: string; mobile?: string | null }) 
         <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }} noWrap>
           {name}
         </Typography>
-        {mobile ? (
-          <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted }} noWrap>
-            {mobile}
-          </Typography>
-        ) : null}
+        <ContactNumberLine value={mobile} />
+        <StayTrailLine label={stayLabel} />
       </Box>
     </Box>
   );
@@ -347,7 +358,9 @@ function OwnerPaymentsWorkspace({
       {
         id: 'member',
         header: t('paymentCollection.fields.member'),
-        accessor: (row) => <MemberCell name={row.memberName} mobile={row.memberMobile} />,
+        accessor: (row) => (
+          <MemberCell name={row.memberName} mobile={row.memberMobile} spaceId={spaceId} payment={row} />
+        ),
         primary: true,
       },
       {
@@ -455,7 +468,7 @@ function OwnerPaymentsWorkspace({
         },
       },
     ],
-    [cardActions, s.textMuted, s.textPrimary, s.textSecondary, t],
+    [cardActions, s.textMuted, s.textPrimary, s.textSecondary, spaceId, t],
   );
 
   const historyColumns: DataTableColumn<SpacePaymentResponse & { id: string }>[] = useMemo(
@@ -463,7 +476,9 @@ function OwnerPaymentsWorkspace({
       {
         id: 'member',
         header: t('paymentCollection.fields.member'),
-        accessor: (row) => <MemberCell name={row.memberName} mobile={row.memberMobile} />,
+        accessor: (row) => (
+          <MemberCell name={row.memberName} mobile={row.memberMobile} spaceId={spaceId} payment={row} />
+        ),
         primary: true,
       },
       {
@@ -523,7 +538,7 @@ function OwnerPaymentsWorkspace({
         accessor: () => <ChevronRight size={16} color={s.textMuted} aria-hidden />,
       },
     ],
-    [s.textMuted, s.textPrimary, s.textSecondary, t],
+    [s.textMuted, s.textPrimary, s.textSecondary, spaceId, t],
   );
 
   const filteredRecords = useMemo(
@@ -978,6 +993,20 @@ function OwnerPaymentsWorkspace({
           enqueueSnackbar(t('paymentCollection.addRecord.success'), { variant: 'success' });
           selectPayment(paymentId);
         }}
+      />
+      <PaymentReminderComposer
+        open={cardActions.reminderDraft != null}
+        memberName={cardActions.reminderDraft?.memberName ?? ''}
+        phone={cardActions.reminderPhone}
+        message={cardActions.reminderMessage}
+        notice={cardActions.reminderNotice}
+        submitting={
+          cardActions.reminderDraft != null &&
+          cardActions.isProcessing(cardActions.reminderDraft.paymentId, 'reminder')
+        }
+        onChangeMessage={cardActions.setReminderMessage}
+        onCancel={cardActions.cancelReminder}
+        onConfirm={cardActions.confirmReminder}
       />
       <PaymentReceivedConfirmDialog
         open={cardActions.confirmPayments.length > 0}

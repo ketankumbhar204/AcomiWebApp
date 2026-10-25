@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { accommodationApi } from '../api/accommodationApi';
 import { occupancyApi } from '../api/occupancyApi';
+import { invalidateStayPaymentCache } from '../utils/stayChargeIndex';
 import type {
   AllocateOccupancyRequest,
   CreateBedRequest,
@@ -347,6 +348,7 @@ export function useAccommodationMutations(spaceId: string | undefined) {
 export function useOccupancyMutations(spaceId: string | undefined) {
   const queryClient = useQueryClient();
   const invalidate = async () => {
+    invalidateStayPaymentCache();
     if (!spaceId) {
       return;
     }

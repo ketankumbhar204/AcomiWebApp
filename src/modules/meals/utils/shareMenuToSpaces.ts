@@ -11,10 +11,6 @@ import type { MySpaceResponse } from '@/shared/types/space';
 import { resolveSpacePermissions } from '@/shared/utils/spacePermissions';
 import { openPollsForMealTypes } from './shareMenuSelection';
 
-function normalizeName(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
 /** Spaces that can receive a shared meal plan (excludes rental / no-meals). */
 export function isMealShareCompatibleSpace(space: MySpaceResponse): boolean {
   if (space.spaceType === 'RENTAL') {
@@ -36,27 +32,33 @@ export function listOtherShareTargetSpaces(
 
 type MappedOption = UpsertDailyMenuRequest['options'][number];
 
+export type ShareBlockReason = 'missing' | 'cross-owner' | 'hidden';
+
 function mapOptionToTarget(
   option: DailyMenuOptionResponse,
   targetCombos: MealComboResponse[],
   targetItems: FoodItemResponse[],
-): { ok: true; option: MappedOption } | { ok: false; missing: string } {
+): { ok: true; option: MappedOption } | { ok: false; missing: string; reason: ShareBlockReason } {
   const entryType = option.entryType ?? (option.itemId ? 'ITEM' : 'COMBO');
   const label = option.label;
 
   if (entryType === 'COMBO') {
-    const combo = targetCombos.find(
-      (row) => normalizeName(row.name) === normalizeName(label) && row.isActive,
-    );
-    if (!combo) {
-      return { ok: false, missing: label };
+    if (!option.comboId) {
+      return { ok: false, missing: label, reason: 'missing' };
+    }
+    const combo = targetCombos.find((row) => row.comboId === option.comboId);
+    if (combo && !combo.isActive) {
+      return { ok: false, missing: label, reason: 'missing' };
+    }
+    if (combo && combo.enabledForSpace === false) {
+      return { ok: false, missing: label, reason: 'hidden' };
     }
     return {
       ok: true,
       option: {
         entryType: 'COMBO',
-        comboId: combo.comboId,
-        label: combo.name,
+        comboId: option.comboId,
+        label,
         sortOrder: option.sortOrder,
         isAvailable: option.isAvailable,
       },
@@ -64,18 +66,19 @@ function mapOptionToTarget(
   }
 
   if (entryType === 'ITEM') {
-    const item = targetItems.find(
-      (row) => row.isActive && normalizeName(row.name) === normalizeName(option.label),
-    );
+    if (!option.itemId) {
+      return { ok: false, missing: label, reason: 'missing' };
+    }
+    const item = targetItems.find((row) => row.itemId === option.itemId && row.isActive);
     if (!item) {
-      return { ok: false, missing: label };
+      return { ok: false, missing: label, reason: 'missing' };
     }
     return {
       ok: true,
       option: {
         entryType: 'ITEM',
         itemId: item.itemId,
-        label: item.name,
+        label,
         sortOrder: option.sortOrder,
         isAvailable: option.isAvailable,
         price: option.price ?? item.defaultPrice ?? null,
@@ -84,29 +87,26 @@ function mapOptionToTarget(
     };
   }
 
-  const packageNames =
-    option.packageItems?.map((pi) => pi.name) ?? (option.label ? [option.label] : []);
-  const mappedIds: string[] = [];
-  for (const name of packageNames) {
-    const item = targetItems.find(
-      (row) => row.isActive && normalizeName(row.name) === normalizeName(name),
-    );
-    if (!item) {
-      return { ok: false, missing: name };
-    }
-    mappedIds.push(item.itemId);
+  const packageIds = option.packageItems?.map((item) => item.itemId).filter(Boolean) ?? [];
+  if (packageIds.length === 0) {
+    return { ok: false, missing: label, reason: 'missing' };
   }
-  if (mappedIds.length === 0) {
-    return { ok: false, missing: label };
+  for (const itemId of packageIds) {
+    const item = targetItems.find((row) => row.itemId === itemId && row.isActive);
+    if (!item) {
+      const name = option.packageItems?.find((row) => row.itemId === itemId)?.name ?? label;
+      return { ok: false, missing: name, reason: 'missing' };
+    }
   }
   return {
     ok: true,
     option: {
       entryType: 'PACKAGE',
-      itemIds: mappedIds,
+      itemIds: packageIds,
       label,
       sortOrder: option.sortOrder,
       isAvailable: option.isAvailable,
+      isExtra: option.isExtra,
       price: option.price ?? null,
       currencyCode: option.currencyCode ?? 'INR',
     },
@@ -119,21 +119,32 @@ export type ShareToSpaceValidation =
       optionsByMeal: Partial<Record<MealType, MappedOption[]>>;
       notesByMeal: Partial<Record<MealType, string | null>>;
     }
-  | { ok: false; spaceName: string; missingLabels: string[] };
+  | { ok: false; spaceName: string; missingLabels: string[]; reason: ShareBlockReason };
 
 export async function validateShareMenusToSpace(
   sourceMenus: Partial<Record<MealType, DailyMenuResponse>>,
   mealTypes: MealType[],
   targetSpace: MySpaceResponse,
+  sourceSpace?: MySpaceResponse,
 ): Promise<ShareToSpaceValidation> {
+  if (sourceSpace?.ownerId && targetSpace.ownerId && sourceSpace.ownerId !== targetSpace.ownerId) {
+    return {
+      ok: false,
+      spaceName: targetSpace.spaceName,
+      missingLabels: [],
+      reason: 'cross-owner',
+    };
+  }
+
   const [combos, items] = await Promise.all([
-    mealsApi.getMealCombos(targetSpace.spaceId).catch(() => [] as MealComboResponse[]),
-    mealsApi.getFoodItems(targetSpace.spaceId).catch(() => [] as FoodItemResponse[]),
+    mealsApi.getMealCombos(targetSpace.spaceId),
+    mealsApi.getFoodItems(targetSpace.spaceId),
   ]);
 
   const optionsByMeal: Partial<Record<MealType, MappedOption[]>> = {};
   const notesByMeal: Partial<Record<MealType, string | null>> = {};
   const missingLabels: string[] = [];
+  let reason: ShareBlockReason = 'missing';
 
   for (const mealType of mealTypes) {
     const source = sourceMenus[mealType];
@@ -146,6 +157,9 @@ export async function validateShareMenusToSpace(
       const result = mapOptionToTarget(option, combos, items);
       if (!result.ok) {
         missingLabels.push(result.missing);
+        if (result.reason === 'hidden') {
+          reason = 'hidden';
+        }
         continue;
       }
       mapped.push(result.option);
@@ -161,6 +175,7 @@ export async function validateShareMenusToSpace(
       ok: false,
       spaceName: targetSpace.spaceName,
       missingLabels: [...new Set(missingLabels)],
+      reason,
     };
   }
 
@@ -170,6 +185,7 @@ export async function validateShareMenusToSpace(
       ok: false,
       spaceName: targetSpace.spaceName,
       missingLabels: mealTypes.map(String),
+      reason: 'missing',
     };
   }
 

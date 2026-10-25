@@ -7,6 +7,7 @@ import { useOpenSpaceRecord } from '@/modules/global/hooks/useOpenSpaceRecord';
 import { memberApi } from '@/modules/members/api/memberApi';
 import { memberStatusTone } from '@/modules/members/utils/memberStatus';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
+import { ContactNumberLine } from '@/shared/components/ContactAndStayMeta';
 import { StatusChip } from '@/shared/components/StatusChip';
 import type { MemberResponse } from '@/shared/types/member';
 import { resolveSpacePermissions } from '@/shared/utils/spacePermissions';
@@ -72,7 +73,7 @@ export function GlobalMembersPage() {
     {
       id: 'mobile',
       header: t('accountDirectory.mobile'),
-      accessor: (row) => row.mobileNumber,
+      accessor: (row) => <ContactNumberLine value={row.mobileNumber} />,
     },
     {
       id: 'role',

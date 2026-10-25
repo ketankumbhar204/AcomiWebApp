@@ -25,6 +25,7 @@ export const ROUTES = {
   joinSpace: '/join-space',
   acceptInvitations: '/accept-invitations',
   mySpaces: '/my-spaces',
+  serviceContacts: '/service-contacts',
   findAPlace: '/find-a-place',
   findAMeal: '/find-a-meal',
   completeProfile: '/complete-profile',
@@ -51,6 +52,7 @@ export const ROUTES = {
   adminEnquiries: '/admin/enquiries',
   adminInquiryCredits: '/admin/inquiry-credits',
   adminInquiryPayments: '/admin/inquiry-credits/payments',
+  adminNotificationTesting: '/admin/notification-testing',
   myEnquiries: '/my-enquiries',
   favorites: '/favorites',
 } as const;
@@ -90,11 +92,14 @@ export function spaceOccupancyListPath(
 export function spaceBedInventoryPath(
   spaceId: string,
   status = 'AVAILABLE',
-  options?: { intent?: 'allocate' },
+  options?: { intent?: 'allocate'; focus?: 'moveIns' },
 ): string {
   const search = new URLSearchParams();
   if (status) {
     search.set('status', status);
+  }
+  if (options?.focus === 'moveIns') {
+    search.set('focus', 'moveIns');
   }
   if (options?.intent) {
     search.set('intent', options.intent);
@@ -195,6 +200,17 @@ export function spaceMealsPath(spaceId: string, date?: string): string {
 }
 
 /** Full-page menu planner editor (no sidebar chrome). */
+export function spaceMealResponsesPath(
+  spaceId: string,
+  params: { date: string; mealType: string },
+): string {
+  const search = new URLSearchParams({
+    date: params.date,
+    mealType: params.mealType,
+  });
+  return `/spaces/${spaceId}/meals/responses?${search.toString()}`;
+}
+
 export function spaceMealsEditPath(
   spaceId: string,
   params: { date: string; mealType: string },
@@ -364,6 +380,13 @@ export function adminMessPath(params?: {
 
 export function adminAddMessPath(): string {
   return ROUTES.adminAddMess;
+}
+
+export function findAPlaceListingPath(spaceId: string): string {
+  const params = new URLSearchParams();
+  params.set('space', spaceId);
+  params.set('listing', '1');
+  return `${ROUTES.findAPlace}?${params.toString()}`;
 }
 
 export function findAPlaceEnquirePath(options: {

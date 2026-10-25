@@ -381,7 +381,10 @@ export function MealMenuEditorPage() {
 
   const q = search.trim().toLowerCase();
   const filteredCombos = combosQuery.combos.filter(
-    (c) => c.isActive && (!q || c.name.toLowerCase().includes(q)),
+    (c) =>
+      c.isActive &&
+      (c.enabledForSpace !== false || options.some((option) => option.comboId === c.comboId)) &&
+      (!q || c.name.toLowerCase().includes(q)),
   );
   const filteredItems = itemsQuery.items.filter(
     (i) =>

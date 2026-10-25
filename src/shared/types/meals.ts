@@ -134,6 +134,8 @@ export interface MealComboResponse {
   foodType?: FoodType;
   items?: Array<{ itemId: string; name: string; foodType?: FoodType; quantity?: number }>;
   photoFileId?: string | null;
+  /** False when this space has hidden the shared combo. Omitted means available. */
+  enabledForSpace?: boolean;
 }
 
 export type MenuHistoryEntryType = 'COMBO' | 'ITEM';
@@ -470,6 +472,10 @@ export type MemberMealActivitySlotStatus =
 export interface MemberMealActivitySlot {
   mealType: MealType;
   status: MemberMealActivitySlotStatus;
+  /** Effective poll availability. Separate from the member response in `status`. */
+  pollStatus?: MealPollStatus | null;
+  selectionLabel?: string | null;
+  quantity?: number | null;
   slotAmount?: number | null;
   currencyCode?: string | null;
 }

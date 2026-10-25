@@ -219,6 +219,7 @@ export interface PropertyBulkImportResultRow {
   targetKind?: string | null;
   reference?: string | null;
   spaceId?: string | null;
+  spaceReferenceCode?: string | null;
   spaceName?: string | null;
   converted?: boolean | null;
   conversionError?: string | null;
@@ -234,5 +235,6 @@ export interface PropertyBulkImportResultResponse {
   failed: number;
   blankSkipped: number;
   duplicateSkipped?: number;
+  reviewSkipped?: number;
   rows: PropertyBulkImportResultRow[];
 }

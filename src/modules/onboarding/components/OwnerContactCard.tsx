@@ -2,6 +2,8 @@ import { Box, Typography } from '@mui/material';
 import { ExternalLink, Mail, MapPin, Phone } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { OwnerContactResponse } from '@/shared/types/enquiry';
+import { formatMemberContactNumber } from '@/shared/utils/indianMobile';
+import { openableMapsUrl } from '@/modules/onboarding/utils/listingLocation';
 
 type OwnerContactCardProps = {
   contact: OwnerContactResponse | null | undefined;
@@ -18,7 +20,7 @@ export function OwnerContactCard({ contact, mapUrl }: OwnerContactCardProps) {
   );
   const email = contact.email?.trim() ?? '';
   const name = contact.ownerName?.trim() ?? '';
-  const mapHref = mapUrl?.trim() ?? '';
+  const mapHref = openableMapsUrl(mapUrl);
   const hasDetails = phones.length > 0 || email.length > 0 || name.length > 0 || mapHref.length > 0;
 
   return (
@@ -55,13 +57,14 @@ export function OwnerContactCard({ contact, mapUrl }: OwnerContactCardProps) {
             </Box>
           ) : null}
           {phones.map((phone) => {
-            const numeric = phone.replace(/\D/g, '');
+            const shown = formatMemberContactNumber(phone) ?? phone;
+            const numeric = shown.replace(/\D/g, '');
             const whatsapp = numeric.length === 10 ? `91${numeric}` : numeric;
             return (
               <Box key={phone} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
                 <Box
                   component="a"
-                  href={`tel:${phone}`}
+                  href={`tel:${shown.replace(/\s/g, '')}`}
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -73,7 +76,7 @@ export function OwnerContactCard({ contact, mapUrl }: OwnerContactCardProps) {
                   }}
                 >
                   <Phone size={16} color="#0369A1" aria-hidden />
-                  {phone}
+                  {shown}
                 </Box>
                 {numeric.length >= 10 ? (
                   <Typography

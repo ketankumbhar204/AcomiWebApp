@@ -18,6 +18,7 @@ import type {
   MemberMealActivitySlotStatus,
 } from '@/shared/types/meals';
 import { MEAL_ACTIVITY_SLOT_COLORS } from '../utils/memberMealActivityCalendar';
+import { isUnansweredClosedPoll } from '../utils/memberMealActivityHistory';
 
 type MealSlotAccordionsProps = {
   slots: MemberMealActivitySlotDetail[];
@@ -86,7 +87,10 @@ export function MealSlotAccordions({
       {slots.map((slot) => {
         const selections = (slot.selections ?? []).filter((row) => row.label.trim().length > 0);
         const hasItems = selections.length > 0;
-        const accent = MEAL_ACTIVITY_SLOT_COLORS[slot.status] ?? colors.primaryDark;
+        const unansweredClosed = isUnansweredClosedPoll(slot);
+        const accent = unansweredClosed
+          ? '#9CA3AF'
+          : (MEAL_ACTIVITY_SLOT_COLORS[slot.status] ?? colors.primaryDark);
         const slotTotal =
           slot.slotTotal != null
             ? Number(slot.slotTotal)
@@ -139,7 +143,17 @@ export function MealSlotAccordions({
               <Typography sx={{ flex: 1, fontSize: 13, fontWeight: 600, color: s.textPrimary }}>
                 {t(`meals.mealType.${slot.mealType}`)}
               </Typography>
-              <StatusChip label={statusLabel(slot.status, t)} tone={statusTone(slot.status)} />
+              {slot.pollStatus === 'CLOSED' && !unansweredClosed ? (
+                <StatusChip label={t('meals.poll.pollClosed')} tone="neutral" />
+              ) : null}
+              <StatusChip
+                label={
+                  unansweredClosed
+                    ? t('meals.poll.notSelected', { defaultValue: 'Not selected' })
+                    : statusLabel(slot.status, t)
+                }
+                tone={unansweredClosed ? 'neutral' : statusTone(slot.status)}
+              />
             </AccordionSummary>
             <AccordionDetails sx={{ px: 1.25, pt: 0, pb: 1.25 }}>
               {!hasItems ? (
@@ -148,7 +162,9 @@ export function MealSlotAccordions({
                     ? t('meals.activity.daySheet.noItems', {
                         defaultValue: 'No menu items recorded for this meal.',
                       })
-                    : statusLabel(slot.status, t)}
+                    : unansweredClosed
+                      ? t('meals.poll.notSelected', { defaultValue: 'Not selected' })
+                      : statusLabel(slot.status, t)}
                 </Typography>
               ) : (
                 <Stack spacing={0.65}>

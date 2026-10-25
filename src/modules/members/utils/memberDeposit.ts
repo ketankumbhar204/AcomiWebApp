@@ -12,7 +12,7 @@ export function formatCurrency(amount: number | string): string {
   const value = parseDepositAmount(amount);
   return `₹${value.toLocaleString('en-IN', {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   })}`;
 }
 

@@ -19,6 +19,7 @@ export function defaultLayoutModeForSpaceType(spaceType: SpaceType): PropertyLay
     case 'CO_LIVING':
       return 'CO_LIVING';
     case 'RENTAL':
+    case 'CORPORATE_STAY':
       return 'RENTAL';
     default:
       return 'CORRIDOR_PG';
@@ -88,7 +89,7 @@ export function selectableLayoutModes(spaceType: SpaceType): PropertyLayoutMode[
   if (spaceType === 'CO_LIVING') {
     return ['CO_LIVING'];
   }
-  if (spaceType === 'RENTAL') {
+  if (spaceType === 'RENTAL' || spaceType === 'CORPORATE_STAY') {
     return ['RENTAL'];
   }
   return [];

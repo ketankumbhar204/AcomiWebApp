@@ -20,6 +20,8 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { spaceMealsPollPath } from '@/routes/paths';
 import { IconBadge } from '@/modules/dashboard/components/IconBadge';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { AppDrawer } from '@/shared/components/AppDrawer';
@@ -53,9 +55,12 @@ import {
   todayIsoDate,
 } from '@/modules/meals/utils/memberMealActivityCalendar';
 import {
+  activityDayPollClosed,
+  canChooseActivityMeals,
   dayHasListActivity,
   dayMatchesActivityFilter,
   formatActivityListDate,
+  isUnansweredClosedPoll,
   resolveActivityPaymentDisplay,
   sortActivityDays,
   type ActivityHistoryFilter,
@@ -135,8 +140,10 @@ function DaySlotStatusLine({
       }}
     >
       {ordered.map((slot, index) => {
-        const statusColor =
-          slot.status === 'ACCEPTED'
+        const unansweredClosed = isUnansweredClosedPoll(slot);
+        const statusColor = unansweredClosed
+          ? s.textMuted
+          : slot.status === 'ACCEPTED'
             ? colors.primaryDark
             : slot.status === 'PENDING'
               ? '#B45309'
@@ -162,7 +169,9 @@ function DaySlotStatusLine({
               {t(`meals.mealType.${slot.mealType}`)}:
             </Box>
             <Box component="span" sx={{ fontWeight: 600, color: statusColor }}>
-              {t(slotStatusLabelKey(slot.status))}
+              {unansweredClosed
+                ? t('meals.poll.notSelected', { defaultValue: 'Not selected' })
+                : t(slotStatusLabelKey(slot.status))}
             </Box>
           </Box>
         );
@@ -177,12 +186,18 @@ function DayActivityInspector({
   loading,
   framed,
   onClose,
+  showChooseMeals,
+  pollClosed,
+  onChooseMeals,
 }: {
   date: string | null;
   detail: MemberMealActivityDayDetail | null | undefined;
   loading: boolean;
   framed: boolean;
   onClose: () => void;
+  showChooseMeals?: boolean;
+  pollClosed?: boolean;
+  onChooseMeals?: () => void;
 }) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -227,6 +242,44 @@ function DayActivityInspector({
             slots={detail.slots ?? []}
             currencyCode={detail.currencyCode}
           />
+          {showChooseMeals && onChooseMeals ? (
+            <Box
+              component="button"
+              type="button"
+              onClick={onChooseMeals}
+              sx={{
+                alignSelf: 'flex-start',
+                border: 0,
+                cursor: 'pointer',
+                borderRadius: `${DASHBOARD_UX.tileRadius}px`,
+                bgcolor: colors.primaryDark,
+                color: '#fff',
+                px: 1.25,
+                py: 0.75,
+                fontSize: 13,
+                fontWeight: 700,
+                fontFamily: 'inherit',
+              }}
+            >
+              {t('dashboard.customer.chooseMeals', { defaultValue: 'Choose your meals' })}
+            </Box>
+          ) : pollClosed ? (
+            <Box
+              role="status"
+              sx={{
+                alignSelf: 'flex-start',
+                borderRadius: `${DASHBOARD_UX.tileRadius}px`,
+                bgcolor: '#F3F4F6',
+                color: s.textMuted,
+                px: 1.25,
+                py: 0.75,
+                fontSize: 13,
+                fontWeight: 700,
+              }}
+            >
+              {t('meals.poll.pollClosed')}
+            </Box>
+          ) : null}
           {detail.dayTotal != null ? (
             <Box
               sx={{
@@ -521,6 +574,20 @@ export function MemberMealActivitySection({
 
   const filters: ActivityHistoryFilter[] = ['ALL', 'PAID', 'PENDING', 'SKIPPED'];
   const showDesktopPanel = Boolean(selectedDate) && !isLgDown;
+  const navigate = useNavigate();
+  const detailSlots = dayDetail.detail?.slots ?? [];
+  const detailDate = dayDetail.detail?.date
+    ? (normalizeActivityDate(dayDetail.detail.date) ?? dayDetail.detail.date)
+    : null;
+  const detailReady = Boolean(selectedDate) && detailDate === selectedDate;
+  const canChooseMeals =
+    isCustomer && detailReady && canChooseActivityMeals(detailSlots);
+  const showPollClosedChoice =
+    isCustomer &&
+    detailReady &&
+    detailSlots.some((slot) => slot.status === 'PENDING') &&
+    !canChooseActivityMeals(detailSlots) &&
+    detailSlots.some((slot) => slot.pollStatus === 'CLOSED');
 
   const dayInspector = (
     <DayActivityInspector
@@ -529,6 +596,13 @@ export function MemberMealActivitySection({
       loading={dayDetail.loading}
       framed={!isLgDown}
       onClose={() => setSelectedDate(null)}
+      showChooseMeals={canChooseMeals}
+      pollClosed={showPollClosedChoice}
+      onChooseMeals={
+        canChooseMeals && selectedDate
+          ? () => navigate(spaceMealsPollPath(spaceId, selectedDate))
+          : undefined
+      }
     />
   );
 
@@ -624,9 +698,14 @@ export function MemberMealActivitySection({
                       <CalendarDays size={16} />
                     </Box>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography sx={{ fontSize: 14, fontWeight: 700, color: s.textPrimary }}>
-                        {formatActivityListDate(dateKey)}
-                      </Typography>
+                      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                        <Typography sx={{ fontSize: 14, fontWeight: 700, color: s.textPrimary }}>
+                          {formatActivityListDate(dateKey)}
+                        </Typography>
+                        {activityDayPollClosed(day.slots ?? []) ? (
+                          <StatusChip label={t('meals.poll.pollClosed')} tone="neutral" />
+                        ) : null}
+                      </Stack>
                       <DaySlotStatusLine slots={day.slots} />
                     </Box>
                     <ChevronRight size={16} color={s.textMuted} />
@@ -657,9 +736,14 @@ export function MemberMealActivitySection({
                     sx={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}
                   >
                     <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
-                        {formatActivityListDate(dateKey)}
-                      </Typography>
+                      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                        <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
+                          {formatActivityListDate(dateKey)}
+                        </Typography>
+                        {activityDayPollClosed(day.slots ?? []) ? (
+                          <StatusChip label={t('meals.poll.pollClosed')} tone="neutral" />
+                        ) : null}
+                      </Stack>
                       <DaySlotStatusLine slots={day.slots} />
                     </Box>
                     <Stack spacing={0.5} sx={{ alignItems: 'flex-end' }}>

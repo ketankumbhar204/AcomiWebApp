@@ -138,6 +138,7 @@ export const spaceTypePalette = {
   HOSTEL: { accent: '#7C3AED', tint: '#F3E8FF', selectedTint: '#E9D5FF' },
   CO_LIVING: { accent: '#4F46E5', tint: '#EEF2FF', selectedTint: '#E0E7FF' },
   RENTAL: { accent: '#0284C7', tint: '#E8F4FF', selectedTint: '#D6ECFC' },
+  CORPORATE_STAY: { accent: '#0F766E', tint: '#F0FDFA', selectedTint: '#CCFBF1' },
 } as const;
 
 /** Occupancy / accommodation status — occupied mint, vacant lavender. */

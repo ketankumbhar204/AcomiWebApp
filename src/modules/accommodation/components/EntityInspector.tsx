@@ -575,6 +575,22 @@ export function EntityInspector({
     }
   }
 
+  const referenceCode =
+    selection.type === 'building'
+      ? buildingQuery.data?.referenceCode
+      : selection.type === 'floor'
+        ? floorQuery.data?.referenceCode
+        : selection.type === 'unit'
+          ? unitQuery.data?.referenceCode
+          : selection.type === 'room'
+            ? room.room?.referenceCode
+            : selection.type === 'bed'
+              ? bed.bed?.referenceCode
+              : undefined;
+  if (referenceCode) {
+    subtitle = subtitle ? `${referenceCode} · ${subtitle}` : referenceCode;
+  }
+
   const lifecycleFooter =
     canManageAccommodation || canDeactivateAccommodation ? (
       <AccommodationLifecycleActions

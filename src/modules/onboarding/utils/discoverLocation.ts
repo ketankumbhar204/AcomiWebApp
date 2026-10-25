@@ -123,7 +123,7 @@ export function buildDiscoverUrlParams(input: {
   }
   const extras = input.extras;
   if (extras) {
-    for (const key of ['name', 'space', 'enquire']) {
+    for (const key of ['name', 'space', 'enquire', 'listing']) {
       const value = extras.get(key)?.trim();
       if (value) {
         next.set(key, value);

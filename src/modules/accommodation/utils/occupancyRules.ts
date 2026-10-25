@@ -14,6 +14,7 @@ export function getAllowedTargetTypes(spaceType: SpaceType): AllocationTargetTyp
     case 'CO_LIVING':
       return ['BED', 'ROOM'];
     case 'RENTAL':
+    case 'CORPORATE_STAY':
       return ['UNIT'];
     default:
       return [];

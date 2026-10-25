@@ -11,11 +11,13 @@ import {
   useTheme,
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { Building2, ChevronRight, Mail, Phone, UserRound } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Building2, Clock, Mail, MapPin, MessageCircle, Phone, Search, UserRound } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { displayPhone, mailtoHref, telHref } from '@/modules/serviceContacts/utils/serviceContactLinks';
 import { spaceTypeLabelKey } from '@/modules/onboarding/components/createSpace/createSpaceVisuals';
+import { RequesterNotificationBell } from '@/modules/onboarding/components/RequesterNotificationBell';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { spaceDetailsPath } from '@/routes/paths';
 import { enquiryApi } from '@/shared/api/enquiryApi';
@@ -25,7 +27,7 @@ import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
-import type { EnquiryInboxListing, ReceivedEnquiry, SpaceEnquiryStatus } from '@/shared/types/enquiry';
+import type { EnquiryInboxListing, ReceivedEnquiry, ReceivedEnquirySummary, SpaceEnquiryStatus } from '@/shared/types/enquiry';
 
 const STATUSES: SpaceEnquiryStatus[] = ['PENDING', 'SHARED', 'REJECTED', 'EXPIRED', 'CANCELLED'];
 
@@ -74,21 +76,40 @@ export function ReceivedEnquiriesPage({ listings, highlightId }: ReceivedEnquiri
   const [status, setStatus] = useState<SpaceEnquiryStatus | ''>('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [search, setSearch] = useState('');
+  const [queryText, setQueryText] = useState('');
+  const [pageSize, setPageSize] = useState(20);
   const [selectedId, setSelectedId] = useState<string | null>(highlightId ?? null);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQueryText(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setPageSize(20);
+  }, [spaceId, status, from, to, queryText]);
+
   const query = useQuery({
-    queryKey: ['received-enquiries', spaceId, status, from, to],
+    queryKey: ['received-enquiries', spaceId, status, from, to, queryText, pageSize],
     queryFn: () =>
       enquiryApi.listReceived({
         spaceId: spaceId || undefined,
         status: status || undefined,
         from: from || undefined,
         to: to || undefined,
-        size: 50,
+        q: queryText || undefined,
+        size: pageSize,
       }),
   });
 
+  const summary = useQuery({
+    queryKey: ['received-enquiries-summary', spaceId],
+    queryFn: () => enquiryApi.receivedSummary(spaceId || undefined),
+  });
+
   const rows = useMemo(() => query.data?.content ?? [], [query.data?.content]);
+  const filtersActive = Boolean(spaceId || status || from || to || queryText);
   const selected = rows.find((row) => row.enquiryId === selectedId) ?? null;
 
   useEffect(() => {
@@ -141,8 +162,28 @@ export function ReceivedEnquiriesPage({ listings, highlightId }: ReceivedEnquiri
         <PageHeader
           title={t('spaces.enquiries.receivedTitle', { defaultValue: 'Enquiries received' })}
           description={t('spaces.enquiries.receivedSubtitle', {
-            defaultValue: 'Enquiries members sent for listings you own or manage.',
+            defaultValue: 'Manage enquiries for your properties and mess services',
           })}
+          actions={<RequesterNotificationBell />}
+        />
+        <SummaryRow
+          summary={summary.data}
+          status={status}
+          onStatus={setStatus}
+        />
+        <TextField
+          size="small"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={t('spaces.enquiries.searchPlaceholder', {
+            defaultValue: 'Search by name, property, or email...',
+          })}
+          slotProps={{
+            input: {
+              startAdornment: <Search size={16} style={{ marginRight: 8 }} />,
+            },
+          }}
+          sx={{ maxWidth: 560 }}
         />
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
           <TextField
@@ -156,7 +197,12 @@ export function ReceivedEnquiriesPage({ listings, highlightId }: ReceivedEnquiri
             <MenuItem value="">{t('spaces.enquiries.filterAllListings', { defaultValue: 'All listings' })}</MenuItem>
             {listings.map((listing) => (
               <MenuItem key={listing.spaceId} value={listing.spaceId}>
-                {listing.name}
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography noWrap sx={{ fontWeight: 700 }}>{listing.name}</Typography>
+                  <Typography variant="caption" color="text.secondary" noWrap>
+                    {[listing.spaceType, listing.locationLabel].filter(Boolean).join(' · ')}
+                  </Typography>
+                </Box>
               </MenuItem>
             ))}
           </TextField>
@@ -168,7 +214,7 @@ export function ReceivedEnquiriesPage({ listings, highlightId }: ReceivedEnquiri
             onChange={(event) => setStatus(event.target.value as SpaceEnquiryStatus | '')}
             sx={{ minWidth: 160 }}
           >
-            <MenuItem value="">{t('spaces.enquiries.filterAllStatuses', { defaultValue: 'All statuses' })}</MenuItem>
+            <MenuItem value="">{t('spaces.enquiries.filterAll', { defaultValue: 'All enquiries' })}</MenuItem>
             {STATUSES.map((item) => (
               <MenuItem key={item} value={item}>
                 {t(`spaces.enquiries.status.${item}`, { defaultValue: item })}
@@ -191,7 +237,30 @@ export function ReceivedEnquiriesPage({ listings, highlightId }: ReceivedEnquiri
             onChange={(event) => setTo(event.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
           />
+          {filtersActive ? (
+            <Button
+              onClick={() => {
+                setSpaceId('');
+                setStatus('');
+                setFrom('');
+                setTo('');
+                setSearch('');
+                setQueryText('');
+              }}
+              sx={dashOutlinedButtonSx}
+            >
+              {t('spaces.enquiries.clearFilters', { defaultValue: 'Clear filters' })}
+            </Button>
+          ) : null}
         </Stack>
+        {!query.isLoading && !query.isError ? (
+          <Typography variant="body2" color="text.secondary">
+            {t('spaces.enquiries.resultCount', {
+              count: query.data?.totalElements ?? rows.length,
+              defaultValue: '{{count}} enquiries',
+            })}
+          </Typography>
+        ) : null}
 
         {query.isLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -212,10 +281,14 @@ export function ReceivedEnquiriesPage({ listings, highlightId }: ReceivedEnquiri
         ) : rows.length === 0 ? (
           <EmptyState
             icon={<Building2 />}
-            title={t('spaces.enquiries.receivedEmptyTitle', { defaultValue: 'No enquiries received' })}
-            description={t('spaces.enquiries.receivedEmpty', {
-              defaultValue: 'When a member enquires about one of your listings, it will show up here.',
-            })}
+            title={filtersActive
+              ? t('spaces.enquiries.noMatchesTitle', { defaultValue: 'No matching enquiries' })
+              : t('spaces.enquiries.receivedEmptyTitle', { defaultValue: 'No enquiries received' })}
+            description={filtersActive
+              ? t('spaces.enquiries.noMatches', { defaultValue: 'Try another listing, status, or search.' })
+              : t('spaces.enquiries.receivedEmpty', {
+                  defaultValue: 'When a member enquires about one of your listings, it will show up here.',
+                })}
           />
         ) : (
           <Box
@@ -231,6 +304,11 @@ export function ReceivedEnquiriesPage({ listings, highlightId }: ReceivedEnquiri
                 const tone = statusTone(row.status);
                 const selectedRow = selectedId === row.enquiryId;
                 const member = row.requesterName?.trim() || t('spaces.enquiries.member', { defaultValue: 'Member' });
+                const initials = member.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('');
+                const context = (row.spaceType === 'MESS' ? row.foodIncludedLabel : row.sharingNotes)?.trim();
+                const typeLabel = row.spaceType
+                  ? t(spaceTypeLabelKey(row.spaceType), { defaultValue: row.spaceType === 'MESS' ? 'Mess' : row.spaceType })
+                  : null;
                 return (
                   <Box
                     key={row.enquiryId}
@@ -258,52 +336,70 @@ export function ReceivedEnquiriesPage({ listings, highlightId }: ReceivedEnquiri
                         sx={{
                           width: 40,
                           height: 40,
-                          borderRadius: '12px',
+                          borderRadius: '20px',
                           bgcolor: colors.mintSubtle,
-                          color: colors.primary,
+                          color: colors.tealDark,
                           display: 'grid',
                           placeItems: 'center',
                           flexShrink: 0,
+                          fontWeight: 800,
+                          fontSize: 13,
                         }}
                       >
-                        <UserRound size={18} />
+                        {initials || <UserRound size={16} />}
                       </Box>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography sx={{ fontWeight: 800 }} noWrap>
-                          {member}
-                        </Typography>
-                        <Typography variant="body2" sx={{ mt: 0.25 }} noWrap>
-                          {row.spaceName}
-                        </Typography>
-                        {row.locationLabel ? (
-                          <Typography variant="body2" color="text.secondary" noWrap sx={{ mt: 0.25 }}>
-                            {row.locationLabel}
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                          <Typography sx={{ fontWeight: 800, flex: 1 }} noWrap>
+                            {member}
+                          </Typography>
+                          <Chip
+                            size="small"
+                            label={t(`spaces.enquiries.status.${row.status}`, { defaultValue: row.status })}
+                            sx={{ bgcolor: tone.bg, color: tone.fg, fontWeight: 700 }}
+                          />
+                          <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                            {formatRequestedDate(row.requestedAt)}
+                          </Typography>
+                        </Stack>
+                        {context ? (
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }} noWrap>
+                            {context}
                           </Typography>
                         ) : null}
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                          {t('spaces.enquiries.requestedDot', {
-                            date: formatRequestedDate(row.requestedAt),
-                            defaultValue: 'Requested · {{date}}',
-                          })}
-                        </Typography>
-                        <Chip
-                          size="small"
-                          label={t(`spaces.enquiries.status.${row.status}`, { defaultValue: row.status })}
-                          sx={{ mt: 1, bgcolor: tone.bg, color: tone.fg, fontWeight: 700 }}
-                        />
-                        <Stack
-                          direction="row"
-                          spacing={0.5}
-                          sx={{ mt: 1.25, alignItems: 'center', color: colors.primary, fontWeight: 700, fontSize: 13 }}
-                        >
-                          <span>{t('spaces.enquiries.viewMember', { defaultValue: 'View member' })}</span>
-                          <ChevronRight size={16} />
+                        <SenderSummary enquiry={row} />
+                        <Stack direction="row" spacing={1} sx={{ mt: 1.25, alignItems: 'center' }}>
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography sx={{ fontWeight: 700 }} noWrap>{row.spaceName}</Typography>
+                            {row.locationLabel ? (
+                              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', color: 'text.secondary' }}>
+                                <MapPin size={12} />
+                                <Typography variant="caption" noWrap>{row.locationLabel}</Typography>
+                              </Stack>
+                            ) : null}
+                            {row.listingAvailable === false ? (
+                              <Typography variant="caption" color="text.secondary">
+                                {t('spaces.enquiries.listingUnavailable', { defaultValue: 'This listing is no longer available.' })}
+                              </Typography>
+                            ) : null}
+                            {typeLabel ? (
+                              <Chip size="small" label={typeLabel} sx={{ mt: 0.5, bgcolor: colors.mintSubtle, fontWeight: 700 }} />
+                            ) : null}
+                          </Box>
+                          <Typography sx={{ color: colors.tealDark, fontWeight: 800, fontSize: 13, whiteSpace: 'nowrap' }}>
+                            {t('spaces.enquiries.viewEnquiry', { defaultValue: 'View enquiry' })}
+                          </Typography>
                         </Stack>
                       </Box>
                     </Stack>
                   </Box>
                 );
               })}
+              {query.data && !query.data.last ? (
+                <Button onClick={() => setPageSize((size) => size + 20)} sx={dashOutlinedButtonSx}>
+                  {t('spaces.enquiries.loadMore', { defaultValue: 'Load more' })}
+                </Button>
+              ) : null}
             </Stack>
             {!isLgDown ? (
               <Box
@@ -315,6 +411,8 @@ export function ReceivedEnquiriesPage({ listings, highlightId }: ReceivedEnquiri
                   border: `1px solid ${s.border}`,
                   bgcolor: s.surface,
                   minHeight: 280,
+                  maxHeight: 'calc(100vh - 120px)',
+                  overflow: 'auto',
                 }}
               >
                 {detail}
@@ -324,7 +422,7 @@ export function ReceivedEnquiriesPage({ listings, highlightId }: ReceivedEnquiri
         )}
       </Stack>
       <AppDrawer open={Boolean(selectedId) && isLgDown} onClose={() => setSelectedId(null)} width={400}>
-        {detail}
+        <Box sx={{ height: '100%', overflow: 'auto' }}>{detail}</Box>
       </AppDrawer>
     </PageContainer>
   );
@@ -347,7 +445,8 @@ function ReceivedDetail({
   return (
     <Box sx={{ p: 2.5 }}>
       <Typography sx={{ fontWeight: 800, fontSize: 18 }}>{member}</Typography>
-      <Typography sx={{ mt: 0.5, fontWeight: 700 }}>{enquiry.spaceName}</Typography>
+      <SenderDetails enquiry={enquiry} />
+      <Typography sx={{ mt: 1.5, fontWeight: 700 }}>{enquiry.spaceName}</Typography>
       {typeLabel ? (
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
           {typeLabel}
@@ -356,6 +455,16 @@ function ReceivedDetail({
       {enquiry.locationLabel ? (
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
           {enquiry.locationLabel}
+        </Typography>
+      ) : null}
+      {(enquiry.spaceType === 'MESS' ? enquiry.foodIncludedLabel : enquiry.sharingNotes)?.trim() ? (
+        <Typography variant="body2" sx={{ mt: 1 }}>
+          {(enquiry.spaceType === 'MESS' ? enquiry.foodIncludedLabel : enquiry.sharingNotes)?.trim()}
+        </Typography>
+      ) : null}
+      {enquiry.listingAvailable === false ? (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          {t('spaces.enquiries.listingUnavailable', { defaultValue: 'This listing is no longer available.' })}
         </Typography>
       ) : null}
       <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
@@ -370,25 +479,208 @@ function ReceivedDetail({
         sx={{ mt: 1.25, bgcolor: tone.bg, color: tone.fg, fontWeight: 700 }}
       />
       <Stack spacing={1} sx={{ mt: 2 }}>
-        {enquiry.requesterMobile ? (
-          <Button href={`tel:${enquiry.requesterMobile}`} startIcon={<Phone size={16} />} sx={dashContainedButtonSx}>
-            {t('spaces.enquiries.callMember', { defaultValue: 'Call member' })}
-          </Button>
-        ) : null}
-        {enquiry.requesterEmail ? (
-          <Button href={`mailto:${enquiry.requesterEmail}`} startIcon={<Mail size={16} />} sx={dashOutlinedButtonSx}>
-            {t('spaces.enquiries.emailMember', { defaultValue: 'Email member' })}
-          </Button>
-        ) : null}
-        {!enquiry.requesterMobile && !enquiry.requesterEmail ? (
-          <Typography color="text.secondary" sx={{ fontSize: 13 }}>
-            {t('spaces.enquiries.memberContactUnavailable', { defaultValue: 'Member contact is not available.' })}
-          </Typography>
-        ) : null}
         <Button onClick={onOpenListing} startIcon={<Building2 size={16} />} sx={dashOutlinedButtonSx}>
           {t('spaces.enquiries.openListing', { defaultValue: 'Open listing' })}
         </Button>
       </Stack>
+    </Box>
+  );
+}
+
+function SenderSummary({ enquiry }: { enquiry: ReceivedEnquiry }) {
+  const phone = displayPhone(enquiry.requesterMobile) || enquiry.requesterMobile?.trim();
+  const email = enquiry.requesterEmail?.trim();
+  const line = [phone, email].filter(Boolean).join(' · ');
+  if (!line) return null;
+  return (
+    <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600 }} noWrap>
+      {line}
+    </Typography>
+  );
+}
+
+function SenderDetails({ enquiry }: { enquiry: ReceivedEnquiry }) {
+  const { t } = useTranslation();
+  const unavailable = t('spaces.enquiries.senderUnavailable', { defaultValue: 'Not available' });
+  const name = enquiry.requesterName?.trim();
+  const mobile = displayPhone(enquiry.requesterMobile) || enquiry.requesterMobile?.trim() || '';
+  const email = enquiry.requesterEmail?.trim() || '';
+  const tel = telHref(enquiry.requesterMobile);
+  const mail = mailtoHref(email);
+  const sms = tel ? tel.replace(/^tel:/, 'sms:') : null;
+  const account = enquiry.requesterType
+    ? t(`spaces.enquiries.requesterType.${enquiry.requesterType}`, {
+        defaultValue: enquiry.requesterType === 'OWNER' ? 'Lists a property' : 'Member',
+      })
+    : '';
+
+  return (
+    <Box sx={{ mt: 2, p: 1.5, borderRadius: '16px', bgcolor: colors.mintSubtle }}>
+      <Typography sx={{ mb: 1, fontSize: 12, fontWeight: 800, color: colors.tealDark }}>
+        {t('spaces.enquiries.senderDetails', { defaultValue: 'Sender details' })}
+      </Typography>
+      <Stack spacing={1.25}>
+        <SenderRow
+          icon={<UserRound size={16} />}
+          label={t('spaces.enquiries.ownerName', { defaultValue: 'Name' })}
+          value={name || unavailable}
+        />
+        <SenderRow
+          icon={<Phone size={16} />}
+          label={t('spaces.enquiries.mobile', { defaultValue: 'Mobile' })}
+          value={mobile || unavailable}
+        />
+        <SenderRow
+          icon={<Mail size={16} />}
+          label={t('spaces.enquiries.ownerEmail', { defaultValue: 'Email' })}
+          value={email || unavailable}
+        />
+        {account ? (
+          <SenderRow
+            icon={<UserRound size={16} />}
+            label={t('spaces.enquiries.senderAccount', { defaultValue: 'Account' })}
+            value={account}
+          />
+        ) : null}
+      </Stack>
+      {tel || mail ? (
+        <Stack direction="row" spacing={0.75} useFlexGap sx={{ mt: 1.5, flexWrap: 'wrap' }}>
+          {tel ? (
+            <Button href={tel} size="small" sx={dashContainedButtonSx}>
+              {t('spaces.enquiries.callOwner', { defaultValue: 'Call' })}
+            </Button>
+          ) : null}
+          {sms ? (
+            <Button href={sms} size="small" sx={dashOutlinedButtonSx}>
+              {t('spaces.enquiries.messageOwner', { defaultValue: 'Message' })}
+            </Button>
+          ) : null}
+          {mail ? (
+            <Button href={mail} size="small" sx={dashOutlinedButtonSx}>
+              {t('spaces.enquiries.emailOwner', { defaultValue: 'Email' })}
+            </Button>
+          ) : null}
+        </Stack>
+      ) : null}
+    </Box>
+  );
+}
+
+function SenderRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+      <Box
+        sx={{
+          width: 32,
+          height: 32,
+          borderRadius: '16px',
+          bgcolor: '#fff',
+          color: colors.tealDark,
+          display: 'grid',
+          placeItems: 'center',
+          flexShrink: 0,
+        }}
+      >
+        {icon}
+      </Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+          {label}
+        </Typography>
+        <Typography sx={{ fontWeight: 700, wordBreak: 'break-word' }}>{value}</Typography>
+      </Box>
+    </Stack>
+  );
+}
+
+function SummaryRow({
+  summary,
+  status,
+  onStatus,
+}: {
+  summary?: ReceivedEnquirySummary;
+  status: SpaceEnquiryStatus | '';
+  onStatus: (status: SpaceEnquiryStatus | '') => void;
+}) {
+  const { t } = useTranslation();
+  const cards: Array<{
+    key: string;
+    label: string;
+    value: number;
+    selected: boolean;
+    onClick: () => void;
+    icon: ReactNode;
+  }> = [
+    {
+      key: 'total',
+      label: t('spaces.enquiries.summaryTotal', { defaultValue: 'Total enquiries' }),
+      value: summary?.total ?? 0,
+      selected: status === '',
+      onClick: () => onStatus(''),
+      icon: <Mail size={16} />,
+    },
+    {
+      key: 'pending',
+      label: t('spaces.enquiries.status.PENDING', { defaultValue: 'Pending' }),
+      value: summary?.pending ?? 0,
+      selected: status === 'PENDING',
+      onClick: () => onStatus('PENDING'),
+      icon: <Clock size={16} />,
+    },
+    {
+      key: 'shared',
+      label: t('spaces.enquiries.status.SHARED', { defaultValue: 'Shared' }),
+      value: summary?.shared ?? 0,
+      selected: status === 'SHARED',
+      onClick: () => onStatus('SHARED'),
+      icon: <MessageCircle size={16} />,
+    },
+    {
+      key: 'closed',
+      label: t('spaces.enquiries.summaryClosed', { defaultValue: 'Closed' }),
+      value: summary?.closed ?? 0,
+      selected: false,
+      onClick: () => undefined,
+      icon: <Clock size={16} />,
+    },
+  ];
+  return (
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))' },
+        gap: 1,
+      }}
+    >
+      {cards.map((card) => (
+        <Box
+          key={card.key}
+          component="button"
+          type="button"
+          onClick={card.onClick}
+          aria-pressed={card.selected}
+          sx={{
+            textAlign: 'left',
+            borderRadius: '16px',
+            border: `1px solid ${card.selected ? colors.primary : 'rgba(15,23,42,0.08)'}`,
+            bgcolor: card.selected ? colors.mintSubtle : '#fff',
+            p: 1.25,
+            cursor: 'pointer',
+          }}
+        >
+          <Box sx={{ color: colors.tealDark }}>{card.icon}</Box>
+          <Typography sx={{ fontWeight: 800, fontSize: 20 }}>{card.value}</Typography>
+          <Typography variant="caption" color="text.secondary">{card.label}</Typography>
+        </Box>
+      ))}
     </Box>
   );
 }

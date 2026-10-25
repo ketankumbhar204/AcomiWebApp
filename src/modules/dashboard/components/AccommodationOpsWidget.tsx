@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import type { DashboardAccommodationOperations } from '@/shared/types/dashboard';
-import { spaceBedInventoryPath, spaceOccupancyListPath, spacePaymentsPath } from '@/routes/paths';
+import { spaceBedInventoryPath, spacePaymentsPath } from '@/routes/paths';
 import { DashboardSection } from './DashboardSection';
 import { OccupancyStatusBoard, type OccupancyChipModel } from './OccupancyStatusBoard';
 
@@ -62,7 +62,7 @@ export function AccommodationOpsWidget({
       value: operations.occupiedBeds,
       tone: 'occupied',
       selected: selectedMetricId === 'occupied',
-      onClick: bind('occupied', () => navigate(spaceOccupancyListPath(spaceId, 'active'))),
+      onClick: bind('occupied', () => navigate(spaceBedInventoryPath(spaceId, 'OCCUPIED'))),
     },
     {
       id: 'vacant',
@@ -89,7 +89,9 @@ export function AccommodationOpsWidget({
       value: operations.moveInsThisMonth,
       tone: 'info',
       selected: selectedMetricId === 'moveIns',
-      onClick: bind('moveIns', () => navigate(spaceOccupancyListPath(spaceId, 'moveInsThisMonth'))),
+      onClick: bind('moveIns', () =>
+        navigate(spaceBedInventoryPath(spaceId, 'OCCUPIED', { focus: 'moveIns' })),
+      ),
     },
     {
       id: 'pendingPay',

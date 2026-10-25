@@ -14,8 +14,10 @@ import { Pencil, Trash2, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { formatMemberContactNumber } from '@/shared/utils/indianMobile';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { EmptyState } from '@/shared/components/EmptyState';
+import { ReferenceCode } from '@/shared/components/ReferenceCode';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { SidePanel } from '@/shared/components/SidePanel';
@@ -129,7 +131,7 @@ export function MemberInspector({
     <>
       <SidePanel
         title={member.fullName}
-        subtitle={member.mobileNumber}
+        subtitle={formatMemberContactNumber(member.mobileNumber) ?? member.mobileNumber}
         onClose={onClose}
         actions={
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
@@ -231,6 +233,7 @@ export function MemberInspector({
               >
                 {member.fullName}
               </Typography>
+              <ReferenceCode value={member.referenceCode} />
               <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', mt: 0.5 }}>
                 <StatusChip
                   label={t(membershipRoleLabelKey(member.role, permissions.space?.spaceType))}

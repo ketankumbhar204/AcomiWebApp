@@ -1,15 +1,24 @@
 import { useState } from 'react';
 import { Button, Stack, Typography } from '@mui/material';
+import { AppDrawer } from '@/shared/components/AppDrawer';
+import { PaymentInspector } from '@/modules/payments/components/PaymentInspector';
+import { ProofSubmitDrawer } from '@/modules/payments/components/ProofSubmitDrawer';
+import { canEditSubmittedProof } from '@/modules/payments/utils/paymentHelpers';
 import { Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { AddPaymentRecordDialog } from '@/modules/payments/components/AddPaymentRecordDialog';
 import { OwnerPaymentRowActions } from '@/modules/payments/components/OwnerPaymentRowActions';
 import { PaymentReceivedConfirmDialog } from '@/modules/payments/components/PaymentReceivedConfirmDialog';
+import { PaymentReminderComposer } from '@/modules/payments/components/PaymentReminderComposer';
+import { PaymentReviewActions } from '@/modules/payments/components/PaymentReviewActions';
 import { useOwnerPaymentCardActions } from '@/modules/payments/hooks/useOwnerPaymentCardActions';
+import { usePaymentMutations } from '@/modules/payments/hooks/usePayments';
 import {
   canOwnerMarkPaymentReceived,
   canOwnerSendPaymentReminder,
+  paymentStatusLabelKey,
+  paymentStatusTone,
 } from '@/modules/payments/utils/paymentHelpers';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { ErrorState } from '@/shared/components/ErrorState';
@@ -37,6 +46,8 @@ export function MemberPaymentsPanel({ spaceId, memberId }: MemberPaymentsPanelPr
   const { member } = useMemberDetails(spaceId, memberId, canCreate);
   const { payments, month, loading, error, reload } = useMemberPayments(spaceId, memberId);
   const cardActions = useOwnerPaymentCardActions(spaceId, month);
+  const mutations = usePaymentMutations(spaceId);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
   const ledgerQuery = usePaymentsMembers(
     spaceId,
     { month, q: member?.fullName, page: 0, size: 20 },
@@ -59,10 +70,21 @@ export function MemberPaymentsPanel({ spaceId, memberId }: MemberPaymentsPanelPr
     return sum + payment.outstandingAmount;
   }, 0);
   const nextDue = payments
-    .filter((payment) => (payment.outstandingAmount ?? 0) > 0 && Boolean(payment.dueDate))
+    .filter((payment) => {
+      const status = payment.paymentStatus ?? payment.status;
+      return (
+        status !== 'UNDER_REVIEW' &&
+        status !== 'PROOF_UPLOADED' &&
+        status !== 'PAID' &&
+        (payment.outstandingAmount ?? 0) > 0 &&
+        Boolean(payment.dueDate)
+      );
+    })
     .map((payment) => payment.dueDate)
     .sort()[0];
   const [addOpen, setAddOpen] = useState(false);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+  const [proofOpen, setProofOpen] = useState(false);
 
   if (error) {
     return (
@@ -86,9 +108,21 @@ export function MemberPaymentsPanel({ spaceId, memberId }: MemberPaymentsPanelPr
     {
       id: 'status',
       header: t('dashboard.drilldown.columns.status'),
-      accessor: (row) => (
-        <StatusChip label={row.paymentStatus ?? row.status ?? '—'} tone="warning" />
-      ),
+      accessor: (row) => {
+        const status = row.paymentStatus ?? row.status ?? 'PENDING';
+        const awaitingReview = status === 'UNDER_REVIEW' || status === 'PROOF_UPLOADED';
+        const overdue = Boolean(row.isOverdue) && !awaitingReview && status !== 'PAID';
+        return (
+          <StatusChip
+            label={
+              overdue
+                ? t('paymentCollection.dayMeals.status.overdue', { defaultValue: 'Overdue' })
+                : t(paymentStatusLabelKey(status))
+            }
+            tone={overdue ? 'error' : paymentStatusTone(status)}
+          />
+        );
+      },
     },
     {
       id: 'category',
@@ -106,7 +140,64 @@ export function MemberPaymentsPanel({ spaceId, memberId }: MemberPaymentsPanelPr
       header: '',
       accessor: (row) => {
         if (!canCreate) return null;
-        const showReceived = canOwnerMarkPaymentReceived(row.paymentStatus ?? row.status);
+        const status = row.paymentStatus ?? row.status;
+        if (status === 'UNDER_REVIEW' || status === 'PROOF_UPLOADED') {
+          return (
+            <PaymentReviewActions
+              reviewing={reviewingId === row.paymentId || mutations.reviewPayment.isPending}
+              onApprove={() => {
+                setReviewingId(row.paymentId);
+                void mutations.reviewPayment
+                  .mutateAsync({ paymentId: row.paymentId, body: { action: 'APPROVE' } })
+                  .then(() => {
+                    enqueueSnackbar(t('paymentCollection.review.approved'), { variant: 'success' });
+                    void reload();
+                  })
+                  .catch(() => {
+                    enqueueSnackbar(t('paymentCollection.errors.review'), { variant: 'error' });
+                  })
+                  .finally(() => setReviewingId(null));
+              }}
+              onReject={(code, reason) => {
+                setReviewingId(row.paymentId);
+                return mutations.reviewPayment
+                  .mutateAsync({
+                    paymentId: row.paymentId,
+                    body: { action: 'REJECT', rejectionCode: code, remarks: reason },
+                  })
+                  .then(() => {
+                    enqueueSnackbar(t('paymentCollection.review.rejected'), { variant: 'success' });
+                    void reload();
+                  })
+                  .catch((err) => {
+                    enqueueSnackbar(t('paymentCollection.errors.review'), { variant: 'error' });
+                    throw err;
+                  })
+                  .finally(() => setReviewingId(null));
+              }}
+              onRequestUpdate={(message) => {
+                setReviewingId(row.paymentId);
+                return mutations.reviewPayment
+                  .mutateAsync({
+                    paymentId: row.paymentId,
+                    body: { action: 'REQUEST_UPDATE', remarks: message },
+                  })
+                  .then(() => {
+                    enqueueSnackbar(t('paymentCollection.review.updateRequested'), {
+                      variant: 'success',
+                    });
+                    void reload();
+                  })
+                  .catch((err) => {
+                    enqueueSnackbar(t('paymentCollection.errors.review'), { variant: 'error' });
+                    throw err;
+                  })
+                  .finally(() => setReviewingId(null));
+              }}
+            />
+          );
+        }
+        const showReceived = canOwnerMarkPaymentReceived(status);
         const showReminder = canOwnerSendPaymentReminder(row.reminderEligible);
         if (!showReceived && !showReminder) return null;
         return (
@@ -196,6 +287,7 @@ export function MemberPaymentsPanel({ spaceId, memberId }: MemberPaymentsPanelPr
         loading={loading}
         emptyTitle={t('membership.workspace.noPayments')}
         emptyDescription={t('membership.workspace.noPaymentsBody')}
+        onRowClick={canCreate ? undefined : (row) => setSelectedPaymentId(row.paymentId)}
       />
       {canCreate ? (
         <AddPaymentRecordDialog
@@ -217,6 +309,52 @@ export function MemberPaymentsPanel({ spaceId, memberId }: MemberPaymentsPanelPr
         />
       ) : null}
     </PageSection>
+    {!canCreate ? (
+      <>
+        <AppDrawer
+          open={selectedPaymentId != null}
+          onClose={() => setSelectedPaymentId(null)}
+          width={420}
+        >
+          <PaymentInspector
+            spaceId={spaceId}
+            paymentId={selectedPaymentId}
+            canManage={false}
+            framed={false}
+            onClose={() => setSelectedPaymentId(null)}
+            onOpenProof={() => setProofOpen(true)}
+          />
+        </AppDrawer>
+        <ProofSubmitDrawer
+          open={proofOpen}
+          spaceId={spaceId}
+          paymentId={selectedPaymentId}
+          mode={
+            canEditSubmittedProof(
+              payments.find((row) => row.paymentId === selectedPaymentId)?.paymentStatus ??
+                payments.find((row) => row.paymentId === selectedPaymentId)?.status,
+            )
+              ? 'edit'
+              : 'submit'
+          }
+          onClose={() => setProofOpen(false)}
+        />
+      </>
+    ) : null}
+    <PaymentReminderComposer
+      open={cardActions.reminderDraft != null}
+      memberName={cardActions.reminderDraft?.memberName ?? ''}
+      phone={cardActions.reminderPhone}
+      message={cardActions.reminderMessage}
+      notice={cardActions.reminderNotice}
+      submitting={
+        cardActions.reminderDraft != null &&
+        cardActions.isProcessing(cardActions.reminderDraft.paymentId, 'reminder')
+      }
+      onChangeMessage={cardActions.setReminderMessage}
+      onCancel={cardActions.cancelReminder}
+      onConfirm={cardActions.confirmReminder}
+    />
     <PaymentReceivedConfirmDialog
       open={cardActions.confirmPayments.length > 0}
       payments={cardActions.confirmPayments}

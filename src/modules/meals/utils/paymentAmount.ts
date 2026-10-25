@@ -19,12 +19,7 @@ export function formatPaymentAmount(
 }
 
 function formatIndianGrouped(value: number): string {
-  const rounded = Math.round(value * 100) / 100;
-  const isWhole = Math.abs(rounded - Math.round(rounded)) < 0.001;
-  const raw = isWhole ? String(Math.round(rounded)) : rounded.toFixed(2);
-  const [whole, fraction] = raw.split('.');
-  const grouped = groupIndianDigits(whole ?? '0');
-  return fraction ? `${grouped}.${fraction}` : grouped;
+  return groupIndianDigits(String(Math.round(value)));
 }
 
 function groupIndianDigits(whole: string): string {

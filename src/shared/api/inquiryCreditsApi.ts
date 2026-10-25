@@ -8,6 +8,9 @@ import type {
   InquiryQuota,
   InquiryWallet,
 } from '@/shared/types/inquiryCredits';
+import { canViewContactDirectly } from '@/shared/utils/contactViewQuota';
+
+export { canViewContactDirectly };
 
 export const inquiryCreditsApi = {
   getPaymentConfig: (): Promise<InquiryPaymentConfig> =>

@@ -50,6 +50,7 @@ import {
   adminPropertyDetailPath,
 } from '@/routes/paths';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { ReferenceCode } from '@/shared/components/ReferenceCode';
 import type {
   AdminActiveSpace,
   AdminPropertyRegistrationsSummary,
@@ -966,6 +967,7 @@ export function AdminPropertyListPage() {
                                 {space.name}
                               </Typography>
                             </Stack>
+                            <ReferenceCode value={space.referenceCode} />
                             <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.35 }}>
                               <User size={12} color="#94A3B8" />
                               <Typography sx={{ fontSize: 12, color: 'text.secondary' }} noWrap>

@@ -125,10 +125,14 @@ function truncateItemNames(names: string[], max = 3): { visible: string[]; more:
 }
 
 function ComboRowActions({
+  enabledForSpace,
   onEdit,
+  onToggleSpace,
   onDeactivate,
 }: {
+  enabledForSpace?: boolean;
   onEdit: () => void;
+  onToggleSpace: () => void;
   onDeactivate: () => void;
 }) {
   const { t } = useTranslation();
@@ -171,6 +175,21 @@ function ComboRowActions({
             <Pencil size={14} />
           </ListItemIcon>
           <ListItemText>{t('meals.library.editCombo')}</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setAnchor(null);
+            onToggleSpace();
+          }}
+        >
+          <ListItemIcon>
+            <Pencil size={14} />
+          </ListItemIcon>
+          <ListItemText>
+            {enabledForSpace === false
+              ? t('meals.library.showComboInSpace', { defaultValue: 'Show in this space' })
+              : t('meals.library.hideComboInSpace', { defaultValue: 'Hide in this space' })}
+          </ListItemText>
         </MenuItem>
         <MenuItem
           onClick={() => {
@@ -601,6 +620,9 @@ export function MenuLibraryPage() {
       accessor: (row) => (
         <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }} noWrap>
           {row.name}
+          {row.enabledForSpace === false
+            ? ` · ${t('meals.library.comboHiddenInSpace', { defaultValue: 'Hidden in this space' })}`
+            : ''}
         </Typography>
       ),
       primary: true,
@@ -646,9 +668,16 @@ export function MenuLibraryPage() {
             align: 'right' as const,
             accessor: (row: MealComboResponse & { id: string }) => (
               <ComboRowActions
+                enabledForSpace={row.enabledForSpace}
                 onEdit={() => {
                   setEditingCombo(row);
                   setComboFormOpen(true);
+                }}
+                onToggleSpace={() => {
+                  void mutations.setMealComboEnabled.mutateAsync({
+                    comboId: row.comboId,
+                    enabled: row.enabledForSpace === false,
+                  });
                 }}
                 onDeactivate={() => setDeactivateComboId(row.comboId)}
               />
@@ -975,9 +1004,16 @@ export function MenuLibraryPage() {
                 actions={
                   canManage ? (
                     <ComboRowActions
+                      enabledForSpace={row.enabledForSpace}
                       onEdit={() => {
                         setEditingCombo(row);
                         setComboFormOpen(true);
+                      }}
+                      onToggleSpace={() => {
+                        void mutations.setMealComboEnabled.mutateAsync({
+                          comboId: row.comboId,
+                          enabled: row.enabledForSpace === false,
+                        });
                       }}
                       onDeactivate={() => setDeactivateComboId(row.comboId)}
                     />

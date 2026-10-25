@@ -1,5 +1,5 @@
 import { Box, Button, Typography, useTheme } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { AppDrawer } from '@/shared/components/AppDrawer';
@@ -7,7 +7,8 @@ import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardU
 import { StickyFooter } from '@/shared/components/StickyFooter';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { UniversalPaymentProofForm } from './UniversalPaymentProofForm';
-import { usePaymentMutations } from '../hooks/usePayments';
+import { usePaymentDetail, usePaymentMutations } from '../hooks/usePayments';
+import { canEditSubmittedProof } from '../utils/paymentHelpers';
 import {
   EMPTY_PAYMENT_PROOF,
   toSubmitPaymentProofBody,
@@ -19,6 +20,8 @@ type ProofSubmitDrawerProps = {
   open: boolean;
   spaceId: string;
   paymentId: string | null;
+  /** Edit keeps the current proof, UTR, and remarks. Submit starts a new proof. */
+  mode?: 'submit' | 'edit';
   onClose: () => void;
 };
 
@@ -26,6 +29,7 @@ export function ProofSubmitDrawer({
   open,
   spaceId,
   paymentId,
+  mode = 'submit',
   onClose,
 }: ProofSubmitDrawerProps) {
   const { t } = useTranslation();
@@ -33,13 +37,39 @@ export function ProofSubmitDrawer({
   const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const mutations = usePaymentMutations(spaceId);
+  const detail = usePaymentDetail(spaceId, paymentId ?? undefined, open && mode === 'edit');
   const [proof, setProof] = useState<PaymentProofSubmission>(EMPTY_PAYMENT_PROOF);
+  const editing = mode === 'edit';
+  const seededKey = useRef<string | null>(null);
 
   useEffect(() => {
-    if (open) {
-      setProof(EMPTY_PAYMENT_PROOF);
+    if (!open) {
+      seededKey.current = null;
+      return;
     }
-  }, [open, paymentId]);
+    const key = `${paymentId ?? ''}:${editing ? 'edit' : 'submit'}`;
+    if (seededKey.current === key) {
+      return;
+    }
+    if (!editing) {
+      setProof(EMPTY_PAYMENT_PROOF);
+      seededKey.current = key;
+      return;
+    }
+    const payment = detail.payment;
+    if (!payment || !canEditSubmittedProof(payment.paymentStatus ?? payment.status)) {
+      return;
+    }
+    setProof({
+      ...EMPTY_PAYMENT_PROOF,
+      paymentMethod: payment.paymentMethod ?? 'UPI',
+      referenceNumber: payment.referenceNumber ?? '',
+      remarks: payment.remarks ?? '',
+      proofFileId: payment.proofFileId ?? undefined,
+      previewUrl: payment.proofUrl ?? undefined,
+    });
+    seededKey.current = key;
+  }, [detail.payment, editing, open, paymentId]);
 
   const handleSubmit = async () => {
     if (!paymentId) {
@@ -55,7 +85,10 @@ export function ProofSubmitDrawer({
         paymentId,
         body: toSubmitPaymentProofBody(proof),
       });
-      enqueueSnackbar(t('paymentCollection.proof.success'), { variant: 'success' });
+      enqueueSnackbar(
+        t(editing ? 'paymentCollection.proof.updated' : 'paymentCollection.proof.success'),
+        { variant: 'success' },
+      );
       setProof(EMPTY_PAYMENT_PROOF);
       onClose();
     } catch {
@@ -68,7 +101,7 @@ export function ProofSubmitDrawer({
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
           <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
-            {t('paymentCollection.proof.submit')}
+            {t(editing ? 'paymentCollection.proof.editTitle' : 'paymentCollection.proof.submit')}
           </Typography>
         </Box>
         <Box sx={{ p: 2, flex: 1, overflow: 'auto' }}>
@@ -88,7 +121,7 @@ export function ProofSubmitDrawer({
             onClick={() => void handleSubmit()}
             sx={dashContainedButtonSx}
           >
-            {t('common.save')}
+            {t(editing ? 'paymentCollection.proof.saveChanges' : 'common.save')}
           </Button>
         </StickyFooter>
       </Box>

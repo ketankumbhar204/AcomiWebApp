@@ -1,6 +1,5 @@
 import {
   Box,
-  Grid,
   IconButton,
   InputAdornment,
   MenuItem,
@@ -50,8 +49,15 @@ import { formatPricingMoney } from '@/modules/accommodation/utils/commitBedPrici
 import { bedIsSelectableForMoveIn } from '@/modules/accommodation/utils/moveInEntry';
 import { ROUTES, spaceBedInventoryPath, spaceDashboardPath, spaceOccupancyWizardPath } from '@/routes/paths';
 import type { BedSpaceListItem } from '../api/dashboardDrilldownApi';
-import { BedInventoryCard } from '../components/BedInventoryCard';
+import { BedInventoryRoomSections } from '../components/BedInventoryRoomSections';
+import {
+  PropertyOpsSummaryCards,
+  type PropertyOpsFocus,
+} from '../components/PropertyOpsSummaryCards';
 import { useSpaceBedInventory } from '../hooks/useSpaceBedInventory';
+import { useSpaceDashboard } from '../hooks/useSpaceDashboard';
+import { useSpaceOccupancyList } from '../hooks/useSpaceOccupancyList';
+import { isAccommodationApplicable } from '@/shared/utils/spacePermissions';
 
 type BedRow = BedSpaceListItem & { id: string };
 type ViewMode = 'cards' | 'table';
@@ -74,7 +80,18 @@ function statusTone(status: string): StatusChipTone {
   }
 }
 
-function pageCopy(status: string, t: (key: string, opts?: Record<string, unknown>) => string) {
+function pageCopy(
+  status: string,
+  focus: PropertyOpsFocus | null,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+) {
+  if (focus === 'moveIns') {
+    return {
+      title: t('dashboard.drilldown.moveInsTitle'),
+      description: t('dashboard.drilldown.moveInsSubtitle'),
+      empty: t('dashboard.drilldown.emptyMoveIns'),
+    };
+  }
   if (status === 'OCCUPIED') {
     return {
       title: t('dashboard.drilldown.occupiedBedsTitle'),
@@ -122,14 +139,21 @@ export function BedInventoryPage() {
   const permissions = useSpacePermissions(spaceId);
   const [searchParams, setSearchParams] = useSearchParams();
   const status = searchParams.get('status') ?? 'AVAILABLE';
+  const focusParam = searchParams.get('focus');
+  const opsFocus: PropertyOpsFocus | null =
+    focusParam === 'moveIns'
+      ? 'moveIns'
+      : status === 'AVAILABLE'
+        ? 'vacant'
+        : status === 'OCCUPIED'
+          ? 'occupied'
+          : null;
   const allocateIntent = searchParams.get('intent') === 'allocate';
   const [search, setSearch] = useState('');
   const [buildingId, setBuildingId] = useState('');
   const [floorId, setFloorId] = useState('');
   const [unitId, setUnitId] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>(() =>
-    status === 'AVAILABLE' || status === 'RESERVED' ? 'table' : 'cards',
-  );
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
 
   const buildings = useBuildings(spaceId, Boolean(spaceId));
   const floors = useFloors(spaceId, buildingId || undefined, Boolean(buildingId));
@@ -140,14 +164,47 @@ export function BedInventoryPage() {
     Boolean(buildingId && floorId),
   );
 
-  const beds = useSpaceBedInventory(spaceId, status, search, Boolean(spaceId), {
+  const inventoryStatus = opsFocus === 'moveIns' ? 'OCCUPIED' : status;
+  const beds = useSpaceBedInventory(spaceId, inventoryStatus, search, Boolean(spaceId), {
     buildingId: buildingId || undefined,
     floorId: floorId || undefined,
     unitId: unitId || undefined,
   });
   const canManage = permissions.canManageOccupancy === true;
-  const selectingForMoveIn = allocateIntent && status === 'AVAILABLE' && canManage;
-  const copy = pageCopy(status, t);
+  const selectingForMoveIn = allocateIntent && opsFocus === 'vacant' && canManage;
+  const spaceType = permissions.space?.spaceType;
+  const showOpsCards =
+    spaceType != null && isAccommodationApplicable(spaceType) && opsFocus != null;
+  const dashboard = useSpaceDashboard(spaceId, spaceType, showOpsCards);
+  const moveInsQuery = useSpaceOccupancyList(
+    spaceId,
+    'moveInsThisMonth',
+    '',
+    showOpsCards && opsFocus === 'moveIns',
+  );
+  const moveInsByBedId = useMemo(() => {
+    const map = new Map<string, { memberName: string; moveInDate: string | null; rent: number | null; deposit: number | null }>();
+    if (opsFocus !== 'moveIns') {
+      return map;
+    }
+    for (const row of moveInsQuery.items) {
+      if (!row.bedId) continue;
+      map.set(row.bedId, {
+        memberName: row.memberName,
+        moveInDate: row.moveInDate ?? row.actualMoveInAt?.slice(0, 10) ?? null,
+        rent: null,
+        deposit: null,
+      });
+    }
+    return map;
+  }, [moveInsQuery.items, opsFocus]);
+  const visibleBeds = useMemo(() => {
+    if (opsFocus !== 'moveIns') {
+      return beds.items;
+    }
+    return beds.items.filter((bed) => moveInsByBedId.has(bed.bedId));
+  }, [beds.items, moveInsByBedId, opsFocus]);
+  const copy = pageCopy(status, opsFocus, t);
   const returnTo = spaceBedInventoryPath(spaceId, status);
   const bedInteraction = usePersistedBedInteraction({
     spaceId,
@@ -162,8 +219,8 @@ export function BedInventoryPage() {
   }, [copy.title, t]);
 
   const rows: BedRow[] = useMemo(
-    () => beds.items.map((item) => ({ ...item, id: item.bedId })),
-    [beds.items],
+    () => visibleBeds.map((item) => ({ ...item, id: item.bedId })),
+    [visibleBeds],
   );
 
   const openForMoveIn = (bed: BedSpaceListItem) => {
@@ -174,8 +231,8 @@ export function BedInventoryPage() {
     navigate(
       spaceOccupancyWizardPath(spaceId, 'ALLOCATE', {
         bedId: bed.bedId,
-        roomId: bed.roomId,
-        unitId: bed.unitId,
+        roomId: bed.roomId ?? undefined,
+        unitId: bed.unitId ?? undefined,
         buildingId: bed.buildingId,
         returnTo: spaceBedInventoryPath(spaceId, 'AVAILABLE', { intent: 'allocate' }),
       }),
@@ -202,6 +259,24 @@ export function BedInventoryPage() {
         .filter(Boolean)
         .join(' · '),
     });
+  };
+
+  const selectOpsFocus = (next: PropertyOpsFocus) => {
+    if (next === opsFocus) {
+      return;
+    }
+    const params = new URLSearchParams(searchParams);
+    params.set('status', next === 'vacant' ? 'AVAILABLE' : 'OCCUPIED');
+    if (next === 'moveIns') {
+      params.set('focus', 'moveIns');
+    } else {
+      params.delete('focus');
+    }
+    if (next !== 'vacant') {
+      params.delete('intent');
+    }
+    setSearchParams(params, { replace: true });
+    setViewMode('cards');
   };
 
   const setStatus = (next: string) => {
@@ -476,10 +551,25 @@ export function BedInventoryPage() {
 
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
           <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textMuted }}>
-            {t('dashboard.drilldown.showingCount', {
-              defaultValue: '{{count}} beds',
-              count: beds.items.length,
-            })}
+            {opsFocus === 'moveIns'
+              ? t('dashboard.drilldown.showingMoveIns', {
+                  defaultValue: 'Showing {{count}} move-ins this month',
+                  count: visibleBeds.length,
+                })
+              : opsFocus === 'occupied'
+                ? t('dashboard.drilldown.showingOccupiedBeds', {
+                    defaultValue: 'Showing {{count}} occupied beds',
+                    count: visibleBeds.length,
+                  })
+                : opsFocus === 'vacant'
+                  ? t('dashboard.drilldown.showingAvailableBeds', {
+                      defaultValue: 'Showing {{count}} available beds',
+                      count: visibleBeds.length,
+                    })
+                  : t('dashboard.drilldown.showingCount', {
+                      defaultValue: '{{count}} beds',
+                      count: visibleBeds.length,
+                    })}
           </Typography>
           {status === 'AVAILABLE' && canManage ? (
             <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textSecondary }}>
@@ -497,7 +587,7 @@ export function BedInventoryPage() {
 
   return (
     <PageContainer gap={0}>
-      <Stack spacing={`${DASHBOARD_UX.sectionGap}px`} sx={{ width: '100%' }}>
+      <Stack spacing={`${DASHBOARD_UX.sectionGap}px`} sx={{ width: '100%', minWidth: 0 }}>
         <PageHeader
           title={copy.title}
           description={copy.description}
@@ -505,10 +595,22 @@ export function BedInventoryPage() {
             { label: t('navigation.dashboard'), to: spaceDashboardPath(spaceId) },
             {
               label: copy.title,
-              to: spaceBedInventoryPath(spaceId, status),
+              to: spaceBedInventoryPath(
+                spaceId,
+                opsFocus === 'vacant' ? 'AVAILABLE' : 'OCCUPIED',
+                opsFocus === 'moveIns' ? { focus: 'moveIns' } : undefined,
+              ),
             },
           ]}
         />
+
+        {showOpsCards && dashboard.accommodationOperations ? (
+          <PropertyOpsSummaryCards
+            operations={dashboard.accommodationOperations}
+            selected={opsFocus}
+            onSelect={selectOpsFocus}
+          />
+        ) : null}
 
         {filterBar}
 
@@ -522,27 +624,27 @@ export function BedInventoryPage() {
           <DataTable
             columns={columns}
             rows={rows}
-            loading={beds.loading}
+            loading={beds.loading || (opsFocus === 'moveIns' && moveInsQuery.loading)}
             onRowClick={(row) => openBed(row)}
             emptyTitle={copy.empty}
             emptyDescription={t('dashboard.drilldown.emptyBedsDescription')}
           />
-        ) : beds.loading && beds.items.length === 0 ? (
+        ) : (beds.loading && beds.items.length === 0) ||
+          (opsFocus === 'moveIns' && moveInsQuery.loading && moveInsQuery.items.length === 0) ? (
           <LoadingState />
-        ) : beds.items.length === 0 ? (
+        ) : visibleBeds.length === 0 ? (
           <EmptyState
             title={copy.empty}
             description={t('dashboard.drilldown.emptyBedsDescription')}
             icon={<BedDouble size={28} />}
           />
         ) : (
-          <Grid container spacing={1.5}>
-            {beds.items.map((bed) => (
-              <Grid key={bed.bedId} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-                <BedInventoryCard bed={bed} onViewBed={() => openBed(bed)} />
-              </Grid>
-            ))}
-          </Grid>
+          <BedInventoryRoomSections
+            beds={visibleBeds}
+            spaceId={spaceId}
+            moveInsByBedId={moveInsByBedId}
+            onViewBed={openBed}
+          />
         )}
       </Stack>
       <PersistedBedInteractionHost interaction={bedInteraction} />

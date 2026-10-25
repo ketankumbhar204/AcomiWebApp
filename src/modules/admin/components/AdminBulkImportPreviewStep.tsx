@@ -1,5 +1,6 @@
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -38,6 +39,7 @@ import {
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { colors } from '@/shared/theme/colors';
+import { commitTypeSelection, typeSelection } from '@/modules/admin/utils/spaceTypeSelection';
 import {
   PROPERTY_BULK_IMPORT_FIELDS,
   effectivePreviewStatus,
@@ -119,6 +121,7 @@ function correctionOptions(
       { value: 'Co-living', label: t('admin.propertyBulk.correctColiving') },
       { value: 'Rental', label: t('admin.propertyBulk.correctRental') },
       { value: 'Mess', label: t('admin.propertyBulk.correctMess') },
+      { value: 'Corporate Stay', label: t('admin.propertyBulk.correctCorporateStay') },
     ];
   }
   if (field === 'TEST_LEAD') {
@@ -303,7 +306,20 @@ export function AdminBulkImportPreviewStep({
   const displayValid = preview.valid + correctedCount + clearedWarnings;
   const displayWarning = Math.max(0, (preview.warning ?? 0) - clearedWarnings);
   const displayInvalid = Math.max(0, preview.invalid - correctedCount);
-  const importCount = displayValid + displayWarning + keptDuplicates.length;
+  const reviewSkippedImportable = useMemo(
+    () =>
+      preview.rows.filter((row) => {
+        if (row.status === 'DUPLICATE') return false;
+        if (duplicateDecisions[String(row.rowNumber)] !== 'SKIP') return false;
+        const status = effectivePreviewStatus(row, fieldOverrides);
+        return status === 'VALID' || status === 'WARNING';
+      }).length,
+    [preview.rows, duplicateDecisions, fieldOverrides],
+  );
+  const importCount = Math.max(
+    0,
+    displayValid + displayWarning + keptDuplicates.length - reviewSkippedImportable,
+  );
   const hasDuplicates = duplicateCount > 0;
   const canImport = importCount > 0;
 
@@ -326,6 +342,12 @@ export function AdminBulkImportPreviewStep({
       else next.add(rowNumber);
       return next;
     });
+  }
+
+  function selectStatus(next: StatusFilter) {
+    setStatusFilter((current) => (current === next && next !== 'ALL' ? 'ALL' : next));
+    setErrorsOnly(false);
+    setPage(0);
   }
 
   const validPct = pct(displayValid, preview.totalRows);
@@ -360,6 +382,8 @@ export function AdminBulkImportPreviewStep({
           icon={<Grid2x2 size={18} />}
           iconBg="#EEF2FF"
           iconColor="#4F46E5"
+          selected={!errorsOnly && statusFilter === 'ALL'}
+          onClick={() => selectStatus('ALL')}
         />
         <SummaryCard
           label={t('admin.propertyBulk.summaryValid')}
@@ -369,6 +393,8 @@ export function AdminBulkImportPreviewStep({
           iconBg={colors.mintSubtle}
           iconColor={colors.success}
           cardBg={colors.mintSubtle}
+          selected={!errorsOnly && statusFilter === 'VALID'}
+          onClick={() => selectStatus('VALID')}
         />
         <SummaryCard
           label={t('admin.propertyBulk.summaryWarning')}
@@ -377,6 +403,8 @@ export function AdminBulkImportPreviewStep({
           iconBg="#FEF3C7"
           iconColor="#B45309"
           cardBg="#FFFBEB"
+          selected={!errorsOnly && statusFilter === 'WARNING'}
+          onClick={() => selectStatus('WARNING')}
         />
         <SummaryCard
           label={t('admin.propertyBulk.summaryDuplicate')}
@@ -386,6 +414,8 @@ export function AdminBulkImportPreviewStep({
           iconBg="#FEF3C7"
           iconColor="#B45309"
           cardBg="#FFFBEB"
+          selected={!errorsOnly && statusFilter === 'DUPLICATE'}
+          onClick={() => selectStatus('DUPLICATE')}
         />
         <SummaryCard
           label={t('admin.propertyBulk.summaryInvalid')}
@@ -395,6 +425,8 @@ export function AdminBulkImportPreviewStep({
           iconBg="#FEE2E2"
           iconColor="#DC2626"
           cardBg="#FEF2F2"
+          selected={!errorsOnly && statusFilter === 'INVALID'}
+          onClick={() => selectStatus('INVALID')}
         />
         <SummaryCard
           label={t('admin.propertyBulk.summaryBlank')}
@@ -404,6 +436,8 @@ export function AdminBulkImportPreviewStep({
           iconBg="#FFEDD5"
           iconColor="#D97706"
           cardBg="#FFF7ED"
+          selected={!errorsOnly && statusFilter === 'BLANK'}
+          onClick={() => selectStatus('BLANK')}
         />
       </Box>
       {(preview.normalized ?? 0) > 0 ? (
@@ -698,7 +732,8 @@ export function AdminBulkImportPreviewStep({
               ) : (
                 pageRows.map((row, index) => {
                   const isDuplicate = row.status === 'DUPLICATE';
-                  const decision = duplicateDecisions[String(row.rowNumber)] ?? 'SKIP';
+                  const decision =
+                    duplicateDecisions[String(row.rowNumber)] ?? (isDuplicate ? 'SKIP' : 'KEEP');
                   const status = effectivePreviewStatus(row, fieldOverrides);
                   const visibleErrors = remainingPreviewErrors(row, fieldOverrides);
                   const visibleNotices = remainingPreviewNotices(row, fieldOverrides);
@@ -711,6 +746,8 @@ export function AdminBulkImportPreviewStep({
                           ? decision === 'KEEP'
                             ? '#ECFDF5'
                             : '#FFFBEB'
+                          : decision === 'SKIP'
+                            ? '#FFFBEB'
                           : status === 'VALID' && row.status === 'INVALID'
                             ? '#ECFDF5'
                           : index % 2 === 1
@@ -814,9 +851,51 @@ export function AdminBulkImportPreviewStep({
                             </Typography>
                           </Stack>
                         ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            —
-                          </Typography>
+                          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                            <Button
+                              type="button"
+                              size="small"
+                              variant={decision === 'SKIP' ? 'contained' : 'outlined'}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onDuplicateDecisionChange(row.rowNumber, 'SKIP');
+                              }}
+                              sx={{
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                fontWeight: 700,
+                                ...(decision === 'SKIP'
+                                  ? { bgcolor: '#D97706', '&:hover': { bgcolor: '#B45309' } }
+                                  : {}),
+                              }}
+                            >
+                              {t('admin.propertyBulk.skipDuplicate')}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="small"
+                              variant={decision === 'KEEP' ? 'contained' : 'outlined'}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onDuplicateDecisionChange(row.rowNumber, 'KEEP');
+                              }}
+                              sx={{
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                fontWeight: 700,
+                                ...(decision === 'KEEP'
+                                  ? {
+                                      bgcolor: colors.primary,
+                                      '&:hover': { bgcolor: colors.primaryHover },
+                                    }
+                                  : {}),
+                              }}
+                            >
+                              {t('admin.propertyBulk.keepDuplicate')}
+                            </Button>
+                          </Stack>
                         )}
                       </TableCell>
                       {columns.map((col) => {
@@ -877,7 +956,19 @@ export function AdminBulkImportPreviewStep({
                                     {normalized}
                                   </Typography>
                                 ) : null}
-                                {options ? (
+                                {options && col.field === 'PROPERTY_TYPE' ? (
+                                  <TypeMultiSelect
+                                    selected={selected}
+                                    suggested={normalized ?? ''}
+                                    disabled={busy}
+                                    error={fieldStillInvalid}
+                                    placeholder={t('admin.propertyBulk.correctValue')}
+                                    options={options}
+                                    onCommit={(next) =>
+                                      onFieldOverrideChange(row.rowNumber, col.field, next)
+                                    }
+                                  />
+                                ) : options ? (
                                   <CorrectionSelect
                                     value={selected}
                                     disabled={busy}
@@ -1058,6 +1149,64 @@ function commitIfChanged(
   onCommit(next);
 }
 
+function TypeMultiSelect({
+  selected,
+  suggested,
+  disabled,
+  error,
+  placeholder,
+  options,
+  onCommit,
+}: {
+  selected: string;
+  suggested: string;
+  disabled?: boolean;
+  error?: boolean;
+  placeholder: string;
+  options: Array<{ value: string; label: string }>;
+  onCommit: (value: string | null) => void;
+}) {
+  const optionKey = options.map((option) => option.value).join('|');
+  const known = (items: string[]) => items.filter((item) => options.some((option) => option.value === item));
+  const [touched, setTouched] = useState(selected.trim().length > 0);
+  const [value, setValue] = useState(() => known(typeSelection(selected, suggested)));
+  useEffect(() => {
+    if (selected.trim().length > 0) {
+      setTouched(true);
+      setValue(known(typeSelection(selected, '')));
+      return;
+    }
+    if (!touched) {
+      setValue(known(typeSelection('', suggested)));
+    }
+    // optionKey tracks the label list. The options array itself is rebuilt every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, suggested, touched, optionKey]);
+  return (
+    <Autocomplete
+      multiple
+      disableCloseOnSelect
+      size="small"
+      disabled={disabled}
+      options={options.map((option) => option.value)}
+      value={value}
+      onChange={(_event, next) => {
+        setTouched(true);
+        setValue(next);
+        onCommit(commitTypeSelection(next));
+      }}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          placeholder={value.length === 0 ? placeholder : ''}
+          error={error}
+        />
+      )}
+      sx={{ minWidth: 180, '& .MuiOutlinedInput-root': { borderRadius: 1.5, bgcolor: '#fff' } }}
+    />
+  );
+}
+
 function CorrectionSelect({
   value,
   disabled,
@@ -1172,6 +1321,8 @@ function SummaryCard({
   iconBg,
   iconColor,
   cardBg = colors.surface,
+  selected = false,
+  onClick,
 }: {
   label: string;
   value: number;
@@ -1180,15 +1331,28 @@ function SummaryCard({
   iconBg: string;
   iconColor: string;
   cardBg?: string;
+  selected?: boolean;
+  onClick?: () => void;
 }) {
   return (
     <Paper
+      component="button"
+      type="button"
       elevation={0}
+      onClick={onClick}
+      aria-pressed={selected}
       sx={{
         p: 2,
         borderRadius: 3,
-        border: `1px solid ${colors.border}`,
+        border: `2px solid ${selected ? iconColor : colors.border}`,
         bgcolor: cardBg,
+        textAlign: 'left',
+        cursor: 'pointer',
+        font: 'inherit',
+        color: 'inherit',
+        width: '100%',
+        boxShadow: selected ? `0 0 0 3px ${iconColor}22` : 'none',
+        '&:hover': { borderColor: iconColor },
       }}
     >
       <Stack direction="row" spacing={1.25} sx={{ alignItems: 'flex-start' }}>

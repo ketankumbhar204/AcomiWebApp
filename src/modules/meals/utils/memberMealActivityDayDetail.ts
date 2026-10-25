@@ -1,7 +1,6 @@
 import type {
   MealPollPaymentChoice,
   MealPollPaymentStatus,
-  MealPollStatus,
   MealType,
   MemberMealActivityDayDetail,
   MemberMealActivityDayPayment,
@@ -10,6 +9,7 @@ import type {
   MemberMealActivitySlotStatus,
 } from '@/shared/types/meals';
 import { normalizeActivityDate } from './memberMealActivityCalendar';
+import { normalizeActivityPollStatus } from './memberMealActivityHistory';
 
 function normalizeMealType(value: unknown): MealType {
   const raw = String(value ?? 'BREAKFAST').toUpperCase();
@@ -60,7 +60,7 @@ function normalizeSlot(raw: Record<string, unknown>): MemberMealActivitySlotDeta
     mealType: normalizeMealType(raw.mealType ?? raw.meal_type),
     status: normalizeSlotStatus(raw.status),
     menuPublished: Boolean(raw.menuPublished ?? raw.menu_published),
-    pollStatus: (raw.pollStatus ?? raw.poll_status ?? null) as MealPollStatus | null,
+    pollStatus: normalizeActivityPollStatus(raw.pollStatus ?? raw.poll_status),
     deliveryLocationName:
       (raw.deliveryLocationName as string | null | undefined) ??
       (raw.delivery_location_name as string | null | undefined) ??

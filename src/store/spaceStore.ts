@@ -78,10 +78,15 @@ export const useSpaceStore = create<SpaceStoreState>((set, get) => ({
 
   switchSpace: async (spaceId) => {
     try {
-      await mySpacesApi.setDefaultSpace(spaceId);
+      const alreadyDefault = get().mySpaces.some(
+        (space) => space.spaceId === spaceId && space.isDefault,
+      );
+      if (!alreadyDefault) {
+        await mySpacesApi.setDefaultSpace(spaceId);
+      }
       const spaces = get().mySpaces.map((space) => ({
         ...space,
-        isDefault: space.spaceId === spaceId,
+        isDefault: alreadyDefault ? space.isDefault : space.spaceId === spaceId,
       }));
       writeStorage(STORAGE_KEYS.selectedSpaceId, spaceId);
       set({ mySpaces: spaces, selectedSpaceId: spaceId });

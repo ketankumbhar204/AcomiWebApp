@@ -1,7 +1,13 @@
 import type { GenderPolicy, SpaceType } from '@/shared/types/space';
 
 /** Stay listings (public /places) — excludes Mess. */
-export const PLACE_SPACE_TYPES: SpaceType[] = ['PG', 'HOSTEL', 'CO_LIVING', 'RENTAL'];
+export const PLACE_SPACE_TYPES: SpaceType[] = [
+  'PG',
+  'HOSTEL',
+  'CO_LIVING',
+  'RENTAL',
+  'CORPORATE_STAY',
+];
 
 /** Same amenity list as public PropertyFilters when API returns none yet. */
 export const DEFAULT_DISCOVER_AMENITIES = [
@@ -77,6 +83,4 @@ export const EMPTY_DISCOVER_FILTERS: DiscoverFilterState = {
   foodTypes: [],
   minPrice: null,
   maxPrice: null,
-  mealTypes: [],
-  foodTypes: [],
 };

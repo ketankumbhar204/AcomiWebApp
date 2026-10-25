@@ -10,6 +10,7 @@ export const LIFECYCLE_SPACE_TYPES: SpaceType[] = [
   'HOSTEL',
   'CO_LIVING',
   'RENTAL',
+  'CORPORATE_STAY',
 ];
 
 /**
@@ -46,7 +47,12 @@ export function setupProfileForSpaceType(spaceType: SpaceType): SetupProfile {
     });
 
     // Lodging: meals optional (Rental omitted — share/serving gates).
-    if (spaceType === 'PG' || spaceType === 'HOSTEL' || spaceType === 'CO_LIVING') {
+    if (
+      spaceType === 'PG' ||
+      spaceType === 'HOSTEL' ||
+      spaceType === 'CO_LIVING' ||
+      spaceType === 'CORPORATE_STAY'
+    ) {
       milestones.push({
         id: 'MEALS_READY',
         kind: 'optional',

@@ -140,6 +140,11 @@ const AcceptInvitationsPage = lazyPage(() =>
 const MySpacesPage = lazyPage(() =>
   import('@/modules/onboarding/pages/MySpacesPage').then((m) => ({ default: m.MySpacesPage })),
 );
+const ServiceContactsPage = lazyPage(() =>
+  import('@/modules/serviceContacts/pages/ServiceContactsPage').then((m) => ({
+    default: m.ServiceContactsPage,
+  })),
+);
 const FindAPlacePage = lazyPage(() =>
   import('@/modules/onboarding/pages/FindAPlacePage').then((m) => ({
     default: m.FindAPlacePage,
@@ -258,6 +263,9 @@ const MealMenuEditorPage = lazyPage(() =>
 const MealsHomePage = lazyPage(() =>
   import('@/modules/meals/pages/MealsHomePage').then((m) => ({ default: m.MealsHomePage })),
 );
+const MealResponsesPage = lazyPage(() =>
+  import('@/modules/meals/pages/MealResponsesPage').then((m) => ({ default: m.MealResponsesPage })),
+);
 const MenuLibraryPage = lazyPage(() =>
   import('@/modules/meals/pages/MenuLibraryPage').then((m) => ({ default: m.MenuLibraryPage })),
 );
@@ -311,6 +319,11 @@ const InventoryWorkspacePage = lazyPage(() =>
   })),
 );
 
+const AdminNotificationTestingPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminNotificationTestingPage').then((m) => ({
+    default: m.AdminNotificationTestingPage,
+  })),
+);
 const AdminDashboardPage = lazyPage(() =>
   import('@/modules/admin/pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })),
 );
@@ -474,6 +487,14 @@ export const appRoutes = [
               </L>
             ),
             children: [
+              {
+                path: ROUTES.adminNotificationTesting,
+                element: (
+                  <L>
+                    <AdminNotificationTestingPage />
+                  </L>
+                ),
+              },
               {
                 path: ROUTES.adminDashboard,
                 element: (
@@ -745,6 +766,14 @@ export const appRoutes = [
                     element: (
                       <L>
                         <MySpacesPage />
+                      </L>
+                    ),
+                  },
+                  {
+                    path: ROUTES.serviceContacts,
+                    element: (
+                      <L>
+                        <ServiceContactsPage />
                       </L>
                     ),
                   },
@@ -1028,6 +1057,14 @@ export const appRoutes = [
                             element: (
                               <L>
                                 <MealParticipationPage />
+                              </L>
+                            ),
+                          },
+                          {
+                            path: 'responses',
+                            element: (
+                              <L>
+                                <MealResponsesPage />
                               </L>
                             ),
                           },

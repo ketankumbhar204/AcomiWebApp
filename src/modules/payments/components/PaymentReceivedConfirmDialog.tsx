@@ -1,5 +1,7 @@
 import { Stack, Typography, useTheme } from '@mui/material';
 import { useTranslation } from 'react-i18next';
+import { StayTrailLine } from '@/shared/components/ContactAndStayMeta';
+import { usePaymentStayTrail } from '../hooks/usePaymentStayTrail';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { formatCurrency } from '@/shared/utils/dashboardFinancial';
@@ -22,6 +24,11 @@ function periodLabel(month?: string | null): string | null {
     month: 'long',
     year: 'numeric',
   });
+}
+
+function ConfirmStayLine({ payment }: { payment: SpacePaymentResponse }) {
+  const trail = usePaymentStayTrail(payment.spaceId, payment);
+  return <StayTrailLine label={trail} />;
 }
 
 export function PaymentReceivedConfirmDialog({
@@ -62,11 +69,7 @@ export function PaymentReceivedConfirmDialog({
                   <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
                     {payment.title}
                   </Typography>
-                  {payment.targetLabel ? (
-                    <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
-                      {payment.targetLabel}
-                    </Typography>
-                  ) : null}
+                  <ConfirmStayLine payment={payment} />
                   {period ? (
                     <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
                       {period}

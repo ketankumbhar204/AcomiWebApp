@@ -60,6 +60,7 @@ export function formatCurrency(
       maximumFractionDigits: 0,
     }).format(amount);
   } catch {
-    return currencyCode === 'INR' ? `₹${amount}` : `${amount} ${currencyCode}`;
+    const whole = Math.round(amount);
+    return currencyCode === 'INR' ? `₹${whole}` : `${whole} ${currencyCode}`;
   }
 }

@@ -9,6 +9,7 @@ import {
 import { Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
+import { ContactNumberLine } from '@/shared/components/ContactAndStayMeta';
 import { colors } from '@/shared/theme/colors';
 import type { ResidentPickerItem } from '../../hooks/useResidentImportSearch';
 
@@ -101,9 +102,7 @@ export function MemberCustomerReusePicker({
                   <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
                     {member.fullName}
                   </Typography>
-                  <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted, mt: 0.25 }}>
-                    {member.mobileNumber}
-                  </Typography>
+                  <ContactNumberLine value={member.mobileNumber} sx={{ mt: 0.25 }} />
                   <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary, mt: 0.25 }}>
                     {member.alreadyInTargetSpace
                       ? t('membership.add.reuseCard.alreadyHere')

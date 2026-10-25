@@ -359,11 +359,13 @@ export function AdminPropertyDetailPage() {
                     />
                     <AdminLeadDetailField
                       label={t('admin.property.startingPrice')}
-                      value={`₹${detail.startingPrice ?? 0} ${
-                        PRICE_BASIS_LABEL[
-                          isPriceBasis(detail.priceBasis) ? detail.priceBasis : defaultPriceBasis(detail.propertyType)
-                        ]
-                      }`}
+                      value={(() => {
+                        const basis = isPriceBasis(detail.priceBasis)
+                          ? detail.priceBasis
+                          : defaultPriceBasis(detail.propertyType);
+                        const suffix = basis ? PRICE_BASIS_LABEL[basis] : '';
+                        return `₹${detail.startingPrice ?? 0}${suffix ? ` ${suffix}` : ''}`;
+                      })()}
                     />
                     <AdminLeadDetailField
                       label={t('admin.propertyBulk.fields.AMENITIES')}

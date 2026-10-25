@@ -1,11 +1,7 @@
 import {
   Box,
   Button,
-  FormControl,
   IconButton,
-  InputLabel,
-  MenuItem,
-  Select,
   Stack,
   useMediaQuery,
   useTheme,
@@ -14,6 +10,7 @@ import { RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { StayTrailLine } from '@/shared/components/ContactAndStayMeta';
 import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
@@ -22,7 +19,7 @@ import { AppDrawer } from '@/shared/components/AppDrawer';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { PeriodMonthNav } from '@/shared/components/PeriodMonthNav';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
-import { dashContainedButtonSx, dashFilterControlSx } from '@/shared/theme/dashButtonSx';
+import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import {
   currentMonthKey,
@@ -31,23 +28,34 @@ import {
   shiftMonthKey,
 } from '@/shared/utils/dashboardFinancial';
 import { spaceDayMealsPath } from '@/routes/paths';
-import type {
-  SpacePaymentResponse,
-  UniversalPaymentStatus,
-} from '@/shared/types/payments';
+import type { SpacePaymentResponse } from '@/shared/types/payments';
 import { PaymentInspector } from '../components/PaymentInspector';
 import { ProofSubmitDrawer } from '../components/ProofSubmitDrawer';
 import { useSpacePaymentsList } from '../hooks/usePayments';
+import { usePaymentStayTrail } from '../hooks/usePaymentStayTrail';
 import {
+  canEditSubmittedProof,
   formatMonthLabel,
   paymentStatusLabelKey,
   paymentStatusTone,
 } from '../utils/paymentHelpers';
 import { useMySubscriptionStatus } from '@/modules/meals/hooks/useSubscriptionPlans';
 import {
+  matchesPersonalSummaryFilter,
   summarizePersonalPayments,
   usesDayMealPayments,
+  type PersonalSummaryFilter,
 } from '../utils/personalPaymentSummary';
+
+function TenantPaymentTitle({ payment }: { payment: SpacePaymentResponse }) {
+  const trail = usePaymentStayTrail(payment.spaceId, payment);
+  return (
+    <Box>
+      <Box>{payment.title}</Box>
+      <StayTrailLine label={trail} />
+    </Box>
+  );
+}
 
 export function TenantPaymentsPage() {
   const { t } = useTranslation();
@@ -59,7 +67,7 @@ export function TenantPaymentsPage() {
   const permissions = useSpacePermissions(spaceId);
   const statusQuery = useMySubscriptionStatus(spaceId, permissions.membershipRole != null);
   const [month, setMonth] = useState(currentMonthKey());
-  const [status, setStatus] = useState<UniversalPaymentStatus | ''>('');
+  const [summaryFilter, setSummaryFilter] = useState<PersonalSummaryFilter>('due');
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [proofOpen, setProofOpen] = useState(false);
@@ -82,12 +90,17 @@ export function TenantPaymentsPage() {
   );
   const summaryCurrency = list.payments.find((payment) => payment.currencyCode)?.currencyCode ?? 'INR';
 
-  const rows = useMemo(() => {
-    const filtered = status
-      ? list.payments.filter((payment) => (payment.paymentStatus ?? payment.status) === status)
-      : list.payments;
-    return filtered.map((payment) => ({ ...payment, id: payment.paymentId }));
-  }, [list.payments, status]);
+  const rows = useMemo(
+    () =>
+      list.payments
+        .filter((payment) => matchesPersonalSummaryFilter(payment, summaryFilter))
+        .map((payment) => ({ ...payment, id: payment.paymentId })),
+    [list.payments, summaryFilter],
+  );
+
+  useEffect(() => {
+    setSummaryFilter('due');
+  }, [month]);
 
   useEffect(() => {
     document.title = `${t('navigation.payments')} · ${t('common.appName')}`;
@@ -129,7 +142,7 @@ export function TenantPaymentsPage() {
     {
       id: 'title',
       header: t('paymentCollection.fields.title'),
-      accessor: (row) => row.title,
+      accessor: (row) => <TenantPaymentTitle payment={row} />,
       primary: true,
     },
     {
@@ -218,16 +231,21 @@ export function TenantPaymentsPage() {
               ['due', personalSummary.totalDue],
               ['paid', personalSummary.amountPaid],
               ['outstanding', personalSummary.outstanding],
+              ['underReview', personalSummary.underReviewAmount],
             ] as const
           ).map(([key, amount]) => (
             <Box
               key={key}
+              onClick={() =>
+                setSummaryFilter((current) => (current === key && key !== 'due' ? 'due' : key))
+              }
               sx={{
-                border: `1px solid ${s.border}`,
+                border: `1px solid ${summaryFilter === key ? theme.palette.primary.main : s.border}`,
                 borderRadius: `${DASHBOARD_UX.radius}px`,
                 bgcolor: s.surface,
                 px: 1.5,
                 py: 1.25,
+                cursor: 'pointer',
               }}
             >
               <Box sx={{ color: 'text.secondary', fontSize: 12 }}>
@@ -242,24 +260,6 @@ export function TenantPaymentsPage() {
               </Box>
             </Box>
           ))}
-          <Box
-            sx={{
-              border: `1px solid ${s.border}`,
-              borderRadius: `${DASHBOARD_UX.radius}px`,
-              bgcolor: s.surface,
-              px: 1.5,
-              py: 1.25,
-            }}
-          >
-            <Box sx={{ color: 'text.secondary', fontSize: 12 }}>
-              {t('payments.tenant.summary.nextDue')}
-            </Box>
-            <Box sx={{ fontWeight: 700, mt: 0.5 }}>
-              {list.loading && list.payments.length === 0
-                ? '…'
-                : (personalSummary.nextDueDate ?? '—')}
-            </Box>
-          </Box>
         </Box>
 
         <Box
@@ -277,27 +277,6 @@ export function TenantPaymentsPage() {
             rows={rows}
             loading={list.loading}
             emptyTitle={t('payments.tenant.empty')}
-            toolbarFilters={
-              <FormControl size="small" sx={dashFilterControlSx}>
-                <InputLabel>{t('paymentCollection.fields.status')}</InputLabel>
-                <Select
-                  label={t('paymentCollection.fields.status')}
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as UniversalPaymentStatus | '')}
-                >
-                  <MenuItem value="">{t('payments.members.allStatuses')}</MenuItem>
-                  <MenuItem value="PENDING">{t('paymentCollection.status.PENDING')}</MenuItem>
-                  <MenuItem value="UNDER_REVIEW">
-                    {t('paymentCollection.status.UNDER_REVIEW')}
-                  </MenuItem>
-                  <MenuItem value="UPDATE_REQUESTED">
-                    {t('paymentCollection.status.UPDATE_REQUESTED')}
-                  </MenuItem>
-                  <MenuItem value="PAID">{t('paymentCollection.status.PAID')}</MenuItem>
-                  <MenuItem value="REJECTED">{t('paymentCollection.status.REJECTED')}</MenuItem>
-                </Select>
-              </FormControl>
-            }
             selectedIds={selectedPaymentId ? [selectedPaymentId] : []}
             onRowClick={(row) => {
               setSelectedPaymentId(row.paymentId);
@@ -336,6 +315,14 @@ export function TenantPaymentsPage() {
         open={proofOpen}
         spaceId={spaceId}
         paymentId={selectedPaymentId}
+        mode={
+          canEditSubmittedProof(
+            list.payments.find((row) => row.paymentId === selectedPaymentId)?.paymentStatus ??
+              list.payments.find((row) => row.paymentId === selectedPaymentId)?.status,
+          )
+            ? 'edit'
+            : 'submit'
+        }
         onClose={() => setProofOpen(false)}
       />
     </PageContainer>

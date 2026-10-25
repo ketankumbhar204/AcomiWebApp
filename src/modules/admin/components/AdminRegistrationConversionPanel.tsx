@@ -124,6 +124,7 @@ export function AdminRegistrationConversionPanel({
   const [enabling, setEnabling] = useState(false);
   const [discoveryEnabled, setDiscoveryEnabled] = useState(false);
   const [spaceName, setSpaceName] = useState<string | null>(null);
+  const [spaceReferenceCode, setSpaceReferenceCode] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
 
   const converted = status === 'CONVERTED' || Boolean(convertedSpaceId);
@@ -143,6 +144,7 @@ export function AdminRegistrationConversionPanel({
         if (!active) return;
         setDiscoveryEnabled(Boolean(space.discoverable));
         setSpaceName(space.name ?? null);
+        setSpaceReferenceCode(space.referenceCode ?? null);
       })
       .catch(() => {
         if (active) setDiscoveryEnabled(false);
@@ -213,8 +215,9 @@ export function AdminRegistrationConversionPanel({
           : await adminApi.convertMessRegistration(registrationId);
       enqueueSnackbar(t('admin.conversion.convertSuccess'), { variant: 'success' });
       setConvertOpen(false);
-      setDiscoveryEnabled(false);
+      setDiscoveryEnabled(Boolean(result.discoverable));
       setSpaceName(result.spaceName ?? null);
+      setSpaceReferenceCode(result.spaceReferenceCode ?? null);
       onConverted(result);
     } catch (err) {
       enqueueSnackbar(getErrorMessage(err, t('admin.conversion.convertFailed')), {
@@ -405,7 +408,7 @@ export function AdminRegistrationConversionPanel({
               {t('admin.conversion.spaceId')}:
             </Box>{' '}
             {spaceName ? `${spaceName} · ` : ''}
-            {convertedSpaceId}
+            {spaceReferenceCode ?? t('admin.conversion.spaceId')}
           </Typography>
         ) : null}
         <StatusRow

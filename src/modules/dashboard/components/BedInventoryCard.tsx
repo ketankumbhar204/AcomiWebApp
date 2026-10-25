@@ -2,8 +2,10 @@ import { Box, IconButton, Stack, Typography, useTheme } from '@mui/material';
 import { BedDouble, Building2, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { BedPricingDisplay } from '@/modules/accommodation/components/BedPricingDisplay';
+import { OccupiedBedPaymentFace } from '@/modules/accommodation/components/OccupiedBedPaymentFace';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StatusChip, type StatusChipTone } from '@/shared/components/StatusChip';
+import { ReferenceCode } from '@/shared/components/ReferenceCode';
 import { colors } from '@/shared/theme/colors';
 import type { BedSpaceListItem } from '../api/dashboardDrilldownApi';
 
@@ -23,13 +25,22 @@ function statusTone(status: string): StatusChipTone {
   }
 }
 
+export type BedMoveInFace = {
+  memberName: string;
+  moveInDate: string | null;
+  rent: number | null;
+  deposit: number | null;
+};
+
 type BedInventoryCardProps = {
   bed: BedSpaceListItem;
+  spaceId?: string;
+  moveIn?: BedMoveInFace | null;
   onViewBed?: () => void;
 };
 
 /** View-only vacant/occupied bed card — open the shared bed dialog to act. */
-export function BedInventoryCard({ bed, onViewBed }: BedInventoryCardProps) {
+export function BedInventoryCard({ bed, spaceId, moveIn, onViewBed }: BedInventoryCardProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
@@ -76,9 +87,14 @@ export function BedInventoryCard({ bed, onViewBed }: BedInventoryCardProps) {
                 label: bed.label,
               })}
             </Typography>
+            <ReferenceCode value={bed.referenceCode} />
             <StatusChip
-              label={t(`accommodation.status.${bed.status}`, { defaultValue: bed.status })}
-              tone={statusTone(bed.status)}
+              label={
+                moveIn
+                  ? t('dashboard.drilldown.movedIn', { defaultValue: 'Moved in' })
+                  : t(`accommodation.status.${bed.status}`, { defaultValue: bed.status })
+              }
+              tone={moveIn ? 'info' : statusTone(bed.status)}
             />
           </Box>
           {onViewBed ? (
@@ -112,7 +128,29 @@ export function BedInventoryCard({ bed, onViewBed }: BedInventoryCardProps) {
           ) : null}
         </Stack>
 
-        <BedPricingDisplay rent={bed.defaultRent} deposit={bed.defaultDeposit} />
+        {moveIn ? (
+          <Stack spacing={0.25}>
+            {moveIn.moveInDate ? (
+              <Typography sx={{ ...DASHBOARD_UX.metricCaption, color: s.textSecondary }} noWrap>
+                {t('dashboard.drilldown.moveInLine', {
+                  defaultValue: 'Move-in {{date}}',
+                  date: moveIn.moveInDate,
+                })}
+              </Typography>
+            ) : null}
+            <Typography sx={{ ...DASHBOARD_UX.body, fontWeight: 700, color: s.textPrimary }} noWrap>
+              {moveIn.memberName}
+            </Typography>
+            <BedPricingDisplay
+              rent={moveIn.rent ?? bed.defaultRent}
+              deposit={moveIn.deposit ?? bed.defaultDeposit}
+            />
+          </Stack>
+        ) : bed.status === 'OCCUPIED' ? (
+          <OccupiedBedPaymentFace spaceId={spaceId} bedId={bed.bedId} />
+        ) : (
+          <BedPricingDisplay rent={bed.defaultRent} deposit={bed.defaultDeposit} />
+        )}
       </Stack>
     </Box>
   );

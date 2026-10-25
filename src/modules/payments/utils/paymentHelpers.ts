@@ -47,6 +47,11 @@ export function memberLedgerStatusTone(
   }
 }
 
+/** Tenant may replace proof or edit details while the owner has not decided. */
+export function canEditSubmittedProof(status: UniversalPaymentStatus | string | undefined): boolean {
+  return status === 'UNDER_REVIEW' || status === 'PROOF_UPLOADED';
+}
+
 export function canSubmitProof(status: UniversalPaymentStatus | string | undefined): boolean {
   return (
     status === 'PENDING' ||

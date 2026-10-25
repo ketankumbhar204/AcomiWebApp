@@ -31,11 +31,32 @@ import {
 } from '@/routes/paths';
 import { isAccommodationApplicable } from '@/shared/utils/spacePermissions';
 import { canManageNotifications } from '@/shared/utils/spaceOperator';
-import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
+import type { PendingActionGroup } from '@/shared/types/dashboard';
 import { useAuthStore } from '@/store/authStore';
 import { useSpaceStore } from '@/store/spaceStore';
 import { useSpaceHealth, useSpaceLifecycle, dashboardVisibilityForLifecycle } from '@/spaceLifecycle';
 import { filterPendingGroupsWhenMealsHidden } from '@/shared/utils/filterPendingActionsForMealCapabilities';
+
+function memberPendingLabel(
+  group: PendingActionGroup,
+  t: (key: string, options?: { defaultValue?: string }) => string,
+): string {
+  if (group.actionType === 'PAYMENT_UPDATE_REQUESTED') {
+    return t('dashboard.pendingActions.paymentRequiresUpdate', {
+      defaultValue: 'Payment requires update',
+    });
+  }
+  if (
+    group.actionType === 'PENDING_INVITATION' &&
+    (group.actionRoute ?? '').trim() === 'AcceptInvitations'
+  ) {
+    return t('dashboard.pendingActions.spaceInvitation', {
+      defaultValue: 'Space invitation',
+    });
+  }
+  return group.title;
+}
 
 /**
  * Operations dashboard layout:
@@ -90,6 +111,16 @@ export function DashboardPage() {
     spaceId,
     true,
     isOperator,
+  );
+  const memberPendingGroups = useMemo(
+    () =>
+      pending.groups.filter(
+        (group) =>
+          group.actionType === 'PAYMENT_UPDATE_REQUESTED' ||
+          (group.actionType === 'PENDING_INVITATION' &&
+            (group.actionRoute ?? '').trim() === 'AcceptInvitations'),
+      ),
+    [pending.groups],
   );
   const pendingCount = isOperator
     ? (dashboard.pendingActions?.totalCount ?? pending.totalCount)
@@ -368,7 +399,7 @@ export function DashboardPage() {
           {!showInitialLoader && !error && !isOperator && isMealParticipant ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, width: '100%' }}>
               <DashboardCustomerMealsSection spaceId={spaceId} />
-              {pending.totalCount > 0 ? (
+              {memberPendingGroups.length > 0 ? (
                 <ContentCard onClick={() => navigate(spacePendingActionsPath(spaceId))}>
                   <Stack
                     direction="row"
@@ -378,11 +409,15 @@ export function DashboardPage() {
                       <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
                         {t('dashboard.attention.pendingActions')}
                       </Typography>
-                      <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
-                        {t('dashboard.attention.pendingActionsSubtitle', {
-                          count: pending.totalCount,
-                        })}
-                      </Typography>
+                      {memberPendingGroups.map((group) => (
+                        <Typography
+                          key={group.actionType}
+                          sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}
+                        >
+                          {memberPendingLabel(group, t)}
+                          {group.count > 1 ? ` (${group.count})` : ''}
+                        </Typography>
+                      ))}
                     </Box>
                     <Button size="small" sx={dashOutlinedButtonSx}>
                       {t('common.viewAll', { defaultValue: 'View all' })} →
@@ -447,14 +482,21 @@ export function DashboardPage() {
                   </Typography>
                 </ContentCard>
               </Box>
-              {pending.totalCount > 0 ? (
-                <Button
-                  variant="contained"
-                  onClick={() => navigate(spacePendingActionsPath(spaceId))}
-                  sx={dashContainedButtonSx}
-                >
-                  {t('dashboard.attention.pendingActions')} ({pending.totalCount})
-                </Button>
+              {memberPendingGroups.length > 0 ? (
+                <ContentCard onClick={() => navigate(spacePendingActionsPath(spaceId))}>
+                  <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+                    {t('dashboard.attention.pendingActions')}
+                  </Typography>
+                  {memberPendingGroups.map((group) => (
+                    <Typography
+                      key={group.actionType}
+                      sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}
+                    >
+                      {memberPendingLabel(group, t)}
+                      {group.count > 1 ? ` (${group.count})` : ''}
+                    </Typography>
+                  ))}
+                </ContentCard>
               ) : null}
             </Stack>
           ) : null}

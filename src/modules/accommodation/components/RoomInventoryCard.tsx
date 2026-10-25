@@ -5,6 +5,7 @@ import { dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
 import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
 import type { AccommodationStatus, BedSpaceListItemResponse } from '@/shared/types/accommodation';
+import { BedCardCarousel } from './BedCardCarousel';
 import { BedPricingDisplay } from './BedPricingDisplay';
 import { OccupiedBedPaymentFace } from './OccupiedBedPaymentFace';
 import { HierarchyEditMenu } from './HierarchyEditMenu';
@@ -18,7 +19,7 @@ import {
   type RoomPathLevel,
 } from '../utils/groupBedsByRoom';
 
-/** Beds share the row and wrap to two columns when the room card is wide enough. */
+/** Beds stay on one horizontal row. Extra beds scroll inside the room card. */
 
 function statusTone(status: AccommodationStatus | string): SemanticTone {
   switch (status) {
@@ -421,6 +422,8 @@ export function RoomInventoryCard({
         border: `1px solid ${s.border}`,
         bgcolor: s.surface,
         boxShadow: '0 2px 12px rgba(15, 23, 42, 0.045)',
+        minWidth: 0,
+        maxWidth: '100%',
       }}
     >
       <Stack spacing={2}>
@@ -597,14 +600,7 @@ export function RoomInventoryCard({
           </Stack>
         </Stack>
 
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))',
-            gap: 1.5,
-            alignItems: 'stretch',
-          }}
-        >
+        <BedCardCarousel label={pathCrumbs.map((crumb) => crumb.label).join(' ')}>
           {group.beds.map((bed) => (
             <RoomInventoryBedCard
               key={bed.bedId}
@@ -618,9 +614,9 @@ export function RoomInventoryCard({
               onViewBed={onViewBed}
             />
           ))}
-          {canManage ? <AddBedCard onClick={() => onAddBed(roomSelection)} /> : null}
-          {showTipCard ? <LivingSpacesTipCard /> : null}
-        </Box>
+          {canManage ? <AddBedCard key="add-bed" onClick={() => onAddBed(roomSelection)} /> : null}
+          {showTipCard ? <LivingSpacesTipCard key="living-spaces-tip" /> : null}
+        </BedCardCarousel>
       </Stack>
     </Paper>
   );

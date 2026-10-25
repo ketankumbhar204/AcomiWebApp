@@ -34,7 +34,6 @@ import { DiscoverInfiniteSentinel } from '@/modules/onboarding/components/Discov
 import { spaceTypeLabelKey } from '@/modules/onboarding/components/createSpace/createSpaceVisuals';
 import { DiscoverSpaceCard } from '@/modules/onboarding/components/DiscoverSpaceCard';
 import { DiscoverSpaceDetailDrawer } from '@/modules/onboarding/components/DiscoverSpaceDetailDrawer';
-import { EnquireDialog } from '@/modules/onboarding/components/EnquireDialog';
 import { LocationSelectModal } from '@/modules/onboarding/components/LocationSelectModal';
 import {
   buildDiscoverUrlParams,
@@ -53,6 +52,7 @@ import { EmptyState } from '@/shared/components/EmptyState';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { colors } from '@/shared/theme/colors';
 import type { PagedResponse } from '@/shared/types/api';
+import type { ListingSection } from '@/shared/utils/listingInfo';
 import type { DiscoverSpaceCardResponse, SpaceType } from '@/shared/types/space';
 
 function DiscoverCardSkeleton() {
@@ -110,18 +110,19 @@ export function FindAPlacePage() {
   );
   const [filters, setFilters] = useState<DiscoverFilterState>(EMPTY_DISCOVER_FILTERS);
   const [sort, setSort] = useState<'recommended' | 'newest'>('recommended');
-  const [detailSpaceId, setDetailSpaceId] = useState<string | null>(() =>
-    searchParams.get('enquire') === '1' ? searchParams.get('space')?.trim() || null : null,
-  );
+  const [detailSpaceId, setDetailSpaceId] = useState<string | null>(() => {
+    const space = searchParams.get('space')?.trim() || null;
+    if (!space) return null;
+    if (searchParams.get('enquire') === '1' || searchParams.get('listing') === '1') return space;
+    return null;
+  });
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
   const [autoEnquire, setAutoEnquire] = useState(
     () => searchParams.get('enquire') === '1' && Boolean(searchParams.get('space')?.trim()),
   );
-  const [enquireSpace, setEnquireSpace] = useState<DiscoverSpaceCardResponse | null>(null);
-  const enquireHold = useRef<DiscoverSpaceCardResponse | null>(null);
-  if (enquireSpace) enquireHold.current = enquireSpace;
-  const enquireTarget = enquireSpace ?? enquireHold.current;
+  const [focusSection, setFocusSection] = useState<ListingSection | null>(null);
+  const [focusNonce, setFocusNonce] = useState(0);
   const [routeReady, setRouteReady] = useState(false);
   const enquireUrlConsumed = useRef(searchParams.get('enquire') !== '1');
   const locationPromptedFor = useRef<DiscoverCategory | null>(null);
@@ -388,6 +389,17 @@ export function FindAPlacePage() {
     setSearchParams(next, { replace: true });
   }, [activeDetailId, searchParams, setSearchParams, shouldEnquire]);
 
+  useEffect(() => {
+    if (searchParams.get('listing') !== '1') return;
+    const space = searchParams.get('space')?.trim();
+    if (!space) return;
+    setDetailSpaceId(space);
+    setAutoEnquire(false);
+    const next = new URLSearchParams(searchParams);
+    next.delete('listing');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const amenityOptions = useMemo(() => {
     const map = new Map<string, string>();
     for (const space of listings) {
@@ -502,6 +514,7 @@ export function FindAPlacePage() {
   const selectedPlaceType = filters.types.length === 1 ? filters.types[0] : 'ALL';
 
   return (
+    <>
     <Box sx={{ flex: 1, bgcolor: pageBg, py: { xs: 1.5, sm: 2 } }}>
       <Box sx={{ width: '100%', px: { xs: 1.5, sm: 2 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
@@ -832,8 +845,11 @@ export function FindAPlacePage() {
                     <DiscoverSpaceCard
                       key={space.spaceId}
                       space={space}
-                      onViewDetails={setDetailSpaceId}
-                      onEnquire={setEnquireSpace}
+                      onViewDetails={(spaceId, section) => {
+                        setFocusSection(section ?? null);
+                        setFocusNonce((value) => value + 1);
+                        setDetailSpaceId(spaceId);
+                      }}
                     />
                   ))}
                 </Box>
@@ -910,26 +926,14 @@ export function FindAPlacePage() {
         spaceId={activeDetailId}
         open={Boolean(activeDetailId)}
         autoEnquire={activeAutoEnquire}
+        focusSection={focusSection}
+        focusNonce={focusNonce}
         onClose={() => {
           setAutoEnquire(false);
           setDetailSpaceId(null);
+          setFocusSection(null);
         }}
       />
-      {enquireTarget ? (
-        <EnquireDialog
-          open={Boolean(enquireSpace)}
-          spaceId={enquireTarget.spaceId}
-          spaceName={enquireTarget.name}
-          ownedByCurrentUser={Boolean(enquireTarget.ownedByCurrentUser)}
-          onClose={() => setEnquireSpace(null)}
-          onOpen={() => {
-            if (enquireHold.current) setEnquireSpace(enquireHold.current);
-          }}
-          onViewedHere={() => {
-            if (enquireTarget) setDetailSpaceId(enquireTarget.spaceId);
-          }}
-        />
-      ) : null}
-    </Box>
+    </>
   );
 }

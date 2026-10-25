@@ -100,6 +100,7 @@ export interface AdminUserRegistrationBreakdown {
 
 export interface AdminActiveSpace {
   id: string;
+  referenceCode?: string | null;
   name: string;
   type: SpaceType;
   address?: string | null;
@@ -212,6 +213,7 @@ export interface AdminRegistrationConvertResponse {
   registrationId: string;
   reference: string;
   spaceId: string;
+  spaceReferenceCode?: string | null;
   spaceName: string;
   discoverable: boolean;
 }
@@ -282,6 +284,7 @@ export type AdminUserOnboardingStatus = 'INCOMPLETE' | 'COMPLETE';
 
 export interface AdminRegisteredUserSpace {
   id: string;
+  referenceCode?: string | null;
   name: string;
   type: SpaceType;
   membershipRole: string;
@@ -289,6 +292,7 @@ export interface AdminRegisteredUserSpace {
 
 export interface AdminRegisteredUser {
   id: string;
+  referenceCode?: string | null;
   fullName?: string | null;
   mobileNumber: string;
   email?: string | null;
@@ -304,6 +308,15 @@ export interface AdminRegisteredUser {
   active?: boolean;
   /** Admin-marked test account. */
   testUser?: boolean;
+  /** Last successful sign-in. Null when none was recorded. */
+  lastLoginAt?: string | null;
+  /** Last authenticated use of ACOMI. Null when none was recorded. */
+  lastActiveAt?: string | null;
+  /**
+   * False when this account predates activity tracking and has not been observed since.
+   * A null timestamp then means unknown, not "never".
+   */
+  activityTracked?: boolean;
 }
 
 export type AdminRegisteredUserPage = PagedResponse<AdminRegisteredUser>;

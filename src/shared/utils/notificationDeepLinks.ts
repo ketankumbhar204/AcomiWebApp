@@ -4,8 +4,11 @@ import { extractIsoDateFromText, extractMealTypeFromText } from '@/shared/utils/
 import { isOwnerOnlyNotificationType } from '@/shared/utils/ownerOnlyNotifications';
 import { addDaysIso, todayIsoDate } from '@/modules/meals/utils/mealDates';
 import {
+  findAPlaceListingPath,
+  myEnquiriesPath,
   ROUTES,
   spaceComplaintsPath,
+  spaceDashboardPath,
   spaceMealsPath,
   spaceMealsPlansPath,
   spaceMealsPollPath,
@@ -102,6 +105,26 @@ export function navigateFromNotificationType(
     case 'SUBSCRIPTION_ACTIVATION_PENDING':
       navigate(spaceMealsPlansPath(spaceId, 'requests'));
       return;
+    case 'SUBSCRIPTION_ACTIVATION_APPROVED':
+    case 'SUBSCRIPTION_ACTIVATION_REJECTED':
+    case 'MEAL_BALANCE_UPDATED':
+    case 'MEAL_PARTICIPATION_CHANGED':
+      if (isOperator) {
+        navigate(spaceMealsPlansPath(spaceId, 'requests'));
+      } else {
+        navigate(spaceMealsPath(spaceId));
+      }
+      return;
+    case 'PAYMENT_REMINDER_SENT':
+      if (entityId) {
+        navigate(spacePaymentsPath(spaceId, entityId));
+      } else {
+        navigate(spacePaymentsPath(spaceId));
+      }
+      return;
+    case 'PHOTO_REQUEST_RECEIVED':
+      navigate(findAPlaceListingPath(spaceId));
+      return;
     case 'COMPLAINT_PENDING':
     case 'COMPLAINT_OVERDUE':
     case 'COMPLAINT_CREATED':
@@ -116,11 +139,23 @@ export function navigateFromNotificationType(
     case 'MOVE_IN_SCHEDULED_TODAY':
     case 'RESERVATION_STARTING_TODAY':
     case 'RESERVATION_CREATED':
+    case 'RESERVATION_CANCELLED':
     case 'MOVE_IN_COMPLETED':
-      navigate(spaceOccupancyListPath(spaceId, 'moveInsThisMonth'));
+    case 'ALLOCATION_CREATED':
+      if (isOperator) {
+        navigate(spaceOccupancyListPath(spaceId, 'moveInsThisMonth'));
+      } else {
+        navigate(spaceDashboardPath(spaceId));
+      }
       return;
     case 'MOVE_OUT_SCHEDULED_TODAY':
     case 'MOVE_OUT_COMPLETED':
+      if (isOperator) {
+        navigate(spaceOccupancyListPath(spaceId, 'active'));
+      } else {
+        navigate(spaceDashboardPath(spaceId));
+      }
+      return;
     case 'VACANT_RESERVED_BED':
     case 'EXPIRED_RESERVATION':
       navigate(spaceOccupancyListPath(spaceId, 'active'));
@@ -134,6 +169,39 @@ export function navigateFromNotificationType(
       return;
     case 'INVITATION_ACCEPTED':
       navigate(spaceMembersPath(spaceId));
+      return;
+    case 'INVITATION_EXPIRED':
+    case 'MEMBERSHIP_REJECTED':
+      navigate(ROUTES.acceptInvitations);
+      return;
+    case 'MEMBERSHIP_APPROVED':
+    case 'MEMBERSHIP_ROLE_CHANGED':
+      navigate(spaceDashboardPath(spaceId));
+      return;
+    case 'MEMBERSHIP_REMOVED':
+    case 'SPACE_DEACTIVATED':
+      navigate(ROUTES.mySpaces);
+      return;
+    case 'OWNERSHIP_TRANSFERRED':
+      if (notification.actionRoute === 'MySpaces' || !isOperator) {
+        navigate(ROUTES.mySpaces);
+      } else {
+        navigate(spaceDashboardPath(spaceId));
+      }
+      return;
+    case 'CONTACT_ENQUIRY_SUBMITTED':
+    case 'CONTACT_ENQUIRY_SHARED':
+    case 'CONTACT_ENQUIRY_REJECTED':
+    case 'CONTACT_ENQUIRY_EXPIRED':
+      navigate(myEnquiriesPath(entityId ?? undefined));
+      return;
+    case 'INQUIRY_CREDIT_PAYMENT_APPROVED':
+    case 'INQUIRY_CREDIT_PAYMENT_REJECTED':
+    case 'INQUIRY_CREDIT_PAYMENT_PENDING':
+      navigate(ROUTES.findAPlace);
+      return;
+    case 'PASSWORD_CHANGED':
+      navigate(ROUTES.profile);
       return;
     case 'TENANT_PROFILE_INCOMPLETE':
     case 'TENANT_PROFILE_COMPLETED':
@@ -151,7 +219,13 @@ export function navigateFromNotificationType(
       } else if (notification.actionRoute === 'AcceptInvitations') {
         navigate(ROUTES.acceptInvitations);
       } else if (notification.actionRoute === 'DashboardOccupancyList') {
-        navigate(spaceOccupancyListPath(spaceId, 'active'));
+        navigate(isOperator ? spaceOccupancyListPath(spaceId, 'active') : spaceDashboardPath(spaceId));
+      } else if (notification.actionRoute === 'Dashboard') {
+        navigate(spaceDashboardPath(spaceId));
+      } else if (notification.actionRoute === 'Meals') {
+        navigate(spaceMealsPath(spaceId));
+      } else if (notification.actionRoute === 'MySpaces') {
+        navigate(ROUTES.mySpaces);
       } else if (
         notification.actionRoute === 'MealPollResponse' ||
         notification.actionRoute?.startsWith('MealPollResponse?') ||
@@ -166,6 +240,8 @@ export function navigateFromNotificationType(
         navigate(spaceMealsSharePath(spaceId, tomorrow));
       } else if (notification.actionRoute === 'SubscriptionActivationRequests') {
         navigate(spaceMealsPlansPath(spaceId, 'requests'));
+      } else if (notification.actionRoute === 'FindAPlaceDetail') {
+        navigate(findAPlaceListingPath(spaceId));
       }
   }
 }

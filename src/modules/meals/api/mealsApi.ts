@@ -159,6 +159,14 @@ export const mealsApi = {
     );
   },
 
+  setMealComboEnabled: (spaceId: string, comboId: string, enabled: boolean) =>
+    unwrapApiResponse(
+      apiClient.put<ApiResponse<MealComboResponse>>(
+        `/spaces/${spaceId}/meal-combos/${comboId}/enabled`,
+        { enabled },
+      ),
+    ),
+
   getFoodCategories: (spaceId: string) =>
     unwrapApiResponse(
       apiClient.get<ApiResponse<FoodCategoryResponse[]>>(

@@ -32,6 +32,7 @@ import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
 import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
+import { ReferenceCode } from '@/shared/components/ReferenceCode';
 import { canEditEntityPhoto } from '@/shared/files/entityPhoto';
 import type { MembershipRole, MySpaceResponse, SpaceType } from '@/shared/types/space';
 import { membershipRoleLabelKey } from '@/modules/members/utils/memberRoles';
@@ -104,6 +105,7 @@ export type SpaceCardCompactProps = {
   capacityTotal: number;
   onOpenDashboard: () => void;
   onOpenDetails: () => void;
+  pendingCount?: number;
   onSetDefault?: () => void;
   onEdit?: () => void;
 };
@@ -119,6 +121,7 @@ export function SpaceCardCompact({
   capacityTotal,
   onOpenDashboard,
   onOpenDetails,
+  pendingCount = 0,
   onSetDefault,
   onEdit,
 }: SpaceCardCompactProps) {
@@ -227,6 +230,7 @@ export function SpaceCardCompact({
               >
                 {space.spaceName}
               </Typography>
+              <ReferenceCode value={space.referenceCode} />
               <Chip
                 size="small"
                 label={status.label}
@@ -315,6 +319,63 @@ export function SpaceCardCompact({
         </Box>
       </Box>
 
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          minWidth: 0,
+        }}
+      >
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          {pendingCount > 0 ? (
+            <Typography
+              sx={{ ...DASHBOARD_UX.metricCaption, color: '#C2410C', fontWeight: 700 }}
+              noWrap
+            >
+              {t('spaces.globalDashboard.pendingActions', { count: pendingCount })}
+            </Typography>
+          ) : null}
+        </Box>
+        {onSetDefault ? (
+          space.isDefault ? (
+            <Typography
+              sx={{
+                ...DASHBOARD_UX.metricCaption,
+                color: colors.primaryDark,
+                fontWeight: 700,
+                flexShrink: 0,
+                ml: 'auto',
+              }}
+            >
+              {t('spaces.mySpaces.defaultBadge')}
+            </Typography>
+          ) : (
+            <Button
+              size="small"
+              variant="text"
+              startIcon={<Star size={14} />}
+              onClick={(event) => {
+                event.stopPropagation();
+                onSetDefault();
+              }}
+              sx={{
+                ...DASHBOARD_UX.badge,
+                ml: 'auto',
+                flexShrink: 0,
+                minWidth: 0,
+                px: 0.5,
+                color: colors.primaryDark,
+                textTransform: 'none',
+              }}
+            >
+              {t('spaces.mySpaces.setDefault')}
+            </Button>
+          )
+        ) : null}
+      </Box>
+
       {/* Actions — Dashboard 32px, auto width */}
       <Stack
         direction="row"
@@ -390,24 +451,6 @@ export function SpaceCardCompact({
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         >
-          {onSetDefault ? (
-            <MenuItem
-              disabled={space.isDefault}
-              onClick={() => {
-                setMenuAnchor(null);
-                onSetDefault();
-              }}
-            >
-              <ListItemIcon>
-                <Star size={14} />
-              </ListItemIcon>
-              <ListItemText>
-                {space.isDefault
-                  ? t('spaces.mySpaces.defaultBadge')
-                  : t('spaces.mySpaces.setDefault')}
-              </ListItemText>
-            </MenuItem>
-          ) : null}
           {canEdit && onEdit ? (
             <MenuItem
               onClick={() => {

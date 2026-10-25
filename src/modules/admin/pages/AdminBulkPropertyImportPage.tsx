@@ -83,7 +83,7 @@ function buildErrorReportCsv(result: PropertyBulkImportResultResponse): string {
       row.status === 'INVALID' ||
       (row.status === 'IMPORTED' && Boolean(row.conversionError)),
   );
-  const lines = ['rowNumber,status,reference,spaceId,errors'];
+  const lines = ['rowNumber,status,reference,spaceId,errors,spaceReferenceCode'];
   for (const row of failed) {
     const errors = [
       ...(row.errors ?? []).map((err) => `${err.field ?? 'row'}: ${err.message}`),
@@ -96,6 +96,7 @@ function buildErrorReportCsv(result: PropertyBulkImportResultResponse): string {
         row.reference ?? '',
         row.spaceId ?? '',
         errors,
+        row.spaceReferenceCode ?? '',
       ]
         .map(escapeCsvCell)
         .join(','),
@@ -254,6 +255,12 @@ export function AdminBulkPropertyImportPage() {
     const keepDuplicateRowNumbers = Object.entries(duplicateDecisions)
       .filter(([, decision]) => decision === 'KEEP')
       .map(([rowNumber]) => Number(rowNumber));
+    const duplicateRows = new Set(
+      (preview?.rows ?? []).filter((row) => row.status === 'DUPLICATE').map((row) => row.rowNumber),
+    );
+    const skipRowNumbers = Object.entries(duplicateDecisions)
+      .filter(([rowNumber, decision]) => decision === 'SKIP' && !duplicateRows.has(Number(rowNumber)))
+      .map(([rowNumber]) => Number(rowNumber));
     setBusy(true);
     setError(null);
     setActiveStep(3);
@@ -264,6 +271,7 @@ export function AdminBulkPropertyImportPage() {
         markAsTestLead,
         keepDuplicateRowNumbers,
         fieldOverrides,
+        skipRowNumbers,
       );
       setResult(data);
       setActiveStep(4);
@@ -508,12 +516,14 @@ export function AdminBulkPropertyImportPage() {
                       importedOnly: result.importedOnly ?? 0,
                       blank: result.blankSkipped,
                       duplicateSkipped: result.duplicateSkipped ?? 0,
+                      reviewSkipped: result.reviewSkipped ?? 0,
                       total: result.totalRows,
                     })
                   : t('admin.propertyBulk.resultNone', {
                       failed: result.failed,
                       blank: result.blankSkipped,
                       duplicateSkipped: result.duplicateSkipped ?? 0,
+                      reviewSkipped: result.reviewSkipped ?? 0,
                       total: result.totalRows,
                     })}
             </Alert>
@@ -541,6 +551,11 @@ export function AdminBulkPropertyImportPage() {
                   count: result.duplicateSkipped ?? 0,
                 })}
               />
+              <Chip
+                label={t('admin.propertyBulk.counts.reviewSkipped', {
+                  count: result.reviewSkipped ?? 0,
+                })}
+              />
               <Chip label={t('admin.propertyBulk.counts.total', { count: result.totalRows })} />
             </Stack>
             <TableContainer sx={{ maxHeight: 420 }}>
@@ -565,8 +580,8 @@ export function AdminBulkPropertyImportPage() {
                       <TableCell>{row.targetKind ?? '—'}</TableCell>
                       <TableCell>{row.reference ?? '—'}</TableCell>
                       <TableCell sx={{ maxWidth: 220 }}>
-                        {row.spaceName || row.spaceId
-                          ? `${row.spaceName ?? 'Space'}${row.spaceId ? ` · ${row.spaceId}` : ''}`
+                        {row.spaceName || row.spaceReferenceCode
+                          ? `${row.spaceName ?? ''}${row.spaceReferenceCode ? ` · ${row.spaceReferenceCode}` : ''}`
                           : '—'}
                       </TableCell>
                       <TableCell sx={{ maxWidth: 320 }}>

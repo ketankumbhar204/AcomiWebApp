@@ -1,5 +1,7 @@
 import { Box, Button, Chip, Stack, Typography, useTheme } from '@mui/material';
 import { History } from 'lucide-react';
+import { StayTrailLine } from '@/shared/components/ContactAndStayMeta';
+import { formatPaymentStayLabel } from '@/shared/utils/stayTrail';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { InfoRow } from '@/shared/components/InfoRow';
@@ -90,6 +92,16 @@ export function MemberCurrentStayCard({
         }}
       >
         <Box>
+          <StayTrailLine
+            label={formatPaymentStayLabel({
+              buildingName: stay?.buildingName,
+              floorName: stay?.floorName,
+              unitName: stay?.unitName,
+              roomName: stay?.roomName,
+              bedName: stay?.bedName,
+            })}
+            sx={{ mb: 1 }}
+          />
           {lines.map((line) => (
             <InfoRow key={line.labelKey} label={t(line.labelKey)} value={line.value} dense />
           ))}

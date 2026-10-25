@@ -7,6 +7,7 @@ export type EnquiryRequesterType = 'MEMBER' | 'OWNER';
 
 export interface SpaceEnquiryResponse {
   enquiryId: string;
+  referenceCode?: string | null;
   spaceId: string;
   spaceName: string;
   spaceType?: SpaceType | null;
@@ -49,6 +50,14 @@ export interface EnquiryInboxListing {
   spaceId: string;
   name: string;
   spaceType?: SpaceType | null;
+  locationLabel?: string | null;
+}
+
+export interface ReceivedEnquirySummary {
+  total: number;
+  pending: number;
+  shared: number;
+  closed: number;
 }
 
 export interface EnquiryInboxResponse {
@@ -58,13 +67,18 @@ export interface EnquiryInboxResponse {
 
 export interface ReceivedEnquiry {
   enquiryId: string;
+  referenceCode?: string | null;
   spaceId: string;
   spaceName: string;
   spaceType?: SpaceType | null;
   locationLabel?: string | null;
+  sharingNotes?: string | null;
+  foodIncludedLabel?: string | null;
+  listingAvailable?: boolean;
   requesterName?: string | null;
   requesterEmail?: string | null;
   requesterMobile?: string | null;
+  requesterType?: EnquiryRequesterType | null;
   status: SpaceEnquiryStatus;
   requestedAt: string;
   expiresAt?: string | null;
@@ -101,6 +115,7 @@ export interface UserNotificationListResponse {
 
 export interface AdminSpaceEnquiryListItem {
   enquiryId: string;
+  referenceCode?: string | null;
   spaceId: string;
   spaceName: string;
   spaceType?: SpaceType | null;

@@ -1,5 +1,6 @@
 import { Avatar, Box, Button, Stack, Typography } from '@mui/material';
 import {
+  Bell,
   Building2,
   ChefHat,
   CreditCard,
@@ -30,6 +31,9 @@ function initials(name?: string | null): string {
 }
 
 function adminPageTitle(pathname: string, t: (key: string) => string): string {
+  if (pathname.startsWith(ROUTES.adminNotificationTesting)) {
+    return t('admin.nav.notificationTesting');
+  }
   if (pathname.startsWith(ROUTES.adminEnquiries)) return t('admin.nav.enquiries');
   if (pathname.startsWith(ROUTES.adminRegisteredUsers)) return t('admin.nav.users');
   if (pathname.startsWith(ROUTES.adminProperties)) return t('admin.nav.properties');
@@ -83,6 +87,12 @@ export function AdminLayout() {
             to: ROUTES.adminDashboard,
             icon: <LayoutDashboard size={16} />,
             end: true,
+          },
+          {
+            id: 'notificationTesting',
+            label: t('admin.nav.notificationTesting', { defaultValue: 'Notification Testing' }),
+            to: ROUTES.adminNotificationTesting,
+            icon: <Bell size={16} />,
           },
           {
             id: 'enquiries',

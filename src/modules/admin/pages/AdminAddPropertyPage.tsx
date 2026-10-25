@@ -73,7 +73,7 @@ export function AdminAddPropertyPage() {
   const [alternateMobileNumber, setAlternateMobileNumber] = useState('');
   const [location, setLocation] = useState(EMPTY_ADDRESS_CAPTURE);
   const [startingPrice, setStartingPrice] = useState('');
-  const [priceBasis, setPriceBasis] = useState<ListingPriceBasis>(defaultPriceBasis('PG'));
+  const [priceBasis, setPriceBasis] = useState<ListingPriceBasis>(defaultPriceBasis('PG') ?? 'PER_BED');
   const [availableFrom, setAvailableFrom] = useState('');
   const [testLead, setTestLead] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -255,7 +255,10 @@ export function AdminAddPropertyPage() {
                   value={propertyType}
                   onChange={(next) => {
                     setPropertyType(next);
-                    setPriceBasis(defaultPriceBasis(next));
+                    const basis = defaultPriceBasis(next);
+                    if (basis) {
+                      setPriceBasis(basis);
+                    }
                   }}
                 />
               </Box>

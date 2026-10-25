@@ -54,6 +54,11 @@ import type { MembershipRole } from '@/shared/types/space';
 import { paymentsApi } from '@/modules/payments/api/paymentsApi';
 import { usePaymentsSummary } from '@/modules/payments/hooks/usePayments';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
+import { isAccommodationApplicable } from '@/shared/utils/spacePermissions';
+import { accommodationApi } from '@/modules/accommodation/api/accommodationApi';
+import { occupancyApi } from '@/modules/accommodation/api/occupancyApi';
+import { stayLabelForMember } from '@/modules/members/utils/memberListStay';
+import type { StayLayoutMode } from '@/shared/utils/stayTrail';
 import {
   spaceImportPeoplePath,
   spaceMemberPath,
@@ -105,6 +110,7 @@ import {
   type MemberPaymentDuesFilter,
 } from '../utils/memberDues';
 import { membershipRoleLabelKey } from '../utils/memberRoles';
+import { ContactNumberLine, StayTrailLine } from '@/shared/components/ContactAndStayMeta';
 import { formatMemberContactNumber } from '@/shared/utils/indianMobile';
 
 type ListTab = 'members' | 'pending';
@@ -321,6 +327,42 @@ export function MembersWorkspacePage() {
   const { enqueueSnackbar } = useSnackbar();
   const permissions = useSpacePermissions(spaceId);
   const spaceType = permissions.space?.spaceType;
+  const showStayTrail = spaceType != null && isAccommodationApplicable(spaceType);
+  const staySources = useQuery({
+    queryKey: ['member-stay-trails', spaceId],
+    enabled: showStayTrail && Boolean(spaceId),
+    staleTime: 15_000,
+    queryFn: async () => {
+      const [active, vacated, buildings] = await Promise.all([
+        occupancyApi.listOccupancies(spaceId, { status: 'ACTIVE', size: 200 }),
+        occupancyApi.listOccupancies(spaceId, { status: 'VACATED', size: 200 }),
+        accommodationApi.getBuildings(spaceId),
+      ]);
+      return {
+        occupancies: [...(active.content ?? []), ...(vacated.content ?? [])],
+        buildings,
+      };
+    },
+  });
+  const stayByMemberId = useMemo(() => {
+    const occupancies = staySources.data?.occupancies ?? [];
+    const activeBuildings = (staySources.data?.buildings ?? []).filter((building) => building.active);
+    const layoutByBuildingId = new Map<string, StayLayoutMode>(
+      activeBuildings.map((building) => [building.buildingId, building.layoutMode]),
+    );
+    const options = {
+      multipleBuildings: activeBuildings.length > 1,
+      layoutByBuildingId,
+    };
+    const next = new Map<string, string>();
+    new Set(occupancies.map((row) => row.memberId)).forEach((id) => {
+      const label = stayLabelForMember(id, occupancies, options);
+      if (label) {
+        next.set(id, label);
+      }
+    });
+    return next;
+  }, [staySources.data]);
   const canSeeDues = canManagePayments(permissions.membershipRole);
   const duesMonth = currentMonthKey();
   const duesSummary = usePaymentsSummary(spaceId, duesMonth, canSeeDues);
@@ -611,6 +653,10 @@ export function MembersWorkspacePage() {
               ? t('membership.members.onAcomi')
               : t('membership.members.notOnAcomiYet')}
           </Typography>
+          {row.role === 'TENANT' &&
+          (row.occupancyStatus === 'ALLOCATED' || row.occupancyStatus === 'VACATED') ? (
+            <StayTrailLine label={stayByMemberId.get(row.memberId)} />
+          ) : null}
           {canSeeDues ? <MemberDuesLine snapshot={duesByMemberId.get(row.memberId)} onOpen={() => openMember(row.memberId, 'payments')} /> : null}
         </Box>
       ),
@@ -620,7 +666,7 @@ export function MembersWorkspacePage() {
     {
       id: 'mobile',
       header: t('membership.workspace.columns.mobile'),
-      accessor: (row) => row.mobileNumber,
+      accessor: (row) => <ContactNumberLine value={row.mobileNumber} />,
       primary: true,
     },
     {
@@ -633,16 +679,7 @@ export function MembersWorkspacePage() {
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.75, minWidth: 0 }}>
             <StatusChip label={t(membershipRoleLabelKey(row.role, spaceType))} tone="info" />
-            <Typography
-              component="span"
-              sx={{
-                ...DASHBOARD_UX.caption,
-                color: s.textSecondary,
-                overflowWrap: 'anywhere',
-              }}
-            >
-              {`·  ${contact}`}
-            </Typography>
+            <ContactNumberLine label={contact} />
           </Box>
         );
       },
@@ -692,7 +729,7 @@ export function MembersWorkspacePage() {
     {
       id: 'mobile',
       header: t('membership.workspace.columns.mobile'),
-      accessor: (row) => row.mobileNumber,
+      accessor: (row) => <ContactNumberLine value={row.mobileNumber} />,
       primary: true,
     },
     {
@@ -871,11 +908,11 @@ export function MembersWorkspacePage() {
       <Button
         size="small"
         startIcon={<RefreshCw size={14} />}
-        onClick={() =>
+        onClick={() => {
           void (listTab === 'members' ? membersQuery.reload() : invitationsQuery.reload());
           void duesSummary.reload();
           void duesMembersQuery.refetch();
-        }
+        }}
         sx={dashOutlinedButtonSx}
       >
         {t('common.refresh')}
@@ -1041,7 +1078,7 @@ export function MembersWorkspacePage() {
             />
           </Grid>
           {canSeeDues ? (
-            <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 12 }}>
               <StatCard
                 dense
                 tone="warning"

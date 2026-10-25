@@ -23,6 +23,11 @@ assert.equal(extractIsoDateFromText('DINNER · 2026-10-09 · Sunrise PG'), '2026
 assert.equal(extractMealTypeFromText('DINNER · 2026-10-09 · Sunrise PG'), 'DINNER');
 assert.equal(extractMealTypeFromText("Check today's menu for Sunrise PG."), null);
 
+assert.match(webLinks, /case 'SUBSCRIPTION_ACTIVATION_APPROVED':/);
+assert.match(webLinks, /case 'ALLOCATION_CREATED':/);
+assert.match(webLinks, /case 'PAYMENT_REMINDER_SENT':/);
+assert.match(webLinks, /case 'MEMBERSHIP_REMOVED':/);
+assert.match(webLinks, /actionRoute === 'Meals'/);
 assert.match(webLinks, /case 'MEAL_POLL_PUBLISHED':/);
 assert.match(webLinks, /spaceMealsPollPath\(spaceId, meal\.menuDate, meal\.mealType\)/);
 assert.doesNotMatch(

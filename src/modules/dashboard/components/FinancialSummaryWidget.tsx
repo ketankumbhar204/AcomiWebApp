@@ -54,6 +54,7 @@ const TILE = {
 export function FinancialSummaryWidget({
   spaceId,
   financial,
+  emptyHint,
   layout = 'board',
   month,
   onMonthChange,

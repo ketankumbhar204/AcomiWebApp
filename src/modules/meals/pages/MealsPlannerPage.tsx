@@ -41,6 +41,7 @@ import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import {
+  spaceMealResponsesPath,
   spaceMealsEditPath,
   spaceMealsLibraryPath,
   spaceMealsLocationsPath,
@@ -50,6 +51,7 @@ import {
 } from '@/routes/paths';
 import type { MealType } from '@/shared/types/meals';
 import { MealSlotCard } from '../components/MealSlotCard';
+import { resolveMealStatusKind } from '../utils/mealStatusTheme';
 import {
   useDailyMenus,
   useEligibilitySummary,
@@ -513,11 +515,10 @@ export function MealsPlannerPage() {
               <Box
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: {
-                    xs: '1fr',
-                    sm: 'repeat(3, minmax(0, 1fr))',
-                  },
-                  gap: `${DASHBOARD_UX.cardGap}px`,
+                  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                  gap: '8px',
+                  width: '100%',
+                  minWidth: 0,
                 }}
               >
                 {MEAL_TYPES.map((mealType) => (
@@ -527,15 +528,25 @@ export function MealsPlannerPage() {
                     menu={menuByType[mealType]}
                     poll={pollByType[mealType]}
                     headcount={headcountByType[mealType] ?? null}
+                    eligibleCount={
+                      eligibility.summary?.slots.find((slot) => slot.mealType === mealType)
+                        ?.eligibleCount ??
+                      eligibility.summary?.distinctEligibleMemberCount ??
+                      0
+                    }
                     canManage={canManage}
-                    onEdit={() =>
+                    onEdit={() => {
+                      if (resolveMealStatusKind(menuByType[mealType], pollByType[mealType]) === 'shared') {
+                        navigate(spaceMealResponsesPath(spaceId, { date: focusDate, mealType }));
+                        return;
+                      }
                       navigate(
                         spaceMealsEditPath(spaceId, {
                           date: focusDate,
                           mealType,
                         }),
-                      )
-                    }
+                      );
+                    }}
                     onShare={openDayShare}
                     onPublish={() =>
                       void runAction(

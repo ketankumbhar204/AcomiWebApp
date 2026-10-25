@@ -13,18 +13,18 @@ import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { resolveListingCover } from '@/shared/utils/representativeImage';
 import { listingPriceSuffix } from '@/shared/utils/priceBasis';
+import type { ListingSection } from '@/shared/utils/listingInfo';
 import type { DiscoverSpaceCardResponse } from '@/shared/types/space';
 
 type DiscoverSpaceCardProps = {
   space: DiscoverSpaceCardResponse;
-  onViewDetails: (spaceId: string) => void;
-  onEnquire: (space: DiscoverSpaceCardResponse) => void;
+  onViewDetails: (spaceId: string, section?: ListingSection) => void;
 };
 
 /**
  * Public-website PropertyCard layout for authenticated discovery.
  */
-export function DiscoverSpaceCard({ space, onViewDetails, onEnquire }: DiscoverSpaceCardProps) {
+export function DiscoverSpaceCard({ space, onViewDetails }: DiscoverSpaceCardProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -231,10 +231,10 @@ export function DiscoverSpaceCard({ space, onViewDetails, onEnquire }: DiscoverS
           </Box>
           {address ? (
             <Box
-              component={alreadyInquired ? 'div' : 'button'}
-              type={alreadyInquired ? undefined : 'button'}
-              onClick={alreadyInquired ? undefined : () => onEnquire(space)}
-              aria-label={alreadyInquired ? undefined : `${contactCta}: ${space.name}`}
+              component="button"
+              type="button"
+              onClick={() => onViewDetails(space.spaceId, 'address')}
+              aria-label={`${t('spaces.findPlace.infoAddress', { defaultValue: 'Address' })}: ${space.name}`}
               sx={{
                 display: 'flex',
                 alignItems: 'center',
@@ -245,7 +245,7 @@ export function DiscoverSpaceCard({ space, onViewDetails, onEnquire }: DiscoverS
                 bgcolor: 'transparent',
                 p: 0,
                 textAlign: 'left',
-                cursor: alreadyInquired ? 'default' : 'pointer',
+                cursor: 'pointer',
                 font: 'inherit',
                 color: 'inherit',
               }}
@@ -270,8 +270,8 @@ export function DiscoverSpaceCard({ space, onViewDetails, onEnquire }: DiscoverS
           <Box
             component="button"
             type="button"
-            onClick={() => (alreadyInquired ? onViewDetails(space.spaceId) : onEnquire(space))}
-            aria-label={alreadyInquired ? `${viewDetails}: ${space.name}` : `${contactCta}: ${space.name}`}
+            onClick={() => onViewDetails(space.spaceId, 'rent')}
+            aria-label={`${t('spaces.findPlace.infoRent', { defaultValue: 'Rent' })}: ${space.name}`}
             sx={{
               display: 'block',
               width: '100%',
@@ -330,13 +330,13 @@ export function DiscoverSpaceCard({ space, onViewDetails, onEnquire }: DiscoverS
           />
         </Box>
 
-        <Box sx={{ display: { xs: 'none', sm: 'block' }, borderRadius: '14px', bgcolor: isDark ? 'rgba(37,211,102,0.1)' : '#F3FBF7', px: 1.25, py: 1.25 }}>
+        <Box sx={{ borderRadius: '14px', bgcolor: isDark ? 'rgba(37,211,102,0.1)' : '#F3FBF7', px: 1.25, py: 1.25 }}>
           <ListingInfoChips
             listing={space}
             variant="card"
             surface={isMess ? 'meals' : 'places'}
             onViewAll={() => onViewDetails(space.spaceId)}
-            onEnquire={alreadyInquired ? undefined : () => onEnquire(space)}
+            onSelect={(section) => onViewDetails(space.spaceId, section)}
           />
         </Box>
 
@@ -376,7 +376,7 @@ export function DiscoverSpaceCard({ space, onViewDetails, onEnquire }: DiscoverS
           </Button>
           {contactViewed ? (
             <Button
-              onClick={() => onViewDetails(space.spaceId)}
+              onClick={() => onViewDetails(space.spaceId, 'contact')}
               aria-label={`${t('spaces.findPlace.contactDetailsViewed', { defaultValue: 'Contact details viewed' })}: ${space.name}`}
               sx={{
                 width: 'auto',
@@ -400,7 +400,7 @@ export function DiscoverSpaceCard({ space, onViewDetails, onEnquire }: DiscoverS
               }}
             >
               <Eye size={14} />
-              {t('spaces.findPlace.contactDetailsViewed', { defaultValue: 'Contact details viewed' })}
+              {t('spaces.findPlace.viewed', { defaultValue: 'Viewed' })}
             </Button>
           ) : alreadyInquired ? (
             <Button
@@ -436,7 +436,7 @@ export function DiscoverSpaceCard({ space, onViewDetails, onEnquire }: DiscoverS
               variant="contained"
               color="primary"
               disabled={sendingEnquiry}
-              onClick={() => onEnquire(space)}
+              onClick={() => onViewDetails(space.spaceId, 'contact')}
               aria-label={`${contactCta}: ${space.name}`}
               startIcon={sendingEnquiry ? undefined : <Phone size={16} />}
               sx={{

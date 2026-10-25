@@ -22,7 +22,7 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { enquiryApi } from '@/shared/api/enquiryApi';
-import { inquiryCreditsApi, needsInquiryPayment, isUnlimitedQuota, paidCreditsOf } from '@/shared/api/inquiryCreditsApi';
+import { canViewContactDirectly, inquiryCreditsApi, needsInquiryPayment, isUnlimitedQuota, paidCreditsOf } from '@/shared/api/inquiryCreditsApi';
 import { enquiryErrorMessage } from '@/shared/api/enquiryErrors';
 import { ApiError } from '@/shared/api/errors';
 import type { UserResponse } from '@/shared/types/auth';
@@ -130,7 +130,9 @@ export function EnquireDialog({
   const [submitted, setSubmitted] = useState<SpaceEnquiryResponse | null>(null);
   const [packageOffer, setPackageOffer] = useState<{ amount: string; credits: number } | null>(null);
   const [quota, setQuota] = useState<InquiryQuota | null>(null);
+  const [quotaSettled, setQuotaSettled] = useState(false);
   const submittingRef = useRef(false);
+  const directViewRef = useRef(false);
   const openedForRef = useRef<string | null>(null);
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -180,9 +182,13 @@ export function EnquireDialog({
     if (!open) {
       setPackageOffer(null);
       setQuota(null);
+      setQuotaSettled(false);
+      directViewRef.current = false;
       return;
     }
     let cancelled = false;
+    setQuotaSettled(false);
+    directViewRef.current = false;
     void Promise.all([inquiryCreditsApi.getPaymentConfig(), inquiryCreditsApi.getQuota()])
       .then(([config, nextQuota]) => {
         if (cancelled) return;
@@ -202,6 +208,9 @@ export function EnquireDialog({
         if (!cancelled) {
           setPackageOffer(null);
         }
+      })
+      .finally(() => {
+        if (!cancelled) setQuotaSettled(true);
       });
     return () => {
       cancelled = true;
@@ -460,6 +469,23 @@ export function EnquireDialog({
   const detailsReady = submitted?.status === 'SHARED';
   const alreadyPending = step === 'already' && submitted?.status !== 'SHARED';
   const busy = submitting || step === 'submitting';
+  const canViewHereNow = canViewContactDirectly(quota);
+
+  useLayoutEffect(() => {
+    if (
+      !open ||
+      ownedByCurrentUser ||
+      step !== 'choose' ||
+      !quotaSettled ||
+      !canViewHereNow ||
+      directViewRef.current
+    ) {
+      return;
+    }
+    directViewRef.current = true;
+    setPendingIntent('view');
+    void submit({ deliveryChannel: 'VIEW_HERE', stayOpen: true });
+  }, [open, ownedByCurrentUser, step, quotaSettled, canViewHereNow]);
 
   const busyOverlay = busy ? (
     <Box
@@ -535,7 +561,11 @@ export function EnquireDialog({
           },
         }}
       >
-        {step === 'choose' ? (
+        {step === 'choose' && !ownedByCurrentUser && !quotaSettled ? (
+          <DialogContent sx={{ py: 6, textAlign: 'center' }}>
+            <CircularProgress size={28} />
+          </DialogContent>
+        ) : step === 'choose' ? (
           <DialogContent sx={{ pt: 3, pb: 2 }}>
             <ContactMethodChooser
               quota={quota}

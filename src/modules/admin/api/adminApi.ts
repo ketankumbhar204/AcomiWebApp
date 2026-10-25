@@ -45,6 +45,7 @@ function toBulkImportFormData(
   markAsTestLead?: boolean,
   keepDuplicateRowNumbers?: number[],
   fieldOverrides?: PropertyBulkImportFieldOverrides,
+  skipRowNumbers?: number[],
 ): FormData {
   const formData = new FormData();
   formData.append('file', file);
@@ -59,6 +60,9 @@ function toBulkImportFormData(
   }
   if (fieldOverrides && Object.keys(fieldOverrides).length > 0) {
     formData.append('fieldOverrides', JSON.stringify(fieldOverrides));
+  }
+  if (skipRowNumbers && skipRowNumbers.length > 0) {
+    formData.append('skipRowNumbers', JSON.stringify(skipRowNumbers));
   }
   return formData;
 }
@@ -213,11 +217,19 @@ export const adminApi = {
     markAsTestLead = false,
     keepDuplicateRowNumbers: number[] = [],
     fieldOverrides: PropertyBulkImportFieldOverrides = {},
+    skipRowNumbers: number[] = [],
   ): Promise<PropertyBulkImportResultResponse> =>
     unwrapApiResponse(
       apiClient.post<ApiResponse<PropertyBulkImportResultResponse>>(
         BULK_IMPORT_BASE,
-        toBulkImportFormData(file, mapping, markAsTestLead, keepDuplicateRowNumbers, fieldOverrides),
+        toBulkImportFormData(
+          file,
+          mapping,
+          markAsTestLead,
+          keepDuplicateRowNumbers,
+          fieldOverrides,
+          skipRowNumbers,
+        ),
         { headers: { 'Content-Type': 'multipart/form-data' }, timeout: BULK_IMPORT_TIMEOUT_MS },
       ),
     ),
@@ -314,6 +326,14 @@ export const adminApi = {
       apiClient.post<ApiResponse<AdminRegisteredUser>>('/admin/registered-users', payload),
     ),
 
+  resetRegisteredUserPassword: async (
+    id: string,
+    payload: { password: string; confirmPassword: string },
+  ): Promise<void> =>
+    unwrapVoidResponse(
+      apiClient.post(`/admin/registered-users/${id}/reset-password`, payload),
+    ),
+
   setRegisteredUserTestFlag: async (
     id: string,
     testUser: boolean,
@@ -398,9 +418,9 @@ export const adminApi = {
       ),
     ),
 
-  getAdminSpace: async (spaceId: string): Promise<{ id: string; name: string; discoverable: boolean }> =>
+  getAdminSpace: async (spaceId: string): Promise<{ id: string; name: string; discoverable: boolean; referenceCode?: string | null }> =>
     unwrapApiResponse(
-      apiClient.get<ApiResponse<{ id: string; name: string; discoverable: boolean }>>(
+      apiClient.get<ApiResponse<{ id: string; name: string; discoverable: boolean; referenceCode?: string | null }>>(
         `/admin/spaces/${spaceId}`,
       ),
     ),

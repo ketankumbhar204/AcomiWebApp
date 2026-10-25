@@ -32,7 +32,9 @@ import { PollClosesInHint } from '@/modules/meals/components/PollClosesInHint';
 import {
   buildRecentOrdersFromActivity,
   countMenuItemsFromPolls,
+  countOpenMealPayments,
   countUpcomingPayments,
+  summarizeMemberDashboardLedger,
 } from '@/modules/meals/utils/customerDashboardStats';
 import { addDaysIso, formatMenuDateLabel, isPastMenuDate, MEAL_TYPES, todayIsoDate } from '@/modules/meals/utils/mealDates';
 import {
@@ -47,6 +49,9 @@ import {
 } from '@/modules/meals/utils/mealSelectionSummary';
 import { showMealPrices } from '@/modules/meals/utils/mealPricingPolicy';
 import { showsMessDashboardWidgets } from '@/shared/utils/spacePermissions';
+import { useComplaintsList } from '@/modules/complaints/hooks/useComplaints';
+import { useSpacePaymentsList } from '@/modules/payments/hooks/usePayments';
+import { usesDayMealPayments } from '@/modules/payments/utils/personalPaymentSummary';
 import { ContentCard } from '@/shared/components/ContentCard';
 import { PeriodDayNav } from '@/shared/components/PeriodDayNav';
 import { StatusChip } from '@/shared/components/StatusChip';
@@ -55,7 +60,7 @@ import { useLinkedMember } from '@/shared/hooks/useLinkedMember';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
-import { formatCurrency } from '@/shared/utils/dashboardFinancial';
+import { currentMonthKey, formatCurrency } from '@/shared/utils/dashboardFinancial';
 import type { MealPollSlot, MealType } from '@/shared/types/meals';
 import {
   spaceComplaintsPath,
@@ -251,8 +256,24 @@ export function DashboardCustomerMealsSection({
   const navigate = useNavigate();
   const { user } = useAuthSession();
   const permissions = useSpacePermissions(spaceId);
-  const { memberId: linkedMemberId } = useLinkedMember(spaceId);
-  const { status: subscriptionStatus } = useCustomerSubscriptionStatus(spaceId, linkedMemberId);
+  const { memberId: linkedMemberId, loading: memberLoading } = useLinkedMember(spaceId);
+  const { status: subscriptionStatus, loading: subscriptionLoading } = useCustomerSubscriptionStatus(
+    spaceId,
+    linkedMemberId,
+  );
+  const isPayPerMeal = usesDayMealPayments({
+    spaceType: permissions.space?.spaceType,
+    prepaidBilling: subscriptionStatus?.prepaidBilling,
+    mealBillingType: subscriptionStatus?.mealBillingType,
+  });
+  const waitForBilling =
+    permissions.space?.spaceType === 'MESS' && subscriptionLoading && subscriptionStatus == null;
+  const ledger = useSpacePaymentsList(
+    spaceId,
+    { month: currentMonthKey(), memberId: linkedMemberId ?? undefined, sync: false },
+    Boolean(linkedMemberId) && !isPayPerMeal && !waitForBilling,
+  );
+  const complaints = useComplaintsList(spaceId, { mine: true }, Boolean(spaceId));
 
   const [menuDate, setMenuDate] = useState(todayIsoDate);
   const [userPickedDate, setUserPickedDate] = useState(false);
@@ -333,7 +354,8 @@ export function DashboardCustomerMealsSection({
     [activity.activity],
   );
 
-  const dueAmount = useMemo(() => {
+  const today = todayIsoDate();
+  const mealDueAmount = useMemo(() => {
     const pending = activity.activity?.summary?.pendingAmount;
     if (pending != null && Number(pending) > 0) return Number(pending);
     if (
@@ -344,23 +366,50 @@ export function DashboardCustomerMealsSection({
       if (pollDay?.myPaymentChargedAmount != null) return Number(pollDay.myPaymentChargedAmount);
       return orderSummary.totalAmount > 0 ? orderSummary.totalAmount : null;
     }
-    return null;
+    return activity.activity ? 0 : null;
   }, [
-    activity.activity?.summary?.pendingAmount,
+    activity.activity,
     myPaymentStatus,
     orderSummary.totalAmount,
     pollDay?.myPaymentChargedAmount,
   ]);
 
-  const upcomingPayments = useMemo(() => {
-    const fromActivity = countUpcomingPayments(activity.activity);
-    if (fromActivity > 0) return fromActivity;
-    return myPaymentStatus === 'PENDING' ||
-      myPaymentStatus === 'REJECTED' ||
-      (myPaymentStatus as string) === 'UPDATE_REQUESTED'
-      ? 1
-      : 0;
-  }, [activity.activity, myPaymentStatus]);
+  const ledgerStats = useMemo(
+    () => summarizeMemberDashboardLedger(ledger.payments, today),
+    [ledger.payments, today],
+  );
+  const ledgerReady = !isPayPerMeal && linkedMemberId != null && !waitForBilling;
+  const paymentsUnavailable =
+    !isPayPerMeal &&
+    !memberLoading &&
+    !waitForBilling &&
+    (linkedMemberId == null || ledger.error != null);
+  const paymentsLoading = isPayPerMeal
+    ? activity.activity == null && activity.loading
+    : memberLoading || waitForBilling || (ledgerReady && ledger.loading && ledger.payments.length === 0 && !paymentsUnavailable);
+  const dueAmount = isPayPerMeal
+    ? mealDueAmount
+    : !ledgerReady || paymentsUnavailable
+      ? null
+      : ledgerStats.dueAmount;
+  const upcomingPayments = isPayPerMeal
+    ? countUpcomingPayments(activity.activity, today)
+    : ledgerStats.upcomingCount;
+  const paymentsCount = isPayPerMeal
+    ? activity.activity == null
+      ? null
+      : countOpenMealPayments(activity.activity)
+    : paymentsLoading
+      ? null
+      : !ledgerReady || paymentsUnavailable
+        ? undefined
+        : ledgerStats.openPaymentCount;
+  const complaintsCount =
+    complaints.loading && complaints.data == null
+      ? null
+      : complaints.data
+        ? complaints.openCount + complaints.inProgressCount
+        : undefined;
 
   const yourOrders = activity.activity?.summary?.acceptedMeals ?? orderSummary.totalPlates;
 
@@ -384,6 +433,10 @@ export function DashboardCustomerMealsSection({
   const refreshAll = () => {
     void pollsQuery.reload();
     void activity.reload();
+    if (!isPayPerMeal && !waitForBilling) {
+      void ledger.reload();
+    }
+    void complaints.reload();
   };
 
   const goPlans = () => navigate(spaceMealsPlansCustomerPath(spaceId));
@@ -950,12 +1003,14 @@ export function DashboardCustomerMealsSection({
               {
                 id: 'due',
                 label: t('dashboard.customer.stats.dueAmount', { defaultValue: 'Due amount' }),
-                value:
-                  dueAmount == null || dueAmount <= 0
-                    ? formatCurrency(0, 'INR')
+                value: paymentsLoading
+                  ? '…'
+                  : paymentsUnavailable || dueAmount == null
+                    ? '—'
                     : formatCurrency(
                         dueAmount,
-                        activity.activity?.summary?.currencyCode ||
+                        ledger.payments.find((payment) => payment.currencyCode)?.currencyCode ||
+                          activity.activity?.summary?.currencyCode ||
                           orderSummary.currencyCode ||
                           'INR',
                       ),
@@ -967,7 +1022,7 @@ export function DashboardCustomerMealsSection({
                 label: t('dashboard.customer.stats.upcomingPayments', {
                   defaultValue: 'Upcoming payments',
                 }),
-                value: String(upcomingPayments),
+                value: paymentsLoading ? '…' : paymentsUnavailable ? '—' : String(upcomingPayments),
                 icon: CalendarDays,
                 accent: '#7C3AED',
               },
@@ -977,6 +1032,19 @@ export function DashboardCustomerMealsSection({
             return (
               <Box
                 key={stat.id}
+                role={stat.id === 'due' ? 'button' : undefined}
+                tabIndex={stat.id === 'due' ? 0 : undefined}
+                onClick={stat.id === 'due' ? goPayments : undefined}
+                onKeyDown={
+                  stat.id === 'due'
+                    ? (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          goPayments();
+                        }
+                      }
+                    : undefined
+                }
                 sx={{
                   px: 1.25,
                   py: 1.1,
@@ -991,6 +1059,7 @@ export function DashboardCustomerMealsSection({
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 0.35,
+                  cursor: stat.id === 'due' ? 'pointer' : 'default',
                 }}
               >
                 <Box
@@ -1140,6 +1209,7 @@ export function DashboardCustomerMealsSection({
                 hint: t('dashboard.customer.quickActions.paymentsHint', {
                   defaultValue: 'View bills and payment history',
                 }),
+                count: paymentsCount,
                 icon: Wallet,
                 accent: '#D97706',
                 onClick: goPayments,
@@ -1153,6 +1223,7 @@ export function DashboardCustomerMealsSection({
                 hint: t('dashboard.customer.quickActions.complaintsHint', {
                   defaultValue: 'Raise or track your complaints',
                 }),
+                count: complaintsCount,
                 icon: CircleAlert,
                 accent: '#DC2626',
                 onClick: goComplaints,
@@ -1189,6 +1260,20 @@ export function DashboardCustomerMealsSection({
                       {action.hint}
                     </Typography>
                   </Box>
+                  {'count' in action ? (
+                    <Typography
+                      sx={{
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: s.textPrimary,
+                        fontVariantNumeric: 'tabular-nums',
+                        minWidth: 24,
+                        textAlign: 'right',
+                      }}
+                    >
+                      {action.count == null ? (action.count === undefined ? '—' : '…') : action.count}
+                    </Typography>
+                  ) : null}
                   <ChevronRight size={16} color={s.textMuted} />
                 </Stack>
               </ContentCard>

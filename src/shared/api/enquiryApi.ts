@@ -11,6 +11,7 @@ import type {
   OwnerContactResponse,
   EnquiryInboxResponse,
   ReceivedEnquiry,
+  ReceivedEnquirySummary,
   SpaceEnquiryResponse,
   SpaceEnquiryStatus,
   UserNotification,
@@ -28,6 +29,19 @@ export const enquiryApi = {
       apiClient.post<ApiResponse<SpaceEnquiryResponse>>(`/enquiries/${enquiryId}/email-contact`, {
         email,
       }),
+    ),
+
+  requestPhotos: async (spaceId: string) =>
+    unwrapApiResponse(
+      apiClient.post<
+        ApiResponse<{
+          notificationPersisted: boolean;
+          notificationDuplicate: boolean;
+          fcmQueued: boolean;
+          phoneAvailable: boolean;
+          internationalPhone?: string | null;
+        }>
+      >(`/spaces/${spaceId}/photo-requests`),
     ),
 
   sendAgain: async (spaceId: string): Promise<SpaceEnquiryResponse> =>
@@ -98,11 +112,19 @@ export const enquiryApi = {
     status?: SpaceEnquiryStatus;
     from?: string;
     to?: string;
+    q?: string;
     page?: number;
     size?: number;
   }): Promise<PagedResponse<ReceivedEnquiry>> =>
     unwrapApiResponse(
       apiClient.get<ApiResponse<PagedResponse<ReceivedEnquiry>>>('/enquiries/received', { params }),
+    ),
+
+  receivedSummary: async (spaceId?: string): Promise<ReceivedEnquirySummary> =>
+    unwrapApiResponse(
+      apiClient.get<ApiResponse<ReceivedEnquirySummary>>('/enquiries/received/summary', {
+        params: spaceId ? { spaceId } : undefined,
+      }),
     ),
 
   listMine: async (params?: { page?: number; size?: number }): Promise<PagedResponse<SpaceEnquiryResponse>> =>

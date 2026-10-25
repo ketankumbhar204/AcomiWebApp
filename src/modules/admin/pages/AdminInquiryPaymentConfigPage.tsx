@@ -15,7 +15,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { Copy, Image, Info, Lightbulb, Mail, Save, Trash2, Upload } from 'lucide-react';
+import { Copy, Eye, Image, Info, Lightbulb, Mail, Save, Trash2, Upload } from 'lucide-react';
 import { useSnackbar } from 'notistack';
 import { useEffect, useRef, useState } from 'react';
 import { inquiryCreditsAdminApi } from '@/modules/admin/api/inquiryCreditsAdminApi';
@@ -64,6 +64,81 @@ function FieldLabel({ children }: { children: string }) {
     <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 0.75, color: '#0F172A' }}>
       {children}
     </Typography>
+  );
+}
+
+function InstantContactFields({
+  enabled,
+  onEnabledChange,
+  dailyLimit,
+  onDailyLimitChange,
+}: {
+  enabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
+  dailyLimit: number;
+  onDailyLimitChange: (value: number) => void;
+}) {
+  return (
+    <>
+      <FormControlLabel
+        sx={{ alignItems: 'flex-start', ml: 0 }}
+        control={
+          <Switch checked={enabled} onChange={(event) => onEnabledChange(event.target.checked)} />
+        }
+        label={
+          <Box>
+            <Typography sx={{ fontWeight: 700 }}>Free contact viewing</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Shows the owner or vendor contact on the listing itself. This is separate from
+              enquiries and from paid credits.
+            </Typography>
+          </Box>
+        }
+      />
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={1.5}
+        sx={{ alignItems: { sm: 'flex-end' }, mt: 2 }}>
+        <Box sx={{ width: { xs: '100%', sm: 220 }, flexShrink: 0 }}>
+          <FieldLabel>Free instant contact views per day</FieldLabel>
+          <TextField
+            type="number"
+            size="small"
+            fullWidth
+            disabled={!enabled}
+            value={dailyLimit}
+            onChange={(event) => {
+              const next = event.target.value;
+              if (next.trim() === '') {
+                onDailyLimitChange(0);
+                return;
+              }
+              const parsed = Number(next);
+              if (!Number.isFinite(parsed)) return;
+              onDailyLimitChange(Math.max(0, Math.trunc(parsed)));
+            }}
+            sx={fieldSx}
+            slotProps={{ htmlInput: { min: 0, step: 1, inputMode: 'numeric' } }}
+          />
+        </Box>
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            gap: 1,
+            alignItems: 'flex-start',
+            bgcolor: '#F3F7FF',
+            borderRadius: '10px',
+            px: 1.5,
+            py: 1.25,
+          }}>
+          <Typography variant="caption" color="text.secondary">
+            Instant views shown on the listing. 0 hides the option. Enquiry delivery and credit
+            packages below are unchanged.
+          </Typography>
+        </Box>
+      </Stack>
+    </>
   );
 }
 
@@ -167,6 +242,8 @@ export function AdminInquiryPaymentConfigPage() {
   const { enqueueSnackbar } = useSnackbar();
 
   const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [enabled, setEnabled] = useState(false);
@@ -174,6 +251,7 @@ export function AdminInquiryPaymentConfigPage() {
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [instructions, setInstructions] = useState('');
   const [qrFileId, setQrFileId] = useState<string | null>(null);
+  const [qrCleared, setQrCleared] = useState(false);
   const [resolvedQr, setResolvedQr] = useState<{ fileId: string; url: string | null } | null>(null);
   const [packages, setPackages] = useState<DraftPackage[]>([]);
 
@@ -192,14 +270,25 @@ export function AdminInquiryPaymentConfigPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const qrObjectUrlRef = useRef<string | null>(null);
 
-  useEffect(() => {
+  function loadConfig() {
+    setLoading(true);
+    setLoadError(null);
     inquiryCreditsAdminApi
       .getPaymentConfig()
-      .then((cfg) => applyConfig(cfg))
-      .catch(() => {
-        /* first-time blank */
+      .then((cfg) => {
+        applyConfig(cfg);
+        setLoaded(true);
+      })
+      .catch((err) => {
+        setLoadError(getErrorMessage(err, 'Unable to load payment configuration.'));
       })
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadConfig();
+    // Initial fetch only. Retry uses loadConfig directly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function applyConfig(cfg: InquiryPaymentConfig) {
@@ -208,6 +297,7 @@ export function AdminInquiryPaymentConfigPage() {
     setWhatsappNumber(cfg.whatsappNumber ?? '');
     setInstructions(cfg.instructions ?? '');
     setQrFileId(cfg.qrFileId ?? null);
+    setQrCleared(false);
     setPackages(cfg.packages.map(packageToDraft));
     setWebFreeDailyLimit(cfg.webFreeDailyLimit ?? 5);
     setViewHereDailyLimit(cfg.viewHereDailyLimit ?? 5);
@@ -261,6 +351,7 @@ export function AdminInquiryPaymentConfigPage() {
     try {
       const fileId = await uploadLocalFile(file, { purpose: 'INQUIRY_PAYMENT_QR' });
       setQrFileId(fileId);
+      setQrCleared(false);
       await inquiryCreditsAdminApi.updatePaymentConfig({ qrFileId: fileId });
     } catch (err) {
       enqueueSnackbar(getErrorMessage(err, 'QR upload failed. Please try again.'), {
@@ -277,6 +368,7 @@ export function AdminInquiryPaymentConfigPage() {
   }
 
   async function handleSave() {
+    if (saving || !loaded) return;
     setSaving(true);
     try {
       await inquiryCreditsAdminApi.updatePaymentConfig({
@@ -284,6 +376,7 @@ export function AdminInquiryPaymentConfigPage() {
         upiId: upiId.trim() || null,
         whatsappNumber: whatsappNumber.trim() || null,
         qrFileId: qrFileId || null,
+        clearQr: qrCleared && !qrFileId ? true : undefined,
         instructions: instructions.trim() || null,
         webFreeDailyLimit: Number(webFreeDailyLimit),
         viewHereDailyLimit: Math.max(0, Math.trunc(Number(viewHereDailyLimit) || 0)),
@@ -327,10 +420,24 @@ export function AdminInquiryPaymentConfigPage() {
     }
   }
 
-  if (loading) {
+  if (loading && !loaded) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (loadError && !loaded) {
+    return (
+      <Box sx={{ py: 6, maxWidth: 480 }}>
+        <Typography sx={{ fontWeight: 700, mb: 1 }}>Unable to load payment configuration</Typography>
+        <Typography color="text.secondary" sx={{ mb: 2 }}>
+          {loadError}
+        </Typography>
+        <Button variant="contained" onClick={loadConfig} sx={{ textTransform: 'none', fontWeight: 700 }}>
+          Retry
+        </Button>
       </Box>
     );
   }
@@ -560,6 +667,20 @@ export function AdminInquiryPaymentConfigPage() {
                   </Box>
                   <Stack spacing={1} sx={{ minWidth: 0 }}>
                     <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+                      {qrFileId && qrPreviewUrl ? (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<Eye size={14} />}
+                          onClick={() => setQrViewerOpen(true)}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            borderRadius: '10px',
+                          }}>
+                          View QR
+                        </Button>
+                      ) : null}
                       <Button
                         variant="outlined"
                         size="small"
@@ -583,6 +704,7 @@ export function AdminInquiryPaymentConfigPage() {
                           startIcon={<Trash2 size={14} />}
                           onClick={() => {
                             setQrFileId(null);
+                            setQrCleared(true);
                             setQrViewerOpen(false);
                           }}
                           sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '10px' }}>
@@ -591,9 +713,9 @@ export function AdminInquiryPaymentConfigPage() {
                       ) : null}
                     </Stack>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                      Supported formats: PNG or JPG
-                      <br />
-                      Max size: 5 MB
+                      {qrFileId
+                        ? 'Supported formats: PNG or JPG. Max size: 5 MB.'
+                        : 'No payment QR uploaded yet. Supported formats: PNG or JPG. Max size: 5 MB.'}
                     </Typography>
                   </Stack>
                 </Stack>
@@ -626,12 +748,21 @@ export function AdminInquiryPaymentConfigPage() {
           }}>
           <Card elevation={0} sx={{ borderRadius: '16px', border: '1px solid #E6EAF0' }}>
             <CardContent>
-              <Typography sx={{ fontWeight: 700 }}>Email / web enquiry access</Typography>
+              <Typography sx={{ fontWeight: 700 }}>Email / Website / Web App</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Seekers on web (email contact path) get this many free enquiries per day, then use
-                paid credits from the email package below.
+                Instant contact views and email enquiries use separate daily limits. Instant views
+                do not use email enquiry credits.
               </Typography>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: { sm: 'flex-end' } }}>
+              <InstantContactFields
+                enabled={webViewHereEnabled}
+                onEnabledChange={setWebViewHereEnabled}
+                dailyLimit={viewHereDailyLimit}
+                onDailyLimitChange={setViewHereDailyLimit}
+              />
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1.5}
+                sx={{ alignItems: { sm: 'flex-end' }, mt: 2 }}>
                 <Box sx={{ width: { xs: '100%', sm: 220 }, flexShrink: 0 }}>
                   <FieldLabel>Free email enquiries per day</FieldLabel>
                   <TextField
@@ -662,69 +793,6 @@ export function AdminInquiryPaymentConfigPage() {
                   </Typography>
                 </Box>
               </Stack>
-              <FormControlLabel
-                sx={{ mt: 2, alignItems: 'flex-start' }}
-                control={
-                  <Switch
-                    checked={webViewHereEnabled}
-                    onChange={(e) => setWebViewHereEnabled(e.target.checked)}
-                  />
-                }
-                label={
-                  <Box>
-                    <Typography sx={{ fontWeight: 700 }}>
-                      Free contact viewing on the website
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Shows the owner or vendor contact on the listing itself. This is separate
-                      from email enquiries and from paid credits.
-                    </Typography>
-                  </Box>
-                }
-              />
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={1.5}
-                sx={{ alignItems: { sm: 'flex-end' }, mt: 2 }}>
-                <Box sx={{ width: { xs: '100%', sm: 220 }, flexShrink: 0 }}>
-                  <FieldLabel>Free contact views on the website per day</FieldLabel>
-                  <TextField
-                    type="number"
-                    size="small"
-                    fullWidth
-                    disabled={!webViewHereEnabled}
-                    value={viewHereDailyLimit}
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      if (next.trim() === '') {
-                        setViewHereDailyLimit(0);
-                        return;
-                      }
-                      const parsed = Number(next);
-                      if (!Number.isFinite(parsed)) return;
-                      setViewHereDailyLimit(Math.max(0, Math.trunc(parsed)));
-                    }}
-                    sx={fieldSx}
-                    slotProps={{ htmlInput: { min: 0, step: 1, inputMode: 'numeric' } }}
-                  />
-                </Box>
-                <Box
-                  sx={{
-                    flex: 1,
-                    display: 'flex',
-                    gap: 1,
-                    alignItems: 'flex-start',
-                    bgcolor: '#F3F7FF',
-                    borderRadius: '10px',
-                    px: 1.5,
-                    py: 1.25,
-                  }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Instant views shown on the listing. 0 hides the option. Email delivery and
-                    credit packages below are unchanged.
-                  </Typography>
-                </Box>
-              </Stack>
               <PackageEditor
                 title="Credit package — email / web"
                 hint="Used when seekers enquire from the website (email delivery). Wallet credits are shared."
@@ -737,12 +805,18 @@ export function AdminInquiryPaymentConfigPage() {
 
           <Card elevation={0} sx={{ borderRadius: '16px', border: '1px solid #E6EAF0' }}>
             <CardContent>
-              <Typography sx={{ fontWeight: 700 }}>Mobile app enquiry access</Typography>
+              <Typography sx={{ fontWeight: 700 }}>Mobile App</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Controls whether in-app enquiries stay free or consume credits after a daily free
-                allowance.
+                Instant contact views and mobile enquiries use separate daily limits. Instant views
+                do not use mobile enquiry credits.
               </Typography>
-              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{ alignItems: 'stretch' }}>
+              <InstantContactFields
+                enabled={androidViewHereEnabled}
+                onEnabledChange={setAndroidViewHereEnabled}
+                dailyLimit={androidViewHereDailyLimit}
+                onDailyLimitChange={setAndroidViewHereDailyLimit}
+              />
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{ alignItems: 'stretch', mt: 2 }}>
                 <FormControl size="small" sx={{ flex: 1.1, minWidth: 0 }}>
                   <FieldLabel>Billing mode</FieldLabel>
                   <Select
@@ -787,48 +861,6 @@ export function AdminInquiryPaymentConfigPage() {
                   limit still applies.
                 </Typography>
               ) : null}
-              <FormControlLabel
-                sx={{ mt: 2, alignItems: 'flex-start' }}
-                control={
-                  <Switch
-                    checked={androidViewHereEnabled}
-                    onChange={(e) => setAndroidViewHereEnabled(e.target.checked)}
-                  />
-                }
-                label={
-                  <Box>
-                    <Typography sx={{ fontWeight: 700 }}>
-                      Free contact viewing in the mobile app
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Shows the owner or vendor contact on the listing itself. This is separate
-                      from in-app enquiries, the hourly rate limit, and paid credits.
-                    </Typography>
-                  </Box>
-                }
-              />
-              <Box sx={{ width: { xs: '100%', sm: 280 }, mt: 1.5 }}>
-                <FieldLabel>Free contact views in the mobile app per day</FieldLabel>
-                <TextField
-                  type="number"
-                  size="small"
-                  fullWidth
-                  disabled={!androidViewHereEnabled}
-                  value={androidViewHereDailyLimit}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    if (next.trim() === '') {
-                      setAndroidViewHereDailyLimit(0);
-                      return;
-                    }
-                    const parsed = Number(next);
-                    if (!Number.isFinite(parsed)) return;
-                    setAndroidViewHereDailyLimit(Math.max(0, Math.trunc(parsed)));
-                  }}
-                  sx={fieldSx}
-                  slotProps={{ htmlInput: { min: 0, step: 1, inputMode: 'numeric' } }}
-                />
-              </Box>
               <PackageEditor
                 title="Credit package — mobile app"
                 hint="Shown on Android when billing mode is Credits and purchases are enabled. Creating new packages is not supported yet."

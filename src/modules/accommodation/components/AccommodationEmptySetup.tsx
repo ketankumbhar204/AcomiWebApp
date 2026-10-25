@@ -6,7 +6,7 @@ import { OccupancyStatusBoard } from '@/modules/dashboard/components/OccupancySt
 import { useSpaceDashboard } from '@/modules/dashboard/hooks/useSpaceDashboard';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { ContentCard } from '@/shared/components/ContentCard';
-import { spaceBedInventoryPath, spaceOccupancyListPath } from '@/routes/paths';
+import { spaceBedInventoryPath } from '@/routes/paths';
 import type { SpaceType } from '@/shared/types/space';
 import { SetupActionCard } from './SetupActionCard';
 
@@ -106,7 +106,7 @@ export function AccommodationEmptySetup({
                 value: operations.occupiedBeds,
                 tone: 'occupied',
                 onClick: canDrillOccupancy
-                  ? () => navigate(spaceOccupancyListPath(spaceId, 'active'))
+                  ? () => navigate(spaceBedInventoryPath(spaceId, 'OCCUPIED'))
                   : undefined,
               },
               {

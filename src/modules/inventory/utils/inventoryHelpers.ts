@@ -12,7 +12,7 @@ export function getInventoryProfileKind(spaceType: SpaceType | undefined): Inven
   if (spaceType === 'MESS') {
     return 'FOOD';
   }
-  if (spaceType === 'RENTAL') {
+  if (spaceType === 'RENTAL' || spaceType === 'CORPORATE_STAY') {
     return 'FURNITURE';
   }
   return 'ASSET';

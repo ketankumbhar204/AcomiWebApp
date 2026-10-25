@@ -7,10 +7,9 @@ import type {
 } from '@/shared/types/meals';
 import { getMenuOptionItemNames } from './plannedComboDisplay';
 import { MEAL_TYPES } from './mealDates';
+export { resolveMealStatusKind, type MealStatusKind } from './mealStatusTheme.ts';
 
 export type SlotShareState = 'shareable' | 'notPublished' | 'draft' | 'empty';
-
-export type MealStatusKind = 'empty' | 'draft' | 'shared' | 'needs_reshare';
 
 export function hasAvailableMenuOptions(menu?: DailyMenuResponse | null): boolean {
   return (menu?.options?.filter((option) => option.isAvailable) ?? []).length > 0;
@@ -28,19 +27,6 @@ export function getSlotShareState(menu?: DailyMenuResponse | null): SlotShareSta
     return 'shareable';
   }
   return 'notPublished';
-}
-
-export function resolveMealStatusKind(menu?: DailyMenuResponse | null): MealStatusKind {
-  if (!menu || !hasAvailableMenuOptions(menu)) {
-    return 'empty';
-  }
-  if (menu.status === 'MODIFIED') {
-    return 'needs_reshare';
-  }
-  if (menu.status === 'PUBLISHED') {
-    return 'shared';
-  }
-  return 'draft';
 }
 
 export function menusByMealType(

@@ -63,6 +63,7 @@ export type ComplaintAttachment = {
 
 export type ComplaintResponse = {
   complaintId: string;
+  referenceCode?: string | null;
   spaceId: string;
   createdByMemberId: string;
   createdByMemberName?: string | null;

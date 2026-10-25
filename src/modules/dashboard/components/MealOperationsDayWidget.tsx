@@ -1,41 +1,30 @@
 import { Box, Link, Stack, Typography, useTheme } from '@mui/material';
-import { Moon, Sun, Sunrise } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { MealOperationSlotCard } from '@/modules/meals/components/MealOperationSlotCard';
 import {
   useDailyMenus,
   useEligibilitySummary,
-  useMealHeadcountDay,
   useMealPolls,
 } from '@/modules/meals/hooks/useMeals';
+import { buildDashboardMealSlotRows } from '@/modules/meals/utils/dashboardMealSlotDisplay';
 import {
   addDaysIso,
   formatMenuDateLabel,
+  isPastMenuDate,
+  MEAL_TYPES,
   todayIsoDate,
 } from '@/modules/meals/utils/mealDates';
-import { spaceMealsPath } from '@/routes/paths';
+import {
+  spaceMealResponsesPath,
+  spaceMealsEditPath,
+  spaceMealsPath,
+  spaceMealsSharePath,
+} from '@/routes/paths';
 import { PeriodDayNav } from '@/shared/components/PeriodDayNav';
-import { colors } from '@/shared/theme/colors';
-import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
-import type { DailyMenuResponse, MealType } from '@/shared/types/meals';
-import { IconBadge } from './IconBadge';
+import type { DailyMenuResponse, MealPollSlot, MealType } from '@/shared/types/meals';
 import { DASHBOARD_UX, dashSurfaces } from '../theme/dashboardUx';
-
-const MEAL_TYPES: MealType[] = ['BREAKFAST', 'LUNCH', 'DINNER'];
-
-const ICONS: Record<MealType, LucideIcon> = {
-  BREAKFAST: Sunrise,
-  LUNCH: Sun,
-  DINNER: Moon,
-};
-
-const MEAL_TONES: Record<MealType, SemanticTone> = {
-  BREAKFAST: 'peach',
-  LUNCH: 'success',
-  DINNER: 'purple',
-};
 
 function hasPlannedMenu(menu: DailyMenuResponse | undefined): boolean {
   return (menu?.options?.filter((o) => o.isAvailable) ?? []).length > 0;
@@ -60,7 +49,25 @@ export function MealOperationsDayWidget({ spaceId, enabled }: MealOperationsDayW
   const menus = useDailyMenus(spaceId, menuDate, enabled);
   const polls = useMealPolls(spaceId, menuDate, enabled);
   const eligibility = useEligibilitySummary(spaceId, menuDate, enabled);
-  useMealHeadcountDay(spaceId, menuDate, enabled);
+
+  const slotRows = useMemo(() => {
+    const menuMap = Object.fromEntries(menus.menus.map((menu) => [menu.mealType, menu]));
+    const pollMap: Partial<Record<MealType, MealPollSlot>> = {};
+    for (const poll of polls.pollDay?.polls ?? []) {
+      pollMap[poll.mealType] = poll;
+    }
+    const eligibleByMeal: Partial<Record<MealType, number>> = {};
+    for (const slot of eligibility.summary?.slots ?? []) {
+      eligibleByMeal[slot.mealType] = slot.eligibleCount;
+    }
+    return buildDashboardMealSlotRows(
+      menuMap,
+      pollMap,
+      eligibleByMeal,
+      {},
+      eligibility.summary?.distinctEligibleMemberCount ?? 0,
+    );
+  }, [eligibility.summary, menus.menus, polls.pollDay]);
 
   const daySummary = useMemo(() => {
     let shared = 0;
@@ -87,7 +94,13 @@ export function MealOperationsDayWidget({ spaceId, enabled }: MealOperationsDayW
   }, [daySummary.shared, eligibility.summary?.distinctEligibleMemberCount, polls.pollDay?.polls, t]);
 
   const isToday = menuDate === todayIsoDate();
+  const hasPlannedMeal = daySummary.shared + daySummary.notShared > 0;
+  const canShare = hasPlannedMeal && !isPastMenuDate(menuDate);
   const goPlan = () => navigate(spaceMealsPath(spaceId, menuDate));
+  const goShare = () =>
+    navigate(
+      spaceMealsSharePath(spaceId, menuDate, daySummary.notShared > 0 ? 'save' : 'reshare'),
+    );
 
   return (
     <Box
@@ -122,19 +135,30 @@ export function MealOperationsDayWidget({ spaceId, enabled }: MealOperationsDayW
             }
             size="compact"
           />
-          <Link
-            component="button"
-            type="button"
-            underline="hover"
-            onClick={goPlan}
-            sx={{
-              ...DASHBOARD_UX.button,
-              color: 'primary.dark',
-              ml: 0.75,
-            }}
-          >
-            {t('dashboard.mealOperations.planMenu')} →
-          </Link>
+          {!isPastMenuDate(menuDate) ? (
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
+              {canShare ? (
+                <Link
+                  component="button"
+                  type="button"
+                  underline="hover"
+                  onClick={goShare}
+                  sx={{ ...DASHBOARD_UX.button, color: 'primary.dark' }}
+                >
+                  {t('dashboard.operations.shareCta', { defaultValue: 'Share' })} →
+                </Link>
+              ) : null}
+              <Link
+                component="button"
+                type="button"
+                underline="hover"
+                onClick={goPlan}
+                sx={{ ...DASHBOARD_UX.button, color: 'primary.dark' }}
+              >
+                {t('dashboard.mealOperations.planMenu')} →
+              </Link>
+            </Stack>
+          ) : null}
         </Stack>
       </Stack>
 
@@ -151,98 +175,32 @@ export function MealOperationsDayWidget({ spaceId, enabled }: MealOperationsDayW
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: {
-            xs: '1fr',
-            sm: 'repeat(3, minmax(0, 1fr))',
-          },
-          gap: `${DASHBOARD_UX.cardGap}px`,
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gap: '8px',
+          minWidth: 0,
         }}
       >
-        {MEAL_TYPES.map((mealType) => {
-          const menu = menus.menus.find((row) => row.mealType === mealType);
-          const planned = hasPlannedMenu(menu);
-          const Icon = ICONS[mealType];
-          const tone = MEAL_TONES[mealType];
-          const surface = semanticSurface(tone, theme.palette.mode);
-          let statusLabel = t('meals.status.empty', { defaultValue: 'Empty' });
-          if (planned && menu?.status === 'PUBLISHED') {
-            statusLabel = t('meals.status.PUBLISHED', { defaultValue: 'Shared' });
-          } else if (planned) {
-            statusLabel = t(`meals.status.${menu?.status ?? 'DRAFT'}`, {
-              defaultValue: 'Not shared',
-            });
-          }
-
-          return (
-            <Box
-              key={mealType}
-              role="button"
-              tabIndex={0}
-              onClick={goPlan}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  goPlan();
-                }
-              }}
-              aria-label={`${t(`meals.mealType.${mealType}`)} — ${statusLabel}`}
-              sx={{
-                minWidth: 0,
-                minHeight: DASHBOARD_UX.mealCardMinHeight,
-                maxHeight: DASHBOARD_UX.mealCardMaxHeight,
-                px: `${DASHBOARD_UX.metricPadding + 2}px`,
-                py: `${DASHBOARD_UX.metricPadding}px`,
-                bgcolor: surface.bg,
-                border: `1px solid ${surface.border}`,
-                borderRadius: `${DASHBOARD_UX.tileRadius}px`,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                gap: `${DASHBOARD_UX.internalGap}px`,
-                cursor: 'pointer',
-                transition: DASHBOARD_UX.transition,
-                '&:hover': {
-                  bgcolor: s.surface,
-                  boxShadow: s.shadow,
-                },
-                '&:focus-visible': {
-                  outline: `2px solid ${colors.primary}`,
-                  outlineOffset: 2,
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: `${DASHBOARD_UX.internalGap}px`,
-                  minWidth: 0,
-                }}
-              >
-                <IconBadge tone={tone}>
-                  <Icon />
-                </IconBadge>
-                <Typography
-                  sx={{
-                    ...DASHBOARD_UX.cardTitle,
-                    color: s.textPrimary,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {t(`meals.mealType.${mealType}`)}
-                </Typography>
-              </Box>
-              <Typography sx={{ ...DASHBOARD_UX.cardSubtitle, color: s.textSecondary }} noWrap>
-                {statusLabel}
-              </Typography>
-              <Typography sx={{ ...DASHBOARD_UX.button, color: 'primary.dark' }}>
-                {t('dashboard.mealOperations.planMenu')} →
-              </Typography>
-            </Box>
-          );
-        })}
+        {slotRows.map((row) => (
+          <MealOperationSlotCard
+            key={row.mealType}
+            mealType={row.mealType}
+            mealLabel={t(`meals.mealType.${row.mealType}`)}
+            caption={t(row.captionKey, row.captionParams)}
+            countPrimary={row.countPrimary}
+            countUnit={
+              row.countUnitKey ? t(row.countUnitKey, { defaultValue: 'responded' }) : undefined
+            }
+            captionTone={row.captionTone}
+            statusKind={row.statusKind}
+            onPress={() => {
+              if (row.statusKind === 'shared') {
+                navigate(spaceMealResponsesPath(spaceId, { date: menuDate, mealType: row.mealType }));
+                return;
+              }
+              navigate(spaceMealsEditPath(spaceId, { date: menuDate, mealType: row.mealType }));
+            }}
+          />
+        ))}
       </Box>
     </Box>
   );

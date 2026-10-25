@@ -121,28 +121,22 @@ function SummaryCard({ label, value, icon: Icon, theme, selected, onPress }: Sum
       >
         <Icon size={16} color={theme.accent} strokeWidth={2.2} aria-hidden />
       </Box>
-      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+      <Box
+        sx={{
+          width: '1px',
+          alignSelf: 'stretch',
+          my: 0.25,
+          bgcolor: s.divider,
+          flexShrink: 0,
+        }}
+      />
+      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <Typography
           sx={{
-            ...DASHBOARD_UX.badge,
-            fontSize: 12,
-            lineHeight: '16px',
-            fontWeight: 700,
-            color: theme.accent,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {label}
-        </Typography>
-        <Typography
-          sx={{
-            ...DASHBOARD_UX.link,
-            fontSize: 15,
-            lineHeight: '20px',
+            fontSize: 22,
+            lineHeight: '26px',
             fontWeight: 800,
-            color: s.textPrimary,
+            color: theme.accent,
             fontVariantNumeric: 'tabular-nums',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
@@ -150,6 +144,20 @@ function SummaryCard({ label, value, icon: Icon, theme, selected, onPress }: Sum
           }}
         >
           {value}
+        </Typography>
+        <Typography
+          sx={{
+            ...DASHBOARD_UX.badge,
+            fontSize: 12,
+            lineHeight: '16px',
+            fontWeight: 600,
+            color: s.textSecondary,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {label}
         </Typography>
       </Box>
       <ChevronRight size={16} color="#9CA3AF" strokeWidth={2.2} aria-hidden />

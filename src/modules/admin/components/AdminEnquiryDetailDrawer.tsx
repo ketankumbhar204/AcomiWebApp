@@ -33,6 +33,7 @@ import { discoverDefaultImageUrl } from '@/modules/onboarding/utils/discoverDefa
 import { adminEnquiryApi } from '@/shared/api/enquiryApi';
 import { getErrorMessage } from '@/shared/api/errors';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
+import { ReferenceCode } from '@/shared/components/ReferenceCode';
 import { adminListPath } from '@/modules/admin/utils/adminListFilters';
 import { formatIndianMobileWithCountryCode } from '@/shared/utils/indianMobile';
 import type { AdminSpaceEnquiryDetail } from '@/shared/types/enquiry';
@@ -241,6 +242,7 @@ export function AdminEnquiryDetailDrawer({
                 <AdminEnquiryStatusChip status={detail.status} />
                 {detail.status === 'SHARED' ? <Share2 size={16} color="#16A34A" /> : null}
               </Stack>
+              <ReferenceCode value={detail.referenceCode} />
               {detail.status === 'SHARED' ? (
                 <Typography sx={{ color: 'text.secondary', fontSize: 13, mb: 2 }}>
                   {detail.automaticallyShared
