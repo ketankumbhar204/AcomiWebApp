@@ -166,6 +166,17 @@ export const adminApi = {
       ),
     ),
 
+  updatePropertyTestLead: async (
+    id: string,
+    testLead: boolean,
+  ): Promise<PropertyRegistrationDetail> =>
+    unwrapApiResponse(
+      apiClient.put<ApiResponse<PropertyRegistrationDetail>>(
+        `/admin/property-registrations/${id}/test-lead`,
+        { testLead },
+      ),
+    ),
+
   updatePropertyRegistrationContact: async (
     id: string,
     payload: AdminUpdateRegistrationContactRequest,
@@ -267,6 +278,14 @@ export const adminApi = {
       apiClient.post<ApiResponse<MessRegistrationResponse>>(
         '/admin/mess-registrations',
         payload,
+      ),
+    ),
+
+  updateMessTestLead: async (id: string, testLead: boolean): Promise<MessRegistrationDetail> =>
+    unwrapApiResponse(
+      apiClient.put<ApiResponse<MessRegistrationDetail>>(
+        `/admin/mess-registrations/${id}/test-lead`,
+        { testLead },
       ),
     ),
 

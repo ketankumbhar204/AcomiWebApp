@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { enquiryApi } from '@/shared/api/enquiryApi';
@@ -18,6 +18,10 @@ type PhotoRequestActionProps = {
   spaceType?: string | null;
   location?: string | null;
   photoUrls?: ReadonlyArray<string | null | undefined> | null;
+  /** Return false to keep the WhatsApp dialog closed, for example while payment is required. */
+  onBeforeOpen?: () => boolean;
+  /** Increment to open the dialog after payment is confirmed. */
+  openToken?: number;
 };
 
 export function PhotoRequestAction({
@@ -27,6 +31,8 @@ export function PhotoRequestAction({
   spaceType,
   location,
   photoUrls,
+  onBeforeOpen,
+  openToken = 0,
 }: PhotoRequestActionProps) {
   const { t } = useTranslation();
   const hasPhotos = hasActualListingPhotos(photoUrls);
@@ -39,10 +45,20 @@ export function PhotoRequestAction({
   const title = photoRequestTitle(kind, hasPhotos);
 
   function openRequest() {
+    if (onBeforeOpen && !onBeforeOpen()) return;
     setMessage(buildPhotoRequestMessage({ kind, hasPhotos, name, spaceType, location }));
     setNotice('');
     setOpen(true);
   }
+
+  const seenOpenToken = useRef(0);
+  useEffect(() => {
+    if (!openToken || openToken === seenOpenToken.current) return;
+    seenOpenToken.current = openToken;
+    setMessage(buildPhotoRequestMessage({ kind, hasPhotos, name, spaceType, location }));
+    setNotice('');
+    setOpen(true);
+  }, [hasPhotos, kind, location, name, openToken, spaceType]);
 
   function closeRequest() {
     if (submittingRef.current) return;

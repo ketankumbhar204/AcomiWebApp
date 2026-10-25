@@ -1,4 +1,5 @@
 import apiClient from '@/shared/api/client';
+import { ApiError } from '@/shared/api/errors';
 import { unwrapApiResponse, unwrapVoidResponse } from '@/shared/api/apiRequest';
 import type { ApiResponse, PagedResponse } from '@/shared/types/api';
 import type { NotificationListResponse, SpaceNotification } from '@/shared/types/dashboard';
@@ -99,8 +100,9 @@ export const enquiryApi = {
       return await unwrapApiResponse(
         apiClient.get<ApiResponse<OwnerContactResponse>>(`/spaces/${spaceId}/revealed-contact`),
       );
-    } catch {
-      return null;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return null;
+      throw err;
     }
   },
 

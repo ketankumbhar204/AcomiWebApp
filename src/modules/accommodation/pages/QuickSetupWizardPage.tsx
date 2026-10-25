@@ -47,10 +47,8 @@ import {
 } from '@/shared/utils/suggestBuildingDefaults';
 import { accommodationApi } from '../api/accommodationApi';
 import { useBuildings } from '../hooks/useAccommodation';
-import {
-  defaultLayoutModeForSpaceType,
-  selectableLayoutModes,
-} from '../utils/accommodationProfile';
+import { selectableLayoutModes } from '../utils/accommodationProfile';
+import { decideWizardLayout, isSubmittableSetupLayout } from '../utils/setupWizardLayout';
 import { PropertyLayoutModePicker } from '../illustrations/PropertyLayoutModePicker';
 import { SetupStructurePreview } from '../setup-preview/SetupStructurePreview';
 import { computeStructureTotals, expandToEditableStructure } from '../setup-preview/setupStructureModel';
@@ -70,15 +68,24 @@ export function QuickSetupWizardPage() {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const permissions = useSpacePermissions(spaceId);
-  const spaceType = permissions.space?.spaceType ?? 'PG';
+  const spaceType = permissions.space?.spaceType;
   const spaceName = permissions.space?.spaceName ?? '';
   const { buildings, loading: buildingsLoading } = useBuildings(spaceId);
 
-  const layoutOptions = selectableLayoutModes(spaceType);
+  const layoutOptions = spaceType ? selectableLayoutModes(spaceType) : [];
+  const [boundSpaceId, setBoundSpaceId] = useState(spaceId);
   const [stepIndex, setStepIndex] = useState(0);
-  const [layoutMode, setLayoutMode] = useState<PropertyLayoutMode>(
-    defaultLayoutModeForSpaceType(spaceType),
-  );
+  const [userChoseLayout, setUserChoseLayout] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<PropertyLayoutMode | null>(() => {
+    const initial = decideWizardLayout({
+      previousSpaceId: spaceId,
+      spaceId,
+      spaceType,
+      layoutMode: null,
+      userChoseLayout: false,
+    });
+    return initial.layoutMode;
+  });
   const [buildingName, setBuildingName] = useState('');
   const [buildingCode, setBuildingCode] = useState('');
   const [buildingNameError, setBuildingNameError] = useState<string | null>(null);
@@ -105,6 +112,37 @@ export function QuickSetupWizardPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const creatingRef = useRef(false);
 
+  if (spaceId !== boundSpaceId) {
+    setBoundSpaceId(spaceId);
+    setStepIndex(0);
+    setUserChoseLayout(false);
+    setLayoutMode(null);
+    setBuildingName('');
+    setBuildingCode('');
+    setBuildingNameError(null);
+    setValidatedBuildingName(null);
+    setEditableStructure(null);
+    setPreview(null);
+    setCreateError(null);
+    buildingDefaultsAppliedRef.current = false;
+  }
+
+  useEffect(() => {
+    const decision = decideWizardLayout({
+      previousSpaceId: spaceId,
+      spaceId,
+      spaceType,
+      layoutMode,
+      userChoseLayout,
+    });
+    if (decision.layoutMode !== layoutMode) {
+      setLayoutMode(decision.layoutMode);
+    }
+    if (decision.userChoseLayout !== userChoseLayout) {
+      setUserChoseLayout(decision.userChoseLayout);
+    }
+  }, [layoutMode, spaceId, spaceType, userChoseLayout]);
+
   useEffect(() => {
     document.title = `${t('accommodation.setup.title')} · ${t('common.appName')}`;
   }, [t]);
@@ -118,7 +156,27 @@ export function QuickSetupWizardPage() {
     buildingDefaultsAppliedRef.current = true;
   }, [buildings.length, buildingsLoading, spaceId, spaceName]);
 
-  const buildRequest = (): AccommodationSetupRequest => {
+  const chooseLayout = (mode: PropertyLayoutMode) => {
+    if (!isSubmittableSetupLayout(spaceType, mode)) {
+      return;
+    }
+    setUserChoseLayout(true);
+    setLayoutMode(mode);
+  };
+
+  const rejectInvalidLayout = () => {
+    enqueueSnackbar(
+      t('accommodation.setup.errors.layout', {
+        defaultValue: 'Choose a layout that matches this property before continuing.',
+      }),
+      { variant: 'error' },
+    );
+  };
+
+  const buildRequest = (): AccommodationSetupRequest | null => {
+    if (!spaceType || !isSubmittableSetupLayout(spaceType, layoutMode) || !layoutMode) {
+      return null;
+    }
     const request: AccommodationSetupRequest = {
       spaceType,
       layoutMode,
@@ -167,7 +225,7 @@ export function QuickSetupWizardPage() {
   const canAdvance = useMemo(() => {
     const step = STEPS[stepIndex];
     if (step === 'layout') {
-      return Boolean(layoutMode);
+      return isSubmittableSetupLayout(spaceType, layoutMode);
     }
     if (step === 'building') {
       return Boolean(buildingName.trim()) && !buildingNameError;
@@ -176,7 +234,7 @@ export function QuickSetupWizardPage() {
       return true;
     }
     return Boolean(editableStructure);
-  }, [buildingName, buildingNameError, editableStructure, layoutMode, stepIndex]);
+  }, [buildingName, buildingNameError, editableStructure, layoutMode, spaceType, stepIndex]);
 
   async function validateBuildingName(name: string): Promise<boolean> {
     const trimmed = name.trim();
@@ -222,9 +280,14 @@ export function QuickSetupWizardPage() {
       return;
     }
     if (step === 'structure') {
+      const request = buildRequest();
+      if (!request || !layoutMode || !spaceType) {
+        rejectInvalidLayout();
+        return;
+      }
       setBusy(true);
       try {
-        const result = await accommodationApi.previewSetup(spaceId, buildRequest());
+        const result = await accommodationApi.previewSetup(spaceId, request);
         const structure = expandToEditableStructure(result.sample ?? [], result.totals, {
           buildingName: buildingName.trim(),
           buildingCode: buildingCode.trim(),
@@ -268,6 +331,11 @@ export function QuickSetupWizardPage() {
     if (!editableStructure || creatingRef.current) {
       return;
     }
+    const request = buildRequest();
+    if (!request) {
+      rejectInvalidLayout();
+      return;
+    }
     creatingRef.current = true;
     setCreating(true);
     setCreateError(null);
@@ -276,7 +344,7 @@ export function QuickSetupWizardPage() {
         typeof crypto !== 'undefined' && 'randomUUID' in crypto
           ? crypto.randomUUID()
           : `setup-${Date.now()}`;
-      await accommodationApi.executeSetup(spaceId, buildRequest(), key);
+      await accommodationApi.executeSetup(spaceId, request, key);
       enqueueSnackbar(t('accommodation.setup.success'), { variant: 'success' });
       setCreateConfirmOpen(false);
       navigate(spaceAccommodationPath(spaceId));
@@ -348,7 +416,7 @@ export function QuickSetupWizardPage() {
           {STEPS[stepIndex] === 'layout' ? (
             <PropertyLayoutModePicker
               value={layoutMode}
-              onChange={setLayoutMode}
+              onChange={chooseLayout}
               options={layoutOptions}
               variant="featured"
             />

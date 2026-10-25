@@ -42,7 +42,13 @@ import { adminApi } from '@/modules/admin/api/adminApi';
 import {
   formatPropertyRegistrationSource,
 } from '@/modules/admin/utils/adminLabels';
-import { type AdminListTab } from '@/modules/admin/utils/adminListFilters';
+import {
+  type AdminListTab,
+  registrationSourceFromParams,
+  selectedSummaryStat,
+  summaryStatForCard,
+  summaryStatParams,
+} from '@/modules/admin/utils/adminListFilters';
 import { discoverDefaultImageUrl } from '@/modules/onboarding/utils/discoverDefaultImages';
 import {
   adminAddPropertyPath,
@@ -111,7 +117,8 @@ export function AdminPropertyListPage() {
   const { enqueueSnackbar } = useSnackbar();
 
   const tab: AdminListTab = searchParams.get('tab') === 'active' ? 'active' : 'leads';
-  const leadScope = leadScopeFromParams(searchParams);
+  const leadScope = tab === 'leads' ? leadScopeFromParams(searchParams) : 'open';
+  const sourceFilter = registrationSourceFromParams(searchParams);
 
   const [summary, setSummary] = useState<AdminPropertyRegistrationsSummary | null>(null);
   const [leads, setLeads] = useState<PropertyRegistrationListItem[]>([]);
@@ -126,7 +133,6 @@ export function AdminPropertyListPage() {
   const loadingMoreRef = useRef(false);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
-  const [sourceFilter, setSourceFilter] = useState<RegistrationSource | ''>('');
   const [statusFilter, setStatusFilter] = useState<RegistrationStatus | ''>('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
@@ -137,7 +143,8 @@ export function AdminPropertyListPage() {
     return () => window.clearTimeout(timer);
   }, [searchInput]);
 
-  const filterKey = `${tab}|${leadScope}|${debouncedQ}|${sourceFilter}|${statusFilter}`;
+  const selectedStat = selectedSummaryStat(searchParams, tab, leadScope, sourceFilter, statusFilter);
+  const filterKey = `${tab}|${leadScope}|${debouncedQ}|${sourceFilter}|${statusFilter}|${selectedStat ?? ''}`;
   const [activeFilterKey, setActiveFilterKey] = useState(filterKey);
   if (activeFilterKey !== filterKey) {
     setActiveFilterKey(filterKey);
@@ -241,7 +248,7 @@ export function AdminPropertyListPage() {
     return () => {
       cancelled = true;
     };
-  }, [debouncedQ, listParams, leadPage, sourceFilter, tab]);
+  }, [debouncedQ, listParams, leadPage, sourceFilter, tab, selectedStat]);
 
   const activeVisible = useMemo(
     () => activeAll.slice(0, visibleCount),
@@ -303,6 +310,7 @@ export function AdminPropertyListPage() {
   function setTab(next: AdminListTab) {
     const params = new URLSearchParams(searchParams);
     params.set('tab', next);
+    params.delete('stat');
     if (next === 'active') {
       params.delete('source');
       params.delete('scope');
@@ -311,9 +319,35 @@ export function AdminPropertyListPage() {
     setSearchParams(params, { replace: true });
   }
 
+  function applySummaryStat(key: string) {
+    const stat = summaryStatForCard(key);
+    if (!stat) return;
+    setSearchInput('');
+    setDebouncedQ('');
+    setStatusFilter('');
+    setSelected(new Set());
+    setSearchParams(summaryStatParams(searchParams, stat), { replace: true });
+  }
+
+  function setSource(next: RegistrationSource | '') {
+    const params = new URLSearchParams(searchParams);
+    if (next) params.set('source', next);
+    else params.delete('source');
+    if (tab === 'active') {
+      if (next === 'PUBLIC_WEBSITE') params.set('stat', 'registered');
+      else if (next === '') params.set('stat', 'active');
+      else params.delete('stat');
+    } else {
+      params.delete('stat');
+    }
+    setSelected(new Set());
+    setSearchParams(params, { replace: true });
+  }
+
   function setScope(scope: LeadScope) {
     const params = new URLSearchParams(searchParams);
     params.set('tab', 'leads');
+    params.delete('stat');
     params.set('scope', scope);
     if (scope === 'website') params.set('source', 'PUBLIC_WEBSITE');
     else if (scope === 'admin') params.set('source', 'ADMIN');
@@ -516,16 +550,32 @@ export function AdminPropertyListPage() {
         {stats.map((stat) => {
           const positive = (stat.delta ?? 0) > 0;
           const negative = (stat.delta ?? 0) < 0;
+          const cardSelected = summaryStatForCard(stat.key) === selectedStat;
           return (
             <Grid key={stat.key} size={{ xs: 12, sm: 6, md: 3 }}>
               <Card
                 elevation={0}
+                role="button"
+                tabIndex={0}
+                aria-pressed={cardSelected}
+                onClick={() => applySummaryStat(stat.key)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    applySummaryStat(stat.key);
+                  }
+                }}
                 sx={{
                   borderRadius: '14px',
                   border: '1px solid',
-                  borderColor: 'divider',
-                  boxShadow: '0 1px 2px rgb(15 23 42 / 0.04), 0 4px 12px rgb(15 23 42 / 0.04)',
+                  borderColor: cardSelected ? '#15803D' : 'divider',
+                  boxShadow: cardSelected
+                    ? '0 0 0 2px rgb(21 128 61 / 0.18)'
+                    : '0 1px 2px rgb(15 23 42 / 0.04), 0 4px 12px rgb(15 23 42 / 0.04)',
                   height: '100%',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                  '&:hover': { borderColor: '#15803D' },
                 }}>
                 <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                   <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
@@ -575,7 +625,7 @@ export function AdminPropertyListPage() {
       </Grid>
 
       <Tabs
-        value={tab}
+        value={selectedStat === 'total' ? false : tab}
         onChange={(_, next: AdminListTab) => setTab(next)}
         sx={{
           mb: 2,
@@ -653,8 +703,8 @@ export function AdminPropertyListPage() {
               <Select
                 displayEmpty
                 value={sourceFilter}
-                disabled={leadScope === 'website' || leadScope === 'admin' || leadScope === 'my'}
-                onChange={(e) => setSourceFilter(e.target.value as RegistrationSource | '')}
+                disabled={tab === 'leads' && (leadScope === 'website' || leadScope === 'admin' || leadScope === 'my')}
+                onChange={(e) => setSource(e.target.value as RegistrationSource | '')}
                 sx={{ borderRadius: '10px' }}>
                 <MenuItem value="">{t('admin.property.filters.allSources')}</MenuItem>
                 <MenuItem value="PUBLIC_WEBSITE">{t('admin.labels.registeredByOwner')}</MenuItem>
@@ -666,7 +716,14 @@ export function AdminPropertyListPage() {
                 <Select
                   displayEmpty
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as RegistrationStatus | '')}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value as RegistrationStatus | '');
+                    if (searchParams.get('stat')) {
+                      const params = new URLSearchParams(searchParams);
+                      params.delete('stat');
+                      setSearchParams(params, { replace: true });
+                    }
+                  }}
                   sx={{ borderRadius: '10px' }}>
                   <MenuItem value="">{t('admin.property.filters.allStatus')}</MenuItem>
                   <MenuItem value="PENDING">PENDING</MenuItem>

@@ -1,6 +1,5 @@
 import {
   Alert,
-  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -36,10 +35,13 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { colors } from '@/shared/theme/colors';
-import { commitTypeSelection, typeSelection } from '@/modules/admin/utils/spaceTypeSelection';
+import {
+  previewCellInputValue,
+  selectOptionsWithCurrent,
+} from '@/modules/admin/utils/bulkImportPreviewEdit';
 import {
   PROPERTY_BULK_IMPORT_FIELDS,
   effectivePreviewStatus,
@@ -53,7 +55,8 @@ import {
   type PropertyBulkImportPreviewRow,
 } from '@/shared/types/adminBulkImport';
 
-const PAGE_SIZE = 10;
+const INITIAL_ROWS = 20;
+const SCROLL_CHUNK = 8;
 
 const PREFERRED_COLUMN_ORDER: PropertyBulkImportFieldKey[] = [
   'PROPERTY_TYPE',
@@ -133,11 +136,6 @@ function correctionOptions(
   return null;
 }
 
-function displayValue(value: string | null | undefined): string {
-  if (value == null || String(value).trim() === '') return '—';
-  return String(value);
-}
-
 function pct(part: number, total: number): number {
   if (total <= 0) return 0;
   return Math.round((part / total) * 100);
@@ -204,8 +202,18 @@ export function AdminBulkImportPreviewStep({
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [errorsOnly, setErrorsOnly] = useState(false);
-  const [page, setPage] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_ROWS);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(() => new Set());
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLTableRowElement | null>(null);
+  const visibleCountRef = useRef(INITIAL_ROWS);
+  const filteredLengthRef = useRef(0);
+  const loadingMoreRef = useRef(false);
+  const appendTimerRef = useRef<number | null>(null);
+  const pendingContinueRef = useRef(false);
+  const scheduleAppendRef = useRef<() => void>(() => {});
+  visibleCountRef.current = visibleCount;
 
   const duplicateCount = preview.duplicate ?? preview.rows.filter((r) => r.status === 'DUPLICATE').length;
 
@@ -260,26 +268,121 @@ export function AdminBulkImportPreviewStep({
       return rowMatchesSearch(row, search.trim());
     });
   }, [preview.rows, errorsOnly, statusFilter, search, fieldOverrides]);
+  filteredLengthRef.current = filteredRows.length;
 
-  const pageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
-  const safePage = Math.min(page, pageCount - 1);
-  const pageRows = filteredRows.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+  const visibleRows = filteredRows.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredRows.length;
   const errorColumns = useMemo(() => {
     const fields = new Set<PropertyBulkImportFieldKey>();
-    for (const row of pageRows) {
+    for (const row of visibleRows) {
       for (const err of remainingPreviewErrors(row, fieldOverrides)) {
         const match = columns.find((col) => previewErrorAppliesToField(err.field, col.field));
         if (match) fields.add(match.field);
       }
     }
     return fields;
-  }, [pageRows, fieldOverrides, columns]);
-  const showingFrom = filteredRows.length === 0 ? 0 : safePage * PAGE_SIZE + 1;
-  const showingTo = Math.min(filteredRows.length, (safePage + 1) * PAGE_SIZE);
+  }, [visibleRows, fieldOverrides, columns]);
+  const showingFrom = filteredRows.length === 0 ? 0 : 1;
+  const showingTo = visibleRows.length;
+
+  const finishLoading = useCallback(() => {
+    if (appendTimerRef.current != null) {
+      window.clearTimeout(appendTimerRef.current);
+      appendTimerRef.current = null;
+    }
+    pendingContinueRef.current = false;
+    loadingMoreRef.current = false;
+    setLoadingMore(false);
+  }, []);
+
+  scheduleAppendRef.current = () => {
+    if (appendTimerRef.current != null || !loadingMoreRef.current) return;
+    appendTimerRef.current = window.setTimeout(() => {
+      appendTimerRef.current = null;
+      if (!loadingMoreRef.current) return;
+      if (visibleCountRef.current >= filteredLengthRef.current) {
+        finishLoading();
+        return;
+      }
+      pendingContinueRef.current = true;
+      setVisibleCount((current) => {
+        const next = Math.min(current + SCROLL_CHUNK, filteredLengthRef.current);
+        visibleCountRef.current = next;
+        return next;
+      });
+    }, 48);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (appendTimerRef.current != null) window.clearTimeout(appendTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (appendTimerRef.current != null) {
+      window.clearTimeout(appendTimerRef.current);
+      appendTimerRef.current = null;
+    }
+    pendingContinueRef.current = false;
+    loadingMoreRef.current = false;
+    visibleCountRef.current = INITIAL_ROWS;
+    setVisibleCount(INITIAL_ROWS);
+    setLoadingMore(false);
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [search, statusFilter, errorsOnly]);
+
+  useEffect(() => {
+    if (!pendingContinueRef.current) return;
+    let follow = 0;
+    let cancelled = false;
+    const frame = window.requestAnimationFrame(() => {
+      follow = window.requestAnimationFrame(() => {
+        if (cancelled || !loadingMoreRef.current) return;
+        pendingContinueRef.current = false;
+        const root = scrollRef.current;
+        const node = sentinelRef.current;
+        const exhausted = visibleCountRef.current >= filteredLengthRef.current;
+        const near =
+          root != null &&
+          node != null &&
+          node.getBoundingClientRect().top <= root.getBoundingClientRect().bottom + 64;
+        if (exhausted || !near) {
+          finishLoading();
+          return;
+        }
+        scheduleAppendRef.current();
+      });
+    });
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+      if (follow) window.cancelAnimationFrame(follow);
+    };
+  }, [visibleCount, finishLoading]);
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    const root = scrollRef.current;
+    if (!node || !root || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        if (loadingMoreRef.current) return;
+        if (visibleCountRef.current >= filteredLengthRef.current) return;
+        loadingMoreRef.current = true;
+        setLoadingMore(true);
+        scheduleAppendRef.current();
+      },
+      { root, rootMargin: '64px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, filteredRows.length]);
 
   const allPageSelected =
-    pageRows.length > 0 && pageRows.every((row) => selected.has(row.rowNumber));
-  const somePageSelected = pageRows.some((row) => selected.has(row.rowNumber));
+    visibleRows.length > 0 && visibleRows.every((row) => selected.has(row.rowNumber));
+  const somePageSelected = visibleRows.some((row) => selected.has(row.rowNumber));
 
   const keptDuplicates = useMemo(
     () =>
@@ -327,27 +430,26 @@ export function AdminBulkImportPreviewStep({
     setSelected((prev) => {
       const next = new Set(prev);
       if (allPageSelected) {
-        for (const row of pageRows) next.delete(row.rowNumber);
+        for (const row of visibleRows) next.delete(row.rowNumber);
       } else {
-        for (const row of pageRows) next.add(row.rowNumber);
+        for (const row of visibleRows) next.add(row.rowNumber);
       }
       return next;
     });
   }
 
-  function toggleRow(rowNumber: number) {
+  const toggleRow = useCallback((rowNumber: number) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(rowNumber)) next.delete(rowNumber);
       else next.add(rowNumber);
       return next;
     });
-  }
+  }, []);
 
   function selectStatus(next: StatusFilter) {
     setStatusFilter((current) => (current === next && next !== 'ALL' ? 'ALL' : next));
     setErrorsOnly(false);
-    setPage(0);
   }
 
   const validPct = pct(displayValid, preview.totalRows);
@@ -619,7 +721,6 @@ export function AdminBulkImportPreviewStep({
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
-                setPage(0);
               }}
               slotProps={{
                 input: {
@@ -638,7 +739,6 @@ export function AdminBulkImportPreviewStep({
                 onChange={(e) => {
                   setStatusFilter(e.target.value as StatusFilter);
                   setErrorsOnly(false);
-                  setPage(0);
                 }}
                 sx={{ borderRadius: 2, bgcolor: colors.surface }}
               >
@@ -657,7 +757,6 @@ export function AdminBulkImportPreviewStep({
               onClick={() => {
                 setErrorsOnly((v) => !v);
                 setStatusFilter('ALL');
-                setPage(0);
               }}
               sx={{
                 borderRadius: 2,
@@ -675,7 +774,16 @@ export function AdminBulkImportPreviewStep({
           </Stack>
         </Stack>
 
-        <TableContainer sx={{ maxHeight: 480, border: `1px solid ${colors.border}`, borderRadius: 2 }}>
+        <Box sx={{ position: 'relative' }}>
+        <TableContainer
+          ref={scrollRef}
+          sx={{
+            maxHeight: 480,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 2,
+            overflowAnchor: 'none',
+          }}
+        >
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
@@ -709,13 +817,16 @@ export function AdminBulkImportPreviewStep({
                 ))}
                 <TableCell
                   sx={{
-                    bgcolor: pageRows.some((row) => remainingPreviewErrors(row, fieldOverrides).length > 0)
+                    width: 220,
+                    maxWidth: 220,
+                    bgcolor: visibleRows.some((row) => remainingPreviewErrors(row, fieldOverrides).length > 0)
                       ? '#FEE2E2'
                       : colors.surfaceSecondary,
-                    color: pageRows.some((row) => remainingPreviewErrors(row, fieldOverrides).length > 0)
+                    color: visibleRows.some((row) => remainingPreviewErrors(row, fieldOverrides).length > 0)
                       ? '#B91C1C'
                       : 'inherit',
                     fontWeight: 700,
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {t('admin.propertyBulk.columns.errors')}
@@ -723,314 +834,80 @@ export function AdminBulkImportPreviewStep({
               </TableRow>
             </TableHead>
             <TableBody>
-              {pageRows.length === 0 ? (
+              {visibleRows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={columns.length + 5} align="center" sx={{ py: 4 }}>
                     <Typography color="text.secondary">{t('admin.propertyBulk.noPreviewRows')}</Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                pageRows.map((row, index) => {
-                  const isDuplicate = row.status === 'DUPLICATE';
-                  const decision =
-                    duplicateDecisions[String(row.rowNumber)] ?? (isDuplicate ? 'SKIP' : 'KEEP');
-                  const status = effectivePreviewStatus(row, fieldOverrides);
-                  const visibleErrors = remainingPreviewErrors(row, fieldOverrides);
-                  const visibleNotices = remainingPreviewNotices(row, fieldOverrides);
-                  return (
-                    <TableRow
-                      key={row.rowNumber}
-                      hover
-                      sx={{
-                        bgcolor: isDuplicate
-                          ? decision === 'KEEP'
-                            ? '#ECFDF5'
-                            : '#FFFBEB'
-                          : decision === 'SKIP'
-                            ? '#FFFBEB'
-                          : status === 'VALID' && row.status === 'INVALID'
-                            ? '#ECFDF5'
-                          : index % 2 === 1
-                            ? colors.surfaceSecondary
-                            : colors.surface,
-                      }}
-                    >
-                      <TableCell padding="checkbox">
-                        <Checkbox
-                          size="small"
-                          checked={selected.has(row.rowNumber)}
-                          onChange={() => toggleRow(row.rowNumber)}
-                        />
-                      </TableCell>
-                      <TableCell>{row.rowNumber}</TableCell>
-                      <TableCell>
-                        <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-                          <StatusChip status={status} />
-                          {isDuplicate ? (
-                            <Chip
-                              size="small"
-                              label={duplicateSourceLabel(row.duplicateMatch?.source, t)}
-                              sx={{
-                                height: 20,
-                                fontSize: 11,
-                                fontWeight: 600,
-                                bgcolor: row.duplicateMatch?.source === 'IN_FILE' ? '#EEF2FF' : '#FEE2E2',
-                                color: row.duplicateMatch?.source === 'IN_FILE' ? '#3730A3' : '#991B1B',
-                              }}
-                            />
-                          ) : null}
-                        </Stack>
-                      </TableCell>
-                      <TableCell sx={{ minWidth: 200, position: 'relative', zIndex: 1 }}>
-                        {isDuplicate ? (
-                          <Stack spacing={0.75}>
-                            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                              <Button
-                                type="button"
-                                size="small"
-                                variant={decision === 'SKIP' ? 'contained' : 'outlined'}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  onDuplicateDecisionChange(row.rowNumber, 'SKIP');
-                                }}
-                                sx={{
-                                  borderRadius: 2,
-                                  textTransform: 'none',
-                                  fontWeight: 700,
-                                  ...(decision === 'SKIP'
-                                    ? { bgcolor: '#D97706', '&:hover': { bgcolor: '#B45309' } }
-                                    : {}),
-                                }}
-                              >
-                                {t('admin.propertyBulk.skipDuplicate')}
-                              </Button>
-                              <Button
-                                type="button"
-                                size="small"
-                                variant={decision === 'KEEP' ? 'contained' : 'outlined'}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  onDuplicateDecisionChange(row.rowNumber, 'KEEP');
-                                }}
-                                sx={{
-                                  borderRadius: 2,
-                                  textTransform: 'none',
-                                  fontWeight: 700,
-                                  ...(decision === 'KEEP'
-                                    ? {
-                                        bgcolor: colors.primary,
-                                        '&:hover': { bgcolor: colors.primaryHover },
-                                      }
-                                    : {}),
-                                }}
-                              >
-                                {t('admin.propertyBulk.keepDuplicate')}
-                              </Button>
-                              <Tooltip
-                                title={duplicateTooltip(
-                                  row,
-                                  t('admin.propertyBulk.duplicateUnknownReason'),
-                                )}
-                                arrow
-                                enterTouchDelay={0}
-                              >
-                                <IconButton
-                                  type="button"
-                                  size="small"
-                                  aria-label={t('admin.propertyBulk.duplicateUnknownReason')}
-                                  sx={{ color: '#B45309' }}
-                                >
-                                  <Info size={16} />
-                                </IconButton>
-                              </Tooltip>
-                            </Stack>
-                            <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 280 }}>
-                              {duplicateSummary(row, t)}
-                            </Typography>
-                          </Stack>
-                        ) : (
-                          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                            <Button
-                              type="button"
-                              size="small"
-                              variant={decision === 'SKIP' ? 'contained' : 'outlined'}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onDuplicateDecisionChange(row.rowNumber, 'SKIP');
-                              }}
-                              sx={{
-                                borderRadius: 2,
-                                textTransform: 'none',
-                                fontWeight: 700,
-                                ...(decision === 'SKIP'
-                                  ? { bgcolor: '#D97706', '&:hover': { bgcolor: '#B45309' } }
-                                  : {}),
-                              }}
-                            >
-                              {t('admin.propertyBulk.skipDuplicate')}
-                            </Button>
-                            <Button
-                              type="button"
-                              size="small"
-                              variant={decision === 'KEEP' ? 'contained' : 'outlined'}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onDuplicateDecisionChange(row.rowNumber, 'KEEP');
-                              }}
-                              sx={{
-                                borderRadius: 2,
-                                textTransform: 'none',
-                                fontWeight: 700,
-                                ...(decision === 'KEEP'
-                                  ? {
-                                      bgcolor: colors.primary,
-                                      '&:hover': { bgcolor: colors.primaryHover },
-                                    }
-                                  : {}),
-                              }}
-                            >
-                              {t('admin.propertyBulk.keepDuplicate')}
-                            </Button>
-                          </Stack>
-                        )}
-                      </TableCell>
-                      {columns.map((col) => {
-                        const original = displayValue(row.values?.[col.field]);
-                        const normalized = row.normalizedValues?.[col.field];
-                        const fieldNotices = visibleNotices.filter((notice) =>
-                          previewErrorAppliesToField(notice.field, col.field),
-                        );
-                        const fieldWarning = fieldNotices.some((notice) => notice.level === 'WARNING');
-                        const hasFieldError = (row.errors ?? []).some((err) =>
-                          previewErrorAppliesToField(err.field, col.field),
-                        );
-                        const fieldStillInvalid = visibleErrors.some((err) =>
-                          previewErrorAppliesToField(err.field, col.field),
-                        );
-                        const selected = fieldOverrides[String(row.rowNumber)]?.[col.field] ?? '';
-                        const canCorrect = hasFieldError || fieldWarning || Boolean(selected);
-                        const noticeTitle = fieldNotices
-                          .map((notice) => {
-                            const interpreted = notice.normalizedValue
-                              ? `Interpreted as ${notice.normalizedValue}. `
-                              : '';
-                            return `${interpreted}${notice.message}`;
-                          })
-                          .join(' ');
-                        const options = canCorrect ? correctionOptions(col.field, t) : null;
-                        return (
-                          <TableCell
-                            key={`${row.rowNumber}-${col.field}`}
-                            sx={{
-                              maxWidth: 240,
-                              minWidth: canCorrect ? 160 : undefined,
-                              whiteSpace: canCorrect ? 'normal' : 'nowrap',
-                              overflow: canCorrect ? 'visible' : 'hidden',
-                              textOverflow: 'ellipsis',
-                              bgcolor: fieldStillInvalid ? '#FEF2F2' : fieldWarning ? '#FFFBEB' : undefined,
-                              color: fieldStillInvalid ? '#B91C1C' : undefined,
-                              boxShadow: fieldStillInvalid
-                                ? 'inset 0 0 0 1px #FECACA'
-                                : fieldWarning
-                                  ? 'inset 0 0 0 1px #FDE68A'
-                                  : undefined,
-                            }}
-                            title={noticeTitle || original}
-                          >
-                            {canCorrect ? (
-                              <Stack spacing={0.75}>
-                                <Typography
-                                  variant="body2"
-                                  noWrap
-                                  title={original}
-                                  sx={{ color: fieldStillInvalid ? '#B91C1C' : 'inherit', fontWeight: fieldStillInvalid ? 600 : 400 }}
-                                >
-                                  {original}
-                                </Typography>
-                                {normalized && normalized !== original ? (
-                                  <Typography variant="caption" sx={{ color: fieldWarning ? '#B45309' : '#047857' }}>
-                                    {normalized}
-                                  </Typography>
-                                ) : null}
-                                {options && col.field === 'PROPERTY_TYPE' ? (
-                                  <TypeMultiSelect
-                                    selected={selected}
-                                    suggested={normalized ?? ''}
-                                    disabled={busy}
-                                    error={fieldStillInvalid}
-                                    placeholder={t('admin.propertyBulk.correctValue')}
-                                    options={options}
-                                    onCommit={(next) =>
-                                      onFieldOverrideChange(row.rowNumber, col.field, next)
-                                    }
-                                  />
-                                ) : options ? (
-                                  <CorrectionSelect
-                                    value={selected}
-                                    disabled={busy}
-                                    error={fieldStillInvalid}
-                                    placeholder={t('admin.propertyBulk.correctValue')}
-                                    options={options}
-                                    onCommit={(next) =>
-                                      onFieldOverrideChange(row.rowNumber, col.field, next)
-                                    }
-                                  />
-                                ) : (
-                                  <CorrectionTextField
-                                    value={selected}
-                                    disabled={busy}
-                                    error={fieldStillInvalid}
-                                    placeholder={t('admin.propertyBulk.correctEnter')}
-                                    onCommit={(next) =>
-                                      onFieldOverrideChange(row.rowNumber, col.field, next)
-                                    }
-                                  />
-                                )}
-                              </Stack>
-                            ) : (
-                              <Stack spacing={0.25}>
-                                <span>{original}</span>
-                                {normalized && normalized !== original ? (
-                                  <Typography variant="caption" sx={{ color: fieldWarning ? '#B45309' : '#047857' }}>
-                                    {normalized}
-                                  </Typography>
-                                ) : null}
-                              </Stack>
-                            )}
-                          </TableCell>
-                        );
-                      })}
-                      <TableCell
-                        sx={{ maxWidth: 260, color: visibleErrors.length ? '#B91C1C' : 'text.secondary' }}
-                      >
-                        {visibleErrors.length === 0 && visibleNotices.length === 0
-                          ? '—'
-                          : (
-                            <Stack spacing={0.5}>
-                              {visibleErrors.length > 0 ? (
-                                <Typography variant="caption" sx={{ color: '#B91C1C' }}>
-                                  {visibleErrors.map((err) => `${err.field}: ${err.message}`).join('; ')}
-                                </Typography>
-                              ) : null}
-                              {visibleNotices.length > 0 ? (
-                                <Typography variant="caption" sx={{ color: '#B45309' }}>
-                                  {visibleNotices.map((notice) => notice.message).join('; ')}
-                                </Typography>
-                              ) : null}
-                            </Stack>
-                          )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+                visibleRows.map((row, index) => (
+                  <BulkPreviewRow
+                    key={row.rowNumber}
+                    row={row}
+                    index={index}
+                    columns={columns}
+                    fieldOverrides={fieldOverrides}
+                    decision={
+                      duplicateDecisions[String(row.rowNumber)] ??
+                      (row.status === 'DUPLICATE' ? 'SKIP' : 'KEEP')
+                    }
+                    checked={selected.has(row.rowNumber)}
+                    busy={busy}
+                    onToggle={toggleRow}
+                    onDecision={onDuplicateDecisionChange}
+                    onFieldOverride={onFieldOverrideChange}
+                  />
+                ))
               )}
+              {hasMore ? (
+                <TableRow ref={sentinelRef}>
+                  <TableCell colSpan={columns.length + 5} sx={{ py: loadingMore ? 1.75 : 0.5, textAlign: 'center', borderBottom: 0 }}>
+                    {loadingMore ? (
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        sx={{ alignItems: 'center', justifyContent: 'center', minHeight: 28 }}
+                      >
+                        <CircularProgress size={18} sx={{ color: colors.primary }} />
+                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                          {t('common.loading')}
+                        </Typography>
+                      </Stack>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              ) : null}
             </TableBody>
           </Table>
         </TableContainer>
+        {loadingMore ? (
+          <Box
+            sx={{
+              position: 'absolute',
+              left: '50%',
+              bottom: 36,
+              transform: 'translateX(-50%)',
+              zIndex: 4,
+              pointerEvents: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              px: 1.75,
+              py: 0.75,
+              borderRadius: 999,
+              bgcolor: 'rgba(255,255,255,0.96)',
+              border: `1px solid ${colors.border}`,
+              boxShadow: '0 6px 18px rgba(15, 23, 42, 0.12)',
+            }}
+          >
+            <CircularProgress size={16} sx={{ color: colors.primary }} />
+            <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+              {t('common.loading')}
+            </Typography>
+          </Box>
+        ) : null}
+        </Box>
 
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
@@ -1044,41 +921,6 @@ export function AdminBulkImportPreviewStep({
               total: filteredRows.length,
             })}
           </Typography>
-          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-            <Button
-              size="small"
-              variant="outlined"
-              disabled={safePage <= 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              sx={{ minWidth: 36, px: 1 }}
-            >
-              ‹
-            </Button>
-            <Box
-              sx={{
-                minWidth: 36,
-                height: 32,
-                borderRadius: 1,
-                display: 'grid',
-                placeItems: 'center',
-                bgcolor: colors.primary,
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: 13,
-              }}
-            >
-              {safePage + 1}
-            </Box>
-            <Button
-              size="small"
-              variant="outlined"
-              disabled={safePage >= pageCount - 1}
-              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-              sx={{ minWidth: 36, px: 1 }}
-            >
-              ›
-            </Button>
-          </Stack>
         </Stack>
       </Paper>
 
@@ -1138,79 +980,335 @@ export function AdminBulkImportPreviewStep({
   );
 }
 
+
+const BulkPreviewRow = memo(function BulkPreviewRow({
+  row,
+  index,
+  columns,
+  fieldOverrides,
+  decision,
+  checked,
+  busy,
+  onToggle,
+  onDecision,
+  onFieldOverride,
+}: {
+  row: PropertyBulkImportPreviewRow;
+  index: number;
+  columns: Array<{ field: PropertyBulkImportFieldKey; header: string }>;
+  fieldOverrides: PropertyBulkImportFieldOverrides;
+  decision: DuplicateDecision;
+  checked: boolean;
+  busy: boolean;
+  onToggle: (rowNumber: number) => void;
+  onDecision: (rowNumber: number, decision: DuplicateDecision) => void;
+  onFieldOverride: (
+    rowNumber: number,
+    field: PropertyBulkImportFieldKey,
+    value: string | null,
+  ) => void;
+}) {
+  const { t } = useTranslation();
+  const isDuplicate = row.status === 'DUPLICATE';
+  const status = effectivePreviewStatus(row, fieldOverrides);
+  const visibleErrors = remainingPreviewErrors(row, fieldOverrides);
+  const visibleNotices = remainingPreviewNotices(row, fieldOverrides);
+  return (
+    <TableRow
+      hover
+      sx={{
+        bgcolor: isDuplicate
+          ? decision === 'KEEP'
+            ? '#ECFDF5'
+            : '#FFFBEB'
+          : decision === 'SKIP'
+            ? '#FFFBEB'
+          : status === 'VALID' && row.status === 'INVALID'
+            ? '#ECFDF5'
+          : index % 2 === 1
+            ? colors.surfaceSecondary
+            : colors.surface,
+      }}
+    >
+      <TableCell padding="checkbox">
+        <Checkbox
+          size="small"
+          checked={checked}
+          onChange={() => onToggle(row.rowNumber)}
+        />
+      </TableCell>
+      <TableCell>{row.rowNumber}</TableCell>
+      <TableCell>
+        <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
+          <StatusChip status={status} />
+          {isDuplicate ? (
+            <Chip
+              size="small"
+              label={duplicateSourceLabel(row.duplicateMatch?.source, t)}
+              sx={{
+                height: 20,
+                fontSize: 11,
+                fontWeight: 600,
+                bgcolor: row.duplicateMatch?.source === 'IN_FILE' ? '#EEF2FF' : '#FEE2E2',
+                color: row.duplicateMatch?.source === 'IN_FILE' ? '#3730A3' : '#991B1B',
+              }}
+            />
+          ) : null}
+        </Stack>
+      </TableCell>
+      <TableCell sx={{ minWidth: 200, position: 'relative', zIndex: 1 }}>
+        {isDuplicate ? (
+          <Stack spacing={0.75}>
+            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+              <Button
+                type="button"
+                size="small"
+                variant={decision === 'SKIP' ? 'contained' : 'outlined'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDecision(row.rowNumber, 'SKIP');
+                }}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  ...(decision === 'SKIP'
+                    ? { bgcolor: '#D97706', '&:hover': { bgcolor: '#B45309' } }
+                    : {}),
+                }}
+              >
+                {t('admin.propertyBulk.skipDuplicate')}
+              </Button>
+              <Button
+                type="button"
+                size="small"
+                variant={decision === 'KEEP' ? 'contained' : 'outlined'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDecision(row.rowNumber, 'KEEP');
+                }}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  ...(decision === 'KEEP'
+                    ? {
+                        bgcolor: colors.primary,
+                        '&:hover': { bgcolor: colors.primaryHover },
+                      }
+                    : {}),
+                }}
+              >
+                {t('admin.propertyBulk.keepDuplicate')}
+              </Button>
+              <Tooltip
+                title={duplicateTooltip(
+                  row,
+                  t('admin.propertyBulk.duplicateUnknownReason'),
+                )}
+                arrow
+                enterTouchDelay={0}
+              >
+                <IconButton
+                  type="button"
+                  size="small"
+                  aria-label={t('admin.propertyBulk.duplicateUnknownReason')}
+                  sx={{ color: '#B45309' }}
+                >
+                  <Info size={16} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+            <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 280 }}>
+              {duplicateSummary(row, t)}
+            </Typography>
+          </Stack>
+        ) : (
+          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+            <Button
+              type="button"
+              size="small"
+              variant={decision === 'SKIP' ? 'contained' : 'outlined'}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDecision(row.rowNumber, 'SKIP');
+              }}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 700,
+                ...(decision === 'SKIP'
+                  ? { bgcolor: '#D97706', '&:hover': { bgcolor: '#B45309' } }
+                  : {}),
+              }}
+            >
+              {t('admin.propertyBulk.skipDuplicate')}
+            </Button>
+            <Button
+              type="button"
+              size="small"
+              variant={decision === 'KEEP' ? 'contained' : 'outlined'}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDecision(row.rowNumber, 'KEEP');
+              }}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 700,
+                ...(decision === 'KEEP'
+                  ? {
+                      bgcolor: colors.primary,
+                      '&:hover': { bgcolor: colors.primaryHover },
+                    }
+                  : {}),
+              }}
+            >
+              {t('admin.propertyBulk.keepDuplicate')}
+            </Button>
+          </Stack>
+        )}
+      </TableCell>
+      {columns.map((col) => {
+        const raw = row.values?.[col.field] ?? '';
+        const normalized = row.normalizedValues?.[col.field];
+        const rowOverrides = fieldOverrides[String(row.rowNumber)];
+        const hasOverride = !!rowOverrides && Object.prototype.hasOwnProperty.call(rowOverrides, col.field);
+        const override = hasOverride ? (rowOverrides?.[col.field] ?? '') : undefined;
+        const fieldNotices = visibleNotices.filter((notice) =>
+          previewErrorAppliesToField(notice.field, col.field),
+        );
+        const fieldWarning = fieldNotices.some((notice) => notice.level === 'WARNING');
+        const fieldStillInvalid = visibleErrors.some((err) =>
+          previewErrorAppliesToField(err.field, col.field),
+        );
+        const baseOptions = correctionOptions(col.field, t);
+        const control = baseOptions ? 'select' : 'text';
+        const inputValue = previewCellInputValue(raw, normalized, override, control);
+        const options = baseOptions
+          ? selectOptionsWithCurrent(baseOptions, inputValue)
+          : null;
+        const noticeTitle = fieldNotices
+          .map((notice) => {
+            const interpreted = notice.normalizedValue
+              ? `Interpreted as ${notice.normalizedValue}. `
+              : '';
+            return `${interpreted}${notice.message}`;
+          })
+          .join(' ');
+        const originalHint =
+          raw.trim() && raw.trim() !== inputValue.trim() ? raw : '';
+        const title = [noticeTitle, originalHint].filter(Boolean).join(' ');
+        return (
+          <TableCell
+            key={`${row.rowNumber}-${col.field}`}
+            sx={{
+              maxWidth: 240,
+              minWidth: 168,
+              whiteSpace: 'normal',
+              overflow: 'visible',
+              bgcolor: fieldStillInvalid ? '#FEF2F2' : fieldWarning ? '#FFFBEB' : undefined,
+              boxShadow: fieldStillInvalid
+                ? 'inset 0 0 0 1px #FECACA'
+                : fieldWarning
+                  ? 'inset 0 0 0 1px #FDE68A'
+                  : undefined,
+              verticalAlign: 'top',
+            }}
+            title={title || undefined}
+          >
+            {options ? (
+              <CorrectionSelect
+                value={inputValue}
+                disabled={busy}
+                error={fieldStillInvalid}
+                warning={fieldWarning && !fieldStillInvalid}
+                placeholder={t('admin.propertyBulk.correctValue')}
+                options={options}
+                onCommit={(next) =>
+                  onFieldOverride(row.rowNumber, col.field, next)
+                }
+              />
+            ) : (
+              <CorrectionTextField
+                value={inputValue}
+                disabled={busy}
+                error={fieldStillInvalid}
+                warning={fieldWarning && !fieldStillInvalid}
+                placeholder={t('admin.propertyBulk.correctEnter')}
+                onCommit={(next) =>
+                  onFieldOverride(row.rowNumber, col.field, next)
+                }
+              />
+            )}
+          </TableCell>
+        );
+      })}
+      <TableCell
+        sx={{
+          width: 220,
+          maxWidth: 220,
+          verticalAlign: 'middle',
+          color: visibleErrors.length ? '#B91C1C' : 'text.secondary',
+        }}
+      >
+        {visibleErrors.length === 0 && visibleNotices.length === 0
+          ? '—'
+          : (
+            <Tooltip
+              title={[
+                ...visibleErrors.map((err) => `${err.field}: ${err.message}`),
+                ...visibleNotices.map((notice) => notice.message),
+              ].join('\n')}
+              arrow
+              enterTouchDelay={0}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  lineHeight: 1.35,
+                  maxHeight: '2.7em',
+                  wordBreak: 'break-word',
+                  color: visibleErrors.length ? '#B91C1C' : '#B45309',
+                  cursor: 'default',
+                }}
+              >
+                {[
+                  ...visibleErrors.map((err) => `${err.field}: ${err.message}`),
+                  ...visibleNotices.map((notice) => notice.message),
+                ].join('; ')}
+              </Typography>
+            </Tooltip>
+          )}
+      </TableCell>
+    </TableRow>
+  );
+});
+
 function commitIfChanged(
   draftValue: string,
   committedValue: string,
   onCommit: (value: string | null) => void,
 ) {
-  const next = draftValue.trim().length > 0 ? draftValue : null;
-  const current = committedValue.trim().length > 0 ? committedValue : null;
+  const next = draftValue.trim();
+  const current = committedValue.trim();
   if (next === current) return;
   onCommit(next);
-}
-
-function TypeMultiSelect({
-  selected,
-  suggested,
-  disabled,
-  error,
-  placeholder,
-  options,
-  onCommit,
-}: {
-  selected: string;
-  suggested: string;
-  disabled?: boolean;
-  error?: boolean;
-  placeholder: string;
-  options: Array<{ value: string; label: string }>;
-  onCommit: (value: string | null) => void;
-}) {
-  const optionKey = options.map((option) => option.value).join('|');
-  const known = (items: string[]) => items.filter((item) => options.some((option) => option.value === item));
-  const [touched, setTouched] = useState(selected.trim().length > 0);
-  const [value, setValue] = useState(() => known(typeSelection(selected, suggested)));
-  useEffect(() => {
-    if (selected.trim().length > 0) {
-      setTouched(true);
-      setValue(known(typeSelection(selected, '')));
-      return;
-    }
-    if (!touched) {
-      setValue(known(typeSelection('', suggested)));
-    }
-    // optionKey tracks the label list. The options array itself is rebuilt every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, suggested, touched, optionKey]);
-  return (
-    <Autocomplete
-      multiple
-      disableCloseOnSelect
-      size="small"
-      disabled={disabled}
-      options={options.map((option) => option.value)}
-      value={value}
-      onChange={(_event, next) => {
-        setTouched(true);
-        setValue(next);
-        onCommit(commitTypeSelection(next));
-      }}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          placeholder={value.length === 0 ? placeholder : ''}
-          error={error}
-        />
-      )}
-      sx={{ minWidth: 180, '& .MuiOutlinedInput-root': { borderRadius: 1.5, bgcolor: '#fff' } }}
-    />
-  );
 }
 
 function CorrectionSelect({
   value,
   disabled,
   error,
+  warning,
   placeholder,
   options,
   onCommit,
@@ -1218,6 +1316,7 @@ function CorrectionSelect({
   value: string;
   disabled?: boolean;
   error?: boolean;
+  warning?: boolean;
   placeholder: string;
   options: Array<{ value: string; label: string }>;
   onCommit: (value: string | null) => void;
@@ -1225,6 +1324,8 @@ function CorrectionSelect({
   const [draft, setDraft] = useState(value);
   const draftRef = useRef(value);
   const committedRef = useRef(value);
+  const onCommitRef = useRef(onCommit);
+  onCommitRef.current = onCommit;
 
   useEffect(() => {
     setDraft(value);
@@ -1232,21 +1333,23 @@ function CorrectionSelect({
     committedRef.current = value;
   }, [value]);
 
+  useEffect(() => {
+    return () => {
+      commitIfChanged(draftRef.current, committedRef.current, (next) => onCommitRef.current(next));
+    };
+  }, []);
+
   function commit() {
     const draftValue = draftRef.current;
-    const committedValue = committedRef.current;
-    const next = draftValue.trim().length > 0 ? draftValue : null;
-    const current = committedValue.trim().length > 0 ? committedValue : null;
-    if (next === current) return;
-    committedRef.current = draftValue;
-    onCommit(next);
+    commitIfChanged(draftValue, committedRef.current, onCommit);
+    committedRef.current = draftValue.trim();
   }
 
   return (
     <FormControl size="small" fullWidth error={error}>
       <Select
         displayEmpty
-        value={draft}
+        value={options.some((option) => option.value === draft) || draft === '' ? draft : ''}
         disabled={disabled}
         error={error}
         onChange={(event) => {
@@ -1256,7 +1359,15 @@ function CorrectionSelect({
         }}
         onClose={commit}
         onBlur={commit}
-        sx={{ fontSize: 13, bgcolor: colors.surface }}
+        MenuProps={{ disableScrollLock: true }}
+        sx={{
+          fontSize: 13,
+          bgcolor: '#fff',
+          borderRadius: 1.5,
+          ...(warning
+            ? { '& .MuiOutlinedInput-notchedOutline': { borderColor: '#FCD34D' } }
+            : {}),
+        }}
       >
         <MenuItem value="">{placeholder}</MenuItem>
         {options.map((option) => (
@@ -1273,20 +1384,35 @@ function CorrectionTextField({
   value,
   disabled,
   error,
+  warning,
   placeholder,
   onCommit,
 }: {
   value: string;
   disabled?: boolean;
   error?: boolean;
+  warning?: boolean;
   placeholder: string;
   onCommit: (value: string | null) => void;
 }) {
   const [draft, setDraft] = useState(value);
+  const draftRef = useRef(value);
+  const valueRef = useRef(value);
+  const onCommitRef = useRef(onCommit);
+  onCommitRef.current = onCommit;
+  draftRef.current = draft;
+  valueRef.current = value;
 
   useEffect(() => {
     setDraft(value);
+    draftRef.current = value;
   }, [value]);
+
+  useEffect(() => {
+    return () => {
+      commitIfChanged(draftRef.current, valueRef.current, (next) => onCommitRef.current(next));
+    };
+  }, []);
 
   function commit() {
     commitIfChanged(draft, value, onCommit);
@@ -1300,7 +1426,10 @@ function CorrectionTextField({
       value={draft}
       disabled={disabled}
       placeholder={placeholder}
-      onChange={(event) => setDraft(event.target.value)}
+      onChange={(event) => {
+        draftRef.current = event.target.value;
+        setDraft(event.target.value);
+      }}
       onBlur={commit}
       onKeyDown={(event) => {
         if (event.key === 'Enter') {
@@ -1308,7 +1437,13 @@ function CorrectionTextField({
           (event.target as HTMLInputElement).blur();
         }
       }}
-      sx={{ '& .MuiInputBase-input': { fontSize: 13, py: 0.75 } }}
+      sx={{
+        '& .MuiInputBase-root': { bgcolor: '#fff', borderRadius: 1.5 },
+        '& .MuiInputBase-input': { fontSize: 13, py: 0.75 },
+        ...(warning
+          ? { '& .MuiOutlinedInput-notchedOutline': { borderColor: '#FCD34D' } }
+          : {}),
+      }}
     />
   );
 }

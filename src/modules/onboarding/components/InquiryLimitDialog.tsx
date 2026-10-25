@@ -17,7 +17,9 @@ import {
   Copy,
   CreditCard,
   Headset,
+  Image as ImageIcon,
   Mail,
+  Map,
   MessageCircle,
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -181,12 +183,20 @@ function ChoiceCard({
   );
 }
 
+type PayPurpose = 'enquiry' | 'map' | 'photos';
+
 type Props = {
   open: boolean;
   onClose: () => void;
   onQuotaReset?: () => void;
   availableCredits?: number;
   onContinueWithCredits?: () => void;
+  /** Fires when an admin confirms the purchase started from this dialog. */
+  onPaymentConfirmed?: () => void;
+  /** Fires when the seeker submits a payment request. */
+  onPurchaseSubmitted?: (purchaseId: string) => void;
+  /** Why the popup opened. Enquiry keeps the existing copy. */
+  purpose?: PayPurpose;
   freeUsedToday?: number;
 };
 
@@ -198,6 +208,9 @@ export function InquiryLimitDialog({
   onQuotaReset,
   availableCredits = 0,
   onContinueWithCredits,
+  onPaymentConfirmed,
+  onPurchaseSubmitted,
+  purpose = 'enquiry',
 }: Props) {
   const { t } = useTranslation();
   const narrow = useMediaQuery('(max-width:767px)');
@@ -223,7 +236,10 @@ export function InquiryLimitDialog({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [pendingPurchaseId, setPendingPurchaseId] = useState<string | null>(null);
+  const [purchaseRejected, setPurchaseRejected] = useState(false);
   const submittingRef = useRef(false);
+  const confirmedRef = useRef(false);
 
   useEffect(() => {
     if (!open) {
@@ -234,8 +250,11 @@ export function InquiryLimitDialog({
       setSubmitting(false);
       setSubmitError(null);
       setSubmitted(false);
+      setPendingPurchaseId(null);
+      setPurchaseRejected(false);
       setConfigError(false);
       submittingRef.current = false;
+      confirmedRef.current = false;
       return;
     }
     setView('main');
@@ -294,6 +313,34 @@ export function InquiryLimitDialog({
   }, [config?.qrUrl, config?.qrFileId]);
 
   useEffect(() => {
+    if (!open || !submitted || !pendingPurchaseId || purpose === 'enquiry' || !onPaymentConfirmed) {
+      return undefined;
+    }
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const rows = await inquiryCreditsApi.listMyPurchases();
+        const row = rows.find((item) => item.id === pendingPurchaseId);
+        if (cancelled || !row || confirmedRef.current) return;
+        if (row.status === 'APPROVED') {
+          confirmedRef.current = true;
+          onPaymentConfirmed();
+          return;
+        }
+        if (row.status === 'REJECTED') setPurchaseRejected(true);
+      } catch {
+        // Keep the request pending until the next check.
+      }
+    };
+    void check();
+    const timer = window.setInterval(() => void check(), 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [onPaymentConfirmed, open, pendingPurchaseId, purpose, submitted]);
+
+  useEffect(() => {
     return () => {
       revokeDisplayableFileUrl(qrObjectUrlRef.current);
     };
@@ -305,11 +352,14 @@ export function InquiryLimitDialog({
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await inquiryCreditsApi.createPurchase({
+      const purchase = await inquiryCreditsApi.createPurchase({
         packageId: selectedPkg.id,
         utr: utr.trim() || undefined,
       });
+      setPendingPurchaseId(purchase.id);
+      setPurchaseRejected(false);
       setSubmitted(true);
+      if (purpose !== 'enquiry') onPurchaseSubmitted?.(purchase.id);
     } catch (err) {
       setSubmitError(
         getErrorMessage(err, t('spaces.findPlace.enquire.limitPaymentSubmitError')),
@@ -342,14 +392,32 @@ export function InquiryLimitDialog({
             <CheckCircle2 size={24} />
           </Box>
           <Typography sx={{ mt: 2, fontWeight: 800, fontSize: 20 }}>
-            {t('spaces.findPlace.enquire.limitPaySuccessTitle', {
-              defaultValue: 'Payment request submitted',
-            })}
+            {purchaseRejected
+              ? t('spaces.findPlace.enquire.limitPayRejectedTitle', {
+                  defaultValue: 'Payment was not confirmed',
+                })
+              : t('spaces.findPlace.enquire.limitPaySuccessTitle', {
+                  defaultValue: 'Payment request submitted',
+                })}
           </Typography>
           <Typography color="text.secondary" sx={{ mt: 1, fontSize: 14 }}>
-            {t('spaces.findPlace.enquire.limitPaySuccessBody', {
-              defaultValue: 'Your enquiry credits will be added after approval.',
-            })}
+            {purchaseRejected
+              ? t('spaces.findPlace.enquire.limitPayRejectedBody', {
+                  defaultValue: 'This payment was not confirmed, so the map and photo request stay closed.',
+                })
+              : purpose === 'map'
+                ? t('spaces.findPlace.enquire.limitMapPendingBody', {
+                    defaultValue:
+                      'The map stays closed until an admin confirms this payment. It will open as soon as the payment is confirmed.',
+                  })
+                : purpose === 'photos'
+                  ? t('spaces.findPlace.enquire.limitPhotosPendingBody', {
+                      defaultValue:
+                        'Photo requests stay closed until an admin confirms this payment. You can continue as soon as the payment is confirmed.',
+                    })
+                  : t('spaces.findPlace.enquire.limitPaySuccessBody', {
+                      defaultValue: 'Your enquiry credits will be added after approval.',
+                    })}
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
@@ -433,12 +501,23 @@ export function InquiryLimitDialog({
           </Typography>
           {selectedPkg ? (
             <Typography color="text.secondary" sx={{ mt: 0.75, fontSize: 14 }}>
-              {t('spaces.findPlace.enquire.limitPaySubtitle', {
-                count: selectedPkg.credits,
-                amount: priceLabel,
-                defaultValue:
-                  'Pay {{amount}} to get {{count}} more email enquiries and continue contacting properties.',
-              })}
+              {purpose === 'map'
+                ? t('spaces.findPlace.enquire.limitMapPaySubtitle', {
+                    amount: priceLabel,
+                    defaultValue: 'Pay {{amount}}. After the payment is confirmed, you can continue to Google Maps.',
+                  })
+                : purpose === 'photos'
+                  ? t('spaces.findPlace.enquire.limitPhotosPaySubtitle', {
+                      amount: priceLabel,
+                      defaultValue:
+                        'Pay {{amount}}. After the payment is confirmed, you can continue requesting photos.',
+                    })
+                  : t('spaces.findPlace.enquire.limitPaySubtitle', {
+                      count: selectedPkg.credits,
+                      amount: priceLabel,
+                      defaultValue:
+                        'Pay {{amount}} to get {{count}} more email enquiries and continue contacting properties.',
+                    })}
             </Typography>
           ) : null}
 
@@ -678,12 +757,18 @@ export function InquiryLimitDialog({
             color: colors.primary,
           }}
         >
-          <Mail size={22} />
+          {purpose === 'map' ? <Map size={22} /> : purpose === 'photos' ? <ImageIcon size={22} /> : <Mail size={22} />}
         </Box>
         <Typography sx={{ fontWeight: 800, fontSize: 22, lineHeight: 1.25 }}>
-          {t('spaces.findPlace.enquire.limitUsedTodayTitle', {
-            defaultValue: "You've used today's free enquiry",
-          })}
+          {purpose === 'map'
+            ? t('spaces.findPlace.enquire.limitMapTitle', { defaultValue: 'Pay to continue to the map' })
+            : purpose === 'photos'
+              ? t('spaces.findPlace.enquire.limitPhotosTitle', {
+                  defaultValue: 'Pay to continue requesting photos',
+                })
+              : t('spaces.findPlace.enquire.limitUsedTodayTitle', {
+                  defaultValue: "You've used today's free enquiry",
+                })}
         </Typography>
         <Typography
           color="primary"
@@ -700,20 +785,30 @@ export function InquiryLimitDialog({
             py: 1,
           }}
         >
-          {mobileBrowser
-            ? t('spaces.findPlace.enquire.limitMobileBody', {
+          {purpose === 'map'
+            ? t('spaces.findPlace.enquire.limitMapBody', {
                 defaultValue:
-                  'Get unlimited enquiries with the ACOMI Android app, or choose paid email enquiries.',
+                  "Today's free enquiry is used. Complete payment to continue to Google Maps.",
               })
-            : (
-              <>
-                {t('spaces.findPlace.enquire.limitDesktopBodyLead', {
-                  defaultValue: 'You can use the ACOMI mobile app for unlimited',
-                })}
-                <br />
-                {t('spaces.findPlace.enquire.limitDesktopBodyTail', { defaultValue: 'free enquiries.' })}
-              </>
-            )}
+            : purpose === 'photos'
+              ? t('spaces.findPlace.enquire.limitPhotosBody', {
+                  defaultValue:
+                    "Today's free enquiry is used. Complete payment to continue requesting photos.",
+                })
+              : mobileBrowser
+                ? t('spaces.findPlace.enquire.limitMobileBody', {
+                    defaultValue:
+                      'Get unlimited enquiries with the ACOMI Android app, or choose paid email enquiries.',
+                  })
+                : (
+                  <>
+                    {t('spaces.findPlace.enquire.limitDesktopBodyLead', {
+                      defaultValue: 'You can use the ACOMI mobile app for unlimited',
+                    })}
+                    <br />
+                    {t('spaces.findPlace.enquire.limitDesktopBodyTail', { defaultValue: 'free enquiries.' })}
+                  </>
+                )}
         </Typography>
 
         <Box sx={{ mt: 2.5, display: 'grid', gap: 1.25, textAlign: 'left' }}>
@@ -746,10 +841,22 @@ export function InquiryLimitDialog({
             }
             body={
               primaryPkg
-                ? t('spaces.findPlace.enquire.limitPackageBody', {
-                    count: primaryPkg.credits,
-                    defaultValue: 'Get {{count}} more email enquiries to contact properties.',
-                  })
+                ? purpose === 'map'
+                  ? t('spaces.findPlace.enquire.limitPackageBodyMap', {
+                      count: primaryPkg.credits,
+                      defaultValue:
+                        'Get {{count}} enquiry credits. After payment is confirmed, continue to the map.',
+                    })
+                  : purpose === 'photos'
+                    ? t('spaces.findPlace.enquire.limitPackageBodyPhotos', {
+                        count: primaryPkg.credits,
+                        defaultValue:
+                          'Get {{count}} enquiry credits. After payment is confirmed, continue requesting photos.',
+                      })
+                    : t('spaces.findPlace.enquire.limitPackageBody', {
+                        count: primaryPkg.credits,
+                        defaultValue: 'Get {{count}} more email enquiries to contact properties.',
+                      })
                 : ''
             }
           />
@@ -793,7 +900,11 @@ export function InquiryLimitDialog({
         </Button>
         {availableCredits > 0 && onContinueWithCredits ? (
           <Button fullWidth onClick={onContinueWithCredits} sx={{ textTransform: 'none', fontWeight: 700 }}>
-            {t('spaces.findPlace.enquire.limitContinueWithCredits', { count: availableCredits })}
+            {purpose === 'map'
+              ? t('spaces.findPlace.enquire.limitContinueToMap', { defaultValue: 'Continue to map' })
+              : purpose === 'photos'
+                ? t('spaces.findPlace.enquire.limitContinueToPhotos', { defaultValue: 'Continue to photos' })
+                : t('spaces.findPlace.enquire.limitContinueWithCredits', { count: availableCredits })}
           </Button>
         ) : null}
         {waLink(config?.whatsappNumber, t('spaces.findPlace.enquire.limitHelpText', {

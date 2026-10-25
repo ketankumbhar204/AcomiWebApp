@@ -25,6 +25,7 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import { AdminBulkImportMapColumnsStep } from '@/modules/admin/components/AdminBulkImportMapColumnsStep';
 import { AdminBulkImportPreviewStep } from '@/modules/admin/components/AdminBulkImportPreviewStep';
+import { mergeFieldOverride } from '@/modules/admin/utils/bulkImportPreviewEdit';
 import { adminBulkPropertyPath, ROUTES } from '@/routes/paths';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { getErrorMessage } from '@/shared/api/errors';
@@ -448,16 +449,7 @@ export function AdminBulkPropertyImportPage() {
             busy={busy}
             fieldOverrides={fieldOverrides}
             onFieldOverrideChange={(rowNumber, field, value) => {
-              setFieldOverrides((prev) => {
-                const key = String(rowNumber);
-                const nextRow = { ...(prev[key] ?? {}) };
-                if (value) nextRow[field] = value;
-                else delete nextRow[field];
-                const next = { ...prev };
-                if (Object.keys(nextRow).length === 0) delete next[key];
-                else next[key] = nextRow;
-                return next;
-              });
+              setFieldOverrides((prev) => mergeFieldOverride(prev, rowNumber, field, value));
             }}
             duplicateDecisions={duplicateDecisions}
             onDuplicateDecisionChange={(rowNumber, decision) => {

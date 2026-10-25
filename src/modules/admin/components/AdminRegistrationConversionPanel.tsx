@@ -152,7 +152,7 @@ export function AdminRegistrationConversionPanel({
     return () => {
       active = false;
     };
-  }, [convertedSpaceId]);
+  }, [convertedSpaceId, testLead]);
 
   const handleSearch = useCallback(async () => {
     const q = query.trim();

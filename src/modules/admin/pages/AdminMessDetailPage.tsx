@@ -31,6 +31,7 @@ import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import { AdminConversionInfoCallouts } from '@/modules/admin/components/AdminConversionInfoCallouts';
 import { AdminLeadDetailField } from '@/modules/admin/components/AdminLeadDetailField';
+import { AdminTestLeadToggle } from '@/modules/admin/components/AdminTestLeadToggle';
 import { AdminRegistrationContactEditor } from '@/modules/admin/components/AdminRegistrationContactEditor';
 import { AdminRegistrationConversionPanel } from '@/modules/admin/components/AdminRegistrationConversionPanel';
 import { formatMessRegistrationSource } from '@/modules/admin/utils/adminLabels';
@@ -104,6 +105,7 @@ export function AdminMessDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [editingContact, setEditingContact] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
+  const [savingTestLead, setSavingTestLead] = useState(false);
 
   const reload = useCallback(async () => {
     const data = await adminApi.getMessRegistration(id);
@@ -139,6 +141,19 @@ export function AdminMessDetailPage() {
     } finally {
       setDeleting(false);
       setDeleteOpen(false);
+    }
+  }
+
+  async function handleTestLeadChange(checked: boolean) {
+    setSavingTestLead(true);
+    try {
+      const updated = await adminApi.updateMessTestLead(id, checked);
+      setDetail(updated);
+      enqueueSnackbar(t('admin.mess.testLeadUpdated'), { variant: 'success' });
+    } catch {
+      enqueueSnackbar(t('admin.mess.testLeadUpdateFailed'), { variant: 'error' });
+    } finally {
+      setSavingTestLead(false);
     }
   }
 
@@ -328,9 +343,12 @@ export function AdminMessDetailPage() {
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Stack spacing={1.75}>
                     <AdminLeadDetailField label={t('admin.common.status')} value={detail.status} />
-                    <AdminLeadDetailField
-                      label={t('admin.common.testLead')}
-                      value={detail.testLead ? t('admin.common.yes') : t('admin.common.no')}
+                    <AdminTestLeadToggle
+                      checked={detail.testLead}
+                      disabled={savingTestLead}
+                      onChange={(checked) => {
+                        if (!savingTestLead) void handleTestLeadChange(checked);
+                      }}
                     />
                     <AdminLeadDetailField
                       label={t('admin.property.gender')}

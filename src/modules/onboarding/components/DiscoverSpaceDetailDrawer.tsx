@@ -35,6 +35,8 @@ import {
 import { listingPriceSuffix } from '@/shared/utils/priceBasis';
 import { ListingFacts, TypeChip } from '@/modules/onboarding/components/ListingFacts';
 import { enquiryApi } from '@/shared/api/enquiryApi';
+import { inquiryCreditsApi, isUnlimitedQuota } from '@/shared/api/inquiryCreditsApi';
+import { InquiryLimitDialog } from '@/modules/onboarding/components/InquiryLimitDialog';
 import { getErrorMessage } from '@/shared/api/errors';
 import { spaceDiscoverApi } from '@/shared/api/spaceDiscoverApi';
 import { AppDrawer } from '@/shared/components/AppDrawer';
@@ -108,6 +110,14 @@ export function DiscoverSpaceDetailDrawer({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const [enquireOpen, setEnquireOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
+  const [payPurpose, setPayPurpose] = useState<'map' | 'photos'>('map');
+  const [sessionPaid, setSessionPaid] = useState(false);
+  const [photoOpenToken, setPhotoOpenToken] = useState(0);
+  const [awaitingPurchaseId, setAwaitingPurchaseId] = useState<string | null>(null);
+  const payPurposeRef = useRef<'map' | 'photos'>('map');
+  const mapHrefRef = useRef<string | null>(null);
+  const accessGrantedRef = useRef(false);
   const [liveContact, setLiveContact] = useState<OwnerContactResponse | null>(null);
   const alreadyInquired = useAlreadyInquired(spaceId);
   const contactViewed = useContactViewed(spaceId);
@@ -119,6 +129,13 @@ export function DiscoverSpaceDetailDrawer({
     queryKey: ['spaces-discover-detail', spaceId],
     queryFn: () => spaceDiscoverApi.getDiscoverSpaceDetail(spaceId!),
     enabled: open && Boolean(spaceId),
+  });
+
+  const quotaQuery = useQuery({
+    queryKey: ['inquiry-quota', 'listing-extras'],
+    queryFn: () => inquiryCreditsApi.getQuota(),
+    enabled: open && Boolean(spaceId),
+    staleTime: 15_000,
   });
 
   const revealedQuery = useQuery({
@@ -140,6 +157,11 @@ export function DiscoverSpaceDetailDrawer({
 
   useEffect(() => {
     setLiveContact(null);
+    setPayOpen(false);
+    setSessionPaid(false);
+    setPhotoOpenToken(0);
+    setAwaitingPurchaseId(null);
+    accessGrantedRef.current = false;
   }, [spaceId]);
 
   useEffect(() => {
@@ -174,6 +196,82 @@ export function DiscoverSpaceDetailDrawer({
   const description = detail?.description?.trim() || null;
   const unlocked = Boolean(revealed) || contactViewed || alreadyInquired;
   const mapHref = openableMapsUrl(detail?.mapUrl);
+  mapHrefRef.current = mapHref;
+  const privileged = Boolean(detail?.alreadyMember);
+  const quota = quotaQuery.data;
+  const listingExtrasAllowed =
+    privileged ||
+    unlocked ||
+    sessionPaid ||
+    (quotaQuery.isFetched &&
+      !quotaQuery.isError &&
+      quota != null &&
+      (isUnlimitedQuota(quota) || quota.freeRemainingToday > 0));
+  const mapLocked = Boolean(mapHref) && !listingExtrasAllowed;
+
+  const releasePaidAccess = useCallback(() => {
+    if (accessGrantedRef.current) return;
+    accessGrantedRef.current = true;
+    const purpose = payPurposeRef.current;
+    setSessionPaid(true);
+    setPayOpen(false);
+    if (purpose === 'map') {
+      const href = mapHrefRef.current;
+      if (href) window.open(href, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    setPhotoOpenToken((token) => token + 1);
+  }, []);
+
+  useEffect(() => {
+    if (!awaitingPurchaseId || sessionPaid) return undefined;
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const rows = await inquiryCreditsApi.listMyPurchases();
+        const row = rows.find((item) => item.id === awaitingPurchaseId);
+        if (cancelled || row?.status !== 'APPROVED') return;
+        releasePaidAccess();
+      } catch {
+        // Keep checking until the payment is confirmed.
+      }
+    };
+    void check();
+    const timer = window.setInterval(() => void check(), 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [awaitingPurchaseId, releasePaidAccess, sessionPaid]);
+
+  const holdForPayment = useCallback(
+    (purpose: 'map' | 'photos') => {
+      if (listingExtrasAllowed) return true;
+      if (!quotaQuery.isFetched) {
+        void quotaQuery.refetch().then((result) => {
+          const next = result.data;
+          const allowed = Boolean(next && (isUnlimitedQuota(next) || next.freeRemainingToday > 0));
+          if (allowed) {
+            if (purpose === 'map' && mapHrefRef.current) {
+              window.open(mapHrefRef.current, '_blank', 'noopener,noreferrer');
+            } else if (purpose === 'photos') {
+              setPhotoOpenToken((token) => token + 1);
+            }
+            return;
+          }
+          payPurposeRef.current = purpose;
+          setPayPurpose(purpose);
+          setPayOpen(true);
+        });
+        return false;
+      }
+      payPurposeRef.current = purpose;
+      setPayPurpose(purpose);
+      setPayOpen(true);
+      return false;
+    },
+    [listingExtrasAllowed, quotaQuery],
+  );
 
   const scrollToSection = useCallback((section: ListingSection) => {
     const scroller = scrollerRef.current;
@@ -323,7 +421,22 @@ export function DiscoverSpaceDetailDrawer({
                 </Typography>
               ) : null}
 
-              <OwnerContactCard contact={revealed} mapUrl={unlocked ? detail.mapUrl : null} />
+              <OwnerContactCard
+                contact={revealed}
+                mapUrl={unlocked ? detail.mapUrl : null}
+                loading={
+                  !revealed &&
+                  (revealedQuery.isFetching || reveal.phase === 'checking' || reveal.phase === 'revealing')
+                }
+                error={!revealed && (revealedQuery.isError || reveal.phase === 'error')}
+                onRetry={() => {
+                  if (revealedQuery.isError) {
+                    void revealedQuery.refetch();
+                    return;
+                  }
+                  reveal.retry();
+                }}
+              />
               </Box>
               {alreadyInquired ? <InquirySentDetails listingId={detail.spaceId} /> : null}
 
@@ -447,6 +560,8 @@ export function DiscoverSpaceDetailDrawer({
                   spaceType={detail.type}
                   location={formattedAddress}
                   photoUrls={[detail.listingImageUrl, detail.coverImageUrl, detail.imageUrl]}
+                  onBeforeOpen={() => holdForPayment('photos')}
+                  openToken={photoOpenToken}
                 />
               </Box>
 
@@ -454,15 +569,29 @@ export function DiscoverSpaceDetailDrawer({
                 <Box sx={{ borderRadius: '16px', bgcolor: '#EAF8F2', p: 1.25 }}>
                   {mapHref ? (
                     <Box
-                      component="a"
-                      href={mapHref}
-                      target="_blank"
-                      rel="noreferrer"
+                      component={mapLocked ? 'button' : 'a'}
+                      href={mapLocked ? undefined : mapHref}
+                      target={mapLocked ? undefined : '_blank'}
+                      rel={mapLocked ? undefined : 'noreferrer'}
+                      type={mapLocked ? 'button' : undefined}
+                      onClick={
+                        mapLocked
+                          ? () => {
+                              if (!holdForPayment('map')) return;
+                              const href = mapHrefRef.current;
+                              if (href) window.open(href, '_blank', 'noopener,noreferrer');
+                            }
+                          : undefined
+                      }
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: 1,
                         width: '100%',
+                        border: 0,
+                        cursor: 'pointer',
+                        font: 'inherit',
+                        textAlign: 'left',
                         borderRadius: '12px',
                         bgcolor: '#fff',
                         px: 1,
@@ -615,19 +744,15 @@ export function DiscoverSpaceDetailDrawer({
                   >
                     {t('spaces.findPlace.enquire.ownCta')}
                   </Button>
-                ) : reveal.phase === 'disabled' || reveal.phase === 'exhausted' || reveal.phase === 'error' ? (
+                ) : reveal.phase === 'disabled' || reveal.phase === 'exhausted' ? (
                   <Typography sx={{ mt: 2, fontSize: 13, color: textSecondary }}>
                     {reveal.phase === 'exhausted'
                       ? t('spaces.findPlace.enquire.viewHereExhausted', {
                           defaultValue: 'You have used all instant contact views for today.',
                         })
-                      : reveal.phase === 'error'
-                        ? t('spaces.findPlace.enquire.viewHereFailed', {
-                            defaultValue: 'Contact details could not be loaded. Try again.',
-                          })
-                        : t('spaces.findPlace.enquire.viewHereDisabled', {
-                            defaultValue: 'Instant contact viewing is turned off. You can still request details.',
-                          })}
+                      : t('spaces.findPlace.enquire.viewHereDisabled', {
+                          defaultValue: 'Instant contact viewing is turned off. You can still request details.',
+                        })}
                   </Typography>
                 ) : null}
                 {revealing || (contactViewed && !sendingEnquiry) ? null : alreadyInquired && !sendingEnquiry ? (
@@ -679,6 +804,16 @@ export function DiscoverSpaceDetailDrawer({
           ) : null}
         </Box>
       </Box>
+      {detail ? (
+        <InquiryLimitDialog
+          open={payOpen}
+          purpose={payPurpose}
+          onClose={() => setPayOpen(false)}
+          availableCredits={0}
+          onPurchaseSubmitted={setAwaitingPurchaseId}
+          onPaymentConfirmed={releasePaidAccess}
+        />
+      ) : null}
       {detail ? (
         <EnquireDialog
           open={enquireOpen}

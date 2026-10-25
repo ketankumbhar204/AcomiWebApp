@@ -2,7 +2,7 @@ import { Box, ButtonBase, Typography } from '@mui/material';
 import { ChevronRight, Eye, Lock, Mail, MessageCircle, Smartphone, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { InquiryQuota } from '@/shared/types/inquiryCredits';
-import { canViewContactDirectly, isUnlimitedQuota, needsInquiryPayment, paidCreditsOf } from '@/shared/api/inquiryCreditsApi';
+import { canViewContactDirectly, isUnlimitedQuota } from '@/shared/api/inquiryCreditsApi';
 
 type ContactMethodChooserProps = {
   quota: InquiryQuota | null;
@@ -37,9 +37,7 @@ export function ContactMethodChooser({
   const dailyLimit = quota?.dailyFreeLimit ?? 0;
   const remainingKnown = quota != null && !isUnlimitedQuota(quota);
   const remainingToday = quota?.freeRemainingToday ?? dailyLimit;
-  const paidLeft = paidCreditsOf(quota);
-  const emailExhausted = needsInquiryPayment(quota);
-  const showPaidRemaining = remainingKnown && remainingToday <= 0 && paidLeft > 0;
+  const freeDailyExhausted = remainingKnown && remainingToday <= 0;
   const viewHereLimit = quota?.viewHereDailyLimit ?? 0;
   const viewHereRemaining = quota?.viewHereRemainingToday ?? 0;
   const showViewHere = canViewContactDirectly(quota);
@@ -256,7 +254,7 @@ export function ContactMethodChooser({
               }}
             >
               <Mail size={16} aria-hidden />
-              {remainingKnown && !showPaidRemaining ? (
+              {remainingKnown ? (
                 <Box
                   sx={{
                     position: 'absolute',
@@ -278,32 +276,10 @@ export function ContactMethodChooser({
                   {remainingToday}
                 </Box>
               ) : null}
-              {showPaidRemaining ? (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: -6,
-                    right: -6,
-                    minWidth: 20,
-                    height: 20,
-                    px: 0.5,
-                    borderRadius: 999,
-                    bgcolor: '#0F6B4C',
-                    color: '#fff',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 10,
-                    fontWeight: 800,
-                  }}
-                >
-                  {paidLeft}
-                </Box>
-              ) : null}
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography sx={{ fontSize: 12, fontWeight: 700 }}>
-                {emailExhausted
+                {freeDailyExhausted
                   ? packageOffer
                     ? t('spaces.findPlace.enquire.emailCtaExhausted', {
                         count: packageOffer.credits,
@@ -326,25 +302,20 @@ export function ContactMethodChooser({
                     fontWeight: 800,
                   }}
                 >
-                  {showPaidRemaining
-                    ? t('spaces.findPlace.enquire.emailPaidRemaining', {
-                        count: paidLeft,
-                        defaultValue: '{{count}} paid enquiries left',
+                  {remainingToday === 1
+                    ? t('spaces.findPlace.enquire.emailRemainingOne', {
+                        remaining: remainingToday,
+                        limit: dailyLimit,
+                        defaultValue: '{{remaining}} enquiry remaining out of {{limit}}',
                       })
-                    : remainingToday === 1
-                      ? t('spaces.findPlace.enquire.emailRemainingOne', {
-                          remaining: remainingToday,
-                          limit: dailyLimit,
-                          defaultValue: '{{remaining}} enquiry remaining out of {{limit}}',
-                        })
-                      : t('spaces.findPlace.enquire.emailRemaining', {
-                          remaining: remainingToday,
-                          limit: dailyLimit,
-                          defaultValue: '{{remaining}} enquiries remaining out of {{limit}}',
-                        })}
+                    : t('spaces.findPlace.enquire.emailRemaining', {
+                        remaining: remainingToday,
+                        limit: dailyLimit,
+                        defaultValue: '{{remaining}} enquiries remaining out of {{limit}}',
+                      })}
                 </Typography>
               ) : null}
-              {remainingKnown && !showPaidRemaining && !emailExhausted ? (
+              {remainingKnown && !freeDailyExhausted ? (
                 <Typography sx={{ mt: 0.5, fontSize: 12, fontWeight: 700, color: 'text.secondary' }}>
                   {t('spaces.findPlace.enquire.emailDailyLimit', {
                     count: dailyLimit,
@@ -352,7 +323,7 @@ export function ContactMethodChooser({
                   })}
                 </Typography>
               ) : null}
-              {emailExhausted && packageOffer ? (
+              {freeDailyExhausted && packageOffer ? (
                 <Typography sx={{ mt: 0.5, fontSize: 12, fontWeight: 700, color: 'text.secondary' }}>
                   {t('spaces.findPlace.enquire.limitCreditsCta', {
                     count: packageOffer.credits,
@@ -362,20 +333,16 @@ export function ContactMethodChooser({
                 </Typography>
               ) : null}
               <Typography sx={{ mt: 0.75, fontSize: 12, color: 'text.secondary' }}>
-                {emailExhausted
+                {freeDailyExhausted
                   ? packageOffer
                     ? t('spaces.findPlace.enquire.emailExhaustedHint', {
                         amount: packageOffer.amount,
                         defaultValue: 'Pay {{amount}} on UPI, then send the screenshot on WhatsApp.',
                       })
                     : null
-                  : showPaidRemaining
-                    ? t('spaces.findPlace.enquire.emailPaidHint', {
-                        defaultValue: 'Admin approved credits are ready to use.',
-                      })
-                    : t('spaces.findPlace.enquire.emailCardHint', {
-                        defaultValue: 'We’ll send the owner’s contact details to your registered email.',
-                      })}
+                  : t('spaces.findPlace.enquire.emailCardHint', {
+                      defaultValue: 'We’ll send the owner’s contact details to your registered email.',
+                    })}
               </Typography>
             </Box>
             <ChevronRight size={16} aria-hidden />

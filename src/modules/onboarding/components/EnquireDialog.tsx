@@ -449,7 +449,10 @@ export function EnquireDialog({
   }
 
   function openEmailStep() {
-    if (needsInquiryPayment(quota)) {
+    if (
+      (quota != null && !isUnlimitedQuota(quota) && quota.freeRemainingToday <= 0) ||
+      needsInquiryPayment(quota)
+    ) {
       setLimitDialogOpen(true);
       setStep('limit');
       return;
@@ -953,10 +956,7 @@ export function EnquireDialog({
                               height: 18,
                               px: 0.5,
                               borderRadius: 999,
-                              bgcolor:
-                                quota.freeRemainingToday > 0 || paidCreditsOf(quota) > 0
-                                  ? '#DC2626'
-                                  : colors.textSecondary,
+                              bgcolor: quota.freeRemainingToday > 0 ? '#DC2626' : colors.textSecondary,
                               color: '#fff',
                               fontSize: 10,
                               fontWeight: 800,
@@ -965,9 +965,7 @@ export function EnquireDialog({
                               lineHeight: 1,
                             }}
                           >
-                            {quota.freeRemainingToday > 0
-                              ? quota.freeRemainingToday
-                              : paidCreditsOf(quota)}
+                            {quota.freeRemainingToday}
                           </Box>
                         ) : null}
                       </Box>
@@ -997,11 +995,7 @@ export function EnquireDialog({
                               ? t('spaces.findPlace.enquire.emailQuotaRemaining', {
                                   count: quota.freeRemainingToday,
                                 })
-                              : paidCreditsOf(quota) > 0
-                                ? t('spaces.findPlace.enquire.emailQuotaPaid', {
-                                    count: paidCreditsOf(quota),
-                                  })
-                                : t('spaces.findPlace.enquire.emailQuotaExhausted')
+                              : t('spaces.findPlace.enquire.emailQuotaExhausted')
                             : null}
                         </Typography>
                         <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.3 }}>

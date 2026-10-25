@@ -1,4 +1,4 @@
-import { Box, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Typography } from '@mui/material';
 import { ExternalLink, Mail, MapPin, Phone } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { OwnerContactResponse } from '@/shared/types/enquiry';
@@ -8,18 +8,27 @@ import { openableMapsUrl } from '@/modules/onboarding/utils/listingLocation';
 type OwnerContactCardProps = {
   contact: OwnerContactResponse | null | undefined;
   mapUrl?: string | null;
+  loading?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
 };
 
 /** Matches public website OwnerContactCard (sky contact panel). */
-export function OwnerContactCard({ contact, mapUrl }: OwnerContactCardProps) {
+export function OwnerContactCard({
+  contact,
+  mapUrl,
+  loading = false,
+  error = false,
+  onRetry,
+}: OwnerContactCardProps) {
   const { t } = useTranslation();
-  if (!contact) return null;
+  if (!contact && !loading && !error) return null;
 
-  const phones = [contact.mobileNumber, contact.alternateMobileNumber, contact.additionalMobileNumber].filter(
+  const phones = [contact?.mobileNumber, contact?.alternateMobileNumber, contact?.additionalMobileNumber].filter(
     (value): value is string => Boolean(value && value.trim()),
   );
-  const email = contact.email?.trim() ?? '';
-  const name = contact.ownerName?.trim() ?? '';
+  const email = contact?.email?.trim() ?? '';
+  const name = contact?.ownerName?.trim() ?? '';
   const mapHref = openableMapsUrl(mapUrl);
   const hasDetails = phones.length > 0 || email.length > 0 || name.length > 0 || mapHref.length > 0;
 
@@ -46,7 +55,30 @@ export function OwnerContactCard({ contact, mapUrl }: OwnerContactCardProps) {
       >
         {t('spaces.findPlace.enquire.contactTitle', { defaultValue: 'Contact details' })}
       </Typography>
-      {hasDetails ? (
+      {loading ? (
+        <Box role="status" sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CircularProgress size={16} />
+          <Typography sx={{ fontSize: 13, color: '#075985' }}>
+            {t('spaces.findPlace.enquire.contactLoading', { defaultValue: 'Loading contact details…' })}
+          </Typography>
+        </Box>
+      ) : error ? (
+        <Box role="alert" sx={{ mt: 1.5 }}>
+          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            {t('spaces.findPlace.enquire.contactFailed', {
+              defaultValue: 'Contact details could not be loaded. Try again.',
+            })}
+          </Typography>
+          {onRetry ? (
+            <Button
+              onClick={onRetry}
+              sx={{ mt: 0.5, px: 0, minWidth: 0, textTransform: 'none', fontWeight: 700, color: '#0F6B4C' }}
+            >
+              {t('spaces.findPlace.enquire.contactRetry', { defaultValue: 'Try again' })}
+            </Button>
+          ) : null}
+        </Box>
+      ) : hasDetails ? (
         <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
           {name ? (
             <Box>
