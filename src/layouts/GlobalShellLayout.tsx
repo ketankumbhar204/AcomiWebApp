@@ -100,12 +100,27 @@ export function GlobalShellLayout() {
   const mySpaces = useSpaceStore((state) => state.mySpaces);
   const hasSpaces = mySpaces.length > 0;
   const isOwnerIntent = getAccountIntent() === 'owner';
+  const enquiryInbox = useQuery({
+    queryKey: ['enquiry-inbox'],
+    queryFn: () => enquiryApi.inbox(),
+    staleTime: 30_000,
+  });
+  const receivedInbox = enquiryInbox.data?.mode === 'RECEIVED';
   const enquiryUnread = useQuery({
     queryKey: ['enquiry-unread-count'],
     queryFn: () => enquiryApi.listNotifications({ size: 1 }),
     staleTime: 30_000,
+    enabled: enquiryInbox.isSuccess && !receivedInbox,
   });
-  const enquiryBadge = enquiryUnread.data?.unreadCount ?? 0;
+  const ownerPending = useQuery({
+    queryKey: ['received-enquiries-summary', ''],
+    queryFn: () => enquiryApi.receivedSummary(),
+    staleTime: 30_000,
+    enabled: receivedInbox,
+  });
+  const enquiryBadge = receivedInbox
+    ? (ownerPending.data?.pending ?? 0)
+    : (enquiryUnread.data?.unreadCount ?? 0);
   const accountHome = hasSpaces
     ? ROUTES.mySpaces
     : isOwnerIntent

@@ -38,6 +38,7 @@ import {
   type ResidentPickerItem,
 } from '../hooks/useResidentImportSearch';
 import { useMemberMutations } from '../hooks/useMembers';
+import { importAddedToast } from '../utils/importAddedToast';
 import { enrollMemberInFullMeals } from '../utils/enrollMemberInFullMeals';
 import { MEMBER_GENDER_OPTIONS, isMemberGenderRequired } from '../utils/memberGender';
 import {
@@ -273,7 +274,7 @@ function MemberFormBody({
       }
     }
     enqueueSnackbar(
-      usingImport ? t('membership.add.importSuccessToast') : t('membership.add.successToast'),
+      usingImport ? importAddedToast(t, spaceType) : t('membership.add.successToast'),
       { variant: 'success' },
     );
     await queryClient.invalidateQueries({ queryKey: ['import-candidates', spaceId] });

@@ -411,6 +411,7 @@ export interface SubmitMealPollSelection {
 export interface MealHeadcountMember {
   memberId: string;
   memberName: string;
+  mobileNumber?: string | null;
   quantity?: number;
   paymentStatus?: MealPollPaymentStatus | null;
   paymentProofImageUrl?: string | null;

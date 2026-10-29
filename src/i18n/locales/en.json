@@ -1139,6 +1139,7 @@
         "propertyReady": "Property layout started",
         "residentsActive": "{{count}} residents active",
         "occupancy": "{{occupied}} of {{total}} beds occupied",
+        "occupancyUnits": "{{occupied}} of {{total}} units occupied",
         "attentionClear": "No pending actions",
         "pendingActions": "{{count}} pending actions",
         "pendingPayments": "{{count}} payments under review"
@@ -1220,6 +1221,9 @@
       "occupiedBeds": "Occupied beds",
       "vacantBeds": "Vacant beds",
       "reservedBeds": "Reserved beds",
+      "occupiedUnits": "Occupied units",
+      "availableUnits": "Available units",
+      "unitsSub": "Unit occupancy",
       "moveInsThisMonth": "Move-ins this month",
       "pendingPayments": "Pending payments"
     },
@@ -1409,7 +1413,20 @@
       "fullNamePlaceholder": "e.g. Rahul Sharma",
       "detailsHeading": "Member details",
       "saveImport": "Add",
-      "importSuccessToast": "Customer added to this mess.",
+      "importSuccessToast": "{{person}} added to this {{space}}.",
+      "importPerson": {
+        "customer": "Customer",
+        "member": "Member"
+      },
+      "importSpace": {
+        "space": "space",
+        "mess": "mess",
+        "pg": "PG",
+        "hostel": "hostel",
+        "coLiving": "co-living",
+        "rental": "rental",
+        "corporateStay": "corporate stay"
+      },
       "importFailed": "Could not import this customer. Please try again.",
       "reuseRequired": "Pick someone from another space, or create a new customer.",
       "selectedCustomer": "Selected",
@@ -5672,6 +5689,7 @@
       "view": "View",
       "detailTitle": "Enquiry details",
       "email": "Requester email",
+      "requesterMobile": "Requester mobile",
       "expires": "Expires",
       "ownerContact": "Owner contact information",
       "ownerName": "Owner",

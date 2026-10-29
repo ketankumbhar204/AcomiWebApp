@@ -23,6 +23,16 @@ assert.match(choice, /spaceType === 'MESS' \? 'customer' : 'member'/);
 assert.match(choice, /pickerMode: 'new'/);
 assert.match(choice, /pickerMode: 'search'/);
 assert.match(choice, /type: 'import-page'/);
+assert.match(choice, /alreadyInTargetSpace !== true/);
+assert.doesNotMatch(choice, /availableForMoveIn !== false && candidate\.alreadyInTargetSpace/);
+
+const importPage = source('src/modules/members/pages/ImportExistingPeoplePage.tsx');
+const importHook = source('src/modules/members/hooks/useResidentImportSearch.ts');
+assert.match(importPage, /mealsApplicableForSpace/);
+assert.match(importPage, /alreadyInTargetSpace/);
+assert.match(importPage, /useResidentImportSearch\(spaceId, query, true, true\)/);
+assert.match(importHook, /includeUnavailable/);
+assert.match(members, /includeUnavailable: true/);
 
 assert.match(dialog, /membership\.add\.choice\.titleCustomer/);
 assert.match(dialog, /membership\.add\.choice\.titleMember/);

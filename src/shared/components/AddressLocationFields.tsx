@@ -8,6 +8,7 @@ import {
   AUTOCOMPLETE_MIN_LENGTH,
   addressCaptureIssue,
   captureFromSuggestion,
+  keepTypedAddress,
   suggestionDetail,
   suggestionKey,
   suggestionTitle,
@@ -55,7 +56,7 @@ export function AddressLocationFields({
   const [suggestions, setSuggestions] = useState<LocationAutocompleteSuggestion[]>([]);
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'empty' | 'error'>('idle');
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState(-1);
   const issue = addressCaptureIssue(value, { required, requireBuilding, pincodeRequired, allowManual });
   const message = issueMessage(issue, error);
 
@@ -83,7 +84,7 @@ export function AddressLocationFields({
           if (controller.signal.aborted) return;
           const next = rows.filter((row) => captureFromSuggestion(value, row));
           setSuggestions(next);
-          setActive(0);
+          setActive(-1);
           setStatus(next.length ? 'ready' : 'empty');
         })
         .catch(() => {
@@ -103,6 +104,12 @@ export function AddressLocationFields({
     if (!next) return;
     onChange(next);
     setOpen(false);
+  }
+
+  function keepTyped() {
+    setOpen(false);
+    setActive(-1);
+    onChange(keepTypedAddress(value));
   }
 
   const summary = [value.locality, value.city, value.state].filter(Boolean).join(', ');
@@ -134,24 +141,38 @@ export function AddressLocationFields({
           defaultValue: 'Search building, road, area, locality or landmark',
         })}
         onChange={(event) => onChange(withAddressQuery(value, event.target.value))}
+        onFocus={() => {
+          if (!value.selected && value.query.trim().length >= AUTOCOMPLETE_MIN_LENGTH) setOpen(true);
+        }}
+        onBlur={() => {
+          window.setTimeout(() => setOpen(false), 150);
+        }}
         onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            setOpen(false);
+            return;
+          }
           if (!open || status !== 'ready' || suggestions.length === 0) {
-            if (event.key === 'Escape') setOpen(false);
+            if (event.key === 'Enter' && allowManual && value.query.trim()) {
+              event.preventDefault();
+              keepTyped();
+            }
             return;
           }
           if (event.key === 'ArrowDown') {
             event.preventDefault();
-            setActive((current) => (current + 1) % suggestions.length);
+            setActive((current) => (current + 1 >= suggestions.length ? -1 : current + 1));
           } else if (event.key === 'ArrowUp') {
             event.preventDefault();
-            setActive((current) => (current - 1 + suggestions.length) % suggestions.length);
-          } else if (event.key === 'Enter') {
+            setActive((current) => (current <= 0 ? -1 : current - 1));
+          } else if (event.key === 'Enter' && active >= 0) {
             event.preventDefault();
             const suggestion = suggestions[active];
             if (suggestion) selectSuggestion(suggestion);
-          } else if (event.key === 'Escape') {
+          } else if (event.key === 'Enter' && allowManual) {
             event.preventDefault();
-            setOpen(false);
+            keepTyped();
           }
         }}
         slotProps={{
@@ -181,6 +202,38 @@ export function AddressLocationFields({
             bgcolor: 'background.paper',
           }}
         >
+          {allowManual && value.query.trim() ? (
+            <Box
+              component="button"
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={keepTyped}
+              sx={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                border: 0,
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+                px: 1.5,
+                py: 1,
+                cursor: 'pointer',
+                bgcolor: 'action.hover',
+              }}
+            >
+              <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+                {t('locationCapture.useTyped', {
+                  query: value.query.trim(),
+                  defaultValue: 'Use “{{query}}”',
+                })}
+              </Typography>
+              <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                {t('locationCapture.useTypedHint', {
+                  defaultValue: 'Continue with this text. A suggestion is optional.',
+                })}
+              </Typography>
+            </Box>
+          ) : null}
           {status === 'loading' ? (
             <Typography sx={{ px: 1.5, py: 1.25, fontSize: 13 }}>
               {t('locationCapture.searching', { defaultValue: 'Searching locations...' })}
@@ -188,9 +241,13 @@ export function AddressLocationFields({
           ) : null}
           {status === 'empty' ? (
             <Typography sx={{ px: 1.5, py: 1.25, fontSize: 13 }}>
-              {t('locationCapture.empty', {
-                defaultValue: 'No locations found. Try a road, area, locality or city.',
-              })}
+              {allowManual
+                ? t('locationCapture.emptyManual', {
+                    defaultValue: 'No matching places. You can continue with the location you typed.',
+                  })
+                : t('locationCapture.empty', {
+                    defaultValue: 'No locations found. Try a road, area, locality or city.',
+                  })}
             </Typography>
           ) : null}
           {status === 'error' ? (
@@ -228,6 +285,52 @@ export function AddressLocationFields({
                 </Box>
               ))
             : null}
+        </Box>
+      ) : null}
+      {allowManual && value.query.trim() && !value.selected && !open ? (
+        <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, px: 1.5, py: 1.25 }}>
+          <Typography sx={{ fontSize: 13, fontWeight: 700 }}>
+            {t('locationCapture.manualTitle', { defaultValue: 'Location details' })}
+          </Typography>
+          <Typography sx={{ mt: 0.25, fontSize: 12, color: 'text.secondary' }}>
+            {t('locationCapture.manualHint', {
+              query: value.query.trim(),
+              defaultValue: 'Optional. Add city, district and the other details for “{{query}}”.',
+            })}
+          </Typography>
+          <Box sx={{ mt: 1.25, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.25 }}>
+            {(
+              [
+                ['locality', t('locationCapture.locality', { defaultValue: 'Locality' })],
+                ['city', t('locationCapture.city', { defaultValue: 'City' })],
+                ['state', t('locationCapture.state', { defaultValue: 'State' })],
+                ['district', t('locationCapture.district', { defaultValue: 'District' })],
+              ] as const
+            ).map(([key, label]) => (
+              <TextField
+                key={key}
+                label={label}
+                value={value[key]}
+                disabled={disabled}
+                onChange={(event) => onChange({ ...value, [key]: event.target.value })}
+                fullWidth
+                size="small"
+              />
+            ))}
+            <TextField
+              label={t('locationCapture.pincode', { defaultValue: 'Pincode' })}
+              value={value.pincode}
+              disabled={disabled}
+              onChange={(event) =>
+                onChange({ ...value, pincode: event.target.value.replace(/\D/g, '').slice(0, 6) })
+              }
+              fullWidth
+              size="small"
+              error={issue === 'pincode'}
+              helperText={issue === 'pincode' ? message : undefined}
+              slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 6 } }}
+            />
+          </Box>
         </Box>
       ) : null}
       {value.selected ? (

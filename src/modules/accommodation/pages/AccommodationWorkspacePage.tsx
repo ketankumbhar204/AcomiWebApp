@@ -23,8 +23,14 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AccommodationOpsWidget, type AccommodationOpsMetricId } from '@/modules/dashboard/components/AccommodationOpsWidget';
+import { useUnitLevelOccupancyCounts } from '@/modules/accommodation/hooks/useUnitLevelOccupancyCounts';
+import {
+  getAccommodationUiProfile,
+  usesUnitLevelOccupancy,
+} from '@/modules/accommodation/utils/accommodationProfile';
+import { applyUnitOccupancyCounts } from '@/modules/accommodation/utils/unitLevelOccupancy';
 import { useSpaceDashboard } from '@/modules/dashboard/hooks/useSpaceDashboard';
 import { useSpaceOccupancyList } from '@/modules/dashboard/hooks/useSpaceOccupancyList';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
@@ -48,6 +54,7 @@ import {
 } from '@/routes/paths';
 import { HierarchyTree, type TreeSelection } from '../components/HierarchyTree';
 import { CenterWorkspace } from '../components/CenterWorkspace';
+import { RentalUnitsReview } from '../components/RentalUnitsReview';
 import { EntityInspector } from '../components/EntityInspector';
 import { EntityFormDrawer, type EntityFormMode } from '../components/EntityFormDrawer';
 import { AccommodationPathBar } from '../components/AccommodationPathBar';
@@ -78,8 +85,30 @@ export function AccommodationWorkspacePage() {
   );
   const canDrillOccupancy =
     permissions.canViewSpaceOccupancies === true || permissions.canManageOccupancy;
+  const [searchParams] = useSearchParams();
+  const unitLevel = usesUnitLevelOccupancy(
+    spaceType ? getAccommodationUiProfile(spaceType) : null,
+  );
+  const unitOccupancy = useUnitLevelOccupancyCounts(spaceId, unitLevel);
+  const displayAccommodationOperations = useMemo(() => {
+    const operations = dashboard.accommodationOperations;
+    if (!operations) return null;
+    if (!unitLevel || !unitOccupancy.counts) {
+      return unitLevel ? null : operations;
+    }
+    return applyUnitOccupancyCounts(operations, unitOccupancy.counts);
+  }, [dashboard.accommodationOperations, unitLevel, unitOccupancy.counts]);
+  const queryUnitStatus = searchParams.get('unitStatus');
 
   const [opsFocus, setOpsFocus] = useState<RoomsOpsFocus>(null);
+  const rentalStatusFilter =
+    opsFocus === 'OCCUPIED' || queryUnitStatus === 'OCCUPIED'
+      ? 'OCCUPIED'
+      : opsFocus === 'VACANT' || queryUnitStatus === 'AVAILABLE'
+        ? 'AVAILABLE'
+        : opsFocus === 'RESERVED' || queryUnitStatus === 'RESERVED'
+          ? 'RESERVED'
+          : null;
   const [selection, setSelection] = useState<TreeSelection | null>(null);
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -381,7 +410,9 @@ export function AccommodationWorkspacePage() {
 
   // Cards view = mock full-width room inventory (no hierarchy columns).
   // Table view keeps the classic 3-column workspace.
-  const useInventoryLayout = viewMode === 'cards';
+  const rentalLayout = profile.layoutMode === 'RENTAL';
+  const useInventoryLayout = viewMode === 'cards' && !rentalLayout;
+  const useRentalLayout = viewMode === 'cards' && rentalLayout;
   const bedLeaf = selection?.type === 'bed';
   const centerPane = useInventoryLayout
     ? inventoryPanel
@@ -493,18 +524,44 @@ export function AccommodationWorkspacePage() {
           />
         ) : (
           <Stack spacing={`${DASHBOARD_UX.sectionGap}px`} sx={{ width: '100%' }}>
-            {dashboard.accommodationOperations ? (
+            {displayAccommodationOperations ? (
               <AccommodationOpsWidget
                 spaceId={spaceId}
-                operations={dashboard.accommodationOperations}
+                operations={displayAccommodationOperations}
                 canDrillDown={canDrillOccupancy}
                 columns={4}
+                occupancyEntity={unitLevel ? 'units' : 'beds'}
                 onSelectMetric={handleSelectOpsMetric}
                 selectedMetricId={selectedOpsMetricId}
               />
             ) : null}
 
-            {useInventoryLayout ? (
+            {useRentalLayout && spaceType ? (
+              <Box sx={{ width: '100%', minHeight: { xs: 480, md: 'calc(100vh - 260px)' } }}>
+                <RentalUnitsReview
+                  spaceId={spaceId}
+                  spaceType={spaceType}
+                  buildings={buildingsQuery.buildings}
+                  selectedBuildingId={
+                    selection && 'buildingId' in selection ? selection.buildingId : undefined
+                  }
+                  canManage={permissions.canManageAccommodation}
+                  canDeactivate={permissions.canDeactivateAccommodation === true}
+                  onSelectBuilding={(buildingId) =>
+                    setSelection({ type: 'building', buildingId })
+                  }
+                  onViewUnit={(buildingId, unitId) => {
+                    setSelection({ type: 'unit', buildingId, unitId });
+                    setViewMode('table');
+                  }}
+                  onAddUnit={(buildingId) =>
+                    setFormMode({ kind: 'create', parent: { type: 'building', buildingId } })
+                  }
+                  onEditUnit={(next) => setFormMode({ kind: 'edit', selection: next })}
+                  statusFilter={rentalStatusFilter}
+                />
+              </Box>
+            ) : useInventoryLayout ? (
               <Box sx={{ width: '100%', minHeight: { xs: 480, md: 'calc(100vh - 260px)' } }}>
                 {inventoryPanel}
               </Box>

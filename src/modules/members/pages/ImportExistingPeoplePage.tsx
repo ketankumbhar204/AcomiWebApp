@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
+import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { memberApi } from '../api/memberApi';
 import {
@@ -17,6 +18,8 @@ import {
   type ResidentPickerItem,
 } from '../hooks/useResidentImportSearch';
 import { enrollMemberInFullMeals } from '../utils/enrollMemberInFullMeals';
+import { mealsApplicableForSpace } from '@/spaceLifecycle/capabilities';
+import { importAddedToast } from '../utils/importAddedToast';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
@@ -56,7 +59,9 @@ export function ImportExistingPeoplePage() {
   const [filter, setFilter] = useState<PeopleFilter>('all');
   const [pendingImport, setPendingImport] = useState<ResidentPickerItem | null>(null);
 
-  const importSearch = useResidentImportSearch(spaceId, query, true);
+  const permissions = useSpacePermissions(spaceId);
+  const mealsSupported = mealsApplicableForSpace(permissions.space?.spaceType);
+  const importSearch = useResidentImportSearch(spaceId, query, true, true);
 
   const filtered = useMemo(() => {
     if (filter === 'all') return importSearch.members;
@@ -74,6 +79,9 @@ export function ImportExistingPeoplePage() {
 
   const importMutation = useMutation({
     mutationFn: async (item: ResidentPickerItem) => {
+      if (item.alreadyInTargetSpace) {
+        return item.memberId;
+      }
       let memberId = item.memberId;
       if (item.needsImport) {
         const imported = await memberApi.importMember(spaceId, {
@@ -81,15 +89,17 @@ export function ImportExistingPeoplePage() {
         });
         memberId = imported.memberId;
       }
-      try {
-        await enrollMemberInFullMeals(spaceId, memberId);
-      } catch {
-        // Meal enroll is best-effort (mobile parity).
+      if (mealsSupported) {
+        try {
+          await enrollMemberInFullMeals(spaceId, memberId);
+        } catch {
+          // Meal enroll is best-effort (mobile parity).
+        }
       }
       return memberId;
     },
     onSuccess: async () => {
-      enqueueSnackbar(t('membership.add.importSuccessToast'), { variant: 'success' });
+      enqueueSnackbar(importAddedToast(t, permissions.space?.spaceType), { variant: 'success' });
       setPendingImport(null);
       await queryClient.invalidateQueries({ queryKey: ['members', spaceId] });
       await importSearch.refetch();
@@ -119,7 +129,9 @@ export function ImportExistingPeoplePage() {
       header: t('membership.importPeople.fromSpace', { defaultValue: 'Source' }),
       accessor: (row) =>
         row.alreadyInTargetSpace
-          ? t('membership.add.reuseCard.alreadyHere')
+          ? t('membership.add.reuseCard.alreadyInSpace', {
+              defaultValue: 'Already in this space',
+            })
           : t('membership.add.reuseCard.fromSpace', {
               space: row.sourceSpaceName ?? '',
             }),
@@ -141,17 +153,28 @@ export function ImportExistingPeoplePage() {
     {
       id: 'actions',
       header: t('membership.workspace.columns.actions'),
-      accessor: (row) => (
-        <Button
-          size="small"
-          variant="contained"
-          disabled={importMutation.isPending || row.alreadyInTargetSpace}
-          onClick={() => setPendingImport(row)}
-          sx={dashContainedButtonSx}
-        >
-          {t('membership.importPeople.add', { defaultValue: 'Add' })}
-        </Button>
-      ),
+      accessor: (row) =>
+        row.alreadyInTargetSpace ? (
+          <Typography variant="body2" color="text.secondary">
+            {t('membership.add.reuseCard.alreadyInSpace', {
+              defaultValue: 'Already in this space',
+            })}
+          </Typography>
+        ) : (
+          <Button
+            size="small"
+            variant="contained"
+            disabled={importMutation.isPending}
+            onClick={() => {
+              if (!row.alreadyInTargetSpace) {
+                setPendingImport(row);
+              }
+            }}
+            sx={dashContainedButtonSx}
+          >
+            {t('membership.importPeople.add', { defaultValue: 'Add' })}
+          </Button>
+        ),
     },
   ];
 
@@ -262,7 +285,7 @@ export function ImportExistingPeoplePage() {
           }
         }}
         onConfirm={() => {
-          if (pendingImport) {
+          if (pendingImport && !pendingImport.alreadyInTargetSpace) {
             importMutation.mutate(pendingImport);
           }
         }}

@@ -30,7 +30,7 @@ const propertyEmpty = buildPhotoRequestMessage({
 });
 assert.equal(
   propertyEmpty,
-  "Hi, I'm interested in Sri Sai Venkateshwara PG. Could you please share some recent photos of the property and available rooms? Thank you.",
+  "Hi, I'm interested in Sri Sai Venkateshwara PG. Could you please share some recent photos of the property and available rooms? Thank you.\n\nYou can check in the ACOMI app: https://www.acomi.in/open.html",
 );
 
 const messPhotos = buildPhotoRequestMessage({

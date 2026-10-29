@@ -104,7 +104,11 @@ assert.equal(mess.layoutMode, null);
 assert.equal(isSubmittableSetupLayout('MESS', 'CORRIDOR_PG'), false);
 assert.equal(isSubmittableSetupLayout('CO_LIVING', 'CORRIDOR_PG'), false);
 assert.equal(isSubmittableSetupLayout('RENTAL', 'RENTAL'), true);
+assert.equal(isSubmittableSetupLayout('CORPORATE_STAY', 'RENTAL'), true);
+assert.equal(isSubmittableSetupLayout('CORPORATE_STAY', 'CO_LIVING'), false);
+assert.equal(isSubmittableSetupLayout('CORPORATE_STAY', 'CORRIDOR_PG'), false);
 assert.equal(isSubmittableSetupLayout('PG', 'APARTMENT_PG'), true);
+assert.match(wizard, /layoutMode === 'RENTAL' \? 0/);
 assert.equal(isSubmittableSetupLayout(undefined, 'CORRIDOR_PG'), false);
 
 assert.match(wizard, /decideWizardLayout/);

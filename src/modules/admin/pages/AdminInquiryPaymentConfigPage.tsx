@@ -23,9 +23,11 @@ import { FileImageViewer } from '@/shared/components/files/FileImageViewer';
 import { getErrorMessage } from '@/shared/api/errors';
 import {
   fetchDisplayableFileUrl,
+  mapFileUploadError,
   revokeDisplayableFileUrl,
   uploadLocalFile,
 } from '@/shared/services/fileUploadService';
+import { FileUploadUserError } from '@/shared/utils/fileLimits';
 import type {
   AndroidInquiryBillingMode,
   InquiryClientChannel,
@@ -350,13 +352,16 @@ export function AdminInquiryPaymentConfigPage() {
     setQrUploading(true);
     try {
       const fileId = await uploadLocalFile(file, { purpose: 'INQUIRY_PAYMENT_QR' });
-      setQrFileId(fileId);
+      const saved = await inquiryCreditsAdminApi.updatePaymentConfig({ qrFileId: fileId });
+      setQrFileId(saved.qrFileId ?? fileId);
       setQrCleared(false);
-      await inquiryCreditsAdminApi.updatePaymentConfig({ qrFileId: fileId });
     } catch (err) {
-      enqueueSnackbar(getErrorMessage(err, 'QR upload failed. Please try again.'), {
-        variant: 'error',
-      });
+      enqueueSnackbar(
+        err instanceof FileUploadUserError
+          ? mapFileUploadError(err)
+          : getErrorMessage(err, 'QR upload failed. Please try again.'),
+        { variant: 'error' },
+      );
     } finally {
       setQrUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

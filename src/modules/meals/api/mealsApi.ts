@@ -1,4 +1,5 @@
 import apiClient from '@/shared/api/client';
+import { splitMenuDateRange } from '@/modules/meals/utils/mealDates';
 import { unwrapApiResponse, unwrapVoidResponse } from '@/shared/api/apiRequest';
 import type { ApiResponse, PagedResponse } from '@/shared/types/api';
 import type {
@@ -246,12 +247,19 @@ export const mealsApi = {
       ),
     ),
 
-  getDailyMenusRange: (spaceId: string, from: string, to: string) =>
-    unwrapApiResponse(
-      apiClient.get<ApiResponse<DailyMenuResponse[]>>(`/spaces/${spaceId}/daily-menus`, {
-        params: { from, to },
-      }),
-    ),
+  getDailyMenusRange: async (spaceId: string, from: string, to: string) => {
+    const windows = splitMenuDateRange(from, to);
+    const batches = await Promise.all(
+      windows.map(window =>
+        unwrapApiResponse(
+          apiClient.get<ApiResponse<DailyMenuResponse[]>>(`/spaces/${spaceId}/daily-menus`, {
+            params: { from: window.from, to: window.to },
+          }),
+        ),
+      ),
+    );
+    return batches.flat();
+  },
 
   getMenuHistory: (
     spaceId: string,

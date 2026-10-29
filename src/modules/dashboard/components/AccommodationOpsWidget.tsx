@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import type { DashboardAccommodationOperations } from '@/shared/types/dashboard';
-import { spaceBedInventoryPath, spacePaymentsPath } from '@/routes/paths';
+import { spaceAccommodationPath, spaceBedInventoryPath, spacePaymentsPath } from '@/routes/paths';
 import { DashboardSection } from './DashboardSection';
 import { OccupancyStatusBoard, type OccupancyChipModel } from './OccupancyStatusBoard';
 
@@ -26,6 +26,8 @@ type AccommodationOpsWidgetProps = {
   onSelectMetric?: (id: AccommodationOpsMetricId) => void;
   /** Highlights the active Rooms ops focus card. */
   selectedMetricId?: AccommodationOpsMetricId | null;
+  /** Unit-only spaces count units. Bed spaces keep the existing labels. */
+  occupancyEntity?: 'beds' | 'units';
 };
 
 /** Property operations — public OccupancyCard layout plus Move-ins / Pending filters. */
@@ -35,10 +37,12 @@ export function AccommodationOpsWidget({
   canDrillDown,
   onSelectMetric,
   selectedMetricId = null,
+  occupancyEntity = 'beds',
 }: AccommodationOpsWidgetProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const roomsFilterMode = typeof onSelectMetric === 'function';
+  const unitLevel = occupancyEntity === 'units';
   const reservedBeds = operations.reservedBeds ?? 0;
   const totalBeds = operations.occupiedBeds + operations.vacantBeds + reservedBeds;
 
@@ -58,19 +62,35 @@ export function AccommodationOpsWidget({
   const statusChips: OccupancyChipModel[] = [
     {
       id: 'occupied',
-      label: t('dashboard.accommodationOperations.occupied'),
+      label: unitLevel
+        ? t('dashboard.accommodationOperations.occupiedUnits', { defaultValue: 'Occupied units' })
+        : t('dashboard.accommodationOperations.occupied'),
       value: operations.occupiedBeds,
       tone: 'occupied',
       selected: selectedMetricId === 'occupied',
-      onClick: bind('occupied', () => navigate(spaceBedInventoryPath(spaceId, 'OCCUPIED'))),
+      onClick: bind('occupied', () =>
+        navigate(
+          unitLevel
+            ? `${spaceAccommodationPath(spaceId)}?unitStatus=OCCUPIED`
+            : spaceBedInventoryPath(spaceId, 'OCCUPIED'),
+        ),
+      ),
     },
     {
       id: 'vacant',
-      label: t('dashboard.accommodationOperations.vacant'),
+      label: unitLevel
+        ? t('dashboard.accommodationOperations.availableUnits', { defaultValue: 'Available units' })
+        : t('dashboard.accommodationOperations.vacant'),
       value: operations.vacantBeds,
       tone: 'vacant',
       selected: selectedMetricId === 'vacant',
-      onClick: bind('vacant', () => navigate(spaceBedInventoryPath(spaceId, 'AVAILABLE'))),
+      onClick: bind('vacant', () =>
+        navigate(
+          unitLevel
+            ? `${spaceAccommodationPath(spaceId)}?unitStatus=AVAILABLE`
+            : spaceBedInventoryPath(spaceId, 'AVAILABLE'),
+        ),
+      ),
     },
     {
       id: 'reserved',
@@ -78,7 +98,13 @@ export function AccommodationOpsWidget({
       value: reservedBeds,
       tone: 'reserved',
       selected: selectedMetricId === 'reserved',
-      onClick: bind('reserved', () => navigate(spaceBedInventoryPath(spaceId, 'RESERVED'))),
+      onClick: bind('reserved', () =>
+        navigate(
+          unitLevel
+            ? `${spaceAccommodationPath(spaceId)}?unitStatus=RESERVED`
+            : spaceBedInventoryPath(spaceId, 'RESERVED'),
+        ),
+      ),
     },
   ];
 
@@ -90,7 +116,11 @@ export function AccommodationOpsWidget({
       tone: 'info',
       selected: selectedMetricId === 'moveIns',
       onClick: bind('moveIns', () =>
-        navigate(spaceBedInventoryPath(spaceId, 'OCCUPIED', { focus: 'moveIns' })),
+        navigate(
+          unitLevel
+            ? spaceAccommodationPath(spaceId)
+            : spaceBedInventoryPath(spaceId, 'OCCUPIED', { focus: 'moveIns' }),
+        ),
       ),
     },
     {
@@ -108,7 +138,11 @@ export function AccommodationOpsWidget({
   return (
     <DashboardSection
       title={t('dashboard.accommodationOperations.title')}
-      subtitle={t('dashboard.accommodationOperations.bedsSub')}
+      subtitle={
+        unitLevel
+          ? t('dashboard.accommodationOperations.unitsSub', { defaultValue: 'Unit occupancy' })
+          : t('dashboard.accommodationOperations.bedsSub')
+      }
     >
       <OccupancyStatusBoard
         occupied={operations.occupiedBeds}

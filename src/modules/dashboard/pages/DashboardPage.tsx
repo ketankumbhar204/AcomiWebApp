@@ -30,6 +30,12 @@ import {
   spacePendingActionsPath,
 } from '@/routes/paths';
 import { isAccommodationApplicable } from '@/shared/utils/spacePermissions';
+import {
+  getAccommodationUiProfile,
+  usesUnitLevelOccupancy,
+} from '@/modules/accommodation/utils/accommodationProfile';
+import { useUnitLevelOccupancyCounts } from '@/modules/accommodation/hooks/useUnitLevelOccupancyCounts';
+import { applyUnitOccupancyCounts } from '@/modules/accommodation/utils/unitLevelOccupancy';
 import { canManageNotifications } from '@/shared/utils/spaceOperator';
 import { dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import type { PendingActionGroup } from '@/shared/types/dashboard';
@@ -129,14 +135,27 @@ export function DashboardPage() {
     ? (dashboard.pendingActions?.groups ?? pending.groups)
     : pending.groups;
 
+  const unitLevel = usesUnitLevelOccupancy(
+    spaceType ? getAccommodationUiProfile(spaceType) : null,
+  );
+  const unitOccupancy = useUnitLevelOccupancyCounts(spaceId, unitLevel);
+  const displayAccommodationOperations = useMemo(() => {
+    const operations = dashboard.accommodationOperations;
+    if (!operations) return null;
+    if (!unitLevel || !unitOccupancy.counts) {
+      return unitLevel ? null : operations;
+    }
+    return applyUnitOccupancyCounts(operations, unitOccupancy.counts);
+  }, [dashboard.accommodationOperations, unitLevel, unitOccupancy.counts]);
+
   const hasOperationalSignal = useMemo(() => {
-    const occupied = dashboard.accommodationOperations?.occupiedBeds ?? 0;
-    const moveIns = dashboard.accommodationOperations?.moveInsThisMonth ?? 0;
+    const occupied = displayAccommodationOperations?.occupiedBeds ?? 0;
+    const moveIns = displayAccommodationOperations?.moveInsThisMonth ?? 0;
     const collected = dashboard.financial?.collected ?? 0;
     return occupied > 0 || moveIns > 0 || collected > 0;
   }, [
-    dashboard.accommodationOperations?.moveInsThisMonth,
-    dashboard.accommodationOperations?.occupiedBeds,
+    displayAccommodationOperations?.moveInsThisMonth,
+    displayAccommodationOperations?.occupiedBeds,
     dashboard.financial?.collected,
   ]);
 
@@ -189,14 +208,14 @@ export function DashboardPage() {
         ?.count ?? 0;
     const underReviewAmount = dashboard.financial?.underReview ?? 0;
     return {
-      occupiedBeds: dashboard.accommodationOperations?.occupiedBeds,
-      vacantBeds: dashboard.accommodationOperations?.vacantBeds,
+      occupiedBeds: displayAccommodationOperations?.occupiedBeds,
+      vacantBeds: displayAccommodationOperations?.vacantBeds,
       underReviewPaymentCount:
         reviewFromPending > 0 ? reviewFromPending : underReviewAmount > 0 ? 1 : 0,
     };
   }, [
-    dashboard.accommodationOperations?.occupiedBeds,
-    dashboard.accommodationOperations?.vacantBeds,
+    displayAccommodationOperations?.occupiedBeds,
+    displayAccommodationOperations?.vacantBeds,
     dashboard.financial?.underReview,
     dashboard.pendingActions?.groups,
   ]);
@@ -350,7 +369,7 @@ export function DashboardPage() {
                     gridTemplateColumns: {
                       xs: '1fr',
                       md:
-                        showAccommodationOps && dashboard.accommodationOperations
+                        showAccommodationOps && displayAccommodationOperations
                           ? '1fr 1fr'
                           : '1fr',
                     },
@@ -374,11 +393,12 @@ export function DashboardPage() {
                   ) : (
                     <Box />
                   )}
-                  {showAccommodationOps && dashboard.accommodationOperations ? (
+                  {showAccommodationOps && displayAccommodationOperations ? (
                     <AccommodationOpsWidget
                       spaceId={spaceId}
-                      operations={dashboard.accommodationOperations}
+                      operations={displayAccommodationOperations}
                       canDrillDown={canDrillDown}
+                      occupancyEntity={unitLevel ? 'units' : 'beds'}
                     />
                   ) : null}
                 </Box>

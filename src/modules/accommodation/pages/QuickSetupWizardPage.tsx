@@ -378,7 +378,7 @@ export function QuickSetupWizardPage() {
           ]}
         />
 
-        <ContentCard>
+        <ContentCard overflow="visible">
           <Box sx={{ px: { xs: 0.5, md: 2 }, py: { xs: 1, md: 2 } }}>
           <Stepper
             activeStep={stepIndex}
@@ -602,7 +602,7 @@ export function QuickSetupWizardPage() {
         </ContentCard>
       </Stack>
 
-      <StickyFooterClearance height={{ xs: 96, md: 80 }} />
+      <StickyFooterClearance height={{ xs: 128, md: 96 }} />
 
       <StickyFooter
         pin="fixed"
@@ -822,7 +822,7 @@ function PreviewStatCard({
         gap: 1.5,
         px: 2,
         py: 1.75,
-        height: '100%',
+        minHeight: 88,
         border: `1px solid ${s.border}`,
         borderRadius: '10px',
         bgcolor: s.surface,

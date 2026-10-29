@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
@@ -50,6 +50,12 @@ import {
   getWizardSteps,
   getWizardTitleKey,
 } from '../utils/occupancyWizardSteps';
+import {
+  catalogDepositText,
+  catalogRentText,
+  parseContractAmount,
+} from '../utils/contractRentField';
+import { mealsApplicableForSpace } from '@/spaceLifecycle/capabilities';
 import type { OccupancyWizardMode, OccupancyWizardStep } from '../utils/types';
 import type { AllocationTargetSearchResponse } from '@/shared/types/accommodation';
 
@@ -112,9 +118,16 @@ export function OccupancyWizardPage() {
   const [selectedTarget, setSelectedTarget] = useState<AllocationTargetSearchResponse | null>(
     null,
   );
-  const [rent, setRent] = useState('');
-  const [deposit, setDeposit] = useState('');
+  const [rentError, setRentError] = useState<string | null>(null);
   const [foodEnabled, setFoodEnabled] = useState(false);
+  const [priceDraft, setPriceDraft] = useState({
+    key: '',
+    rent: '',
+    deposit: '',
+    rentEdited: false,
+    depositEdited: false,
+  });
+  const mealsApply = mealsApplicableForSpace(spaceType);
   const [remarks, setRemarks] = useState('');
   const [moveInDate, setMoveInDate] = useState(
     new Date().toISOString().slice(0, 10),
@@ -215,7 +228,30 @@ export function OccupancyWizardPage() {
   ]);
 
   const effectiveTarget = selectedTarget ?? matchedTarget ?? knownBedTarget;
+  const targetKey = `${effectiveTarget?.targetType ?? ''}:${effectiveTarget?.bedId ?? ''}:${effectiveTarget?.unitId ?? ''}`;
   const effectiveMemberId = memberId || occupancyQuery.data?.memberId || '';
+  const rentSource = catalogRentText(effectiveTarget?.defaultRent);
+  const depositSource = catalogDepositText(effectiveTarget?.defaultDeposit);
+  if (priceDraft.key !== targetKey) {
+    setPriceDraft({
+      key: targetKey,
+      rent: rentSource,
+      deposit: depositSource,
+      rentEdited: false,
+      depositEdited: false,
+    });
+  } else if (
+    (!priceDraft.rentEdited && priceDraft.rent !== rentSource) ||
+    (!priceDraft.depositEdited && priceDraft.deposit !== depositSource)
+  ) {
+    setPriceDraft({
+      ...priceDraft,
+      rent: priceDraft.rentEdited ? priceDraft.rent : rentSource,
+      deposit: priceDraft.depositEdited ? priceDraft.deposit : depositSource,
+    });
+  }
+  const rent = priceDraft.key === targetKey ? priceDraft.rent : rentSource;
+  const deposit = priceDraft.key === targetKey ? priceDraft.deposit : depositSource;
 
   const currentStep: OccupancyWizardStep | undefined = steps[stepIndex];
   const isLast = stepIndex >= steps.length - 1;
@@ -259,7 +295,7 @@ export function OccupancyWizardPage() {
       case 'target':
         return Boolean(effectiveTarget);
       case 'contract':
-        return Boolean(rent.trim() || effectiveTarget?.defaultRent != null);
+        return parseContractAmount(rent) != null;
       case 'reserve_dates':
         return Boolean(moveInDate);
       case 'transfer_current':
@@ -280,7 +316,9 @@ export function OccupancyWizardPage() {
       } else if (currentStep === 'target') {
         enqueueSnackbar(t('occupancyWizard.errors.targetRequired'), { variant: 'warning' });
       } else if (currentStep === 'contract') {
-        enqueueSnackbar(t('occupancy.errors.rentRequired'), { variant: 'warning' });
+        const message = t('occupancy.contract.errors.rentRequired');
+        setRentError(message);
+        enqueueSnackbar(message, { variant: 'error' });
       }
       return;
     }
@@ -292,12 +330,24 @@ export function OccupancyWizardPage() {
   };
 
   const handleSubmit = async () => {
-    const rentValue =
-      rent.trim() ||
-      (effectiveTarget?.defaultRent != null ? String(effectiveTarget.defaultRent) : '');
-    const depositValue =
-      deposit.trim() ||
-      (effectiveTarget?.defaultDeposit != null ? String(effectiveTarget.defaultDeposit) : '');
+    const rentAmount = parseContractAmount(rent);
+    const depositAmount = parseContractAmount(deposit);
+    if (
+      (mode === 'ALLOCATE' || mode === 'MOVE_IN' || mode === 'TRANSFER') &&
+      rentAmount == null
+    ) {
+      const message = t('occupancy.contract.errors.rentRequired');
+      setRentError(message);
+      const contractIndex = steps.indexOf('contract');
+      if (contractIndex >= 0) {
+        setStepIndex(contractIndex);
+      }
+      enqueueSnackbar(message, { variant: 'error' });
+      return;
+    }
+    const rentValue = rentAmount == null ? '' : String(rentAmount);
+    const depositValue = depositAmount == null ? '' : String(depositAmount);
+    const foodForRequest = mealsApply ? foodEnabled : false;
 
     try {
       const targetIds = {
@@ -322,7 +372,7 @@ export function OccupancyWizardPage() {
           {
             rentSnapshot: rentValue ? Number(rentValue) : undefined,
             depositSnapshot: depositValue ? Number(depositValue) : undefined,
-            foodEnabled,
+            foodEnabled: foodForRequest,
             remarks: remarks || undefined,
             expectedExitDate: expectedExitDate || undefined,
           },
@@ -366,7 +416,7 @@ export function OccupancyWizardPage() {
             remarks: remarks || undefined,
             rentSnapshot: rentValue ? Number(rentValue) : undefined,
             depositSnapshot: depositValue ? Number(depositValue) : undefined,
-            foodEnabled,
+            foodEnabled: foodForRequest,
           },
         });
         enqueueSnackbar(t('occupancy.toast.movedIn'), { variant: 'success' });
@@ -494,12 +544,13 @@ export function OccupancyWizardPage() {
                     disabled={!target.selectable}
                     onClick={() => {
                       setSelectedTarget(target);
-                      if (target.defaultRent != null) {
-                        setRent(String(target.defaultRent));
-                      }
-                      if (target.defaultDeposit != null) {
-                        setDeposit(String(target.defaultDeposit));
-                      }
+                      setPriceDraft({
+                        key: `${target.targetType}:${target.bedId ?? ''}:${target.unitId ?? ''}`,
+                        rent: catalogRentText(target.defaultRent),
+                        deposit: catalogDepositText(target.defaultDeposit),
+                        rentEdited: false,
+                        depositEdited: false,
+                      });
                     }}
                   >
                     <ListItemText
@@ -537,25 +588,38 @@ export function OccupancyWizardPage() {
           <Stack spacing={2} sx={{ maxWidth: 480 }}>
             <TextField
               label={t('occupancy.contract.rent')}
-              value={
-                rent ||
-                (effectiveTarget?.defaultRent != null ? String(effectiveTarget.defaultRent) : '')
-              }
-              onChange={(e) => setRent(e.target.value)}
+              value={rent}
+              onChange={(e) => {
+                const next = e.target.value;
+                setPriceDraft((current) => ({
+                  ...current,
+                  key: targetKey,
+                  rent: next,
+                  rentEdited: true,
+                }));
+                if (parseContractAmount(next) != null) {
+                  setRentError(null);
+                }
+              }}
               placeholder="e.g. 8500"
               type="number"
               required
+              error={Boolean(rentError)}
+              helperText={rentError ?? ' '}
               fullWidth
             />
             <TextField
               label={t('occupancy.contract.deposit')}
-              value={
-                deposit ||
-                (effectiveTarget?.defaultDeposit != null
-                  ? String(effectiveTarget.defaultDeposit)
-                  : '')
-              }
-              onChange={(e) => setDeposit(e.target.value)}
+              value={deposit}
+              onChange={(e) => {
+                const next = e.target.value;
+                setPriceDraft((current) => ({
+                  ...current,
+                  key: targetKey,
+                  deposit: next,
+                  depositEdited: true,
+                }));
+              }}
               placeholder="e.g. 15000"
               type="number"
               fullWidth
@@ -568,15 +632,17 @@ export function OccupancyWizardPage() {
               slotProps={{ inputLabel: { shrink: true } }}
               fullWidth
             />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={foodEnabled}
-                  onChange={(e) => setFoodEnabled(e.target.checked)}
-                />
-              }
-              label={t('occupancy.contract.foodEnabled')}
-            />
+            {mealsApply ? (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={foodEnabled}
+                    onChange={(e) => setFoodEnabled(e.target.checked)}
+                  />
+                }
+                label={t('occupancy.contract.foodEnabled')}
+              />
+            ) : null}
             {mode === 'MOVE_IN' ? (
               <FormControlLabel
                 control={
@@ -701,10 +767,22 @@ export function OccupancyWizardPage() {
                   .join(' · ') ??
                 '—'}
             </Typography>
-            {rent || effectiveTarget?.defaultRent != null ? (
+            <Typography>
+              {t('occupancy.contract.rent')}:{' '}
+              {parseContractAmount(rent) == null
+                ? t('accommodation.pricingConfirm.notSet', { defaultValue: 'Not set' })
+                : `₹${rent}`}
+            </Typography>
+            <Typography>
+              {t('occupancy.contract.deposit')}:{' '}
+              {parseContractAmount(deposit) == null
+                ? t('accommodation.pricingConfirm.notSet', { defaultValue: 'Not set' })
+                : `₹${deposit}`}
+            </Typography>
+            {mealsApply ? (
               <Typography>
-                {t('occupancy.contract.rent')}: ₹
-                {rent || effectiveTarget?.defaultRent}
+                {t('occupancy.contract.foodEnabled')}:{' '}
+                {foodEnabled ? t('common.yes', { defaultValue: 'Yes' }) : t('common.no', { defaultValue: 'No' })}
               </Typography>
             ) : null}
             {moveInDate && (mode === 'RESERVE' || mode === 'MOVE_IN') ? (

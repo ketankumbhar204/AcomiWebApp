@@ -302,9 +302,9 @@ function EditSpaceForm({
       setTab('general');
       return;
     }
-    if (addressCaptureIssue(location) === 'selection') {
+    if (addressCaptureIssue(location, { allowManual: true }) === 'pincode') {
       setFormError(
-        t('locationCapture.selectionRequired', { defaultValue: 'Select a location from the suggestions.' }),
+        t('locationCapture.pincodeRequired', { defaultValue: 'Enter a valid 6-digit pincode.' }),
       );
       setTab('general');
       return;
@@ -597,7 +597,7 @@ function EditSpaceForm({
                 </EditField>
 
                 <EditField icon={MapPin} fullWidth>
-                  <AddressLocationFields value={location} onChange={setLocation} />
+                  <AddressLocationFields value={location} onChange={setLocation} allowManual />
                 </EditField>
 
                 {showCategory ? (

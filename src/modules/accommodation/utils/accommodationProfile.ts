@@ -82,6 +82,22 @@ export function getAccommodationUiProfile(
   }
 }
 
+/**
+ * Rental and corporate stay use units only. PG, hostel, and co-living keep
+ * rooms and beds. A zero count is not used here — only the layout profile.
+ */
+export function usesUnitLevelOccupancy(
+  profile: AccommodationUiProfile | null | undefined,
+): boolean {
+  return Boolean(
+    profile &&
+      profile.showUnits &&
+      !profile.showBeds &&
+      !profile.showRoomsUnderUnit &&
+      !profile.showRoomsUnderFloor,
+  );
+}
+
 export function selectableLayoutModes(spaceType: SpaceType): PropertyLayoutMode[] {
   if (spaceType === 'PG' || spaceType === 'HOSTEL') {
     return ['CORRIDOR_PG', 'APARTMENT_PG'];

@@ -146,7 +146,7 @@ export function CreateSpacePage() {
       );
       return false;
     }
-    if (addressCaptureIssue(location) === 'selection') {
+    if (addressCaptureIssue(location, { allowManual: true }) === 'pincode') {
       return false;
     }
     setNameError(null);
@@ -424,7 +424,7 @@ export function CreateSpacePage() {
                       },
                     }}
                   />
-                  <AddressLocationFields value={location} onChange={setLocation} sx={fieldSx} />
+                  <AddressLocationFields value={location} onChange={setLocation} allowManual sx={fieldSx} />
                 </Box>
 
                 {includeCategory && type ? (

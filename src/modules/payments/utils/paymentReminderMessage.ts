@@ -1,5 +1,6 @@
 import type { SpacePaymentResponse } from '@/shared/types/payments';
 import { formatPaymentAmount } from '@/modules/meals/utils/paymentAmount';
+import { withAcomiAppLink } from '@/shared/utils/acomiWhatsAppAppLink';
 
 const TYPE_LABELS: Record<string, string> = {
   RENT: 'Rent',
@@ -60,5 +61,7 @@ export function buildPaymentReminderMessage(
   }
   const due = dueLabel(payment.dueDate);
   const dueClause = due ? `, due on ${due}` : '';
-  return `Hi ${name}, this is a friendly reminder regarding your payment of ${amount} for ${description}${dueClause}. Please review and complete the payment when convenient. Thank you.`;
+  return withAcomiAppLink(
+    `Hi ${name}, this is a friendly reminder regarding your payment of ${amount} for ${description}${dueClause}. Please review and complete the payment when convenient. Thank you.`,
+  );
 }

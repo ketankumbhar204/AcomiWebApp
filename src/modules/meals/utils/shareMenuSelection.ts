@@ -1,4 +1,5 @@
 import { mealsApi } from '../api/mealsApi';
+import { withAcomiAppLink } from '@/shared/utils/acomiWhatsAppAppLink';
 import type {
   DailyMenuOptionResponse,
   DailyMenuResponse,
@@ -91,7 +92,7 @@ export function composeShareMessages(
     return '';
   }
   if (parts.length === 1) {
-    return parts[0]!.messageText.trim();
+    return withAcomiAppLink(parts[0]!.messageText);
   }
 
   const headerEnd = parts[0]!.messageText.indexOf('\n\n');
@@ -111,7 +112,7 @@ export function composeShareMessages(
     .map((part) => `${formatMealTypeLabel(part.mealType)} ${parseEligibleCount(part.messageText)}`)
     .join(' · ');
   lines.push(`Eligible participants: ${eligibleSummary}`);
-  return lines.join('\n').trim();
+  return withAcomiAppLink(lines.join('\n'));
 }
 
 export async function publishDraftMenusForTypes(

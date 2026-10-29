@@ -1099,7 +1099,20 @@
       "fullNamePlaceholder": "जैसे राहुल शर्मा",
       "detailsHeading": "सदस्य विवरण",
       "saveImport": "जोड़ें",
-      "importSuccessToast": "ग्राहक इस मेस में जोड़ा गया।",
+      "importSuccessToast": "{{person}} इस {{space}} में जोड़ा गया।",
+      "importPerson": {
+        "customer": "ग्राहक",
+        "member": "सदस्य"
+      },
+      "importSpace": {
+        "space": "स्पेस",
+        "mess": "मेस",
+        "pg": "PG",
+        "hostel": "हॉस्टल",
+        "coLiving": "को-लिविंग",
+        "rental": "रेंटल",
+        "corporateStay": "कॉर्पोरेट स्टे"
+      },
       "importFailed": "Could not import this customer. Please try again.",
       "reuseRequired": "Pick someone from another space, or create a new customer.",
       "selectedCustomer": "चयनित",

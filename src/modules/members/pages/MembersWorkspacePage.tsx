@@ -318,7 +318,7 @@ export function MembersWorkspacePage() {
   const queryClient = useQueryClient();
   const importPreview = useQuery({
     queryKey: importCandidatesQueryKey(spaceId),
-    queryFn: () => loadImportPickerItems(spaceId),
+    queryFn: () => loadImportPickerItems(spaceId, undefined, { includeUnavailable: true }),
     enabled: Boolean(spaceId),
     staleTime: 15_000,
   });
@@ -467,7 +467,7 @@ export function MembersWorkspacePage() {
   const applyImportDecision = async (isActive: () => boolean = () => true) => {
     const people = await queryClient.fetchQuery({
       queryKey: importCandidatesQueryKey(spaceId),
-      queryFn: () => loadImportPickerItems(spaceId),
+      queryFn: () => loadImportPickerItems(spaceId, undefined, { includeUnavailable: true }),
       staleTime: 15_000,
     });
     if (!isActive()) {

@@ -157,6 +157,26 @@ export function EntityInspector({
     queryFn: () => occupancyApi.getOccupancy(spaceId, occupancyId!),
     enabled: Boolean(occupancyId),
   });
+  const selectedUnitId = selection?.type === 'unit' ? selection.unitId : undefined;
+  const unitStayStatus = selectedUnitId ? unitQuery.data?.status : undefined;
+  const unitStayQuery = useQuery({
+    queryKey: ['unit-stay', spaceId, selectedUnitId, unitStayStatus],
+    queryFn: () =>
+      occupancyApi.listOccupancies(spaceId, {
+        unitId: selectedUnitId,
+        status: unitStayStatus === 'RESERVED' ? 'RESERVED' : 'ACTIVE',
+        size: 5,
+      }),
+    enabled:
+      Boolean(selectedUnitId) &&
+      (unitStayStatus === 'OCCUPIED' || unitStayStatus === 'RESERVED'),
+  });
+  const unitStay =
+    unitStayQuery.data?.content.find(
+      (row) => row.unitId === selectedUnitId && !row.bedId,
+    ) ??
+    unitStayQuery.data?.content.find((row) => row.unitId === selectedUnitId) ??
+    null;
 
   if (!selection) {
     return (
@@ -334,25 +354,81 @@ export function EntityInspector({
               },
               {
                 label: t('accommodation.fields.defaultRent'),
-                value: unit?.defaultRent,
+                value:
+                  unit?.defaultRent != null
+                    ? `₹${unit.defaultRent.toLocaleString('en-IN')}`
+                    : t('accommodation.pricingConfirm.notSet', { defaultValue: 'Not set' }),
                 icon: <Wallet size={16} />,
               },
               {
                 label: t('accommodation.fields.defaultDeposit'),
-                value: unit?.defaultDeposit,
+                value:
+                  unit?.defaultDeposit != null
+                    ? `₹${unit.defaultDeposit.toLocaleString('en-IN')}`
+                    : t('accommodation.pricingConfirm.notSet', { defaultValue: 'Not set' }),
                 icon: <Wallet size={16} />,
               },
             ]}
           />
+          {unit?.status === 'OCCUPIED' || unit?.status === 'RESERVED' ? (
+            unitStayQuery.isLoading ? (
+              <LoadingState />
+            ) : unitStayQuery.isError ? (
+              <Typography color="error" sx={{ fontSize: 14 }}>
+                {t('accommodation.stayPayment.loadFailed', {
+                  defaultValue: 'Could not load tenant or payment details.',
+                })}
+              </Typography>
+            ) : unitStay?.memberName ? (
+              <Stack spacing={0.5}>
+                <Typography sx={{ ...DASHBOARD_UX.metricLabel }}>
+                  {unit.status === 'RESERVED'
+                    ? t('occupancy.targetOccupant.titleReserved', {
+                        defaultValue: 'Reserved occupant',
+                      })
+                    : t('occupancy.targetOccupant.title', { defaultValue: 'Current occupant' })}
+                </Typography>
+                <Typography sx={{ ...DASHBOARD_UX.link }}>{unitStay.memberName}</Typography>
+                {unitStay.rentSnapshot != null ? (
+                  <Typography sx={{ ...DASHBOARD_UX.metricCaption }}>
+                    {t('occupancy.contract.rent')}: ₹{unitStay.rentSnapshot.toLocaleString('en-IN')}
+                  </Typography>
+                ) : null}
+              </Stack>
+            ) : (
+              <Typography color="text.secondary" sx={{ fontSize: 14 }}>
+                {t('accommodation.stayPayment.noTenant', { defaultValue: 'No linked tenant' })}
+              </Typography>
+            )
+          ) : null}
         </Stack>
       );
-      if (canManageOccupancy && unit?.status === 'AVAILABLE') {
+      if (canManageOccupancy && unit) {
         footer = (
           <OccupancyActionButtons
-            status="AVAILABLE"
+            status={unit.status}
+            occupancyId={unitStay?.occupancyId}
+            memberId={unitStay?.memberId}
             title={t('accommodation.workspace.quickActions', { defaultValue: 'Quick Actions' })}
             onAllocate={() => openWizard('ALLOCATE')}
             onReserve={() => openWizard('RESERVE')}
+            onMoveIn={() =>
+              openWizard('MOVE_IN', { occupancyId: unitStay?.occupancyId, memberId: unitStay?.memberId })
+            }
+            onCancel={() =>
+              openWizard('VACATE', { occupancyId: unitStay?.occupancyId, memberId: unitStay?.memberId })
+            }
+            onTransfer={() =>
+              openWizard('TRANSFER', { occupancyId: unitStay?.occupancyId, memberId: unitStay?.memberId })
+            }
+            onVacate={() =>
+              openWizard('VACATE', { occupancyId: unitStay?.occupancyId, memberId: unitStay?.memberId })
+            }
+            onViewHistory={
+              unitStay?.memberId
+                ? () => navigate(spaceMemberPath(spaceId, unitStay.memberId))
+                : undefined
+            }
           />
         );
       }

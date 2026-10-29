@@ -519,7 +519,7 @@ function UnitAccordion({
   const subtitle =
     counts.rooms > 0
       ? t('accommodation.setup.unitCountLine', counts)
-      : t('accommodation.setup.roomCountLine', { count: counts.beds });
+      : t('accommodation.setup.unitOnlyLine', { defaultValue: 'Unit only — no rooms or beds' });
 
   return (
     <Accordion
@@ -541,6 +541,13 @@ function UnitAccordion({
       </AccordionSummary>
       <AccordionDetails sx={{ px: 2, pt: 0, pb: 1.5 }}>
         <Stack spacing={1.25}>
+          {unit.rooms.length === 0 ? (
+            <Typography sx={{ fontSize: '0.875rem', color: 'text.secondary', py: 0.5 }}>
+              {t('accommodation.setup.unitOnlyLine', {
+                defaultValue: 'Unit only — no rooms or beds',
+              })}
+            </Typography>
+          ) : null}
           {unit.rooms.map((room) => (
             <RoomAccordion
               key={room.id}

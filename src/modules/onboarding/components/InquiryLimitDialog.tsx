@@ -33,6 +33,7 @@ import {
   revokeDisplayableFileUrl,
 } from '@/shared/services/fileUploadService';
 import { openAcomiAndroidApp } from '@/shared/utils/openAcomiAndroidApp';
+import { withAcomiAppLink } from '@/shared/utils/acomiWhatsAppAppLink';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { colors } from '@/shared/theme/colors';
 import type { InquiryPackage, InquiryPaymentConfig } from '@/shared/types/inquiryCredits';
@@ -47,7 +48,7 @@ function waLink(
   const full = digits.startsWith('91') && digits.length === 12 ? digits : `91${digits}`;
   const base = `https://wa.me/${full}`;
   if (!message?.trim()) return base;
-  return `${base}?text=${encodeURIComponent(message.trim())}`;
+  return `${base}?text=${encodeURIComponent(withAcomiAppLink(message))}`;
 }
 
 function CopyButton({ text }: { text: string }) {

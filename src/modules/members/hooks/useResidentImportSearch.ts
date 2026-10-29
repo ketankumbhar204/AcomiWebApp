@@ -18,20 +18,29 @@ export function importCandidatesQueryKey(spaceId: string, search = '') {
   return ['import-candidates', spaceId, search.trim()] as const;
 }
 
-/** Same list the import screen renders (available for move-in / mess reuse). */
+/** Move-in search hides busy people. Import lists them, including people already here. */
 export async function loadImportPickerItems(
   spaceId: string,
   search?: string,
+  options?: { includeUnavailable?: boolean },
 ): Promise<ResidentPickerItem[]> {
   const data = await memberApi.searchImportCandidates(spaceId, search);
-  return data.filter((item) => item.availableForMoveIn).map(toPickerItem);
+  const includeUnavailable = options?.includeUnavailable === true;
+  return data
+    .filter((item) => includeUnavailable || item.availableForMoveIn)
+    .map(toPickerItem);
 }
 
 /**
  * Cross-space eligible resident search.
  * Mirrors mobile `useResidentImportSearch` (GET import-candidates).
  */
-export function useResidentImportSearch(spaceId: string | undefined, query: string, enabled = true) {
+export function useResidentImportSearch(
+  spaceId: string | undefined,
+  query: string,
+  enabled = true,
+  includeUnavailable = false,
+) {
   const [debounced, setDebounced] = useState(query);
 
   useEffect(() => {
@@ -40,8 +49,9 @@ export function useResidentImportSearch(spaceId: string | undefined, query: stri
   }, [query]);
 
   const searchQuery = useQuery({
-    queryKey: importCandidatesQueryKey(spaceId ?? '', debounced),
-    queryFn: () => loadImportPickerItems(spaceId!, debounced.trim() || undefined),
+    queryKey: [...importCandidatesQueryKey(spaceId ?? '', debounced), includeUnavailable] as const,
+    queryFn: () =>
+      loadImportPickerItems(spaceId!, debounced.trim() || undefined, { includeUnavailable }),
     enabled: Boolean(enabled && spaceId),
     staleTime: 15_000,
   });

@@ -21,6 +21,11 @@ export type CapabilityId =
 
 export type AccessMode = 'HIDDEN' | 'LOCKED' | 'SOFT' | 'AVAILABLE';
 
+/** Same rule as MEAL_CONFIG / MEAL_OPS: only Rental spaces hide meal participation. */
+export function mealsApplicableForSpace(spaceType?: string | null): boolean {
+  return spaceType != null && spaceType !== 'RENTAL';
+}
+
 export type CapabilityAccess = {
   id: CapabilityId;
   mode: AccessMode;

@@ -167,6 +167,12 @@ export function AdminEnquiryDetailPage() {
           <strong>{t('admin.enquiries.email')}:</strong> {detail.requesterEmail}
         </Typography>
         <Typography>
+          <strong>{t('admin.enquiries.requesterMobile', { defaultValue: 'Requester mobile' })}:</strong>{' '}
+          {detail.requesterMobile
+            ? formatIndianMobileWithCountryCode(detail.requesterMobile)
+            : '—'}
+        </Typography>
+        <Typography>
           <strong>{t('admin.enquiries.columns.requested')}:</strong>{' '}
           {new Date(detail.requestedAt).toLocaleString()}
         </Typography>

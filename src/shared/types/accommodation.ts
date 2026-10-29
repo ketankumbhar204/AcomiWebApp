@@ -18,6 +18,17 @@ export type UnitKind =
   | 'SUITE';
 export type BedLabelStyle = 'ALPHA' | 'NUMERIC';
 
+export type BulkCreateUnitsRequest = {
+  count: number;
+  startUnitNumber?: string;
+  defaultStatus?: AccommodationStatus;
+};
+
+export type BulkCreateUnitsResponse = {
+  unitsCreated: number;
+  unitIds: string[];
+};
+
 export type BulkCreateRoomsRequest = {
   count: number;
   startRoomNumber?: string;

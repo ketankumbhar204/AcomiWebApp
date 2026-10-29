@@ -278,7 +278,9 @@ export function CenterWorkspace({
 
   const canBulk =
     canManage &&
-    (selection.type === 'floor' || selection.type === 'unit' || selection.type === 'room');
+    (selection.type === 'floor' ||
+      (selection.type === 'unit' && profile.showRoomsUnderUnit) ||
+      selection.type === 'room');
 
   const currentFloor =
     selection.type === 'floor'
@@ -304,7 +306,8 @@ export function CenterWorkspace({
   const addLabel =
     selection.type === 'room' || selection.type === 'bed'
       ? t('accommodation.workspace.addBed', { defaultValue: '+ Add Bed' })
-      : selection.type === 'unit' || (selection.type === 'floor' && profile.showRoomsUnderFloor)
+      : (selection.type === 'unit' && profile.showRoomsUnderUnit) ||
+          (selection.type === 'floor' && profile.showRoomsUnderFloor)
         ? t('accommodation.workspace.addRoom', { defaultValue: '+ Add Room' })
         : selection.type === 'floor' && profile.showUnitsOnFloor
           ? t('accommodation.workspace.addUnit', { defaultValue: '+ Add Unit' })
@@ -400,17 +403,22 @@ export function CenterWorkspace({
       return wrap(<LoadingState />);
     }
     const s = summary.summary;
-    const occupied = s?.occupied ?? 0;
-    const totalBeds = s?.beds ?? 0;
     const floorList = floors.floors;
     const unitList = units.units;
+    const totalBeds = s?.beds ?? 0;
+    const unitCapacity = s?.visibleUnitCount ?? s?.units ?? unitList.length;
+    const occupiedUnits = unitList.filter(
+      (unit) => unit.active !== false && unit.status === 'OCCUPIED',
+    ).length;
+    const occupied = profile.showBeds ? (s?.occupied ?? 0) : occupiedUnits;
+    const capacityTotal = profile.showBeds ? totalBeds : unitCapacity;
 
     return wrap(
       <Stack spacing={2}>
         <WorkspaceHeader
           title={childrenOnly ? childrenTitle : (s?.name ?? t('accommodation.buildings.title'))}
           occupied={childrenOnly ? undefined : occupied}
-          total={childrenOnly ? undefined : totalBeds}
+          total={childrenOnly ? undefined : capacityTotal}
           actions={headerActions}
         />
         {profile.showFloors ? (
@@ -975,6 +983,28 @@ export function CenterWorkspace({
             ]}
           />
         ) : null}
+      </Stack>,
+    );
+  }
+
+  if (selection.type === 'unit' && !profile.showRoomsUnderUnit) {
+    const unitMeta = [...units.units, ...floorUnits.units, ...unitsForMeta.units].find(
+      (u) => u.unitId === selection.unitId,
+    );
+    const occupiedUnit = unitMeta?.status === 'OCCUPIED' ? 1 : 0;
+    return wrap(
+      <Stack spacing={2}>
+        <WorkspaceHeader
+          title={unitMeta?.name ?? t('accommodation.units.title')}
+          occupied={occupiedUnit}
+          total={1}
+          actions={headerActions}
+        />
+        <Typography sx={{ ...DASHBOARD_UX.body, color: 'text.secondary' }}>
+          {t('accommodation.builder.unitOnlyOverviewSubtitle', {
+            defaultValue: 'Units only — edit rent and deposit on each unit',
+          })}
+        </Typography>
       </Stack>,
     );
   }

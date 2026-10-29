@@ -7,10 +7,18 @@ type ContentCardProps = {
   padded?: boolean;
   onClick?: () => void;
   selected?: boolean;
+  /** Keep long page content, such as setup preview, in the page scroll. */
+  overflow?: 'hidden' | 'visible';
 };
 
 /** Content card — Dashboard radius, border, shadow. */
-export function ContentCard({ children, padded = true, onClick, selected = false }: ContentCardProps) {
+export function ContentCard({
+  children,
+  padded = true,
+  onClick,
+  selected = false,
+  overflow = 'hidden',
+}: ContentCardProps) {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
 
@@ -39,7 +47,7 @@ export function ContentCard({ children, padded = true, onClick, selected = false
         bgcolor: s.surface,
         boxShadow: s.shadow,
         p: padded ? `${DASHBOARD_UX.cardPadding}px` : 0,
-        overflow: 'hidden',
+        overflow,
         position: 'relative',
         cursor: onClick ? 'pointer' : undefined,
         outline: selected ? `2px solid ${theme.palette.primary.main}` : undefined,

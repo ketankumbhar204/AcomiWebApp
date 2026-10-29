@@ -34,6 +34,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { IconBadge } from '@/modules/dashboard/components/IconBadge';
 import { useSpaceDashboard } from '@/modules/dashboard/hooks/useSpaceDashboard';
+import { useUnitLevelOccupancyCounts } from '@/modules/accommodation/hooks/useUnitLevelOccupancyCounts';
+import {
+  getAccommodationUiProfile,
+  usesUnitLevelOccupancy,
+} from '@/modules/accommodation/utils/accommodationProfile';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { useMembers } from '@/modules/members/hooks/useMembers';
 import { spaceApi } from '@/modules/onboarding/api/spaceApi';
@@ -191,6 +196,10 @@ export function SpaceDetailsPage() {
   const details = detailsQuery.data;
   const spaceType = details?.type ?? mySpace?.spaceType;
   const dashboard = useSpaceDashboard(spaceId, spaceType, Boolean(spaceId && spaceType));
+  const unitLevel = usesUnitLevelOccupancy(
+    spaceType ? getAccommodationUiProfile(spaceType) : null,
+  );
+  const unitOccupancy = useUnitLevelOccupancyCounts(spaceId, unitLevel);
   // Same source as Members page Total Members (GET /spaces/{id}/members).
   const membersQuery = useMembers(spaceId, Boolean(spaceId));
 
@@ -219,8 +228,12 @@ export function SpaceDetailsPage() {
     const acc = dashboard.accommodationOperations;
     const mess = dashboard.messOperations;
     const currency = fin?.currencyCode ?? 'INR';
+    const occupiedCount =
+      unitLevel && unitOccupancy.counts ? unitOccupancy.counts.occupied : acc?.occupiedBeds;
+    const vacantCount =
+      unitLevel && unitOccupancy.counts ? unitOccupancy.counts.available : acc?.vacantBeds;
     const totalBeds =
-      acc != null ? acc.occupiedBeds + acc.vacantBeds : null;
+      occupiedCount != null && vacantCount != null ? occupiedCount + vacantCount : null;
 
     // Prefer mess meal-member KPI when present; otherwise member-master list length
     // (matches Members page "Total Members"). Never use bed totals here.
@@ -236,10 +249,12 @@ export function SpaceDetailsPage() {
     const second =
       acc != null
         ? {
-            icon: BedDouble,
+            icon: unitLevel ? Building2 : BedDouble,
             accent: '#7C3AED',
-            label: t('spaces.details.kpi.occupiedBeds'),
-            value: String(acc.occupiedBeds),
+            label: unitLevel
+              ? t('dashboard.accommodationOperations.occupiedUnits', { defaultValue: 'Occupied units' })
+              : t('spaces.details.kpi.occupiedBeds'),
+            value: unitLevel && !unitOccupancy.counts ? '—' : String(occupiedCount ?? 0),
             hint:
               totalBeds != null
                 ? t('spaces.details.kpi.ofTotal', { total: totalBeds })
@@ -282,6 +297,8 @@ export function SpaceDetailsPage() {
     ];
   }, [
     dashboard.accommodationOperations,
+    unitLevel,
+    unitOccupancy.counts,
     dashboard.financial,
     dashboard.messOperations,
     membersQuery.error,

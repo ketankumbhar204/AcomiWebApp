@@ -17,6 +17,8 @@ import type {
   BuildingSummaryResponse,
   BulkCreateBedsRequest,
   BulkCreateBedsResponse,
+  BulkCreateUnitsRequest,
+  BulkCreateUnitsResponse,
   BulkCreateRoomsRequest,
   BulkCreateRoomsResponse,
   CreateBedRequest,
@@ -344,6 +346,14 @@ export const accommodationApi = {
         `/spaces/${spaceId}/accommodation/setup`,
         body,
         { headers: { 'Idempotency-Key': idempotencyKey } },
+      ),
+    ),
+
+  bulkCreateUnits: (spaceId: string, buildingId: string, body: BulkCreateUnitsRequest) =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<BulkCreateUnitsResponse>>(
+        `/spaces/${spaceId}/buildings/${buildingId}/units/bulk`,
+        body,
       ),
     ),
 

@@ -29,6 +29,9 @@ const predicates = read('src/spaceLifecycle/predicates.ts');
 const types = read('src/spaceLifecycle/types.ts');
 
 assert(caps.includes('evaluateSpaceCapabilities'), 'capabilities export missing');
+assert(caps.includes('export function mealsApplicableForSpace'), 'meal applicability helper missing');
+assert(caps.includes("spaceType !== 'RENTAL'"), 'rental must be the unsupported meal space type');
+assert(caps.includes('if (isRental)'), 'rental must hide meal operations');
 assert(caps.includes("'LOCKED'"), 'LOCKED mode missing');
 assert(sample.includes('catalogHasCuratedMealLibrary'), 'sample catalog helper missing');
 assert(sample.includes('activeCombos.length > 0'), 'D6 seed-item exclusion missing');
