@@ -54,6 +54,7 @@ export function buildAllocateRequest(
     foodChargeSnapshot?: number;
     foodIncludedInRent?: boolean;
     remarks?: string;
+    moveInDate?: string;
     expectedExitDate?: string;
   },
 ): { body: AllocateOccupancyRequest | null; errorKey: string | null } {
@@ -74,6 +75,7 @@ export function buildAllocateRequest(
       foodChargeSnapshot: options.foodChargeSnapshot,
       foodIncludedInRent: options.foodIncludedInRent,
       remarks: options.remarks,
+      moveInDate: options.moveInDate,
       expectedExitDate: options.expectedExitDate,
     },
     errorKey: null,
@@ -85,7 +87,19 @@ export function buildReserveRequest(
   spaceType: SpaceType,
   targetType: AllocationTargetType,
   ids: { bedId?: string; roomId?: string; unitId?: string },
-  options: { moveInDate: string; expectedExitDate?: string; remarks?: string },
+  options: {
+    moveInDate: string;
+    expectedExitDate?: string;
+    remarks?: string;
+    rentSnapshot?: number | null;
+    bookingAdvanceAmount?: number | null;
+    bookingAdvanceCollected?: boolean | null;
+    bookingAdvancePaymentMethod?: ReserveOccupancyRequest['bookingAdvancePaymentMethod'];
+    depositSnapshot?: number | null;
+    foodEnabled?: boolean;
+    foodIncludedInRent?: boolean;
+    foodChargeSnapshot?: number | null;
+  },
 ): { body: ReserveOccupancyRequest | null; errorKey: string | null } {
   const errorKey = validateTargetSelection(spaceType, targetType, ids);
   if (errorKey) {
@@ -104,6 +118,14 @@ export function buildReserveRequest(
       moveInDate: options.moveInDate,
       expectedExitDate: options.expectedExitDate,
       remarks: options.remarks,
+      rentSnapshot: options.rentSnapshot ?? undefined,
+      bookingAdvanceAmount: options.bookingAdvanceAmount ?? undefined,
+      bookingAdvanceCollected: options.bookingAdvanceCollected ?? undefined,
+      bookingAdvancePaymentMethod: options.bookingAdvancePaymentMethod ?? undefined,
+      depositSnapshot: options.depositSnapshot ?? undefined,
+      foodEnabled: options.foodEnabled,
+      foodIncludedInRent: options.foodIncludedInRent,
+      foodChargeSnapshot: options.foodChargeSnapshot ?? undefined,
     },
     errorKey: null,
   };
@@ -113,7 +135,14 @@ export function buildTransferRequest(
   spaceType: SpaceType,
   targetType: AllocationTargetType,
   ids: { bedId?: string; roomId?: string; unitId?: string },
-  options?: { remarks?: string; rentSnapshot?: number; depositSnapshot?: number },
+  options?: {
+    remarks?: string;
+    rentSnapshot?: number;
+    depositSnapshot?: number;
+    stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
+    agreedTotal?: number | null;
+    expectedExitDate?: string | null;
+  },
 ): { body: TransferOccupancyRequest | null; errorKey: string | null } {
   const errorKey = validateTargetSelection(spaceType, targetType, ids);
   if (errorKey) {
@@ -129,6 +158,9 @@ export function buildTransferRequest(
       rentPolicy: 'KEEP',
       rentSnapshot: options?.rentSnapshot,
       depositSnapshot: options?.depositSnapshot,
+      stayKind: options?.stayKind,
+      agreedTotal: options?.agreedTotal,
+      expectedExitDate: options?.expectedExitDate,
     },
     errorKey: null,
   };

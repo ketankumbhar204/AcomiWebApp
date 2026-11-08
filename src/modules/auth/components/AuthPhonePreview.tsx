@@ -118,7 +118,7 @@ export function AuthPhonePreview() {
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 0.75, width: '100%' }}>
               {[
                 { label: 'Occupied', value: '96', bg: '#E7F6EE', fg: '#0F6B4C' },
-                { label: 'Vacant', value: '18', bg: '#E8F1FF', fg: '#2563EB' },
+                { label: 'Available', value: '18', bg: '#E8F1FF', fg: '#2563EB' },
                 { label: 'Reserved', value: '6', bg: '#FFF1E0', fg: '#D97706' },
               ].map((item) => (
                 <Box

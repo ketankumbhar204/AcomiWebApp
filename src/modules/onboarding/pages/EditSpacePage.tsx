@@ -225,7 +225,6 @@ function EditSpaceForm({
   const [billingDueDay, setBillingDueDay] = useState(
     String(spaceBilling?.billingDueDay ?? 1),
   );
-
   const [timezone, setTimezone] = useState(poll?.timezone ?? 'Asia/Kolkata');
   const [breakfastOffset, setBreakfastOffset] = useState<PollCloseDayOffset>(
     poll?.breakfastDayOffset ?? 'PREVIOUS_DAY',

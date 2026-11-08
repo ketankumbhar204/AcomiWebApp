@@ -2,6 +2,8 @@ import { parseOptionalMoney } from '../setup-preview/setupPricingAutofill';
 import { moneyEquals } from './commitBedPricing';
 
 export type BedInteractionDraft = {
+  /** Display / API bed name (beds only). */
+  name: string;
   bedNumber: string;
   rent: number | null;
   deposit: number | null;
@@ -28,6 +30,7 @@ export function isBedDraftUnchanged(
   next: BedInteractionDraft,
 ): boolean {
   return (
+    current.name.trim() === next.name.trim() &&
     current.bedNumber.trim() === next.bedNumber.trim() &&
     moneyEquals(current.rent, next.rent) &&
     moneyEquals(current.deposit, next.deposit)
@@ -43,15 +46,18 @@ export function bedTargetAfterDetailsSave<
     bedId: string;
     bedNumber: string;
     label: string;
+    name?: string;
     rent?: number | null;
     deposit?: number | null;
   },
 >(target: T, draft: BedInteractionDraft): T {
   const bedNumber = draft.bedNumber.trim();
+  const name = draft.name.trim() || bedNumber;
   return {
     ...target,
+    name,
     bedNumber,
-    label: bedNumber,
+    label: name,
     rent: draft.rent,
     deposit: draft.deposit,
   };

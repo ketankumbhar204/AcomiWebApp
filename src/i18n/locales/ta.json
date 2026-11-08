@@ -295,7 +295,7 @@
       },
       "recommendedAction": "Recommended Action",
       "actions": {
-        "improveOccupancy": "Improve occupancy by allocating vacant beds"
+        "improveOccupancy": "Improve occupancy by allocating available beds"
       },
       "factors": {
         "setupComplete": "Required setup complete",
@@ -388,5 +388,44 @@
     "chooseGallery": "Choose from gallery",
     "attached": "Attached",
     "sizeHint": "JPEG, PNG, or WebP. Maximum {{maxMb}} MB after compression."
+  },
+  "dashboard": {
+    "quickActions": {
+      "allocate": "ஒதுக்கு",
+      "allocateHint": "புதிய குடியிருப்பாளரை படுக்கைக்கு ஒதுக்குங்கள்",
+      "reserve": "முன்பதிவு",
+      "reserveHint": "வரவிருக்கும் நுழைவுக்கு படுக்கையை ஒதுக்கி வைக்கவும்",
+      "transfer": "மாற்று",
+      "transferHint": "குடியிருப்பாளரை வேறு அறை/படுக்கைக்கு மாற்றவும்",
+      "vacate": "வெளியேற்று",
+      "vacateHint": "குடியிருப்பாளரை படுக்கையிலிருந்து நீக்கவும்"
+    }
+  },
+  "occupancy": {
+    "success": {
+      "title": "வெற்றி",
+      "allocatedHeadline": "குடியிருப்பாளர் வெற்றிகரமாக ஒதுக்கப்பட்டார்!",
+      "allocatedDetail": "{{name}} {{location}} இல் ஒதுக்கப்பட்டுள்ளார்.",
+      "reservedHeadline": "தங்குமிடம் வெற்றிகரமாக முன்பதிவு செய்யப்பட்டது!",
+      "reservedDetail": "{{name}} க்கு {{location}} இல் முன்பதிவு உள்ளது.",
+      "transferredHeadline": "குடியிருப்பாளர் வெற்றிகரமாக மாற்றப்பட்டார்!",
+      "transferredDetail": "{{name}} {{location}} க்கு மாற்றப்பட்டுள்ளார்.",
+      "movedInHeadline": "நுழைவு வெற்றிகரமாக முடிந்தது!",
+      "movedInDetail": "{{name}} {{location}} இல் நுழைந்துள்ளார்.",
+      "vacatedHeadline": "குடியிருப்பாளர் வெற்றிகரமாக வெளியேற்றப்பட்டார்!",
+      "vacatedDetail": "{{name}} {{location}} இலிருந்து வெளியேற்றப்பட்டுள்ளார்.",
+      "viewDetails": "விவரங்களைப் பார்க்கவும்",
+      "viewStay": "தங்குதலைப் பார்க்கவும்",
+      "viewReservation": "முன்பதிவைப் பார்க்கவும்"
+    }
+  },
+  "occupancyWizard": {
+    "steps": {
+      "stayType": "தங்கும் வகையைத் தேர்ந்தெடுக்கவும்",
+      "stayDetails": "தங்கும் விவரங்களை உள்ளிடவும்",
+      "contract": "ஒப்பந்த விதிமுறைகள்",
+      "reserveDates": "முன்பதிவு விவரங்கள்",
+      "review": "மதிப்பாய்வு மற்றும் உறுதிப்படுத்தல்"
+    }
   }
 }

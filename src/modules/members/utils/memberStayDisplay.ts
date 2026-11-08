@@ -20,6 +20,9 @@ export type StayRecord = {
   actualMoveInAt?: string | null;
   expectedExitDate?: string | null;
   expectedCheckoutDate?: string | null;
+  stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
+  pricingBasis?: string | null;
+  agreedTotal?: number | null;
   rentSnapshot?: number | null;
   depositSnapshot?: number | null;
   foodEnabled?: boolean;
@@ -69,6 +72,14 @@ export function readStayRecord(value: Record<string, unknown> | null | undefined
     actualMoveInAt: text(value.actualMoveInAt),
     expectedExitDate: text(value.expectedExitDate),
     expectedCheckoutDate: text(value.expectedCheckoutDate),
+    stayKind:
+      value.stayKind === 'MONTHLY' ||
+      value.stayKind === 'SHORT' ||
+      value.stayKind === 'OPEN_ENDED'
+        ? value.stayKind
+        : null,
+    pricingBasis: text(value.pricingBasis),
+    agreedTotal: amount(value.agreedTotal),
     rentSnapshot: amount(value.rentSnapshot),
     depositSnapshot: amount(value.depositSnapshot),
     foodEnabled: value.foodEnabled === true,
@@ -135,7 +146,8 @@ export function hasStayContent(stay: StayRecord | null): boolean {
       stay.status ||
       stay.occupancyStatus ||
       stay.moveInDate ||
-      stay.rentSnapshot != null,
+      stay.rentSnapshot != null ||
+      stay.agreedTotal != null,
   );
 }
 
@@ -149,6 +161,10 @@ export function stayExitDate(stay: StayRecord | null): string | null {
  */
 export function stayMonthlyTotal(stay: StayRecord | null): number | null {
   if (!stay || stay.rentSnapshot == null) {
+    return null;
+  }
+  // OPEN_ENDED / DAILY_RATE rentSnapshot is a per-day rate, never a monthly amount.
+  if (stay.stayKind === 'OPEN_ENDED' || stay.pricingBasis === 'DAILY_RATE') {
     return null;
   }
   if (stay.foodIncludedInRent || !stay.foodEnabled) {

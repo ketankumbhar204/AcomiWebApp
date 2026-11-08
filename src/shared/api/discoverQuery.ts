@@ -18,8 +18,6 @@ export type DiscoverSpacesParams = {
   servicedApartment?: boolean;
   mealTypes?: string[];
   foodTypes?: string[];
-  mealTypes?: string[];
-  foodTypes?: string[];
   page?: number;
   size?: number;
   sort?: string;

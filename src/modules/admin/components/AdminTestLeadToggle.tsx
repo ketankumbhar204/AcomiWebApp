@@ -34,7 +34,7 @@ export function AdminTestLeadToggle({ checked, disabled = false, onChange }: Adm
             checked={checked}
             disabled={disabled}
             onChange={(event) => onChange(event.target.checked)}
-            inputProps={{ 'aria-label': t('admin.common.testLead') }}
+            slotProps={{ input: { 'aria-label': t('admin.common.testLead') } }}
           />
         }
         label={

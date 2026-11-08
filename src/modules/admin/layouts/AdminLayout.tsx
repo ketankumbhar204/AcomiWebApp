@@ -34,6 +34,9 @@ function adminPageTitle(pathname: string, t: (key: string) => string): string {
   if (pathname.startsWith(ROUTES.adminNotificationTesting)) {
     return t('admin.nav.notificationTesting');
   }
+  if (pathname.startsWith(ROUTES.adminMonthlyBilling)) {
+    return t('admin.nav.monthlyBilling');
+  }
   if (pathname.startsWith(ROUTES.adminEnquiries)) return t('admin.nav.enquiries');
   if (pathname.startsWith(ROUTES.adminRegisteredUsers)) return t('admin.nav.users');
   if (pathname.startsWith(ROUTES.adminProperties)) return t('admin.nav.properties');
@@ -93,6 +96,12 @@ export function AdminLayout() {
             label: t('admin.nav.notificationTesting', { defaultValue: 'Notification Testing' }),
             to: ROUTES.adminNotificationTesting,
             icon: <Bell size={16} />,
+          },
+          {
+            id: 'monthlyBilling',
+            label: t('admin.nav.monthlyBilling'),
+            to: ROUTES.adminMonthlyBilling,
+            icon: <Receipt size={16} />,
           },
           {
             id: 'enquiries',

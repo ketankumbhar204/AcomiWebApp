@@ -1,7 +1,16 @@
 import { Stack, Typography, useTheme } from '@mui/material';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ExtendStayDialog } from '@/modules/accommodation/components/ExtendStayDialog';
+import { ReviseOpenEndedRentDialog } from '@/modules/accommodation/components/ReviseOpenEndedRentDialog';
 import { OccupancyActionButtons } from '@/modules/accommodation/components/OccupancyActionButtons';
+import { defaultMonthlyRenewalEndDate } from '@/modules/accommodation/utils/extendStay';
+import { resolveOccupancyStayKind, type StayKind } from '@/modules/accommodation/utils/stayFinancialDisplay';
+import {
+  stayTypeDefaultLabel,
+  stayTypeLabelKey,
+} from '@/shared/utils/stayTypeDisplay';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -36,6 +45,16 @@ export function MemberOccupancyPanel({
   const s = dashSurfaces(theme.palette.mode);
   const navigate = useNavigate();
   const permissions = useSpacePermissions(spaceId);
+  const [extendSession, setExtendSession] = useState<{
+    occupancyId: string;
+    variant: 'extend' | 'renewal';
+    stayKind?: StayKind;
+    initialExpectedExitDate?: string;
+  } | null>(null);
+  const [reviseSession, setReviseSession] = useState<{
+    occupancyId: string;
+    currentDailyRent?: number | null;
+  } | null>(null);
   const { data, loading, error, reload } = useMemberOccupancies(spaceId, memberId);
 
   if (loading && !data) {
@@ -67,6 +86,26 @@ export function MemberOccupancyPanel({
             title={t('occupancy.section.noStayTitle')}
             description={t('occupancy.section.noStayBody')}
           />
+          {permissions.canManageOccupancy ? (
+            <OccupancyActionButtons
+              status="AVAILABLE"
+              memberId={memberId}
+              onAllocate={() =>
+                navigate(
+                  spaceOccupancyWizardPath(spaceId, 'ALLOCATE', {
+                    memberId,
+                  }),
+                )
+              }
+              onReserve={() =>
+                navigate(
+                  spaceOccupancyWizardPath(spaceId, 'RESERVE', {
+                    memberId,
+                  }),
+                )
+              }
+            />
+          ) : null}
           {onViewHistory ? (
             <Typography
               component="button"
@@ -91,6 +130,7 @@ export function MemberOccupancyPanel({
     const current = currentSummary;
 
     return (
+      <>
       <Stack spacing={1.5}>
         <MemberCurrentStayCard
           stay={stay}
@@ -103,6 +143,7 @@ export function MemberOccupancyPanel({
             status={current.occupancyStatus === 'RESERVED' ? 'RESERVED' : 'OCCUPIED'}
             occupancyId={current.occupancyId}
             memberId={memberId}
+            stayKind={resolveOccupancyStayKind(stay)}
             onTransfer={() =>
               navigate(
                 spaceOccupancyWizardPath(spaceId, 'TRANSFER', {
@@ -114,6 +155,47 @@ export function MemberOccupancyPanel({
                   buildingId: current.buildingId,
                 }),
               )
+            }
+            onExtend={
+              current.occupancyStatus === 'RESERVED'
+                ? undefined
+                : () =>
+                    current.occupancyId
+                      ? setExtendSession({
+                          occupancyId: current.occupancyId,
+                          variant: 'extend',
+                          stayKind: resolveOccupancyStayKind(stay),
+                        })
+                      : undefined
+            }
+            onReviseOpenEnded={
+              current.occupancyStatus === 'RESERVED'
+                ? undefined
+                : () =>
+                    current.occupancyId
+                      ? setReviseSession({
+                          occupancyId: current.occupancyId,
+                          currentDailyRent:
+                            typeof stay?.rentSnapshot === 'number' ? stay.rentSnapshot : null,
+                        })
+                      : undefined
+            }
+            onRenewMonthly={
+              current.occupancyStatus === 'RESERVED' ||
+              stay?.stayKind === 'SHORT' ||
+              resolveOccupancyStayKind(stay) === 'OPEN_ENDED'
+                ? undefined
+                : () =>
+                    current.occupancyId
+                      ? setExtendSession({
+                          occupancyId: current.occupancyId,
+                          variant: 'renewal',
+                          stayKind: resolveOccupancyStayKind(stay),
+                          initialExpectedExitDate: defaultMonthlyRenewalEndDate(
+                            stay?.expectedExitDate,
+                          ),
+                        })
+                      : undefined
             }
             onVacate={() =>
               navigate(
@@ -131,6 +213,23 @@ export function MemberOccupancyPanel({
           />
         ) : null}
       </Stack>
+      <ExtendStayDialog
+        open={extendSession != null}
+        spaceId={spaceId}
+        occupancyId={extendSession?.occupancyId ?? null}
+        variant={extendSession?.variant ?? 'extend'}
+        stayKind={extendSession?.stayKind}
+        initialExpectedExitDate={extendSession?.initialExpectedExitDate ?? ''}
+        onClose={() => setExtendSession(null)}
+      />
+      <ReviseOpenEndedRentDialog
+        open={reviseSession != null}
+        spaceId={spaceId}
+        occupancyId={reviseSession?.occupancyId ?? null}
+        currentDailyRent={reviseSession?.currentDailyRent}
+        onClose={() => setReviseSession(null)}
+      />
+      </>
     );
   }
 
@@ -147,6 +246,18 @@ export function MemberOccupancyPanel({
       accessor: (row) =>
         labeledStayLocation(row, (key) => t(key)) || '—',
       primary: true,
+    },
+    {
+      id: 'stayType',
+      header: t('occupancyWizard.steps.stayType', { defaultValue: 'Stay type' }),
+      accessor: (row) => {
+        if (row.stayKind === 'MONTHLY' || row.stayKind === 'SHORT' || row.stayKind === 'OPEN_ENDED') {
+          return t(stayTypeLabelKey(row.stayKind), {
+            defaultValue: stayTypeDefaultLabel(row.stayKind),
+          });
+        }
+        return '—';
+      },
     },
     {
       id: 'status',

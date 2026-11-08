@@ -50,13 +50,19 @@ export function buildPaymentReminderMessage(
   const outstanding = payment.outstandingAmount;
   const amountValue = outstanding != null && outstanding > 0 ? outstanding : payment.amount;
   const amount = formatPaymentAmount(amountValue, payment.currencyCode ?? 'INR') ?? 'the outstanding amount';
+  // Prefer backend title as-is (already includes month). Avoid "Rent — November 2026 (November 2026)".
   const period = periodLabel(payment.month);
   let description =
     clean(payment.title) ||
     clean(payment.description) ||
     TYPE_LABELS[clean(payment.paymentType).toUpperCase()] ||
     'your payment';
-  if (period && !description.toLowerCase().includes(period.toLowerCase())) {
+  const titleHasPeriod =
+    Boolean(period) && description.toLowerCase().includes(period.toLowerCase());
+  const titleHasMonthToken = /\b(20\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(
+    description,
+  );
+  if (period && !titleHasPeriod && !titleHasMonthToken) {
     description = `${description} (${period})`;
   }
   const due = dueLabel(payment.dueDate);

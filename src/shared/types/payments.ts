@@ -20,7 +20,50 @@ export type UniversalPaymentStatus =
   | 'UNDER_REVIEW'
   | 'PAID'
   | 'REJECTED'
-  | 'UPDATE_REQUESTED';
+  | 'UPDATE_REQUESTED'
+  | 'CANCELLED'
+  | 'REFUNDED';
+
+export type PaymentSettlementAction =
+  | 'CANCEL_UNPAID'
+  | 'FULL_REFUND'
+  | 'PARTIAL_REFUND'
+  | 'RETAIN';
+
+export type PaymentFinancialDisposition =
+  | 'OPEN'
+  | 'CANCELLED_UNPAID'
+  | 'COLLECTED_UNSETTLED'
+  | 'FULLY_REFUNDED'
+  | 'PARTIALLY_REFUNDED'
+  | 'FULLY_RETAINED';
+
+export interface SettleSpacePaymentRequest {
+  action: Exclude<PaymentSettlementAction, 'CANCEL_UNPAID'>;
+  refundAmount?: number | null;
+  retainedAmount?: number | null;
+  reason?: string | null;
+  refundMethod?: UniversalPaymentMethod | null;
+  refundDate?: string | null;
+  refundReference?: string | null;
+}
+
+export interface CancelSpacePaymentRequest {
+  reason?: string | null;
+}
+
+export interface PaymentSettlementResponse {
+  settlementId: string;
+  paymentId: string;
+  occupancyId?: string | null;
+  action: PaymentSettlementAction;
+  refundAmount: number;
+  retainedAmount: number;
+  reason?: string | null;
+  refundPaymentId?: string | null;
+  performedBy?: string | null;
+  performedAt?: string | null;
+}
 
 export type PaymentCategory =
   | 'MONTHLY'
@@ -63,7 +106,11 @@ export type PaymentTimelineEventType =
   | 'RESUBMITTED'
   | 'PAID'
   | 'REFUNDED'
-  | 'UPDATE_REQUESTED';
+  | 'UPDATE_REQUESTED'
+  | 'CANCELLED'
+  | 'RETAINED'
+  | 'REMINDER_SENT'
+  | 'REMINDER_FAILED';
 
 export type PaymentReviewAction = 'APPROVE' | 'REJECT' | 'REQUEST_UPDATE';
 
@@ -75,6 +122,8 @@ export type PaymentsReviewQueueParam =
   | 'PENDING_REVIEW'
   | 'PAID'
   | 'REJECTED'
+  | 'REFUNDED'
+  | 'CANCELLED'
   | 'HISTORY';
 
 export type MemberPaymentStatus =
@@ -93,6 +142,8 @@ export type SpacePaymentResponse = {
   memberName: string;
   memberMobile?: string | null;
   occupancyId?: string | null;
+  /** From linked occupancy; null when unlinked or legacy null stay_kind. */
+  stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
   paymentType: UniversalPaymentType;
   paymentCategory: PaymentCategory;
   title: string;
@@ -137,6 +188,11 @@ export type SpacePaymentResponse = {
   daysOverdue?: number | null;
   reminderEligible?: boolean | null;
   settlementStatus?: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | null;
+  refundedAmount?: number | null;
+  retainedAmount?: number | null;
+  netCollectedAmount?: number | null;
+  partiallyRefunded?: boolean | null;
+  financialDisposition?: PaymentFinancialDisposition | null;
 };
 
 export type SpaceBillingSettings = {
@@ -166,6 +222,8 @@ export type OwnerPaymentsMonthCounts = {
   changesRequested: number;
   paid: number;
   rejected: number;
+  refunded?: number;
+  cancelled?: number;
   history: number;
   pendingMembers: number;
 };

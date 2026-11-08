@@ -83,6 +83,10 @@ export interface CreateFoodCategoryRequest {
   name: string;
 }
 
+export interface UpdateFoodCategoryRequest {
+  name: string;
+}
+
 export interface CreateFoodItemRequest {
   categoryId: string;
   name: string;

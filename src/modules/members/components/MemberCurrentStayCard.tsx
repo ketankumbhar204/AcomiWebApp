@@ -7,10 +7,13 @@ import { StatusChip } from '@/shared/components/StatusChip';
 import { colors } from '@/shared/theme/colors';
 import { formatCurrency } from '@/shared/utils/dashboardFinancial';
 import {
+  buildStayFinancialPresentation,
+  resolveOccupancyStayKind,
+} from '@/modules/accommodation/utils/stayFinancialDisplay';
+import {
   occupiedDayCount,
   occupancyLocationLines,
   stayExitDate,
-  stayMonthlyTotal,
   type StayRecord,
 } from '../utils/memberStayDisplay';
 
@@ -46,7 +49,9 @@ export function MemberCurrentStayCard({
   const lines = occupancyLocationLines(stay);
   const moveIn = stay?.actualMoveInAt ?? stay?.moveInDate ?? null;
   const occupiedDays = reserved ? null : occupiedDayCount(moveIn);
-  const monthlyTotal = stayMonthlyTotal(stay);
+  const presentation = stay
+    ? buildStayFinancialPresentation(stay, { notRecorded })
+    : null;
   const status = stay?.occupancyStatus ?? stay?.status ?? null;
   const statusLabel =
     status === 'ACTIVE' || status === 'ALLOCATED'
@@ -54,16 +59,6 @@ export function MemberCurrentStayCard({
       : status === 'RESERVED'
         ? t('occupancy.memberStatus.RESERVED')
         : status ?? notSet;
-
-  const foodValue = !stay
-    ? notSet
-    : stay.foodIncludedInRent
-      ? t('occupancy.contract.foodYes')
-      : stay.foodEnabled
-        ? stay.foodChargeSnapshot != null
-          ? formatCurrency(stay.foodChargeSnapshot)
-          : t('occupancy.contract.foodIncludedNoAmount')
-        : t('occupancy.contract.foodNo');
 
   return (
     <Box
@@ -111,33 +106,38 @@ export function MemberCurrentStayCard({
           )}
           <InfoRow
             label={t('occupancy.section.expectedMoveOut')}
-            value={formatStayDate(stayExitDate(stay), notSet)}
+            value={
+              resolveOccupancyStayKind(stay ?? {}) === 'OPEN_ENDED' && !stayExitDate(stay)
+                ? t('occupancy.section.moveOutNotFixed', { defaultValue: 'Not fixed' })
+                : formatStayDate(stayExitDate(stay), notSet)
+            }
             dense
           />
         </Box>
         <Box>
-          <InfoRow
-            label={t('occupancy.contract.rent')}
-            value={stay?.rentSnapshot == null ? notRecorded : formatCurrency(stay.rentSnapshot)}
-            dense
-          />
-          <InfoRow
-            label={t(
-              stay?.foodEnabled && !stay.foodIncludedInRent
-                ? 'occupancy.contract.monthlyTotalWithFood'
-                : 'occupancy.contract.monthlyTotal',
-            )}
-            value={monthlyTotal == null ? notRecorded : formatCurrency(monthlyTotal)}
-            dense
-          />
-          <InfoRow
-            label={t('occupancy.contract.deposit')}
-            value={
-              stay?.depositSnapshot == null ? notRecorded : formatCurrency(stay.depositSnapshot)
-            }
-            dense
-          />
-          <InfoRow label={t('occupancy.contract.foodIncluded')} value={foodValue} dense />
+          {presentation ? (
+            <InfoRow
+              label={t('occupancyWizard.steps.stayType', { defaultValue: 'Stay type' })}
+              value={t(presentation.stayTypeLabelKey, {
+                defaultValue: presentation.stayTypeLabelDefault,
+              })}
+              dense
+            />
+          ) : null}
+          {presentation?.rows.map((row) => (
+            <InfoRow
+              key={row.key}
+              label={t(row.labelKey, { defaultValue: row.labelDefault })}
+              value={
+                row.key === 'food'
+                  ? row.value === 'yes'
+                    ? t('common.yes', { defaultValue: 'Yes' })
+                    : t('common.no', { defaultValue: 'No' })
+                  : row.value
+              }
+              dense
+            />
+          ))}
           {stay?.otherCharges?.map((charge, index) => (
             <InfoRow
               key={charge.chargeSnapshotId ?? `${charge.label ?? 'charge'}-${index}`}

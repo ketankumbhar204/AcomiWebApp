@@ -95,7 +95,10 @@ function opsFocusLabel(
     return t('dashboard.accommodationOperations.occupiedBeds');
   }
   if (opsFocus === 'VACANT') {
-    return t('dashboard.accommodationOperations.vacantBeds');
+    // Internal focus remains VACANT; display terminology is Available.
+    return t('dashboard.accommodationOperations.vacantBeds', {
+      defaultValue: 'Available beds',
+    });
   }
   if (opsFocus === 'RESERVED') {
     return t('dashboard.accommodationOperations.reservedBeds');

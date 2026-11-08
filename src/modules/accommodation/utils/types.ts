@@ -8,6 +8,8 @@ export type OccupancyWizardMode =
 export type OccupancyWizardStep =
   | 'member'
   | 'target'
+  | 'stay_type'
+  | 'stay_details'
   | 'reserve_dates'
   | 'transfer_current'
   | 'contract'

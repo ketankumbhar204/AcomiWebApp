@@ -2,10 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { invalidateStayPaymentCache } from '@/modules/accommodation/utils/stayChargeIndex';
 import { paymentsApi } from '../api/paymentsApi';
 import type {
+  CancelSpacePaymentRequest,
   CreateSpacePaymentRequest,
   ListSpacePaymentsParams,
   PaymentsReviewQueueParam,
   ReviewPaymentRequest,
+  SettleSpacePaymentRequest,
   SubmitPaymentProofRequest,
 } from '@/shared/types/payments';
 import { currentMonthKey } from '@/shared/utils/dashboardFinancial';
@@ -213,6 +215,26 @@ export function usePaymentMutations(spaceId: string | undefined) {
     }),
     markReceived: useMutation({
       mutationFn: (paymentId: string) => paymentsApi.markPaymentReceived(spaceId!, paymentId),
+      onSuccess: invalidate,
+    }),
+    cancelPayment: useMutation({
+      mutationFn: ({
+        paymentId,
+        body,
+      }: {
+        paymentId: string;
+        body?: CancelSpacePaymentRequest;
+      }) => paymentsApi.cancelPayment(spaceId!, paymentId, body),
+      onSuccess: invalidate,
+    }),
+    settlePayment: useMutation({
+      mutationFn: ({
+        paymentId,
+        body,
+      }: {
+        paymentId: string;
+        body: SettleSpacePaymentRequest;
+      }) => paymentsApi.settlePayment(spaceId!, paymentId, body),
       onSuccess: invalidate,
     }),
     processReminders: useMutation({

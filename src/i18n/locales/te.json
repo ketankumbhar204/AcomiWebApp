@@ -295,7 +295,7 @@
       },
       "recommendedAction": "Recommended Action",
       "actions": {
-        "improveOccupancy": "Improve occupancy by allocating vacant beds"
+        "improveOccupancy": "Improve occupancy by allocating available beds"
       },
       "factors": {
         "setupComplete": "Required setup complete",
@@ -388,5 +388,44 @@
     "chooseGallery": "Choose from gallery",
     "attached": "Attached",
     "sizeHint": "JPEG, PNG, or WebP. Maximum {{maxMb}} MB after compression."
+  },
+  "dashboard": {
+    "quickActions": {
+      "allocate": "కేటాయించు",
+      "allocateHint": "కొత్త అద్దెదారును బెడ్‌కు కేటాయించండి",
+      "reserve": "రిజర్వ్",
+      "reserveHint": "రాబోయే మూవ్-ఇన్ కోసం బెడ్ హోల్డ్ చేయండి",
+      "transfer": "బదిలీ",
+      "transferHint": "అద్దెదారును మరో గది/బెడ్‌కు తరలించండి",
+      "vacate": "ఖాళీ చేయి",
+      "vacateHint": "అద్దెదారును బెడ్ నుండి తొలగించండి"
+    }
+  },
+  "occupancy": {
+    "success": {
+      "title": "విజయం",
+      "allocatedHeadline": "అద్దెదారు విజయవంతంగా కేటాయించబడ్డారు!",
+      "allocatedDetail": "{{name}} ను {{location}} కు కేటాయించారు.",
+      "reservedHeadline": "వసతి విజయవంతంగా రిజర్వ్ చేయబడింది!",
+      "reservedDetail": "{{name}} కు {{location}} వద్ద రిజర్వేషన్ ఉంది.",
+      "transferredHeadline": "అద్దెదారు విజయవంతంగా బదిలీ చేయబడ్డారు!",
+      "transferredDetail": "{{name}} ను {{location}} కు బదిలీ చేశారు.",
+      "movedInHeadline": "మూవ్-ఇన్ విజయవంతంగా పూర్తయింది!",
+      "movedInDetail": "{{name}} {{location}} లోకి ప్రవేశించారు.",
+      "vacatedHeadline": "అద్దెదారు విజయవంతంగా ఖాళీ చేయబడ్డారు!",
+      "vacatedDetail": "{{name}} ను {{location}} నుండి ఖాళీ చేశారు.",
+      "viewDetails": "వివరాలు చూడండి",
+      "viewStay": "నివాసం చూడండి",
+      "viewReservation": "రిజర్వేషన్ చూడండి"
+    }
+  },
+  "occupancyWizard": {
+    "steps": {
+      "stayType": "నివాస రకాన్ని ఎంచుకోండి",
+      "stayDetails": "నివాస వివరాలు నమోదు చేయండి",
+      "contract": "ఒప్పంద నిబంధనలు",
+      "reserveDates": "రిజర్వేషన్ వివరాలు",
+      "review": "సమీక్ష మరియు నిర్ధారణ"
+    }
   }
 }

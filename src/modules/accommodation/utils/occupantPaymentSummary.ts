@@ -72,23 +72,19 @@ export function linePaymentStatus(payment: StayPaymentInput): StayPaymentStatus 
   if (payment.settlementStatus === 'PAID' || status === 'PAID') {
     return 'PAID';
   }
-  if (payment.settlementStatus === 'PARTIALLY_PAID') {
-    return 'PARTIALLY_PAID';
-  }
-  const paid = asMoney(payment.paidAmount);
+  // D-18: whole rows only. Do not invent PARTIALLY_PAID from paidAmount/outstanding.
   const outstanding = asMoney(payment.outstandingAmount);
-  if (paid != null && paid > 0.009 && outstanding != null && outstanding > 0.009) {
-    return 'PARTIALLY_PAID';
-  }
   if (outstanding != null && outstanding > 0.009) {
     return 'PENDING';
   }
   if (
     payment.settlementStatus === 'UNPAID' ||
+    payment.settlementStatus === 'PARTIALLY_PAID' ||
     status === 'PENDING' ||
     status === 'REJECTED' ||
     status === 'UPDATE_REQUESTED'
   ) {
+    const paid = asMoney(payment.paidAmount);
     return outstanding == null && paid == null ? 'UNAVAILABLE' : 'PENDING';
   }
   return 'UNAVAILABLE';
@@ -130,15 +126,8 @@ function rollup(statuses: StayPaymentStatus[]): StayPaymentStatus {
   if (statuses.every(status => status === 'PAID')) {
     return 'PAID';
   }
-  if (statuses.some(status => status === 'PARTIALLY_PAID')) {
-    return 'PARTIALLY_PAID';
-  }
-  const pending = statuses.some(status => status === 'PENDING');
-  const settled = statuses.some(status => status === 'PAID');
-  if (pending && settled) {
-    return 'PARTIALLY_PAID';
-  }
-  if (pending) {
+  // Mixed paid + unpaid → PENDING (D-18: do not invent PARTIALLY_PAID collection).
+  if (statuses.some(status => status === 'PENDING' || status === 'PARTIALLY_PAID')) {
     return 'PENDING';
   }
   if (statuses.some(status => status === 'UNDER_REVIEW')) {

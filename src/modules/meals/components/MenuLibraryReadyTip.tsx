@@ -62,31 +62,23 @@ export function MenuLibraryReadyTip({ spaceId, visible }: MenuLibraryReadyTipPro
         <Typography variant="body2" color="text.secondary">
           {t('meals.library.readyTipBody')}
         </Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap>
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<CalendarDays size={16} />}
-            onClick={() => {
-              dismiss();
-              navigate(spaceMealsPath(spaceId));
-            }}
-            sx={{
-              minHeight: DASHBOARD_UX.buttonHeight,
-              bgcolor: colors.primaryDark,
-              '&:hover': { bgcolor: colors.primaryHover },
-            }}
-          >
-            {t('meals.library.readyTipContinue')}
-          </Button>
-          <Button
-            size="small"
-            onClick={dismiss}
-            sx={{ minHeight: DASHBOARD_UX.buttonHeight }}
-          >
-            {t('meals.library.readyTipStay')}
-          </Button>
-        </Stack>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<CalendarDays size={16} />}
+          onClick={() => {
+            dismiss();
+            navigate(spaceMealsPath(spaceId));
+          }}
+          sx={{
+            alignSelf: 'flex-start',
+            minHeight: DASHBOARD_UX.buttonHeight,
+            bgcolor: colors.primaryDark,
+            '&:hover': { bgcolor: colors.primaryHover },
+          }}
+        >
+          {t('meals.library.readyTipContinue')}
+        </Button>
       </Stack>
     </Alert>
   );

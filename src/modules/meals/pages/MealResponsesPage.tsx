@@ -45,10 +45,15 @@ function initials(name: string): string {
   if (parts.length === 0) {
     return '?';
   }
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase();
+  const first = parts[0];
+  if (!first) {
+    return '?';
   }
-  return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+  if (parts.length === 1) {
+    return first.slice(0, 2).toUpperCase();
+  }
+  const second = parts[1];
+  return `${first[0] ?? ''}${second?.[0] ?? ''}`.toUpperCase();
 }
 
 function avatarTone(memberId: string) {
@@ -56,7 +61,7 @@ function avatarTone(memberId: string) {
   for (let i = 0; i < memberId.length; i += 1) {
     hash = (hash + memberId.charCodeAt(i)) % AVATAR_TONES.length;
   }
-  return AVATAR_TONES[hash];
+  return AVATAR_TONES[hash] ?? { bg: '#ECFBF3', fg: '#059669' };
 }
 
 export function MealResponsesPage() {

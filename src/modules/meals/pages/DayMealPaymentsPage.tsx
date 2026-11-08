@@ -55,7 +55,6 @@ import {
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import {
   currentMonthKey,
-  formatCurrency,
   canManagePayments,
 } from '@/shared/utils/dashboardFinancial';
 import { spacePaymentsPath } from '@/routes/paths';

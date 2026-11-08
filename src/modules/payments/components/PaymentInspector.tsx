@@ -50,11 +50,17 @@ import {
   canReviewPayment,
   canEditSubmittedProof,
   canSubmitProof,
-  paymentStatusLabelKey,
   paymentStatusTone,
 } from '../utils/paymentHelpers';
+import { formatPersistedRentBreakdown, paymentDisplayTitle } from '../utils/paymentDisplay';
+import {
+  paymentListDisplayStatus,
+  paymentListStatusLabelKey,
+} from '../utils/paymentRefundDisplay';
+import { paymentTimelineAmountInfo } from '../utils/paymentTimelineAmount';
 import { PaymentReceivedConfirmDialog } from './PaymentReceivedConfirmDialog';
 import { PaymentReminderComposer } from './PaymentReminderComposer';
+import { PaymentSettlementActions } from './PaymentSettlementActions';
 import { buildPaymentReminderMessage } from '../utils/paymentReminderMessage';
 import { openReminderWhatsApp } from '../utils/paymentReminderLaunch';
 import { firstWhatsAppPhone } from '@/shared/utils/photoRequest';
@@ -175,18 +181,10 @@ function PaymentDetailsHeader({
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const status = payment.paymentStatus ?? payment.status ?? 'PENDING';
+  const listStatus = paymentListDisplayStatus(payment);
   const name = payment.memberName?.trim() || payment.title;
   const initial = name.charAt(0).toUpperCase() || '?';
-  const period = payment.month
-    ? new Date(`${payment.month}-01T00:00:00`).toLocaleDateString('en-IN', {
-        month: 'long',
-        year: 'numeric',
-      })
-    : '';
-  const heading =
-    period && !payment.title.toLowerCase().includes(period.toLowerCase())
-      ? `${payment.title} — ${period}`
-      : payment.title;
+  const heading = paymentDisplayTitle(payment);
   const place = [spaceName, stayTrail].filter(Boolean).join(' → ');
   const amount = formatCurrency(payment.amount, payment.currencyCode);
   const outstanding =
@@ -241,10 +239,25 @@ function PaymentDetailsHeader({
         <Typography sx={{ fontWeight: 700, fontSize: 18, color: s.textPrimary, flex: 1 }}>
           {heading}
         </Typography>
-        <StatusChip
-          label={payment.isOverdue ? t('paymentCollection.overdue.badge') : t(paymentStatusLabelKey(status))}
-          tone={payment.isOverdue ? 'error' : paymentStatusTone(status)}
-        />
+        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ justifyContent: 'flex-end' }}>
+          <StatusChip
+            label={
+              listStatus === 'OVERDUE' || payment.isOverdue
+                ? t('paymentCollection.overdue.badge')
+                : t(paymentListStatusLabelKey(listStatus), {
+                    defaultValue:
+                      listStatus === 'PARTIALLY_REFUNDED' ? 'Partially refunded' : undefined,
+                  })
+            }
+            tone={
+              listStatus === 'OVERDUE' || payment.isOverdue
+                ? 'error'
+                : listStatus === 'PARTIALLY_REFUNDED'
+                  ? 'info'
+                  : paymentStatusTone(listStatus)
+            }
+          />
+        </Stack>
       </Box>
       <Typography sx={{ fontWeight: 800, fontSize: 28, lineHeight: 1.2, color: s.textPrimary }}>
         {amount}
@@ -292,6 +305,37 @@ function PaymentDetailsHeader({
               {t('paymentCollection.fields.outstanding', { defaultValue: 'Outstanding' })}
             </Typography>
             <Typography sx={{ fontWeight: 700, color: '#B91C1C' }}>{outstanding}</Typography>
+          </Box>
+        ) : null}
+        {Number(payment.refundedAmount ?? 0) > 0 ? (
+          <Box>
+            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
+              {t('paymentCollection.fields.refunded', { defaultValue: 'Refunded' })}
+            </Typography>
+            <Typography sx={{ fontWeight: 700 }}>
+              {formatCurrency(payment.refundedAmount, payment.currencyCode)}
+            </Typography>
+          </Box>
+        ) : null}
+        {payment.netCollectedAmount != null &&
+        (status === 'PAID' || status === 'REFUNDED' || Number(payment.refundedAmount ?? 0) > 0) ? (
+          <Box>
+            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
+              {t('paymentCollection.fields.netCollected', { defaultValue: 'Net collected' })}
+            </Typography>
+            <Typography sx={{ fontWeight: 700 }}>
+              {formatCurrency(payment.netCollectedAmount, payment.currencyCode)}
+            </Typography>
+          </Box>
+        ) : null}
+        {Number(payment.retainedAmount ?? 0) > 0 ? (
+          <Box>
+            <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
+              {t('paymentCollection.fields.retained', { defaultValue: 'Retained' })}
+            </Typography>
+            <Typography sx={{ fontWeight: 700 }}>
+              {formatCurrency(payment.retainedAmount, payment.currencyCode)}
+            </Typography>
           </Box>
         ) : null}
       </Box>
@@ -541,8 +585,21 @@ export function PaymentInspector({
       framed={framed}
       footer={
         canManage &&
-        (canReviewPayment(status) || payment.reminderEligible || canMarkReceived) ? (
+        (canReviewPayment(status) ||
+          payment.reminderEligible ||
+          canMarkReceived ||
+          status === 'PAID' ||
+          status === 'PENDING' ||
+          status === 'REJECTED' ||
+          status === 'UPDATE_REQUESTED' ||
+          status === 'PROOF_UPLOADED' ||
+          status === 'UNDER_REVIEW') ? (
           <Stack spacing={1}>
+            <PaymentSettlementActions
+              spaceId={spaceId}
+              payment={payment}
+              canManage={canManage}
+            />
             {canMarkReceived ? (
               <Button
                 variant="contained"
@@ -677,6 +734,24 @@ export function PaymentInspector({
                     ? `${payment.billingPeriodStart} → ${payment.billingPeriodEnd}`
                     : null,
               },
+              // Persisted OPEN_ENDED / partial RENT breakdown only — never invent amounts.
+              ...(formatPersistedRentBreakdown(payment)
+                ? [
+                    {
+                      label: t('paymentCollection.fields.billableDays', {
+                        defaultValue: 'Billable days',
+                      }),
+                      value:
+                        payment.billableDays != null ? String(payment.billableDays) : null,
+                    },
+                    {
+                      label: t('paymentCollection.fields.rentBreakdown', {
+                        defaultValue: 'Rent calculation',
+                      }),
+                      value: formatPersistedRentBreakdown(payment),
+                    },
+                  ]
+                : []),
               {
                 label: t('paymentCollection.fields.baseAmount'),
                 value:
@@ -818,6 +893,14 @@ export function PaymentInspector({
               {timeline.events.map((event, index) => {
                 const { Icon, accent } = timelineIcon(event.eventType);
                 const isLast = index === timeline.events.length - 1;
+                const amountInfo = paymentTimelineAmountInfo(event, payment.amount);
+                const amountLabel =
+                  amountInfo.amount != null
+                    ? formatCurrency(amountInfo.amount, payment.currencyCode)
+                    : null;
+                const note = amountInfo.note
+                  ? readablePaymentRemark(amountInfo.note, t)
+                  : null;
                 return (
                   <Box
                     key={event.eventId}
@@ -858,20 +941,34 @@ export function PaymentInspector({
                         minWidth: 0,
                       }}
                     >
-                      <Typography
-                        sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: 1,
+                          alignItems: 'flex-start',
+                        }}
                       >
-                        {t(`paymentCollection.timeline.event.${event.eventType}`)}
-                      </Typography>
+                        <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary }}>
+                          {t(`paymentCollection.timeline.event.${event.eventType}`, {
+                            defaultValue: event.eventType,
+                          })}
+                        </Typography>
+                        {amountLabel ? (
+                          <Typography sx={{ ...DASHBOARD_UX.link, color: s.textPrimary, flexShrink: 0 }}>
+                            {amountLabel}
+                          </Typography>
+                        ) : null}
+                      </Box>
                       <Typography sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}>
                         {new Date(event.performedAt).toLocaleString()}
                         {event.performedBy ? ` · ${event.performedBy}` : ''}
                       </Typography>
-                      {event.remarks ? (
+                      {note ? (
                         <Typography
                           sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, mt: 0.35 }}
                         >
-                          {readablePaymentRemark(event.remarks, t)}
+                          {note}
                         </Typography>
                       ) : null}
                     </Box>

@@ -272,6 +272,7 @@ export function SetupStructurePreview({ structure, onChange }: SetupStructurePre
             ? formatBedDisplayLabel(editingBed.label, t)
             : t('occupancy.section.bed', { defaultValue: 'Bed' })
         }
+        name={editingBed?.label ?? ''}
         bedNumber={editingBed?.label ?? ''}
         status="AVAILABLE"
         rent={editingBed?.defaultRent}
@@ -288,6 +289,7 @@ export function SetupStructurePreview({ structure, onChange }: SetupStructurePre
             !editingBed ||
             isBedDraftUnchanged(
               {
+                name: editingBed.label,
                 bedNumber: editingBed.label,
                 rent: editingBed.defaultRent ?? null,
                 deposit: editingBed.defaultDeposit ?? null,
@@ -307,7 +309,11 @@ export function SetupStructurePreview({ structure, onChange }: SetupStructurePre
             )
           ) {
             onChange(
-              renameSetupBed(structure, editingBed.id, draft.bedNumber.trim() || editingBed.label),
+              renameSetupBed(
+                structure,
+                editingBed.id,
+                draft.name.trim() || draft.bedNumber.trim() || editingBed.label,
+              ),
             );
             setEditingBed(null);
             return;
@@ -351,7 +357,10 @@ export function SetupStructurePreview({ structure, onChange }: SetupStructurePre
           setSetupConfirming(true);
           onChange(
             applySetupBedPricing(structure, editingBed.id, {
-              label: setupDraft.bedNumber.trim() || editingBed.label,
+              label:
+                setupDraft.name.trim() ||
+                setupDraft.bedNumber.trim() ||
+                editingBed.label,
               defaultRent: setupDraft.rent,
               defaultDeposit: setupDraft.deposit,
             }),

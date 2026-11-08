@@ -3,6 +3,7 @@ import type {
   MemberPaymentStatus,
   UniversalPaymentStatus,
 } from '@/shared/types/payments';
+import { isPurePaidPayment, isRefundRelatedPayment } from './paymentRefundDisplay';
 
 export function paymentStatusLabelKey(status: UniversalPaymentStatus | string): string {
   return `paymentCollection.status.${status}`;
@@ -23,9 +24,59 @@ export function paymentStatusTone(
       return 'info';
     case 'REJECTED':
       return 'error';
+    case 'REFUNDED':
+    case 'PARTIALLY_REFUNDED':
+      return 'info';
+    case 'CANCELLED':
+      return 'neutral';
     default:
       return 'neutral';
   }
+}
+
+/** Remaining cash that can still be refunded (collected − refunded − retained). */
+export function remainingRefundableAmount(payment: {
+  amount?: number | null;
+  paidAmount?: number | null;
+  refundedAmount?: number | null;
+  retainedAmount?: number | null;
+}): number {
+  const collected = Number(payment.paidAmount ?? payment.amount ?? 0);
+  const refunded = Number(payment.refundedAmount ?? 0);
+  const retained = Number(payment.retainedAmount ?? 0);
+  return Math.max(0, collected - refunded - retained);
+}
+
+export function isPartiallyRefunded(payment: {
+  paymentStatus?: string | null;
+  partiallyRefunded?: boolean | null;
+  refundedAmount?: number | null;
+}): boolean {
+  if (payment.partiallyRefunded === true) {
+    return true;
+  }
+  return (
+    payment.paymentStatus === 'PAID' &&
+    Number(payment.refundedAmount ?? 0) > 0
+  );
+}
+
+export function canCancelUnpaidPayment(
+  status: UniversalPaymentStatus | string | null | undefined,
+): boolean {
+  return (
+    status === 'PENDING' ||
+    status === 'PROOF_UPLOADED' ||
+    status === 'UNDER_REVIEW' ||
+    status === 'UPDATE_REQUESTED' ||
+    status === 'REJECTED'
+  );
+}
+
+export function canSettleCollectedPayment(
+  status: UniversalPaymentStatus | string | null | undefined,
+): boolean {
+  return status === 'PAID';
 }
 
 export function memberLedgerStatusTone(
@@ -127,7 +178,11 @@ export function individualPaymentStatus(payment: IndividualPaymentListItem): str
 
 /** Month list is complete, so search and status run on that full set. */
 export function matchesIndividualPayment(
-  payment: IndividualPaymentListItem,
+  payment: IndividualPaymentListItem & {
+    paymentCategory?: string | null;
+    partiallyRefunded?: boolean | null;
+    refundedAmount?: number | null;
+  },
   options: { status?: string; query?: string; memberId?: string },
 ): boolean {
   if (options.memberId && payment.memberId !== options.memberId) {
@@ -135,13 +190,25 @@ export function matchesIndividualPayment(
   }
   const status = options.status?.trim();
   if (status) {
-    const current = individualPaymentStatus(payment);
-    if (status === 'UNDER_REVIEW') {
-      if (current !== 'UNDER_REVIEW' && current !== 'PROOF_UPLOADED') {
+    if (status === 'REFUNDED') {
+      if (!isRefundRelatedPayment(payment)) {
         return false;
       }
-    } else if (current !== status) {
-      return false;
+    } else if (status === 'PAID') {
+      if (!isPurePaidPayment(payment)) {
+        return false;
+      }
+    } else {
+      const current = individualPaymentStatus(payment);
+      if (status === 'UNDER_REVIEW') {
+        if (current !== 'UNDER_REVIEW' && current !== 'PROOF_UPLOADED') {
+          return false;
+        }
+      } else if (isRefundRelatedPayment(payment)) {
+        return false;
+      } else if (current !== status) {
+        return false;
+      }
     }
   }
   const query = options.query?.trim().toLowerCase();

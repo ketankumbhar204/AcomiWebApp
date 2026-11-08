@@ -5,9 +5,12 @@ import { dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { colors } from '@/shared/theme/colors';
 import { semanticSurface, type SemanticTone } from '@/shared/theme/semantic';
 import type { AccommodationStatus, BedSpaceListItemResponse } from '@/shared/types/accommodation';
+import { useOccupiedBedStay } from '../hooks/useOccupiedBedStay';
+import { resolveOccupancyStayKind } from '../utils/stayFinancialDisplay';
 import { BedCardCarousel } from './BedCardCarousel';
 import { BedPricingDisplay } from './BedPricingDisplay';
 import { OccupiedBedPaymentFace } from './OccupiedBedPaymentFace';
+import { StayTypeBadge } from './StayTypeBadge';
 import { HierarchyEditMenu } from './HierarchyEditMenu';
 import type { TreeSelection } from './HierarchyTree';
 import { getBedIllustration } from '../illustrations/illustrationAssets';
@@ -110,6 +113,11 @@ function RoomInventoryBedCard({
   const deposit = bed.defaultDeposit;
   const tone = statusTone(bed.status);
   const surface = semanticSurface(tone, theme.palette.mode);
+  const showStayBadges = bed.status === 'OCCUPIED' || bed.status === 'RESERVED';
+  const occupiedStay = useOccupiedBedStay(spaceId, bed.bedId, showStayBadges);
+  const stayKind = occupiedStay.occupancy
+    ? resolveOccupancyStayKind(occupiedStay.occupancy)
+    : null;
 
   const bedSelection: TreeSelection = {
     type: 'bed',
@@ -181,12 +189,6 @@ function RoomInventoryBedCard({
                 >
                   {formatBedDisplayLabel(bed.label, t)}
                 </Typography>
-                <Box sx={{ mt: 0.75 }}>
-                  <StatusDotBadge
-                    label={t(`accommodation.status.${bed.status}`, { defaultValue: bed.status })}
-                    tone={tone}
-                  />
-                </Box>
               </Box>
               <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center', flexShrink: 0 }}>
                 {canManage ? (
@@ -206,17 +208,41 @@ function RoomInventoryBedCard({
           </Box>
         </Stack>
 
-        {bed.status === 'OCCUPIED' ? (
+        {showStayBadges ? (
+          <Stack
+            direction="row"
+            spacing={0.75}
+            useFlexGap
+            sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}
+          >
+            <StatusDotBadge
+              label={t(`accommodation.status.${bed.status}`, { defaultValue: bed.status })}
+              tone={tone}
+            />
+            <StayTypeBadge stayKind={stayKind} />
+          </Stack>
+        ) : (
+          <StatusDotBadge
+            label={t(`accommodation.status.${bed.status}`, { defaultValue: bed.status })}
+            tone={tone}
+          />
+        )}
+
+        {showStayBadges ? (
+          <Box sx={{ height: 0, borderBottom: `1px solid ${s.border}` }} />
+        ) : null}
+
+        {bed.status === 'OCCUPIED' || bed.status === 'RESERVED' ? (
           <OccupiedBedPaymentFace spaceId={spaceId} bedId={bed.bedId} />
         ) : (
-          <BedPricingDisplay rent={rent} deposit={deposit} layout="rows" />
+          <BedPricingDisplay rent={rent} deposit={deposit} layout="inline" />
         )}
       </Stack>
     </Paper>
   );
 }
 
-function AddBedCard({ onClick }: { onClick: () => void }) {
+export function AddBedCard({ onClick }: { onClick: () => void }) {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);

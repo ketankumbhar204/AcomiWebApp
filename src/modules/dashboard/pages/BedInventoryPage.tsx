@@ -42,11 +42,17 @@ import { StatusChip, type StatusChipTone } from '@/shared/components/StatusChip'
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { colors } from '@/shared/theme/colors';
 import { dashFilterControlSx } from '@/shared/theme/dashButtonSx';
+import {
+  EntityFormDrawer,
+  type EntityFormMode,
+} from '@/modules/accommodation/components/EntityFormDrawer';
+import type { TreeSelection } from '@/modules/accommodation/components/HierarchyTree';
 import { PersistedBedInteractionHost } from '@/modules/accommodation/components/PersistedBedInteractionHost';
 import { usePersistedBedInteraction } from '@/modules/accommodation/hooks/usePersistedBedInteraction';
 import { formatBedDisplayLabel } from '@/modules/accommodation/utils/formatBedDisplayLabel';
 import { formatPricingMoney } from '@/modules/accommodation/utils/commitBedPricing';
 import { bedIsSelectableForMoveIn } from '@/modules/accommodation/utils/moveInEntry';
+import { getAccommodationUiProfile } from '@/modules/accommodation/utils/accommodationProfile';
 import { ROUTES, spaceBedInventoryPath, spaceDashboardPath, spaceOccupancyWizardPath } from '@/routes/paths';
 import type { BedSpaceListItem } from '../api/dashboardDrilldownApi';
 import { BedInventoryRoomSections } from '../components/BedInventoryRoomSections';
@@ -148,12 +154,16 @@ export function BedInventoryPage() {
         : status === 'OCCUPIED'
           ? 'occupied'
           : null;
-  const allocateIntent = searchParams.get('intent') === 'allocate';
+  const occupancyIntent = searchParams.get('intent');
+  const allocateIntent = occupancyIntent === 'allocate';
+  const reserveIntent = occupancyIntent === 'reserve';
+  const selectionMemberId = searchParams.get('memberId') ?? undefined;
   const [search, setSearch] = useState('');
   const [buildingId, setBuildingId] = useState('');
   const [floorId, setFloorId] = useState('');
   const [unitId, setUnitId] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [formMode, setFormMode] = useState<EntityFormMode | null>(null);
 
   const buildings = useBuildings(spaceId, Boolean(spaceId));
   const floors = useFloors(spaceId, buildingId || undefined, Boolean(buildingId));
@@ -172,7 +182,12 @@ export function BedInventoryPage() {
   });
   const canManage = permissions.canManageOccupancy === true;
   const selectingForMoveIn = allocateIntent && opsFocus === 'vacant' && canManage;
+  const selectingForReserve = reserveIntent && opsFocus === 'vacant' && canManage;
+  const selectingForOccupancy = selectingForMoveIn || selectingForReserve;
+  const wizardMode = selectingForReserve ? 'RESERVE' : 'ALLOCATE';
   const spaceType = permissions.space?.spaceType;
+  const profile = spaceType ? getAccommodationUiProfile(spaceType) : null;
+  const canManageStructure = permissions.canManageAccommodation === true;
   const showOpsCards =
     spaceType != null && isAccommodationApplicable(spaceType) && opsFocus != null;
   const dashboard = useSpaceDashboard(spaceId, spaceType, showOpsCards);
@@ -204,7 +219,24 @@ export function BedInventoryPage() {
     }
     return beds.items.filter((bed) => moveInsByBedId.has(bed.bedId));
   }, [beds.items, moveInsByBedId, opsFocus]);
-  const copy = pageCopy(status, opsFocus, t);
+  const baseCopy = pageCopy(status, opsFocus, t);
+  const copy = selectingForOccupancy
+    ? {
+        ...baseCopy,
+        title: selectingForReserve
+          ? t('occupancy.hierarchy.reserveTitle', { defaultValue: 'Reserve accommodation' })
+          : t('occupancy.actions.allocateAccommodation', {
+              defaultValue: 'Allocate Accommodation',
+            }),
+        description: selectingForReserve
+          ? t('dashboard.quickActions.reserveHint', {
+              defaultValue: 'Select an available bed to reserve',
+            })
+          : t('dashboard.quickActions.allocateHint', {
+              defaultValue: 'Select an available bed to allocate',
+            }),
+      }
+    : baseCopy;
   const returnTo = spaceBedInventoryPath(spaceId, status);
   const bedInteraction = usePersistedBedInteraction({
     spaceId,
@@ -223,25 +255,36 @@ export function BedInventoryPage() {
     [visibleBeds],
   );
 
-  const openForMoveIn = (bed: BedSpaceListItem) => {
+  const openForOccupancyWizard = (bed: BedSpaceListItem) => {
     if (!bedIsSelectableForMoveIn(bed.status)) {
       enqueueSnackbar(t('occupancy.errors.targetUnavailable'), { variant: 'warning' });
       return;
     }
+    const intent = selectingForReserve ? 'reserve' : 'allocate';
     navigate(
-      spaceOccupancyWizardPath(spaceId, 'ALLOCATE', {
+      spaceOccupancyWizardPath(spaceId, wizardMode, {
         bedId: bed.bedId,
         roomId: bed.roomId ?? undefined,
         unitId: bed.unitId ?? undefined,
         buildingId: bed.buildingId,
-        returnTo: spaceBedInventoryPath(spaceId, 'AVAILABLE', { intent: 'allocate' }),
+        memberId: selectionMemberId,
+        defaultRent: bed.defaultRent,
+        defaultDeposit: bed.defaultDeposit,
+        bedLabel: formatBedDisplayLabel(bed.label, t),
+        displayPath: [bed.buildingName, bed.floorName, bed.unitName, bed.roomName, bed.label]
+          .filter(Boolean)
+          .join(' · '),
+        returnTo: spaceBedInventoryPath(spaceId, 'AVAILABLE', {
+          intent,
+          memberId: selectionMemberId,
+        }),
       }),
     );
   };
 
   const openBed = (bed: BedSpaceListItem) => {
-    if (selectingForMoveIn) {
-      openForMoveIn(bed);
+    if (selectingForOccupancy) {
+      openForOccupancyWizard(bed);
       return;
     }
     bedInteraction.open({
@@ -643,11 +686,27 @@ export function BedInventoryPage() {
             beds={visibleBeds}
             spaceId={spaceId}
             moveInsByBedId={moveInsByBedId}
+            canManage={canManageStructure}
             onViewBed={openBed}
+            onAddBed={(roomSelection: TreeSelection) =>
+              setFormMode({ kind: 'create', parent: roomSelection })
+            }
           />
         )}
       </Stack>
       <PersistedBedInteractionHost interaction={bedInteraction} />
+      <EntityFormDrawer
+        open={Boolean(formMode)}
+        spaceId={spaceId}
+        spaceType={spaceType}
+        profile={profile}
+        mode={formMode}
+        defaultLayoutMode={profile?.layoutMode}
+        onClose={() => {
+          setFormMode(null);
+          void beds.reload();
+        }}
+      />
     </PageContainer>
   );
 }

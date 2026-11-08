@@ -817,7 +817,7 @@
       },
       "recommendedAction": "शिफारस केलेली कृती",
       "actions": {
-        "improveOccupancy": "रिकाम्या जागा भरून अधिभोग सुधारा"
+        "improveOccupancy": "उपलब्ध जागा वाटप करून अधिभोग सुधारा"
       },
       "factors": {
         "setupComplete": "आवश्यक सेटअप पूर्ण",
@@ -900,10 +900,10 @@
       "title": "मालमत्ता परिचालन",
       "bedsSub": "कोण राहत आहे ते जाणून घ्या",
       "occupied": "भरलेले",
-      "vacant": "रिकामा",
+      "vacant": "उपलब्ध",
       "reserved": "राखीव",
       "occupiedBeds": "भरलेल्या जागा",
-      "vacantBeds": "रिकाम्या जागा",
+      "vacantBeds": "उपलब्ध जागा",
       "reservedBeds": "राखीव जागा",
       "moveInsThisMonth": "या महिन्यातील नवीन प्रवेश",
       "pendingPayments": "प्रलंबित पेमेंट"
@@ -939,7 +939,15 @@
     "quickActions": {
       "title": "जलद क्रिया",
       "residents": "रहिवासी",
-      "residentsSubtitle": "Move in • Reserve • Transfer • Vacate",
+      "residentsSubtitle": "मूव्ह इन • आरक्षण • स्थानांतर • रिकामे",
+      "allocate": "वाटप करा",
+      "allocateHint": "नवीन भाडेकरूला बेडवर वाटप करा",
+      "reserve": "आरक्षित करा",
+      "reserveHint": "आगामी मूव्ह-इनसाठी बेड होल्ड करा",
+      "transfer": "स्थानांतर",
+      "transferHint": "भाडेकरूला दुसऱ्या खोली/बेडवर हलवा",
+      "vacate": "रिकामे करा",
+      "vacateHint": "भाडेकरूला बेडमधून काढा",
       "meals": "जेवणे",
       "mealsSubtitle": "मेनू प्लान → आजचे मेनू → लायब्ररी",
       "mealsSubtitleShort": "Plan, share, and track responses",
@@ -998,7 +1006,7 @@
     "drilldown": {
       "occupiedBedsTitle": "भरलेल्या जागा",
       "occupiedBedsSubtitle": "Active residents and their bed assignments.",
-      "vacantBedsTitle": "रिकाम्या जागा",
+      "vacantBedsTitle": "उपलब्ध जागा",
       "vacantBedsSubtitle": "Available beds you can allocate or reserve.",
       "reservedBedsTitle": "Reserved beds",
       "reservedBedsSubtitle": "Beds held for upcoming move-ins.",
@@ -1009,7 +1017,7 @@
       "searchBeds": "शोधा बेड, खोल्या, युनिट…",
       "searchResidents": "Search residents or location…",
       "emptyOccupiedBeds": "No occupied beds",
-      "emptyVacantBeds": "No vacant beds",
+      "emptyVacantBeds": "उपलब्ध जागा नाहीत",
       "emptyReservedBeds": "No reserved beds",
       "emptyMoveIns": "No move-ins this month",
       "emptyBedsDescription": "Counts update when beds are allocated, reserved, or vacated.",
@@ -2112,6 +2120,13 @@
       "occupiedDays_one": "{{count}} day",
       "occupiedDays_other": "{{count}} days",
       "expectedMoveOut": "Expected move-out",
+      "shortStayChoice": "डेली",
+      "monthlyStayChoice": "मासिक",
+      "openEndedStayChoice": "निश्चित मूव्ह-आउट तारीख नाही",
+      "stayTypeSelected": "स्टे प्रकार: {{label}}",
+      "agreedTotal": "ठरलेली एकूण रक्कम",
+      "shortStayPreview": "पूर्वावलोकन. ही रक्कम पूर्ण केल्यावर जतन होते.",
+      "shortStaySetting": "शॉर्ट स्टे सुरू करा",
       "reservedOn": "Reserved on",
       "reservedOnShort": "राखीव",
       "timelineEmpty": "—",
@@ -2151,6 +2166,7 @@
       "cancelReservation": "Cancel reservation",
       "cancelShort": "रद्द करा",
       "transfer": "ट्रान्सफर",
+      "extend": "मुक्काम वाढवा",
       "vacate": "रिकामे करा",
       "viewHistory": "View occupancy history",
       "viewHistoryShort": "View History"
@@ -2371,7 +2387,21 @@
       "RESERVATION_CANCELLED": "बुकिंग रद्द"
     },
     "success": {
-      "updated": "Occupancy updated."
+      "updated": "अधिभोग अद्यतनित झाले.",
+      "title": "यशस्वी",
+      "allocatedHeadline": "भाडेकरू यशस्वीरित्या वाटप!",
+      "allocatedDetail": "{{name}} यांना {{location}} येथे वाटप केले आहे.",
+      "reservedHeadline": "निवास यशस्वीरित्या आरक्षित!",
+      "reservedDetail": "{{name}} यांचे आरक्षण {{location}} येथे आहे.",
+      "transferredHeadline": "भाडेकरू यशस्वीरित्या स्थानांतरित!",
+      "transferredDetail": "{{name}} यांना {{location}} येथे स्थानांतरित केले आहे.",
+      "movedInHeadline": "मूव्ह-इन यशस्वीरित्या पूर्ण!",
+      "movedInDetail": "{{name}} यांनी {{location}} मध्ये प्रवेश केला आहे.",
+      "vacatedHeadline": "भाडेकरू यशस्वीरित्या रिकामे!",
+      "vacatedDetail": "{{name}} यांना {{location}} मधून रिकामे केले आहे.",
+      "viewDetails": "तपशील पहा",
+      "viewStay": "राहणे पहा",
+      "viewReservation": "आरक्षण पहा"
     },
     "errors": {
       "generic": "Unable to complete this occupancy action.",
@@ -2459,16 +2489,18 @@
       "selectedAccommodation": "Selected accommodation"
     },
     "steps": {
-      "member": "Select member",
-      "memberHint": "Search by name or mobile number",
+      "member": "सदस्य निवडा",
+      "memberHint": "नाव किंवा मोबाइलने शोधा",
       "target": "निवास निवडा",
-      "targetHint": "Browse units and rooms, then select a bed",
+      "targetHint": "युनिट आणि खोली पहा, नंतर बेड निवडा",
+      "stayType": "राहण्याचा प्रकार निवडा",
+      "stayDetails": "राहण्याचा तपशील भरा",
       "contract": "करार अटी",
-      "reserveDates": "बुकिंग तपशील",
-      "reserveDatesHint": "बुकिंग करताना कोणतेही शुल्क आकारले जात नाही.",
-      "transferCurrent": "Current accommodation",
-      "vacate": "Confirm vacate",
-      "review": "Review & confirm"
+      "reserveDates": "आरक्षण तपशील",
+      "reserveDatesHint": "आरक्षण करताना कोणतेही शुल्क आकारले जात नाही.",
+      "transferCurrent": "सध्याचे निवास",
+      "vacate": "रिकामे करण्याची पुष्टी",
+      "review": "पुनरावलोकन आणि पुष्टी"
     },
     "review": {
       "member": "सदस्य",
@@ -3446,7 +3478,7 @@
       "title": "मेनू लायब्ररी",
       "subtitle": "Defaults are ready to use — edit anytime, or continue to plan menus.",
       "readyTipTitle": "Your menu library is ready",
-      "readyTipBody": "Sample items and combos are already here. You can edit the library now, or continue to menu planning and customize later.",
+      "readyTipBody": "Edit your items and combos anytime.",
       "readyTipContinue": "Continue to menu planning",
       "readyTipStay": "Stay and edit library",
       "items": "आयटम",

@@ -116,6 +116,7 @@ export function navigateFromNotificationType(
       }
       return;
     case 'PAYMENT_REMINDER_SENT':
+    case 'PAYMENT_GENERATED':
       if (entityId) {
         navigate(spacePaymentsPath(spaceId, entityId));
       } else {
@@ -150,6 +151,13 @@ export function navigateFromNotificationType(
       return;
     case 'MOVE_OUT_SCHEDULED_TODAY':
     case 'MOVE_OUT_COMPLETED':
+      if (isOperator) {
+        navigate(spaceOccupancyListPath(spaceId, 'active'));
+      } else {
+        navigate(spaceDashboardPath(spaceId));
+      }
+      return;
+    case 'STAY_OVERDUE_ACTIVE':
       if (isOperator) {
         navigate(spaceOccupancyListPath(spaceId, 'active'));
       } else {

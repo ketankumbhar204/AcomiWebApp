@@ -3,6 +3,9 @@ import { BedDouble, Building2, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { BedPricingDisplay } from '@/modules/accommodation/components/BedPricingDisplay';
 import { OccupiedBedPaymentFace } from '@/modules/accommodation/components/OccupiedBedPaymentFace';
+import { StayTypeBadge } from '@/modules/accommodation/components/StayTypeBadge';
+import { useOccupiedBedStay } from '@/modules/accommodation/hooks/useOccupiedBedStay';
+import { resolveOccupancyStayKind } from '@/modules/accommodation/utils/stayFinancialDisplay';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StatusChip, type StatusChipTone } from '@/shared/components/StatusChip';
 import { ReferenceCode } from '@/shared/components/ReferenceCode';
@@ -30,6 +33,7 @@ export type BedMoveInFace = {
   moveInDate: string | null;
   rent: number | null;
   deposit: number | null;
+  stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
 };
 
 type BedInventoryCardProps = {
@@ -46,6 +50,12 @@ export function BedInventoryCard({ bed, spaceId, moveIn, onViewBed }: BedInvento
   const s = dashSurfaces(theme.palette.mode);
 
   const location = [bed.floorName, bed.unitName, bed.roomName].filter(Boolean).join(' · ');
+  const showStayBadges =
+    Boolean(moveIn) || bed.status === 'OCCUPIED' || bed.status === 'RESERVED';
+  const occupiedStay = useOccupiedBedStay(spaceId, bed.bedId, showStayBadges && !moveIn?.stayKind);
+  const stayKind =
+    moveIn?.stayKind ??
+    (occupiedStay.occupancy ? resolveOccupancyStayKind(occupiedStay.occupancy) : null);
 
   return (
     <Box
@@ -88,14 +98,6 @@ export function BedInventoryCard({ bed, spaceId, moveIn, onViewBed }: BedInvento
               })}
             </Typography>
             <ReferenceCode value={bed.referenceCode} />
-            <StatusChip
-              label={
-                moveIn
-                  ? t('dashboard.drilldown.movedIn', { defaultValue: 'Moved in' })
-                  : t(`accommodation.status.${bed.status}`, { defaultValue: bed.status })
-              }
-              tone={moveIn ? 'info' : statusTone(bed.status)}
-            />
           </Box>
           {onViewBed ? (
             <IconButton
@@ -128,6 +130,34 @@ export function BedInventoryCard({ bed, spaceId, moveIn, onViewBed }: BedInvento
           ) : null}
         </Stack>
 
+        {showStayBadges ? (
+          <Stack
+            direction="row"
+            spacing={0.75}
+            useFlexGap
+            sx={{ alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}
+          >
+            <StatusChip
+              label={
+                moveIn
+                  ? t('dashboard.drilldown.movedIn', { defaultValue: 'Moved in' })
+                  : t(`accommodation.status.${bed.status}`, { defaultValue: bed.status })
+              }
+              tone={moveIn ? 'info' : statusTone(bed.status)}
+            />
+            <StayTypeBadge stayKind={stayKind} />
+          </Stack>
+        ) : (
+          <StatusChip
+            label={t(`accommodation.status.${bed.status}`, { defaultValue: bed.status })}
+            tone={statusTone(bed.status)}
+          />
+        )}
+
+        {showStayBadges ? (
+          <Box sx={{ height: 0, borderBottom: `1px solid ${s.border}` }} />
+        ) : null}
+
         {moveIn ? (
           <Stack spacing={0.25}>
             {moveIn.moveInDate ? (
@@ -144,12 +174,14 @@ export function BedInventoryCard({ bed, spaceId, moveIn, onViewBed }: BedInvento
             <BedPricingDisplay
               rent={moveIn.rent ?? bed.defaultRent}
               deposit={moveIn.deposit ?? bed.defaultDeposit}
+              stayKind={stayKind}
+              layout="inline"
             />
           </Stack>
-        ) : bed.status === 'OCCUPIED' ? (
+        ) : bed.status === 'OCCUPIED' || bed.status === 'RESERVED' ? (
           <OccupiedBedPaymentFace spaceId={spaceId} bedId={bed.bedId} />
         ) : (
-          <BedPricingDisplay rent={bed.defaultRent} deposit={bed.defaultDeposit} />
+          <BedPricingDisplay rent={bed.defaultRent} deposit={bed.defaultDeposit} layout="inline" />
         )}
       </Stack>
     </Box>

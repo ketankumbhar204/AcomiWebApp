@@ -9,6 +9,7 @@ import type {
   CreateFloorRequest,
   CreateRoomRequest,
   CreateUnitRequest,
+  ExtendOccupancyRequest,
   MoveInOccupancyRequest,
   ReserveOccupancyRequest,
   TransferOccupancyRequest,
@@ -352,7 +353,22 @@ export function useOccupancyMutations(spaceId: string | undefined) {
     if (!spaceId) {
       return;
     }
-    await queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).includes('bed') || String(q.queryKey[0]).includes('occupanc') || String(q.queryKey[0]).includes('building') });
+    // Occupancy keys and payment keys are separate. A stay change must refresh both.
+    // Payment keys: payments-summary, payments-members, payments-review, payments-history,
+    // payments-list, payment, payment-timeline. Also dashboard-summary and pending-actions.
+    await queryClient.invalidateQueries({
+      predicate: (q) => {
+        const key = String(q.queryKey[0]);
+        return (
+          key.includes('bed') ||
+          key.includes('occupanc') ||
+          key.includes('building') ||
+          key.includes('payment') ||
+          key === 'dashboard-summary' ||
+          key === 'pending-actions'
+        );
+      },
+    });
   };
 
   return {
@@ -390,8 +406,25 @@ export function useOccupancyMutations(spaceId: string | undefined) {
       onSuccess: invalidate,
     }),
     cancelReservation: useMutation({
-      mutationFn: ({ occupancyId, remarks }: { occupancyId: string; remarks?: string }) =>
-        occupancyApi.cancelReservation(spaceId!, occupancyId, { remarks }),
+      mutationFn: ({
+        occupancyId,
+        remarks,
+        settlements,
+      }: {
+        occupancyId: string;
+        remarks?: string;
+        settlements?: import('../api/occupancyApi').ReservationPaymentSettlementDecision[];
+      }) => occupancyApi.cancelReservation(spaceId!, occupancyId, { remarks, settlements }),
+      onSuccess: invalidate,
+    }),
+    extend: useMutation({
+      mutationFn: ({
+        occupancyId,
+        body,
+      }: {
+        occupancyId: string;
+        body: ExtendOccupancyRequest;
+      }) => occupancyApi.extend(spaceId!, occupancyId, body),
       onSuccess: invalidate,
     }),
   };

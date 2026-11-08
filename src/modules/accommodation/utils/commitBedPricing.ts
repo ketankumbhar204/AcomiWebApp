@@ -103,11 +103,14 @@ export async function updateBedNumberOnly(options: {
   roomId: string;
   bedId: string;
   bedNumber: string;
+  name?: string;
 }): Promise<BedResponse> {
   const bed = await accommodationApi.getBed(options.spaceId, options.bedId);
+  const bedNumber = options.bedNumber.trim();
+  const name = (options.name ?? '').trim() || bedNumber;
   return accommodationApi.updateBed(options.spaceId, options.roomId, options.bedId, {
-    name: options.bedNumber,
-    bedNumber: options.bedNumber,
+    name,
+    bedNumber,
     status: bed.status,
     defaultRent: bed.defaultRent ?? null,
     defaultDeposit: bed.defaultDeposit ?? null,

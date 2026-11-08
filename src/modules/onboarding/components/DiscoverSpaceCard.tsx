@@ -364,7 +364,6 @@ export function DiscoverSpaceCard({ space, onViewDetails }: DiscoverSpaceCardPro
               minHeight: 44,
               flex: '0.82 1 0',
               fontSize: '13px',
-              px: 1,
               borderRadius: '12px',
               whiteSpace: 'nowrap',
               bgcolor: isDark ? 'transparent' : '#fff',

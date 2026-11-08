@@ -8,8 +8,48 @@ import type {
   OccupancyStatus,
   ReserveOccupancyRequest,
   TransferOccupancyRequest,
+  ExtendOccupancyRequest,
+  ExtendOccupancyResponse,
 } from '@/shared/types/accommodation';
 import type { MemberOccupancyListResponse } from '@/shared/types/member';
+import type { PaymentSettlementAction } from '@/shared/types/payments';
+
+export type ReservationPaymentSettlementDecision = {
+  paymentId: string;
+  action: PaymentSettlementAction;
+  refundAmount?: number | null;
+  retainedAmount?: number | null;
+  reason?: string | null;
+};
+
+export type CancelReservationRequest = {
+  remarks?: string | null;
+  settlements?: ReservationPaymentSettlementDecision[] | null;
+};
+
+export type ReservationCancellationPreviewPayment = {
+  paymentId: string;
+  title: string;
+  paymentType: string;
+  paymentCategory: string;
+  amount: number;
+  currencyCode?: string | null;
+  paymentStatus: string;
+  collected: boolean;
+  refundableAmount: number;
+  alreadyRefundedAmount: number;
+  alreadyRetainedAmount: number;
+  disposition: string;
+  allowedActions: PaymentSettlementAction[];
+};
+
+export type ReservationCancellationPreviewResponse = {
+  occupancyId: string;
+  memberId?: string | null;
+  memberName?: string | null;
+  payments: ReservationCancellationPreviewPayment[];
+  requiresCollectedSettlement: boolean;
+};
 
 export const occupancyApi = {
   allocate: (spaceId: string, body: AllocateOccupancyRequest) =>
@@ -49,11 +89,30 @@ export const occupancyApi = {
       ),
     ),
 
-  cancelReservation: (spaceId: string, occupancyId: string, body?: { remarks?: string }) =>
+  previewReservationCancellation: (spaceId: string, occupancyId: string) =>
+    unwrapApiResponse(
+      apiClient.get<ApiResponse<ReservationCancellationPreviewResponse>>(
+        `/spaces/${spaceId}/occupancies/${occupancyId}/cancellation-settlement`,
+      ),
+    ),
+
+  cancelReservation: (
+    spaceId: string,
+    occupancyId: string,
+    body?: CancelReservationRequest,
+  ) =>
     unwrapApiResponse(
       apiClient.post<ApiResponse<OccupancyResponse>>(
         `/spaces/${spaceId}/occupancies/${occupancyId}/cancel-reservation`,
         body ?? {},
+      ),
+    ),
+
+  extend: (spaceId: string, occupancyId: string, body: ExtendOccupancyRequest) =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<ExtendOccupancyResponse>>(
+        `/spaces/${spaceId}/occupancies/${occupancyId}/extend`,
+        body,
       ),
     ),
 

@@ -324,6 +324,11 @@ const AdminNotificationTestingPage = lazyPage(() =>
     default: m.AdminNotificationTestingPage,
   })),
 );
+const AdminMonthlyBillingPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminMonthlyBillingPage').then((m) => ({
+    default: m.AdminMonthlyBillingPage,
+  })),
+);
 const AdminDashboardPage = lazyPage(() =>
   import('@/modules/admin/pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })),
 );
@@ -492,6 +497,14 @@ export const appRoutes = [
                 element: (
                   <L>
                     <AdminNotificationTestingPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.adminMonthlyBilling,
+                element: (
+                  <L>
+                    <AdminMonthlyBillingPage />
                   </L>
                 ),
               },

@@ -6,24 +6,60 @@ import { formatPricingMoney } from '../utils/commitBedPricing';
 type BedPricingDisplayProps = {
   rent?: number | null;
   deposit?: number | null;
-  layout?: 'columns' | 'rows';
+  layout?: 'columns' | 'rows' | 'inline';
+  stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
 };
 
-export function BedPricingDisplay({ rent, deposit, layout = 'columns' }: BedPricingDisplayProps) {
+export function BedPricingDisplay({
+  rent,
+  deposit,
+  layout = 'columns',
+  stayKind = null,
+}: BedPricingDisplayProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const notSet = t('accommodation.pricingConfirm.notSet', { defaultValue: 'Not set' });
+  const rentLabel =
+    stayKind === 'SHORT'
+      ? t('occupancy.contract.dailyRentPerNight', { defaultValue: 'Daily rent (per night)' })
+      : stayKind === 'OPEN_ENDED'
+        ? t('occupancy.contract.dailyRent', { defaultValue: 'Daily rent' })
+        : t('accommodation.fields.rent', { defaultValue: 'Monthly rent' });
+  const rentValue =
+    stayKind === 'SHORT' && rent != null
+      ? `${formatPricingMoney(rent, notSet)} / night`
+      : stayKind === 'OPEN_ENDED' && rent != null
+        ? `${formatPricingMoney(rent, notSet)} / day`
+        : formatPricingMoney(rent, notSet);
+  const depositLabel = t('accommodation.fields.deposit', { defaultValue: 'Deposit' });
+  const depositValue = formatPricingMoney(deposit, notSet);
+
+  if (layout === 'inline') {
+    return (
+      <Stack
+        spacing={0.25}
+        aria-label={`${rentLabel} ${rentValue}, ${depositLabel} ${depositValue}`}
+      >
+        <Typography sx={{ fontSize: 12, fontWeight: 600, color: s.textPrimary }} noWrap>
+          {`${rentLabel}: ${rentValue}`}
+        </Typography>
+        <Typography sx={{ fontSize: 12, fontWeight: 600, color: s.textPrimary }} noWrap>
+          {`${depositLabel}: ${depositValue}`}
+        </Typography>
+      </Stack>
+    );
+  }
 
   if (layout === 'rows') {
     return (
       <Stack
         spacing={0.5}
-        aria-label={`${t('accommodation.fields.rent', { defaultValue: 'Rent' })} ${formatPricingMoney(rent, notSet)}, ${t('accommodation.fields.deposit', { defaultValue: 'Deposit' })} ${formatPricingMoney(deposit, notSet)}`}
+        aria-label={`${t('accommodation.fields.rent', { defaultValue: 'Monthly rent' })} ${formatPricingMoney(rent, notSet)}, ${t('accommodation.fields.deposit', { defaultValue: 'Deposit' })} ${formatPricingMoney(deposit, notSet)}`}
       >
         <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', justifyContent: 'space-between' }}>
           <Typography sx={{ fontSize: 12, fontWeight: 600, color: s.textSecondary }}>
-            {t('accommodation.fields.rent', { defaultValue: 'Rent' })}
+            {t('accommodation.fields.rent', { defaultValue: 'Monthly rent' })}
           </Typography>
           <Typography sx={{ fontSize: 14, fontWeight: 800, color: s.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
             {formatPricingMoney(rent, notSet)}

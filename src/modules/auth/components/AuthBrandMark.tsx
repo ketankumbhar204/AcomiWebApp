@@ -5,7 +5,7 @@ type AuthBrandMarkProps = {
   size?: number;
 };
 
-/** ACOMI house mark — spoon and fork forming the roof. */
+/** ACOMI brand mark — teal gradient A with orange swoosh. */
 export function AuthBrandMark({ size = AUTH_UX.markSize }: AuthBrandMarkProps) {
   return (
     <Box
@@ -17,8 +17,9 @@ export function AuthBrandMark({ size = AUTH_UX.markSize }: AuthBrandMarkProps) {
         height: size,
         flexShrink: 0,
         borderRadius: `${Math.round(size * 0.22)}px`,
-        objectFit: 'cover',
+        objectFit: 'contain',
         display: 'block',
+        backgroundColor: '#000000',
       }}
     />
   );

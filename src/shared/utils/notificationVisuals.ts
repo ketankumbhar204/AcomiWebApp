@@ -51,7 +51,8 @@ export function getNotificationIcon(
     type.startsWith('MOVE_') ||
     type.startsWith('RESERVATION') ||
     type === 'VACANT_RESERVED_BED' ||
-    type === 'EXPIRED_RESERVATION'
+    type === 'EXPIRED_RESERVATION' ||
+    type === 'STAY_OVERDUE_ACTIVE'
   ) {
     return CalendarClock;
   }

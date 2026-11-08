@@ -11,11 +11,13 @@ import {
   Layers,
   Power,
   SquarePen,
+  Tag,
   UserRound,
   Users,
   Wallet,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { SidePanel } from '@/shared/components/SidePanel';
@@ -30,9 +32,19 @@ import { AccommodationLifecycleActions } from './AccommodationLifecycleActions';
 import { EntityActionsMenu } from './EntityActionsMenu';
 import { InspectorDetailsList } from './InspectorDetailsList';
 import { OccupancyActionButtons } from './OccupancyActionButtons';
+import { ExtendStayDialog } from './ExtendStayDialog';
+import { ReviseOpenEndedRentDialog } from './ReviseOpenEndedRentDialog';
 import { PersistedBedInteractionHost } from './PersistedBedInteractionHost';
 import { usePersistedBedInteraction } from '../hooks/usePersistedBedInteraction';
+import { useReservationCancellationDialog } from '../hooks/useReservationCancellationDialog';
 import { formatBedDisplayLabel } from '../utils/formatBedDisplayLabel';
+import { defaultMonthlyRenewalEndDate } from '../utils/extendStay';
+import {
+  buildStayFinancialPresentation,
+  resolveOccupancyStayKind,
+  type StayKind,
+} from '../utils/stayFinancialDisplay';
+import { stayChoiceDefaultLabel, stayChoiceLabelKey } from '../utils/shortStay';
 import { spaceAccommodationPath } from '@/routes/paths';
 import type { AccommodationActionMetadata } from '@/shared/types/accommodation';
 import {
@@ -93,6 +105,17 @@ export function EntityInspector({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [extendSession, setExtendSession] = useState<{
+    occupancyId: string;
+    variant: 'extend' | 'renewal';
+    stayKind?: StayKind;
+    initialExpectedExitDate?: string;
+  } | null>(null);
+  const [reviseSession, setReviseSession] = useState<{
+    occupancyId: string;
+    currentDailyRent?: number | null;
+  } | null>(null);
+  const { openCancelReservation, cancellationDialog } = useReservationCancellationDialog(spaceId);
   const refreshPhotos = () => {
     void queryClient.invalidateQueries({ queryKey: ['building', spaceId] });
     void queryClient.invalidateQueries({ queryKey: ['floor', spaceId] });
@@ -389,11 +412,27 @@ export function EntityInspector({
                     : t('occupancy.targetOccupant.title', { defaultValue: 'Current occupant' })}
                 </Typography>
                 <Typography sx={{ ...DASHBOARD_UX.link }}>{unitStay.memberName}</Typography>
-                {unitStay.rentSnapshot != null ? (
-                  <Typography sx={{ ...DASHBOARD_UX.metricCaption }}>
-                    {t('occupancy.contract.rent')}: ₹{unitStay.rentSnapshot.toLocaleString('en-IN')}
-                  </Typography>
-                ) : null}
+                <Typography sx={{ ...DASHBOARD_UX.metricCaption }}>
+                  {t('occupancyWizard.steps.stayType', { defaultValue: 'Stay type' })}
+                  {': '}
+                  {t(stayChoiceLabelKey(resolveOccupancyStayKind(unitStay)), {
+                    defaultValue: stayChoiceDefaultLabel(resolveOccupancyStayKind(unitStay)),
+                  })}
+                </Typography>
+                {(() => {
+                  const presentation = buildStayFinancialPresentation(unitStay);
+                  const rentRow = presentation.rows.find(
+                    (row) =>
+                      row.key === 'dailyRent' ||
+                      row.key === 'monthlyRent' ||
+                      row.key === 'stayRent',
+                  );
+                  return rentRow ? (
+                    <Typography sx={{ ...DASHBOARD_UX.metricCaption }}>
+                      {t(rentRow.labelKey, { defaultValue: rentRow.labelDefault })}: {rentRow.value}
+                    </Typography>
+                  ) : null;
+                })()}
               </Stack>
             ) : (
               <Typography color="text.secondary" sx={{ fontSize: 14 }}>
@@ -415,11 +454,42 @@ export function EntityInspector({
             onMoveIn={() =>
               openWizard('MOVE_IN', { occupancyId: unitStay?.occupancyId, memberId: unitStay?.memberId })
             }
-            onCancel={() =>
-              openWizard('VACATE', { occupancyId: unitStay?.occupancyId, memberId: unitStay?.memberId })
-            }
+            onCancel={() => openCancelReservation(unitStay?.occupancyId)}
             onTransfer={() =>
               openWizard('TRANSFER', { occupancyId: unitStay?.occupancyId, memberId: unitStay?.memberId })
+            }
+            stayKind={unitStay ? resolveOccupancyStayKind(unitStay) : null}
+            onExtend={() => {
+              if (unitStay?.occupancyId) {
+                setExtendSession({
+                  occupancyId: unitStay.occupancyId,
+                  variant: 'extend',
+                  stayKind: resolveOccupancyStayKind(unitStay),
+                });
+              }
+            }}
+            onReviseOpenEnded={() => {
+              if (unitStay?.occupancyId) {
+                setReviseSession({
+                  occupancyId: unitStay.occupancyId,
+                  currentDailyRent: unitStay.rentSnapshot,
+                });
+              }
+            }}
+            onRenewMonthly={
+              unitStay?.occupancyId &&
+              unitStay.stayKind !== 'SHORT' &&
+              resolveOccupancyStayKind(unitStay) !== 'OPEN_ENDED'
+                ? () =>
+                    setExtendSession({
+                      occupancyId: unitStay.occupancyId,
+                      variant: 'renewal',
+                      stayKind: resolveOccupancyStayKind(unitStay),
+                      initialExpectedExitDate: defaultMonthlyRenewalEndDate(
+                        unitStay.expectedExitDate,
+                      ),
+                    })
+                : undefined
             }
             onVacate={() =>
               openWizard('VACATE', { occupancyId: unitStay?.occupancyId, memberId: unitStay?.memberId })
@@ -610,6 +680,17 @@ export function EntityInspector({
                 value: occ?.moveInDate ?? occ?.actualMoveInAt,
                 icon: <CalendarDays size={16} />,
               },
+              ...(occ
+                ? [
+                    {
+                      label: t('occupancyWizard.steps.stayType', { defaultValue: 'Stay type' }),
+                      value: t(stayChoiceLabelKey(resolveOccupancyStayKind(occ)), {
+                        defaultValue: stayChoiceDefaultLabel(resolveOccupancyStayKind(occ)),
+                      }),
+                      icon: <Tag size={16} />,
+                    },
+                  ]
+                : []),
             ]}
           />
           {canManageAccommodation && b ? (
@@ -637,8 +718,46 @@ export function EntityInspector({
             onAllocate={openBedSheet}
             onReserve={openBedSheet}
             onMoveIn={() => openWizard('MOVE_IN', { occupancyId: occupancyId ?? undefined })}
-            onCancel={() => openWizard('VACATE', { occupancyId: occupancyId ?? undefined })}
+            onCancel={() => openCancelReservation(occupancyId)}
             onTransfer={() => openWizard('TRANSFER', { occupancyId: occupancyId ?? undefined })}
+            stayKind={
+              occupancyQuery.data ? resolveOccupancyStayKind(occupancyQuery.data) : null
+            }
+            onExtend={() => {
+              if (occupancyId) {
+                setExtendSession({
+                  occupancyId,
+                  variant: 'extend',
+                  stayKind: occupancyQuery.data
+                    ? resolveOccupancyStayKind(occupancyQuery.data)
+                    : undefined,
+                });
+              }
+            }}
+            onReviseOpenEnded={() => {
+              if (occupancyId) {
+                setReviseSession({
+                  occupancyId,
+                  currentDailyRent: occupancyQuery.data?.rentSnapshot,
+                });
+              }
+            }}
+            onRenewMonthly={
+              occupancyId &&
+              occupancyQuery.data &&
+              resolveOccupancyStayKind(occupancyQuery.data) !== 'OPEN_ENDED' &&
+              resolveOccupancyStayKind(occupancyQuery.data) !== 'SHORT'
+                ? () =>
+                    setExtendSession({
+                      occupancyId,
+                      variant: 'renewal',
+                      stayKind: resolveOccupancyStayKind(occupancyQuery.data),
+                      initialExpectedExitDate: defaultMonthlyRenewalEndDate(
+                        occupancyQuery.data.expectedExitDate,
+                      ),
+                    })
+                : undefined
+            }
             onVacate={() => openWizard('VACATE', { occupancyId: occupancyId ?? undefined })}
             onViewHistory={
               b.occupant?.memberId
@@ -759,6 +878,23 @@ export function EntityInspector({
       {body}
     </SidePanel>
     <PersistedBedInteractionHost interaction={bedInteraction} />
+    <ExtendStayDialog
+      open={extendSession != null}
+      spaceId={spaceId}
+      occupancyId={extendSession?.occupancyId ?? null}
+      variant={extendSession?.variant ?? 'extend'}
+      stayKind={extendSession?.stayKind}
+      initialExpectedExitDate={extendSession?.initialExpectedExitDate ?? ''}
+      onClose={() => setExtendSession(null)}
+    />
+    <ReviseOpenEndedRentDialog
+      open={reviseSession != null}
+      spaceId={spaceId}
+      occupancyId={reviseSession?.occupancyId ?? null}
+      currentDailyRent={reviseSession?.currentDailyRent}
+      onClose={() => setReviseSession(null)}
+    />
+    {cancellationDialog}
     </>
   );
 }

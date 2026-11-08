@@ -295,7 +295,7 @@
       },
       "recommendedAction": "Recommended Action",
       "actions": {
-        "improveOccupancy": "Improve occupancy by allocating vacant beds"
+        "improveOccupancy": "Improve occupancy by allocating available beds"
       },
       "factors": {
         "setupComplete": "Required setup complete",
@@ -388,5 +388,44 @@
     "chooseGallery": "Choose from gallery",
     "attached": "Attached",
     "sizeHint": "JPEG, PNG, or WebP. Maximum {{maxMb}} MB after compression."
+  },
+  "dashboard": {
+    "quickActions": {
+      "allocate": "ನಿಯೋಜಿಸಿ",
+      "allocateHint": "ಹೊಸ ಬಾಡಿಗೆದಾರರನ್ನು ಹಾಸಿಗೆಗೆ ನಿಯೋಜಿಸಿ",
+      "reserve": "ಕಾಯ್ದಿರಿಸಿ",
+      "reserveHint": "ಮುಂಬರುವ ಮೂವ್-ಇನ್‌ಗಾಗಿ ಹಾಸಿಗೆ ಹೋಲ್ಡ್ ಮಾಡಿ",
+      "transfer": "ವರ್ಗಾವಣೆ",
+      "transferHint": "ಬಾಡಿಗೆದಾರರನ್ನು ಬೇರೆ ಕೋಣೆ/ಹಾಸಿಗೆಗೆ ಸರಿಸಿ",
+      "vacate": "ಖಾಲಿ ಮಾಡಿ",
+      "vacateHint": "ಬಾಡಿಗೆದಾರರನ್ನು ಹಾಸಿಗೆಯಿಂದ ತೆಗೆಯಿರಿ"
+    }
+  },
+  "occupancy": {
+    "success": {
+      "title": "ಯಶಸ್ಸು",
+      "allocatedHeadline": "ಬಾಡಿಗೆದಾರರನ್ನು ಯಶಸ್ವಿಯಾಗಿ ನಿಯೋಜಿಸಲಾಗಿದೆ!",
+      "allocatedDetail": "{{name}} ಅವರನ್ನು {{location}} ಗೆ ನಿಯೋಜಿಸಲಾಗಿದೆ.",
+      "reservedHeadline": "ವಸತಿ ಯಶಸ್ವಿಯಾಗಿ ಕಾಯ್ದಿರಿಸಲಾಗಿದೆ!",
+      "reservedDetail": "{{name}} ಅವರ ಕಾಯ್ದಿರಿಸುವಿಕೆ {{location}} ನಲ್ಲಿದೆ.",
+      "transferredHeadline": "ಬಾಡಿಗೆದಾರರನ್ನು ಯಶಸ್ವಿಯಾಗಿ ವರ್ಗಾಯಿಸಲಾಗಿದೆ!",
+      "transferredDetail": "{{name}} ಅವರನ್ನು {{location}} ಗೆ ವರ್ಗಾಯಿಸಲಾಗಿದೆ.",
+      "movedInHeadline": "ಮೂವ್-ಇನ್ ಯಶಸ್ವಿಯಾಗಿ ಪೂರ್ಣಗೊಂಡಿದೆ!",
+      "movedInDetail": "{{name}} ಅವರು {{location}} ಗೆ ಪ್ರವೇಶಿಸಿದ್ದಾರೆ.",
+      "vacatedHeadline": "ಬಾಡಿಗೆದಾರರನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಖಾಲಿ ಮಾಡಲಾಗಿದೆ!",
+      "vacatedDetail": "{{name}} ಅವರನ್ನು {{location}} ನಿಂದ ಖಾಲಿ ಮಾಡಲಾಗಿದೆ.",
+      "viewDetails": "ವಿವರಗಳನ್ನು ನೋಡಿ",
+      "viewStay": "ವಾಸವನ್ನು ನೋಡಿ",
+      "viewReservation": "ಕಾಯ್ದಿರಿಸುವಿಕೆಯನ್ನು ನೋಡಿ"
+    }
+  },
+  "occupancyWizard": {
+    "steps": {
+      "stayType": "ವಾಸ ಪ್ರಕಾರವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+      "stayDetails": "ವಾಸ ವಿವರಗಳನ್ನು ನಮೂದಿಸಿ",
+      "contract": "ಒಪ್ಪಂದದ ನಿಯಮಗಳು",
+      "reserveDates": "ಕಾಯ್ದಿರಿಸುವಿಕೆ ವಿವರಗಳು",
+      "review": "ಪರಿಶೀಲನೆ ಮತ್ತು ದೃಢೀಕರಣ"
+    }
   }
 }

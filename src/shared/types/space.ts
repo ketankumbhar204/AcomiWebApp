@@ -141,6 +141,7 @@ export interface SpaceDetailsResponse {
   prepaidFallbackToPayPerMeal?: boolean;
   genderPolicy?: GenderPolicy | null;
   amenities?: AmenityAssignment[];
+  shortStayEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
   photoFileId?: string | null;
@@ -166,6 +167,7 @@ export interface UpdateSpaceRequest {
   contactNumber?: string;
   genderPolicy?: GenderPolicy | null;
   amenities?: AmenityAssignment[];
+  shortStayEnabled?: boolean;
 }
 
 export interface MyInvitationResponse {

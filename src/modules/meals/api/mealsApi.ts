@@ -31,6 +31,7 @@ import type {
   MealPollPaymentEvent,
   BulkMealPollPaymentProofResponse,
   SubmitMealPollSelection,
+  UpdateFoodCategoryRequest,
   UpdateFoodItemDefaultPriceRequest,
   UpdateFoodItemExtraRequest,
   UpdateFoodItemRequest,
@@ -179,6 +180,14 @@ export const mealsApi = {
     unwrapApiResponse(
       apiClient.post<ApiResponse<FoodCategoryResponse>>(
         `/spaces/${spaceId}/food-categories`,
+        body,
+      ),
+    ),
+
+  updateFoodCategory: (spaceId: string, categoryId: string, body: UpdateFoodCategoryRequest) =>
+    unwrapApiResponse(
+      apiClient.put<ApiResponse<FoodCategoryResponse>>(
+        `/spaces/${spaceId}/food-categories/${categoryId}`,
         body,
       ),
     ),

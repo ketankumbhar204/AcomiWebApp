@@ -2,7 +2,9 @@ import { Box, Paper, Stack, Typography, useTheme } from '@mui/material';
 import { ChevronRight, DoorOpen } from 'lucide-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AddBedCard } from '@/modules/accommodation/components/RoomInventoryCard';
 import { BedCardCarousel } from '@/modules/accommodation/components/BedCardCarousel';
+import type { TreeSelection } from '@/modules/accommodation/components/HierarchyTree';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { StatusChip } from '@/shared/components/StatusChip';
 import type { BedSpaceListItem } from '../api/dashboardDrilldownApi';
@@ -13,14 +15,18 @@ type BedInventoryRoomSectionsProps = {
   beds: BedSpaceListItem[];
   spaceId?: string;
   moveInsByBedId?: ReadonlyMap<string, BedMoveInFace>;
+  canManage?: boolean;
   onViewBed: (bed: BedSpaceListItem) => void;
+  onAddBed?: (selection: TreeSelection) => void;
 };
 
 export function BedInventoryRoomSections({
   beds,
   spaceId,
   moveInsByBedId,
+  canManage = false,
   onViewBed,
+  onAddBed,
 }: BedInventoryRoomSectionsProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -33,6 +39,17 @@ export function BedInventoryRoomSections({
         const available = group.beds.filter((bed) => bed.status === 'AVAILABLE').length;
         const label =
           group.crumbs.join(' ') || t('accommodation.beds.title', { defaultValue: 'Beds' });
+        const sample = group.beds[0];
+        const roomSelection: TreeSelection | null =
+          sample?.buildingId && sample.roomId
+            ? {
+                type: 'room',
+                buildingId: sample.buildingId,
+                roomId: sample.roomId,
+                floorId: sample.floorId ?? undefined,
+                unitId: sample.unitId ?? undefined,
+              }
+            : null;
         return (
           <Paper
             key={group.key}
@@ -112,6 +129,9 @@ export function BedInventoryRoomSections({
                     onViewBed={() => onViewBed(bed)}
                   />
                 ))}
+                {canManage && roomSelection && onAddBed ? (
+                  <AddBedCard key="add-bed" onClick={() => onAddBed(roomSelection)} />
+                ) : null}
               </BedCardCarousel>
             </Stack>
           </Paper>

@@ -92,6 +92,8 @@ export type MemberResponse = {
 export type CurrentOccupancySummary = {
   occupancyId?: string | null;
   occupancyStatus?: string | null;
+  /** From persisted occupancy; null for legacy rows. */
+  stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
   targetType?: string;
   buildingId?: string;
   buildingName?: string | null;
@@ -295,6 +297,8 @@ export type MemberOccupancyListResponse = {
     bedName?: string | null;
     moveInDate?: string | null;
     vacatedAt?: string | null;
+    /** Present when API returns stay kind for historical/current rows. */
+    stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
   }>;
   history: OccupancyHistoryEntry[];
 };

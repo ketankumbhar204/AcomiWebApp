@@ -11,6 +11,7 @@ import {
   MapPin,
   Phone,
   RefreshCw,
+  Tag,
   UserRound,
   Wallet,
   WalletCards,
@@ -24,6 +25,8 @@ import { formatCurrency, formatMonthYear } from '@/shared/utils/dashboardFinanci
 import { colors } from '@/shared/theme/colors';
 import { ReferenceCode } from '@/shared/components/ReferenceCode';
 import { useOccupiedBedStay } from '../hooks/useOccupiedBedStay';
+import { buildStayTypeChipModel } from '@/shared/utils/stayTypeDisplay';
+import { resolveOccupancyStayKind } from '../utils/stayFinancialDisplay';
 import {
   bedCardBalanceFace,
   type OccupantPaymentSummary,
@@ -218,6 +221,7 @@ function paymentBadgeColors(status: StayPaymentStatus): { bg: string; fg: string
 function paymentStatusLabel(
   status: StayPaymentStatus,
   t: (key: string, options?: { defaultValue?: string }) => string,
+  openEnded = false,
 ): string {
   switch (status) {
     case 'PAID':
@@ -229,7 +233,9 @@ function paymentStatusLabel(
     case 'UNDER_REVIEW':
       return t('accommodation.stayPayment.underReview', { defaultValue: 'Under review' });
     case 'NO_RECORD':
-      return t('accommodation.stayPayment.noRecord', { defaultValue: 'No payment record' });
+      return openEnded
+        ? t('accommodation.stayPayment.notYetBilled', { defaultValue: 'Not yet billed' })
+        : t('accommodation.stayPayment.noRecord', { defaultValue: 'No payment record' });
     default:
       return t('accommodation.stayPayment.unavailable', {
         defaultValue: 'Payment status unavailable',
@@ -253,7 +259,7 @@ export function OccupiedBedStaySection({
   const stay = useOccupiedBedStay(spaceId, bedId, true);
   const memberId = stay.occupancy?.memberId;
   const [contact, setContact] = useState<{ memberId: string; mobile: string | null } | null>(null);
-  const mobile = contact?.memberId === memberId ? contact.mobile : null;
+  const mobile = contact != null && contact.memberId === memberId ? contact.mobile : null;
 
   useEffect(() => {
     if (!memberId) {
@@ -387,6 +393,28 @@ export function OccupiedBedStaySection({
                 />
               }
             />
+            {(() => {
+              const stayType = buildStayTypeChipModel(stay.occupancy);
+              if (!stayType) {
+                return null;
+              }
+              return (
+                <>
+                  <DetailRow
+                    icon={<Tag size={14} />}
+                    label={t('occupancyWizard.steps.stayType', { defaultValue: 'Stay type' })}
+                    value={t(stayType.labelKey, { defaultValue: stayType.labelDefault })}
+                  />
+                  {stayType.supportingText ? (
+                    <DetailRow
+                      icon={<IndianRupee size={14} />}
+                      label={t('occupancy.contract.pricing', { defaultValue: 'Pricing' })}
+                      value={stayType.supportingText}
+                    />
+                  ) : null}
+                </>
+              );
+            })()}
             {exitDate ? (
               <DetailRow
                 icon={<CalendarDays size={14} />}
@@ -398,7 +426,11 @@ export function OccupiedBedStaySection({
         ) : null}
       </SectionCard>
 
-      <PaymentCard summary={stay.summary} loading={stay.loading} />
+      <PaymentCard
+        summary={stay.summary}
+        loading={stay.loading}
+        openEnded={resolveOccupancyStayKind(stay.occupancy ?? {}) === 'OPEN_ENDED'}
+      />
     </Stack>
   );
 }
@@ -406,9 +438,11 @@ export function OccupiedBedStaySection({
 function PaymentCard({
   summary,
   loading,
+  openEnded = false,
 }: {
   summary: OccupantPaymentSummary | null;
   loading: boolean;
+  openEnded?: boolean;
 }) {
   const { t } = useTranslation();
   if (!summary) {
@@ -459,7 +493,7 @@ function PaymentCard({
         label={t('accommodation.stayPayment.status', { defaultValue: 'Payment status' })}
         accessory={
           <StatusBadge
-            label={paymentStatusLabel(summary.status, t)}
+            label={paymentStatusLabel(summary.status, t, openEnded)}
             bg={badge.bg}
             fg={badge.fg}
             border={badge.border}

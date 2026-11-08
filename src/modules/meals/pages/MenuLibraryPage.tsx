@@ -1,6 +1,10 @@
 import {
   Box,
   Button,
+  Chip,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   FormControl,
   IconButton,
   InputLabel,
@@ -19,23 +23,28 @@ import {
   useTheme,
 } from '@mui/material';
 import {
+  CalendarDays,
+  Check,
+  ChevronRight,
   Egg,
   Layers,
   LayoutGrid,
   Leaf,
   List,
   MoreVertical,
+  Package,
   Pencil,
   Plus,
   RefreshCw,
   Settings2,
   Trash2,
   UtensilsCrossed,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { IconBadge } from '@/modules/dashboard/components/IconBadge';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
@@ -52,7 +61,7 @@ import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from
 import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
 import { canEditEntityPhoto, type EntityPhotoKind } from '@/shared/files/entityPhoto';
 import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
-import { spaceMealsPath } from '@/routes/paths';
+import { spaceMealsPath, spaceMealsPlansPath } from '@/routes/paths';
 import type {
   FoodCategoryResponse,
   FoodItemResponse,
@@ -403,6 +412,7 @@ function LibraryCard({
 
 export function MenuLibraryPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { spaceId = '' } = useParams<{ spaceId: string }>();
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
@@ -438,6 +448,9 @@ export function MenuLibraryPage() {
     null,
   );
   const [categoryFormOpen, setCategoryFormOpen] = useState(false);
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [categoryDraft, setCategoryDraft] = useState('');
   const [configureExtrasOpen, setConfigureExtrasOpen] = useState(false);
 
   const categories = useFoodCategories(spaceId, canView);
@@ -494,6 +507,67 @@ export function MenuLibraryPage() {
     }
     return list;
   }, [combos.combos, search]);
+
+  const activeCategories = useMemo(
+    () =>
+      categories.categories
+        .filter((category) => category.isActive)
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    [categories.categories],
+  );
+  const activeItems = useMemo(
+    () => items.items.filter((item) => item.isActive),
+    [items.items],
+  );
+  const activeCombos = useMemo(
+    () => combos.combos.filter((combo) => combo.isActive),
+    [combos.combos],
+  );
+  const extraItems = useMemo(
+    () => activeItems.filter((item) => item.isExtra),
+    [activeItems],
+  );
+  const itemCountByCategory = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const item of activeItems) {
+      counts[item.categoryId] = (counts[item.categoryId] ?? 0) + 1;
+    }
+    return counts;
+  }, [activeItems]);
+  const chipCounts = useMemo(() => {
+    if (tab !== 'extras') return itemCountByCategory;
+    const counts: Record<string, number> = {};
+    for (const item of extraItems) {
+      counts[item.categoryId] = (counts[item.categoryId] ?? 0) + 1;
+    }
+    return counts;
+  }, [extraItems, itemCountByCategory, tab]);
+  const catalogLoading =
+    items.items.length === 0 &&
+    combos.combos.length === 0 &&
+    categories.categories.length === 0 &&
+    (items.loading || combos.loading || categories.loading);
+  const chipCategories =
+    tab === 'extras'
+      ? activeCategories.filter((category) => (chipCounts[category.categoryId] ?? 0) > 0)
+      : activeCategories;
+  const sectionHeading =
+    tab === 'combos'
+      ? t('meals.library.allCombos', {
+          count: filteredCombos.length,
+          defaultValue: `All combos (${filteredCombos.length})`,
+        })
+      : tab === 'extras'
+        ? t('meals.library.extrasHeading', {
+            count: filteredItems.length,
+            defaultValue: `Extras (${filteredItems.length})`,
+          })
+        : categoryId
+          ? `${categories.categories.find((category) => category.categoryId === categoryId)?.name ?? ''} (${filteredItems.length})`
+          : t('meals.library.allMenuItems', {
+              count: filteredItems.length,
+              defaultValue: `All menu items (${filteredItems.length})`,
+            });
 
   const itemRows = useMemo(
     () => filteredItems.map((i) => ({ ...i, id: i.itemId })),
@@ -703,37 +777,75 @@ export function MenuLibraryPage() {
     void categories.reload();
   };
 
+  const closeManageCategories = () => {
+    setManageCategoriesOpen(false);
+    setEditingCategoryId(null);
+    setCategoryDraft('');
+  };
+
+  const saveCategoryName = (categoryId: string, currentName: string) => {
+    const name = categoryDraft.trim();
+    if (!name || mutations.updateFoodCategory.isPending) {
+      return;
+    }
+    if (name === currentName.trim()) {
+      setEditingCategoryId(null);
+      return;
+    }
+    void mutations.updateFoodCategory
+      .mutateAsync({ categoryId, name })
+      .then(() => {
+        enqueueSnackbar(t('meals.library.categoryUpdateSuccess'), { variant: 'success' });
+        setEditingCategoryId(null);
+        setCategoryDraft('');
+      })
+      .catch(() => {
+        enqueueSnackbar(t('common.errors.generic'), { variant: 'error' });
+      });
+  };
+
+  const categoryChipSx = (selected: boolean) => ({
+    height: 32,
+    borderRadius: '999px',
+    fontWeight: 700,
+    border: `1px solid ${selected ? colors.primaryDark : s.border}`,
+    bgcolor: selected ? colors.primaryDark : s.surface,
+    color: selected ? colors.white : s.textPrimary,
+    '&:hover': {
+      bgcolor: selected ? colors.primaryHover : s.surface,
+    },
+  });
+
   const categoryFilter =
     tab !== 'combos' ? (
-      <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <FormControl size="small" sx={filterControlSx}>
-          <InputLabel id="library-category">{t('meals.library.category')}</InputLabel>
-          <Select
-            labelId="library-category"
-            label={t('meals.library.category')}
-            value={categoryId}
-            onChange={(e) => setCategoryId(String(e.target.value))}
-          >
-            <MenuItem value="">{t('meals.library.allCategories')}</MenuItem>
-            {categories.categories.map((c) => (
-              <MenuItem key={c.categoryId} value={c.categoryId}>
-                {c.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        {canManage && categoryId ? (
+      <Stack
+        data-testid="library-category-chips"
+        direction="row"
+        spacing={1}
+        useFlexGap
+        sx={{ alignItems: 'center', flexWrap: 'wrap', flex: '1 1 280px' }}
+      >
+        <Chip
+          label={`${t('meals.library.allCategories')} (${tab === 'extras' ? extraItems.length : activeItems.length})`}
+          onClick={() => setCategoryId('')}
+          sx={categoryChipSx(!categoryId)}
+        />
+        {chipCategories.map((category) => (
+          <Chip
+            key={category.categoryId}
+            label={`${category.name} (${chipCounts[category.categoryId] ?? 0})`}
+            onClick={() => setCategoryId(category.categoryId)}
+            sx={categoryChipSx(categoryId === category.categoryId)}
+          />
+        ))}
+        {canManage && tab === 'items' ? (
           <Button
             size="small"
-            color="error"
-            startIcon={<Trash2 size={14} />}
-            onClick={() => {
-              const cat = categories.categories.find((c) => c.categoryId === categoryId);
-              if (cat) setDeactivateCategory(cat);
-            }}
+            data-testid="library-manage-categories"
+            onClick={() => setManageCategoriesOpen(true)}
             sx={dashOutlinedButtonSx}
           >
-            {t('meals.library.removeCategory')}
+            {t('meals.library.manageCategories', { defaultValue: 'Manage categories' })}
           </Button>
         ) : null}
       </Stack>
@@ -1048,7 +1160,6 @@ export function MenuLibraryPage() {
       <Stack spacing={`${DASHBOARD_UX.sectionGap}px`} sx={{ width: '100%' }}>
         <PageHeader
           title={t('meals.library.title')}
-          description={t('meals.library.subtitle')}
           breadcrumbs={[
             { label: t('navigation.meals'), to: spaceMealsPath(spaceId) },
             { label: t('meals.library.title') },
@@ -1102,12 +1213,87 @@ export function MenuLibraryPage() {
                     '&:hover': { bgcolor: colors.primaryHover },
                   }}
                 >
-                  {t('common.add')}
+                  {tab === 'combos' ? t('meals.library.createCombo') : t('meals.library.createItem')}
                 </Button>
               ) : null}
             </Stack>
           }
         />
+
+        {!catalogLoading ? (
+          <Box
+            data-testid="library-summary"
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
+              gap: 1,
+            }}
+          >
+            {(
+              [
+                {
+                  id: 'library-summary-items',
+                  icon: UtensilsCrossed,
+                  value: activeItems.length,
+                  label: t('meals.library.items'),
+                  background: '#E8F8EF',
+                  border: '#C6EBD7',
+                  foreground: '#047857',
+                },
+                {
+                  id: 'library-summary-categories',
+                  icon: Layers,
+                  value: activeCategories.length,
+                  label: t('meals.library.categories'),
+                  background: '#F4F0FF',
+                  border: '#DDD6FE',
+                  foreground: '#6D28D9',
+                },
+                {
+                  id: 'library-summary-combos',
+                  icon: Package,
+                  value: activeCombos.length,
+                  label: t('meals.library.combos'),
+                  background: '#FFF4EC',
+                  border: '#FED7AA',
+                  foreground: '#C2410C',
+                },
+              ] as const
+            ).map((tile) => {
+              const Icon = tile.icon;
+              return (
+                <Box
+                  key={tile.id}
+                  data-testid={tile.id}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.25,
+                    minWidth: 0,
+                    px: 1.5,
+                    py: 1.25,
+                    borderRadius: '14px',
+                    border: `1px solid ${tile.border}`,
+                    bgcolor: tile.background,
+                  }}
+                >
+                  <Icon size={16} color={tile.foreground} />
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography sx={{ fontWeight: 800, color: tile.foreground, lineHeight: 1.1 }}>
+                      {tile.value}
+                    </Typography>
+                    <Typography
+                      noWrap
+                      sx={{ ...DASHBOARD_UX.body, color: tile.foreground, fontSize: '0.75rem' }}
+                    >
+                      {tile.label}
+                    </Typography>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        ) : null}
 
         <MenuLibraryReadyTip
           spaceId={spaceId}
@@ -1144,10 +1330,16 @@ export function MenuLibraryPage() {
             },
           }}
         >
-          <Tab value="items" label={t('meals.library.items')} />
-          <Tab value="combos" label={t('meals.library.combos')} />
-          {showExtras ? <Tab value="extras" label={t('meals.library.extras')} /> : null}
+          <Tab value="items" label={`${t('meals.library.items')} (${activeItems.length})`} />
+          <Tab value="combos" label={`${t('meals.library.combos')} (${activeCombos.length})`} />
+          {showExtras ? (
+            <Tab value="extras" label={`${t('meals.library.extras')} (${extraItems.length})`} />
+          ) : null}
         </Tabs>
+
+        <Typography data-testid="library-section-heading" sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+          {sectionHeading}
+        </Typography>
 
         {viewMode === 'table' ? (
           tab === 'combos' ? (
@@ -1262,6 +1454,39 @@ export function MenuLibraryPage() {
             {tab === 'combos' ? renderComboCards() : renderItemCards()}
           </Stack>
         )}
+
+        {canManage ? (
+          <Box
+            component="button"
+            type="button"
+            data-testid="library-subscription"
+            onClick={() => navigate(spaceMealsPlansPath(spaceId))}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+              borderRadius: '16px',
+              border: `1px solid ${s.border}`,
+              bgcolor: s.surface,
+              px: 1.75,
+              py: 1.5,
+            }}
+          >
+            <CalendarDays size={18} color={colors.teal} />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography sx={{ fontWeight: 800, color: s.textPrimary }}>
+                {t('meals.subscriptionPlans.title')}
+              </Typography>
+              <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
+                {t('meals.subscriptionPlans.ownerSubtitle')}
+              </Typography>
+            </Box>
+            <ChevronRight size={18} color={s.textMuted} />
+          </Box>
+        ) : null}
       </Stack>
 
       <FoodItemFormDrawer
@@ -1315,6 +1540,113 @@ export function MenuLibraryPage() {
         onClose={() => setCategoryFormOpen(false)}
         onCreated={(id) => setCategoryId(id)}
       />
+
+      <Dialog
+        open={manageCategoriesOpen}
+        onClose={closeManageCategories}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
+          {t('meals.library.manageCategories', { defaultValue: 'Manage categories' })}
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={1} sx={{ pt: 0.5, maxHeight: 420, overflowY: 'auto' }}>
+            <Button
+              startIcon={<Plus size={14} />}
+              onClick={() => {
+                closeManageCategories();
+                setCategoryFormOpen(true);
+              }}
+              sx={{ ...dashOutlinedButtonSx, alignSelf: 'flex-start' }}
+            >
+              {t('meals.library.addCategory')}
+            </Button>
+            {activeCategories.map((category) => {
+              const editing = editingCategoryId === category.categoryId;
+              if (editing) {
+                return (
+                  <Stack
+                    key={category.categoryId}
+                    direction="row"
+                    spacing={1}
+                    sx={{ alignItems: 'center' }}
+                  >
+                    <TextField
+                      size="small"
+                      fullWidth
+                      autoFocus
+                      value={categoryDraft}
+                      disabled={mutations.updateFoodCategory.isPending}
+                      onChange={(event) => setCategoryDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          saveCategoryName(category.categoryId, category.name);
+                        }
+                      }}
+                      placeholder={t('meals.library.categoryNameInlinePlaceholder')}
+                    />
+                    <IconButton
+                      size="small"
+                      aria-label={t('common.cancel')}
+                      disabled={mutations.updateFoodCategory.isPending}
+                      onClick={() => setEditingCategoryId(null)}
+                    >
+                      <X size={16} />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      aria-label={t('common.save')}
+                      disabled={mutations.updateFoodCategory.isPending}
+                      onClick={() => saveCategoryName(category.categoryId, category.name)}
+                      sx={{ color: colors.primaryDark }}
+                    >
+                      <Check size={16} />
+                    </IconButton>
+                  </Stack>
+                );
+              }
+              return (
+                <Stack
+                  key={category.categoryId}
+                  direction="row"
+                  spacing={1}
+                  sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+                >
+                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textPrimary, minWidth: 0 }} noWrap>
+                    {category.name} ({itemCountByCategory[category.categoryId] ?? 0})
+                  </Typography>
+                  {category.scope === 'SPACE' ? (
+                    <IconButton
+                      size="small"
+                      aria-label={`${t('common.edit', { defaultValue: 'Edit' })} ${category.name}`}
+                      onClick={() => {
+                        setEditingCategoryId(category.categoryId);
+                        setCategoryDraft(category.name);
+                      }}
+                      sx={{ color: colors.primaryDark }}
+                    >
+                      <Pencil size={16} />
+                    </IconButton>
+                  ) : null}
+                  <IconButton
+                    size="small"
+                    aria-label={t('meals.library.removeCategory')}
+                    onClick={() => {
+                      closeManageCategories();
+                      setDeactivateCategory(category);
+                    }}
+                    sx={{ color: colors.danger }}
+                  >
+                    <Trash2 size={16} />
+                  </IconButton>
+                </Stack>
+              );
+            })}
+          </Stack>
+        </DialogContent>
+      </Dialog>
 
       <ConfigureLibraryExtrasDrawer
         open={configureExtrasOpen}

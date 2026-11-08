@@ -67,10 +67,13 @@ import {
   canOwnerSendPaymentReminder,
   formatMonthLabel,
   matchesIndividualPayment,
-  paymentStatusLabelKey,
   paymentStatusTone,
   shiftMonth,
 } from '../utils/paymentHelpers';
+import {
+  paymentListDisplayStatus,
+  paymentListStatusLabelKey,
+} from '../utils/paymentRefundDisplay';
 import { paymentListEmptyKind } from '../utils/paymentMonthList';
 import { TenantPaymentsPage } from './TenantPaymentsPage';
 
@@ -403,14 +406,29 @@ function OwnerPaymentsWorkspace({
         id: 'status',
         header: t('paymentCollection.fields.status'),
         accessor: (row) => {
-          const status = row.paymentStatus ?? row.status ?? 'PENDING';
+          const listStatus = paymentListDisplayStatus(row);
+          const closed =
+            listStatus === 'PAID' ||
+            listStatus === 'REFUNDED' ||
+            listStatus === 'CANCELLED' ||
+            listStatus === 'PARTIALLY_REFUNDED';
+          const showOverdue = Boolean(row.isOverdue) && !closed && listStatus !== 'OVERDUE';
           return (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5, whiteSpace: 'nowrap' }}>
               <StatusChip
-                label={t(paymentStatusLabelKey(status))}
-                tone={paymentStatusTone(status)}
+                label={t(paymentListStatusLabelKey(listStatus), {
+                  defaultValue:
+                    listStatus === 'PARTIALLY_REFUNDED' ? 'Partially refunded' : undefined,
+                })}
+                tone={
+                  listStatus === 'OVERDUE'
+                    ? 'error'
+                    : listStatus === 'PARTIALLY_REFUNDED'
+                      ? 'info'
+                      : paymentStatusTone(listStatus)
+                }
               />
-              {row.isOverdue ? (
+              {showOverdue ? (
                 <StatusChip
                   label={t('paymentCollection.overdue.chip', {
                     days: row.daysOverdue ?? 0,
@@ -418,7 +436,7 @@ function OwnerPaymentsWorkspace({
                   tone="error"
                 />
               ) : null}
-              {row.isOverdue && row.outstandingAmount != null ? (
+              {showOverdue && row.outstandingAmount != null ? (
                 <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textMuted }}>
                   {t('paymentCollection.overdue.outstanding', {
                     amount: formatCurrency(row.outstandingAmount, row.currencyCode),
@@ -516,11 +534,16 @@ function OwnerPaymentsWorkspace({
         id: 'status',
         header: t('paymentCollection.fields.status'),
         accessor: (row) => {
-          const status = row.paymentStatus ?? row.status ?? 'PENDING';
+          const listStatus = paymentListDisplayStatus(row);
           return (
             <StatusChip
-              label={t(paymentStatusLabelKey(status))}
-              tone={paymentStatusTone(status)}
+              label={t(paymentListStatusLabelKey(listStatus), {
+                defaultValue:
+                  listStatus === 'PARTIALLY_REFUNDED' ? 'Partially refunded' : undefined,
+              })}
+              tone={
+                listStatus === 'PARTIALLY_REFUNDED' ? 'info' : paymentStatusTone(listStatus)
+              }
             />
           );
         },
@@ -653,6 +676,12 @@ function OwnerPaymentsWorkspace({
         <MenuItem value="UNDER_REVIEW">{t('payments.memberStatus.UNDER_REVIEW')}</MenuItem>
         <MenuItem value="PAID">{t('payments.memberStatus.PAID')}</MenuItem>
         <MenuItem value="REJECTED">{t('payments.memberStatus.REJECTED')}</MenuItem>
+        <MenuItem value="REFUNDED">
+          {t('payments.memberStatus.REFUNDED', { defaultValue: 'Refunded' })}
+        </MenuItem>
+        <MenuItem value="CANCELLED">
+          {t('payments.memberStatus.CANCELLED', { defaultValue: 'Cancelled' })}
+        </MenuItem>
       </Select>
     </FormControl>
   );
@@ -704,6 +733,12 @@ function OwnerPaymentsWorkspace({
           <MenuItem value="HISTORY">{t('payments.history.queues.HISTORY')}</MenuItem>
           <MenuItem value="PAID">{t('payments.history.queues.PAID')}</MenuItem>
           <MenuItem value="REJECTED">{t('payments.history.queues.REJECTED')}</MenuItem>
+          <MenuItem value="REFUNDED">
+            {t('payments.history.queues.REFUNDED', { defaultValue: 'Refunded' })}
+          </MenuItem>
+          <MenuItem value="CANCELLED">
+            {t('payments.history.queues.CANCELLED', { defaultValue: 'Cancelled' })}
+          </MenuItem>
         </Select>
       </FormControl>
     ) : null;
@@ -932,9 +967,14 @@ function OwnerPaymentsWorkspace({
                     {t('common.loading', { defaultValue: 'Loading…' })}
                   </Typography>
                 ) : recordRows.length === 0 ? (
-                  <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
-                    {recordEmptyTitle}
-                  </Typography>
+                  <Stack spacing={0.5}>
+                    <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
+                      {recordEmptyTitle}
+                    </Typography>
+                    <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
+                      {recordEmptyDescription}
+                    </Typography>
+                  </Stack>
                 ) : (
                   recordRows.map((row) => (
                     <CompactPaymentCard

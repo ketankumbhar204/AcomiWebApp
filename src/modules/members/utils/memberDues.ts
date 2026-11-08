@@ -48,6 +48,20 @@ export function memberDuesCue(
   return null;
 }
 
+/**
+ * OPEN_ENDED (DAILY_RATE) rent is billed only after the period closes or on vacate.
+ * Until a RENT row exists the stay is accrued only: not billed, so not outstanding and not "settled".
+ */
+export function isOpenEndedRentUnbilled(
+  stay: { stayKind?: string | null; pricingBasis?: string | null } | null | undefined,
+  payments: ReadonlyArray<{ paymentType?: string | null }>,
+): boolean {
+  if (!stay || (stay.stayKind !== 'OPEN_ENDED' && stay.pricingBasis !== 'DAILY_RATE')) {
+    return false;
+  }
+  return !payments.some((payment) => payment.paymentType === 'RENT');
+}
+
 export function matchesPaymentDuesFilter(
   cue: MemberDuesCue | null,
   filter: MemberPaymentDuesFilter | undefined,

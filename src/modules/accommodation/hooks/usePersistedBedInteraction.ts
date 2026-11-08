@@ -24,6 +24,7 @@ export type PersistedBedTarget = {
   floorId?: string | null;
   unitId?: string | null;
   label: string;
+  name?: string;
   bedNumber: string;
   status?: AccommodationStatus;
   rent?: number | null;
@@ -84,7 +85,9 @@ export function usePersistedBedInteraction(options: {
                   memberId: current.memberId ?? detail.occupant?.memberId,
                   rent: current.rent ?? detail.defaultRent,
                   deposit: current.deposit ?? detail.defaultDeposit,
+                  name: detail.name || current.name || current.label,
                   bedNumber: detail.bedNumber || current.bedNumber,
+                  label: detail.name || detail.bedNumber || current.label,
                   inactive: detail.active === false,
                   status: detail.status ?? current.status,
                 }
@@ -108,6 +111,7 @@ export function usePersistedBedInteraction(options: {
         return;
       }
       const current: BedInteractionDraft = {
+        name: target.name ?? target.label ?? target.bedNumber,
         bedNumber: target.bedNumber,
         rent: target.rent ?? null,
         deposit: target.deposit ?? null,
@@ -116,6 +120,7 @@ export function usePersistedBedInteraction(options: {
         return;
       }
       const nextNumber = draft.bedNumber.trim();
+      const nextName = draft.name.trim() || nextNumber;
       if (!nextNumber) {
         enqueueSnackbar(t('accommodation.beds.validationError', { defaultValue: 'Enter a bed number' }), {
           variant: 'warning',
@@ -130,12 +135,14 @@ export function usePersistedBedInteraction(options: {
             spaceId: options.spaceId,
             roomId: target.roomId,
             bedId: target.bedId,
+            name: nextName,
             bedNumber: nextNumber,
           });
           enqueueSnackbar(t('accommodation.beds.updateSuccess', { defaultValue: 'Bed updated' }), {
             variant: 'success',
           });
           keepOpenWithSavedDraft({
+            name: nextName,
             bedNumber: nextNumber,
             rent: target.rent ?? null,
             deposit: target.deposit ?? null,
@@ -152,6 +159,7 @@ export function usePersistedBedInteraction(options: {
       }
 
       savedDraftRef.current = {
+        name: nextName,
         bedNumber: nextNumber,
         rent: draft.rent,
         deposit: draft.deposit,
@@ -160,12 +168,12 @@ export function usePersistedBedInteraction(options: {
         spaceId: options.spaceId,
         roomId: target.roomId,
         bedId: target.bedId,
-        bedLabel: formatBedDisplayLabel(target.label || nextNumber, t),
+        bedLabel: formatBedDisplayLabel(nextName || nextNumber, t),
         currentRent: target.rent,
         currentDeposit: target.deposit,
         nextRent: draft.rent,
         nextDeposit: draft.deposit,
-        name: nextNumber,
+        name: nextName,
         bedNumber: nextNumber,
       });
     },

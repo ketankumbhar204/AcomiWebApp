@@ -30,11 +30,15 @@ type OccupancyButtons = {
   occupancyId?: string | null;
   memberId?: string | null;
   canManage?: boolean;
+  stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
   onAllocate?: () => void;
   onReserve?: () => void;
   onMoveIn?: () => void;
   onCancel?: () => void;
   onTransfer?: () => void;
+  onExtend?: () => void;
+  onReviseOpenEnded?: () => void;
+  onRenewMonthly?: () => void;
   onVacate?: () => void;
   onViewHistory?: () => void;
 };
@@ -45,6 +49,7 @@ type BedInteractionDialogProps = {
   label: string;
   spaceId?: string;
   bedId?: string;
+  name?: string;
   bedNumber: string;
   locationLine?: string;
   status?: AccommodationStatus;
@@ -63,6 +68,7 @@ export function BedInteractionDialog({
   label,
   spaceId,
   bedId,
+  name,
   bedNumber,
   locationLine,
   status,
@@ -75,6 +81,8 @@ export function BedInteractionDialog({
   onSave,
 }: BedInteractionDialogProps) {
   const { t } = useTranslation();
+  const initialName = name?.trim() || label || bedNumber;
+  const [nameText, setNameText] = useState(initialName);
   const [numberText, setNumberText] = useState(bedNumber);
   const [rentText, setRentText] = useState(rent == null ? '' : String(rent));
   const [depositText, setDepositText] = useState(deposit == null ? '' : String(deposit));
@@ -88,6 +96,7 @@ export function BedInteractionDialog({
     if (open) {
       busyRef.current = false;
       setBusyAction(null);
+      setNameText(name?.trim() || label || bedNumber);
       setNumberText(bedNumber);
       setRentText(rent == null ? '' : String(rent));
       setDepositText(deposit == null ? '' : String(deposit));
@@ -95,24 +104,26 @@ export function BedInteractionDialog({
       setDepositError(null);
       setDiscardOpen(false);
     }
-  }, [bedNumber, deposit, open, rent]);
+  }, [bedNumber, deposit, label, name, open, rent]);
 
   const current = useMemo(
     () => ({
+      name: name?.trim() || label || bedNumber,
       bedNumber,
       rent: rent ?? null,
       deposit: deposit ?? null,
     }),
-    [bedNumber, deposit, rent],
+    [bedNumber, deposit, label, name, rent],
   );
 
   const draft = useMemo(
     () => ({
+      name: nameText,
       bedNumber: numberText,
       rent: parseOptionalMoney(rentText),
       deposit: parseOptionalMoney(depositText),
     }),
-    [depositText, numberText, rentText],
+    [depositText, nameText, numberText, rentText],
   );
 
   const occupiedStay = mode === 'persisted' && status === 'OCCUPIED' && Boolean(spaceId && bedId);
@@ -134,7 +145,9 @@ export function BedInteractionDialog({
     const rentMissing = isOccupancyMoneyMissing(rentText);
     const depositMissing = isOccupancyMoneyMissing(depositText);
     setRentError(
-      rentMissing ? t('accommodation.fields.rentRequired', { defaultValue: 'Rent is required' }) : null,
+      rentMissing
+        ? t('accommodation.fields.rentRequired', { defaultValue: 'Monthly rent is required' })
+        : null,
     );
     setDepositError(
       depositMissing
@@ -220,6 +233,16 @@ export function BedInteractionDialog({
               {t('accommodation.beds.detailsSection', { defaultValue: 'Bed details' })}
             </Typography>
             <TextField
+              label={t('accommodation.beds.nameLabel', { defaultValue: 'Bed name' })}
+              value={nameText}
+              onChange={(event) => setNameText(event.target.value)}
+              disabled={!structureEditable}
+              fullWidth
+              placeholder={t('accommodation.beds.namePlaceholder', {
+                defaultValue: 'e.g. Window bed',
+              })}
+            />
+            <TextField
               label={t('accommodation.beds.bedNumberLabel', { defaultValue: 'Bed number' })}
               value={numberText}
               onChange={(event) => setNumberText(event.target.value)}
@@ -228,7 +251,7 @@ export function BedInteractionDialog({
             />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
               <TextField
-                label={t('accommodation.fields.rent', { defaultValue: 'Rent' })}
+                  label={t('accommodation.fields.rent', { defaultValue: 'Monthly rent' })}
                 value={rentText}
                 onChange={(event) => {
                   setRentText(event.target.value);
@@ -307,9 +330,13 @@ export function BedInteractionDialog({
                     ? () => runOccupancyAction('reserve', occupancy.onReserve)
                     : undefined
                 }
+                stayKind={occupancy.stayKind}
                 onMoveIn={occupancy.onMoveIn}
                 onCancel={occupancy.onCancel}
                 onTransfer={occupancy.onTransfer}
+                onExtend={occupancy.onExtend}
+                onReviseOpenEnded={occupancy.onReviseOpenEnded}
+                onRenewMonthly={occupancy.onRenewMonthly}
                 onVacate={occupancy.onVacate}
                 onViewHistory={occupancy.onViewHistory}
               />

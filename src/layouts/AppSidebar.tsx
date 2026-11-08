@@ -56,9 +56,10 @@ function BrandMark({ collapsed }: { collapsed: boolean }) {
           width: 32,
           height: 32,
           borderRadius: '8px',
-          objectFit: 'cover',
+          objectFit: 'contain',
           flexShrink: 0,
           display: 'block',
+          backgroundColor: '#000000',
         }}
       />
       {!collapsed ? (

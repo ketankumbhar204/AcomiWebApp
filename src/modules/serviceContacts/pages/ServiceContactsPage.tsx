@@ -23,7 +23,7 @@ import {
   UserRound,
   Wrench,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -461,7 +461,7 @@ function Detail({ contact }: { contact: ServiceContact }) {
       : null,
     contact.email ? { icon: <Mail size={16} />, text: contact.email } : null,
     contact.address ? { icon: <MapPin size={16} />, text: contact.address } : null,
-  ].filter((row): row is { icon: JSX.Element; text: string } => row != null);
+  ].filter((row): row is { icon: ReactElement; text: string } => row != null);
 
   return (
     <Stack spacing={1.25} sx={{ pt: 0.5 }}>
@@ -480,7 +480,7 @@ function Detail({ contact }: { contact: ServiceContact }) {
   );
 }
 
-function Row({ icon, text }: { icon: JSX.Element; text: string }) {
+function Row({ icon, text }: { icon: ReactElement; text: string }) {
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   return (

@@ -61,7 +61,6 @@ import { AccommodationPathBar } from '../components/AccommodationPathBar';
 import { AccommodationEmptySetup } from '../components/AccommodationEmptySetup';
 import { RoomInventoryPanel, type RoomsOpsFocus } from '../components/RoomInventoryPanel';
 import { useBuildings } from '../hooks/useAccommodation';
-import { getAccommodationUiProfile } from '../utils/accommodationProfile';
 
 const VIEW_STORAGE_KEY = 'acomi.accommodation.viewMode.v2';
 
@@ -474,16 +473,28 @@ export function AccommodationWorkspacePage() {
                 </IconButton>
               </Tooltip>
               {permissions.canManageOccupancy ? (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() =>
-                    navigate(spaceBedInventoryPath(spaceId, 'AVAILABLE', { intent: 'allocate' }))
-                  }
-                  sx={occupancyActionButtonSx(occupancyActionTint.allocate)}
-                >
-                  {t('occupancy.actions.allocate')}
-                </Button>
+                <>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() =>
+                      navigate(spaceBedInventoryPath(spaceId, 'AVAILABLE', { intent: 'allocate' }))
+                    }
+                    sx={occupancyActionButtonSx(occupancyActionTint.allocate)}
+                  >
+                    {t('occupancy.actions.allocate')}
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() =>
+                      navigate(spaceBedInventoryPath(spaceId, 'AVAILABLE', { intent: 'reserve' }))
+                    }
+                    sx={occupancyActionButtonSx(occupancyActionTint.reserve)}
+                  >
+                    {t('occupancy.actions.reserve')}
+                  </Button>
+                </>
               ) : null}
               {permissions.canManageAccommodation ? (
                 <>

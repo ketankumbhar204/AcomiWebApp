@@ -1,16 +1,19 @@
-import { CircularProgress, Stack, Typography } from '@mui/material';
+import { Box, CircularProgress, Stack, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { formatPaymentAmount } from '@/modules/meals/utils/paymentAmount';
+import type { OccupancyResponse } from '@/shared/types/accommodation';
 import { useOccupiedBedStay } from '../hooks/useOccupiedBedStay';
 import {
   bedCardBalanceFace,
-  type BedCardBalanceFace,
   type OccupantPaymentSummary,
-  type StayChargeKind,
 } from '../utils/occupantPaymentSummary';
+import {
+  formatOccupancyRentRate,
+  isOpenEndedDailyRate,
+} from '../utils/stayFinancialDisplay';
 
 function money(amount: number): string {
-  return `₹${Math.round(amount).toLocaleString('en-IN')}`;
+  return formatPaymentAmount(Math.round(amount)) ?? `₹${Math.round(amount).toLocaleString('en-IN')}`;
 }
 
 export function occupiedPaymentCopy(
@@ -94,51 +97,91 @@ export function OccupiedBedPaymentFace({ spaceId, bedId }: { spaceId?: string; b
       </Typography>
     );
   }
-  return <BedBalanceSummary summary={stay.summary} />;
+  return (
+    <BedBalanceSummary
+      summary={stay.summary}
+      occupancy={stay.occupancy}
+      notYetBilled={isOpenEndedDailyRate(stay.occupancy)}
+    />
+  );
 }
 
-function wholeRupees(amount: number): string {
-  return formatPaymentAmount(Math.round(amount)) ?? `₹${Math.round(amount).toLocaleString('en-IN')}`;
+function BalanceDueLine({ label, value }: { label: string; value: string }) {
+  return (
+    <Typography sx={{ fontSize: 12, lineHeight: '16px', fontWeight: 600, color: 'text.primary' }} noWrap>
+      <Box component="span" sx={{ fontWeight: 600 }}>
+        {label}:{' '}
+      </Box>
+      <Box component="span" sx={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
+        {value}
+      </Box>
+    </Typography>
+  );
 }
 
-function chargeLabel(
-  kind: StayChargeKind,
-  compactDeposit: boolean,
+function MetaLine({ text }: { text: string }) {
+  return (
+    <Typography sx={{ fontSize: 11, lineHeight: '15px', fontWeight: 500, color: 'text.secondary' }} noWrap>
+      {text}
+    </Typography>
+  );
+}
+
+function occupancyRentLine(
+  occupancy: OccupancyResponse,
   t: (key: string, options?: { defaultValue?: string }) => string,
-): string {
-  if (kind === 'RENT') {
-    return t('accommodation.fields.rent', { defaultValue: 'Rent' });
-  }
-  if (kind === 'DEPOSIT') {
-    return compactDeposit
-      ? t('accommodation.stayPayment.depositShort', { defaultValue: 'Dep' })
-      : t('accommodation.fields.deposit', { defaultValue: 'Deposit' });
-  }
-  return t('accommodation.stayPayment.otherShort', { defaultValue: 'Other' });
-}
-
-function balanceSecondary(
-  face: Extract<BedCardBalanceFace, { kind: 'balance' }>,
-  t: (key: string, options?: { defaultValue?: string; amount?: string }) => string,
 ): string | null {
-  const parts: string[] = [];
-  if (face.paid != null) {
-    parts.push(
-      t('accommodation.stayPayment.paidAmount', {
-        defaultValue: '{{amount}} paid',
-        amount: wholeRupees(face.paid),
-      }),
-    );
+  const notRecorded = t('accommodation.pricingConfirm.notSet', { defaultValue: 'Not set' });
+  const rate = formatOccupancyRentRate(occupancy, notRecorded);
+  if (!rate.value || rate.value === notRecorded) {
+    return null;
   }
-  for (const line of face.lines) {
-    parts.push(`${chargeLabel(line.kind, face.paid != null, t)} ${wholeRupees(line.amount)}`);
-  }
-  return parts.length > 0 ? parts.join(' · ') : null;
+  const label = t(rate.labelKey, { defaultValue: rate.labelDefault });
+  return `${label}: ${rate.value}`;
 }
 
-function BedBalanceSummary({ summary }: { summary: OccupantPaymentSummary }) {
+function occupancyDepositLine(
+  occupancy: OccupancyResponse,
+  t: (key: string, options?: { defaultValue?: string }) => string,
+): string | null {
+  if (occupancy.depositSnapshot == null) {
+    return null;
+  }
+  return `${t('accommodation.fields.deposit', { defaultValue: 'Deposit' })}: ${money(
+    occupancy.depositSnapshot,
+  )}`;
+}
+
+function BedBalanceSummary({
+  summary,
+  occupancy,
+  notYetBilled = false,
+}: {
+  summary: OccupantPaymentSummary;
+  occupancy: OccupancyResponse;
+  notYetBilled?: boolean;
+}) {
   const { t } = useTranslation();
   const face = bedCardBalanceFace(summary);
+  const rentUnbilled = notYetBilled && summary.rent == null;
+  const rentLine = occupancyRentLine(occupancy, t);
+  const depositLine = occupancyDepositLine(occupancy, t);
+
+  if (rentUnbilled) {
+    const title = t('accommodation.stayPayment.notYetBilled', { defaultValue: 'Not Yet Billed' });
+    return (
+      <Stack
+        spacing={0.25}
+        sx={{ minWidth: 0, width: '100%' }}
+        aria-label={`Balance Due: ${title}`}
+      >
+        <BalanceDueLine
+          label={t('accommodation.stayPayment.balanceDue', { defaultValue: 'Balance Due' })}
+          value={title}
+        />
+      </Stack>
+    );
+  }
 
   if (face.kind === 'note') {
     const title =
@@ -156,50 +199,32 @@ function BedBalanceSummary({ summary }: { summary: OccupantPaymentSummary }) {
       face.paid != null
         ? t('accommodation.stayPayment.paidAmount', {
             defaultValue: '{{amount}} paid',
-            amount: wholeRupees(face.paid),
+            amount: money(face.paid),
           })
         : null;
     return (
-      <Stack spacing={0.25} aria-label={[paidLabel, paidDetail].filter(Boolean).join(', ')}>
-        <Typography sx={{ fontSize: 11, fontWeight: 700, color: 'success.main' }}>{paidLabel}</Typography>
-        {paidDetail ? (
-          <Typography sx={{ fontSize: 16, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
-            {paidDetail}
-          </Typography>
-        ) : null}
+      <Stack
+        spacing={0.25}
+        sx={{ minWidth: 0, width: '100%' }}
+        aria-label={[paidLabel, paidDetail].filter(Boolean).join(', ')}
+      >
+        <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'success.main' }}>{paidLabel}</Typography>
+        {paidDetail ? <MetaLine text={paidDetail} /> : null}
       </Stack>
     );
   }
 
-  const balanceLabel = t('accommodation.stayPayment.balanceDue', { defaultValue: 'Balance due' });
-  const amount = wholeRupees(face.outstanding);
-  const secondary = balanceSecondary(face, t);
+  const balanceLabel = t('accommodation.stayPayment.balanceDue', { defaultValue: 'Balance Due' });
+  const amount = money(face.outstanding);
   return (
     <Stack
-      spacing={0.15}
+      spacing={0.25}
       sx={{ minWidth: 0, width: '100%' }}
-      aria-label={[balanceLabel, amount, secondary].filter(Boolean).join(', ')}
+      aria-label={[balanceLabel, amount, rentLine, depositLine].filter(Boolean).join(', ')}
     >
-      <Typography sx={{ fontSize: 11, fontWeight: 700, color: 'error.main', lineHeight: 1.2 }}>
-        {balanceLabel}
-      </Typography>
-      <Typography
-        sx={{
-          fontSize: { xs: 18, sm: 20 },
-          fontWeight: 800,
-          color: 'error.main',
-          lineHeight: 1.15,
-          fontVariantNumeric: 'tabular-nums',
-          overflowWrap: 'anywhere',
-        }}
-      >
-        {amount}
-      </Typography>
-      {secondary ? (
-        <Typography sx={{ fontSize: 11, lineHeight: 1.35, color: 'text.secondary', overflowWrap: 'anywhere' }}>
-          {secondary}
-        </Typography>
-      ) : null}
+      <BalanceDueLine label={balanceLabel} value={amount} />
+      {rentLine ? <MetaLine text={rentLine} /> : null}
+      {depositLine ? <MetaLine text={depositLine} /> : null}
     </Stack>
   );
 }

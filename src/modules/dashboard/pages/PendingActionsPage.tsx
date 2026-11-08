@@ -100,7 +100,8 @@ function matchesCategory(type: string, filter: CategoryFilter): boolean {
         type.startsWith('MOVE_') ||
         type.startsWith('RESERVATION') ||
         type === 'VACANT_RESERVED_BED' ||
-        type === 'EXPIRED_RESERVATION'
+        type === 'EXPIRED_RESERVATION' ||
+        type === 'STAY_OVERDUE_ACTIVE'
       );
     case 'general':
       return (
@@ -111,7 +112,8 @@ function matchesCategory(type: string, filter: CategoryFilter): boolean {
         !type.startsWith('RESERVATION') &&
         type !== 'SUBSCRIPTION_ACTIVATION_PENDING' &&
         type !== 'VACANT_RESERVED_BED' &&
-        type !== 'EXPIRED_RESERVATION'
+        type !== 'EXPIRED_RESERVATION' &&
+        type !== 'STAY_OVERDUE_ACTIVE'
       );
     default:
       return true;

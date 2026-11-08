@@ -202,6 +202,8 @@ export type BedOccupantSummary = {
   memberId: string;
   memberName: string;
   occupancyStatus: OccupancyStatus | string;
+  /** From persisted occupancy; null for legacy rows. */
+  stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
 };
 
 export type BedResponse = {
@@ -473,9 +475,12 @@ export type AllocateOccupancyRequest = {
   bedId?: string | null;
   roomId?: string | null;
   unitId?: string | null;
+  moveInDate?: string | null;
   expectedCheckoutDate?: string | null;
   expectedExitDate?: string | null;
   remarks?: string | null;
+  stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
+  agreedTotal?: number | null;
   rentSnapshot?: number | null;
   depositSnapshot?: number | null;
   foodEnabled?: boolean;
@@ -493,6 +498,18 @@ export type ReserveOccupancyRequest = {
   unitId?: string | null;
   moveInDate: string;
   expectedExitDate?: string | null;
+  expectedCheckoutDate?: string | null;
+  stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
+  agreedTotal?: number | null;
+  rentSnapshot?: number | null;
+  /** Reservation-only portion of first-period rent (not an extra charge). */
+  bookingAdvanceAmount?: number | null;
+  bookingAdvanceCollected?: boolean | null;
+  bookingAdvancePaymentMethod?: 'UPI' | 'BANK_TRANSFER' | 'CASH' | 'CHEQUE' | 'OTHER' | null;
+  depositSnapshot?: number | null;
+  foodEnabled?: boolean;
+  foodIncludedInRent?: boolean;
+  foodChargeSnapshot?: number | null;
   memberCategory?: MemberCategory | null;
   remarks?: string | null;
 };
@@ -509,19 +526,42 @@ export type TransferOccupancyRequest = {
   foodEnabled?: boolean;
   foodChargeSnapshot?: number | null;
   foodIncludedInRent?: boolean;
+  stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
+  agreedTotal?: number | null;
+  expectedExitDate?: string | null;
+  expectedCheckoutDate?: string | null;
 };
 
 export type MoveInOccupancyRequest = {
   moveInDate?: string | null;
   expectedExitDate?: string | null;
+  expectedCheckoutDate?: string | null;
   allowEarlyMoveIn?: boolean;
   agreementSigned?: boolean;
   remarks?: string | null;
+  stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
+  agreedTotal?: number | null;
   rentSnapshot?: number | null;
   depositSnapshot?: number | null;
   foodEnabled?: boolean;
   foodChargeSnapshot?: number | null;
   foodIncludedInRent?: boolean;
+};
+
+export type ExtendOccupancyRequest = {
+  /** Required for MONTHLY/SHORT extend; omit for OPEN_ENDED rent-only revision. */
+  expectedExitDate?: string;
+  idempotencyKey: string;
+  additionalAmount?: number | null;
+  rentSnapshot?: number | null;
+  /** Effective-from date (YYYY-MM-DD). Day-level for OPEN_ENDED. */
+  rentEffectiveMonth?: string | null;
+  reason?: string | null;
+};
+
+export type ExtendOccupancyResponse = {
+  occupancy: OccupancyResponse;
+  chargeId?: string | null;
 };
 
 export type OccupancyResponse = {
@@ -549,7 +589,15 @@ export type OccupancyResponse = {
   vacatedAt?: string | null;
   status: OccupancyStatus;
   remarks?: string | null;
+  stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
+  agreedTotal?: number | null;
   rentSnapshot?: number | null;
+  /** Reservation booking advance (portion of first-period rent). */
+  bookingAdvanceAmount?: number | null;
+  /** Previous daily/monthly rate retained when rent was revised mid-stay. */
+  priorRentSnapshot?: number | null;
+  /** Effective-from date (YYYY-MM-DD) for the current rentSnapshot after a revision. */
+  rentEffectiveMonth?: string | null;
   depositSnapshot?: number | null;
   foodEnabled?: boolean;
   foodChargeSnapshot?: number | null;

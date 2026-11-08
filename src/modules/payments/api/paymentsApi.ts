@@ -9,7 +9,10 @@ import type {
   PaymentsSummaryResponse,
   PaymentTimelineResponse,
   CreateSpacePaymentRequest,
+  CancelSpacePaymentRequest,
+  PaymentSettlementResponse,
   ReviewPaymentRequest,
+  SettleSpacePaymentRequest,
   SpacePaymentListResponse,
   SpacePaymentResponse,
   SubmitPaymentProofRequest,
@@ -77,6 +80,29 @@ export const paymentsApi = {
       apiClient.post<ApiResponse<SpacePaymentResponse>>(
         `/spaces/${spaceId}/payments/${paymentId}/received`,
         body ?? {},
+      ),
+    ),
+
+  cancelPayment: (spaceId: string, paymentId: string, body?: CancelSpacePaymentRequest) =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<SpacePaymentResponse>>(
+        `/spaces/${spaceId}/payments/${paymentId}/cancel`,
+        body ?? {},
+      ),
+    ),
+
+  settlePayment: (spaceId: string, paymentId: string, body: SettleSpacePaymentRequest) =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<SpacePaymentResponse>>(
+        `/spaces/${spaceId}/payments/${paymentId}/settle`,
+        body,
+      ),
+    ),
+
+  listSettlements: (spaceId: string, paymentId: string) =>
+    unwrapApiResponse(
+      apiClient.get<ApiResponse<PaymentSettlementResponse[]>>(
+        `/spaces/${spaceId}/payments/${paymentId}/settlements`,
       ),
     ),
 

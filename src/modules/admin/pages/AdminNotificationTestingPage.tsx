@@ -304,7 +304,7 @@ export function AdminNotificationTestingPage() {
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="body2">{item.name}</Typography>
               <Typography variant="caption" color="text.secondary">{item.description}</Typography>
-              <Typography variant="caption" display="block" color="text.secondary">{item.channels.join(' · ')}</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{item.channels.join(' · ')}</Typography>
             </Box>
             <Chip size="small" label={item.safeToTest ? 'Testable' : 'Not testable'} color={item.safeToTest ? 'success' : 'default'} variant="outlined" />
           </Box>
@@ -329,8 +329,8 @@ export function AdminNotificationTestingPage() {
           Reset
         </Button>
       </Stack>
-      <TextField label="Title" value={title} onChange={(event) => setTitle(event.target.value)} fullWidth inputProps={{ maxLength: 120 }} />
-      <TextField label="Body" value={body} onChange={(event) => setBody(event.target.value)} fullWidth multiline minRows={2} inputProps={{ maxLength: 300 }} />
+      <TextField label="Title" value={title} onChange={(event) => setTitle(event.target.value)} fullWidth slotProps={{ htmlInput: { maxLength: 120 } }} />
+      <TextField label="Body" value={body} onChange={(event) => setBody(event.target.value)} fullWidth multiline minRows={2} slotProps={{ htmlInput: { maxLength: 300 } }} />
 
       <Typography variant="subtitle2">3. Recipient</Typography>
       <Box
@@ -340,7 +340,7 @@ export function AdminNotificationTestingPage() {
         <Typography variant="body2">{target === 'ACCOUNT' ? '●' : '○'} My admin account</Typography>
         <Typography variant="caption" color="text.secondary">Sends only to this account’s registered devices.</Typography>
         {(page?.registrations ?? []).map((device) => (
-          <Typography key={device.deviceTokenId} variant="caption" display="block">
+          <Typography key={device.deviceTokenId} variant="caption" sx={{ display: 'block' }}>
             {device.platform} · {maskDevice(device.deviceId)} · {device.active ? 'Active' : 'Inactive'}
           </Typography>
         ))}
@@ -397,7 +397,7 @@ export function AdminNotificationTestingPage() {
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="body2">{typeLabel(page?.types ?? [], item.notificationType)}</Typography>
               <Chip size="small" label={item.status} color={toneColor(resultTone(item.status))} variant="outlined" sx={{ my: 0.5 }} />
-              <Typography variant="caption" color="text.secondary" display="block">
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                 {item.createdAt || '—'} · {channelLabel(item.channel)} · {historyPlatform(item)} · targeted {item.targetedCount} · accepted {item.acceptedCount} · failed {item.failedCount}
                 {item.errorDetail ? ` · ${item.errorDetail}` : ''}
               </Typography>

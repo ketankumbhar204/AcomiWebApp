@@ -44,7 +44,6 @@ import {
 } from '@/modules/meals/utils/customerMealFocusDate';
 import {
   buildMealSummaryFromPolls,
-  platesForSingleSelectOption,
   resolveMealPollChoice,
 } from '@/modules/meals/utils/mealSelectionSummary';
 import { showMealPrices } from '@/modules/meals/utils/mealPricingPolicy';
@@ -136,14 +135,6 @@ function pollHasResponse(poll: MealPollSlot, multiQuantity: boolean): boolean {
     return (poll.mySelections ?? []).some((selection) => selection.quantity > 0);
   }
   return poll.mySelectedOptionId != null;
-}
-
-function platesForPoll(poll: MealPollSlot, multiQuantity: boolean): number {
-  if (multiQuantity) {
-    return (poll.mySelections ?? []).reduce((sum, row) => sum + (row.quantity > 0 ? row.quantity : 0), 0);
-  }
-  const option = poll.options.find((row) => row.id === poll.mySelectedOptionId);
-  return platesForSingleSelectOption(option);
 }
 
 function resolveCardState(

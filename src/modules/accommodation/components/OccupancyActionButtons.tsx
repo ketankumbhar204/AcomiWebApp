@@ -2,6 +2,7 @@ import { Button, CircularProgress, Stack, Typography, useTheme } from '@mui/mate
 import {
   ArrowRightLeft,
   CalendarDays,
+  CalendarPlus,
   History,
   LogIn,
   LogOut,
@@ -25,6 +26,11 @@ export type OccupancyActionButtonsProps = {
   onMoveIn?: () => void;
   onCancel?: () => void;
   onTransfer?: () => void;
+  onExtend?: () => void;
+  onRenewMonthly?: () => void;
+  /** OPEN_ENDED only — revise daily rent without planned-end change. */
+  onReviseOpenEnded?: () => void;
+  stayKind?: 'MONTHLY' | 'SHORT' | 'OPEN_ENDED' | null;
   onVacate?: () => void;
   onViewHistory?: () => void;
 };
@@ -41,6 +47,10 @@ export function OccupancyActionButtons({
   onMoveIn,
   onCancel,
   onTransfer,
+  onExtend,
+  onRenewMonthly,
+  onReviseOpenEnded,
+  stayKind = null,
   onVacate,
   onViewHistory,
 }: OccupancyActionButtonsProps) {
@@ -128,11 +138,53 @@ export function OccupancyActionButtons({
           },
         ]
       : []),
+    ...(isOccupied && stayKind === 'OPEN_ENDED' && onReviseOpenEnded
+      ? [
+          {
+            id: 'reviseOpenEnded',
+            label: t('occupancy.actions.reviseOpenEnded', {
+              defaultValue: 'Update Daily Rent',
+            }),
+            icon: <CalendarDays size={16} />,
+            tint: occupancyActionTint.transfer,
+            onClick: onReviseOpenEnded,
+          },
+        ]
+      : []),
+    // Require known stayKind so OPEN_ENDED never briefly shows fixed-duration Extend.
+    ...(isOccupied && stayKind != null && stayKind !== 'OPEN_ENDED' && onExtend
+      ? [
+          {
+            id: 'extend',
+            label: t('occupancy.actions.extend', { defaultValue: 'Extend stay' }),
+            icon: <CalendarPlus size={16} />,
+            tint: occupancyActionTint.transfer,
+            onClick: onExtend,
+          },
+        ]
+      : []),
+    ...(isOccupied &&
+    stayKind != null &&
+    stayKind !== 'OPEN_ENDED' &&
+    stayKind !== 'SHORT' &&
+    onRenewMonthly
+      ? [
+          {
+            id: 'renew',
+            label: t('occupancy.actions.renewMonthly', { defaultValue: 'Monthly renewal' }),
+            icon: <CalendarDays size={16} />,
+            tint: occupancyActionTint.transfer,
+            onClick: onRenewMonthly,
+          },
+        ]
+      : []),
     ...(isOccupied && onVacate
       ? [
           {
             id: 'vacate',
-            label: t('occupancy.actions.vacate'),
+            label: t('occupancy.actions.checkout', {
+              defaultValue: t('occupancy.actions.vacate'),
+            }),
             icon: <LogOut size={16} />,
             tint: occupancyActionTint.vacate,
             onClick: onVacate,

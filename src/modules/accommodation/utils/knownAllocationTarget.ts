@@ -19,6 +19,7 @@ export function allocationTargetFromKnownBed(input: {
   status?: AccommodationStatus;
 }): AllocationTargetSearchResponse {
   const label = input.bedLabel?.trim() || 'Bed';
+  const status = input.status ?? 'AVAILABLE';
   return {
     targetType: 'BED',
     targetId: input.bedId,
@@ -29,9 +30,10 @@ export function allocationTargetFromKnownBed(input: {
     bedName: label,
     displayPath: input.displayPath?.trim() || label,
     displayPathShort: label,
-    status: input.status ?? 'AVAILABLE',
+    status,
     defaultRent: input.defaultRent,
     defaultDeposit: input.defaultDeposit,
-    selectable: (input.status ?? 'AVAILABLE') === 'AVAILABLE',
+    selectable: status === 'AVAILABLE',
+    notSelectableReason: status === 'AVAILABLE' ? null : `Target is ${status.toLowerCase()}`,
   };
 }

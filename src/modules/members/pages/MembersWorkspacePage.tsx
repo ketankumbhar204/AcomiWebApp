@@ -49,7 +49,7 @@ import { PageContainer } from '@/shared/components/PageContainer';
 import { PageHeader } from '@/shared/components/PageHeader';
 import { StatCard } from '@/shared/components/StatCard';
 import { StatusChip } from '@/shared/components/StatusChip';
-import type { MemberResponse, MemberStatus, PendingInvitationResponse } from '@/shared/types/member';
+import type { MemberResponse, PendingInvitationResponse } from '@/shared/types/member';
 import type { MembershipRole } from '@/shared/types/space';
 import { paymentsApi } from '@/modules/payments/api/paymentsApi';
 import { usePaymentsSummary } from '@/modules/payments/hooks/usePayments';
@@ -89,18 +89,22 @@ import {
   usePendingInvitations,
 } from '../hooks/useMembers';
 import {
+  getMemberOccupancyStatusLabelKey,
   getMemberStatusLabelKey,
+  memberOccupancyStatusTone,
   memberStatusTone,
 } from '../utils/memberStatus';
 import {
-  MEMBER_STATUSES,
   countMemberListFilters,
   defaultMemberListFilters,
   filterAndSortMembers,
   filterPendingInvitations,
   isJoinedThisMonth,
+  memberListStatusLabelKey,
   rolesForSpace,
+  statusesForSpace,
   type MemberListFilterState,
+  type MemberListStatusOption,
   type MemberSortOption,
 } from '../utils/memberListQuery';
 import {
@@ -110,8 +114,11 @@ import {
   type MemberPaymentDuesFilter,
 } from '../utils/memberDues';
 import { membershipRoleLabelKey } from '../utils/memberRoles';
+import { StayTypeBadge } from '@/modules/accommodation/components/StayTypeBadge';
+import { resolveOccupancyStayKind } from '@/modules/accommodation/utils/stayFinancialDisplay';
 import { ContactNumberLine, StayTrailLine } from '@/shared/components/ContactAndStayMeta';
 import { formatMemberContactNumber } from '@/shared/utils/indianMobile';
+import type { StayChoice } from '@/modules/accommodation/utils/shortStay';
 
 type ListTab = 'members' | 'pending';
 
@@ -361,6 +368,17 @@ export function MembersWorkspacePage() {
         next.set(id, label);
       }
     });
+    return next;
+  }, [staySources.data]);
+  const stayKindByMemberId = useMemo(() => {
+    const occupancies = staySources.data?.occupancies ?? [];
+    const next = new Map<string, StayChoice>();
+    for (const row of occupancies) {
+      if (row.status !== 'ACTIVE' || next.has(row.memberId)) {
+        continue;
+      }
+      next.set(row.memberId, resolveOccupancyStayKind(row));
+    }
     return next;
   }, [staySources.data]);
   const canSeeDues = canManagePayments(permissions.membershipRole);
@@ -693,12 +711,30 @@ export function MembersWorkspacePage() {
     {
       id: 'status',
       header: t('membership.workspace.columns.status'),
-      accessor: (row) => (
-        <StatusChip
-          label={t(getMemberStatusLabelKey(row.status))}
-          tone={memberStatusTone(row.status)}
-        />
-      ),
+      accessor: (row) => {
+        const useStay =
+          showStayTrail && row.role === 'TENANT';
+        const stay = row.occupancyStatus ?? 'VACATED';
+        const stayKind =
+          useStay && stay === 'ALLOCATED' ? stayKindByMemberId.get(row.memberId) : null;
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.75, minWidth: 0 }}>
+            <StatusChip
+              label={
+                useStay
+                  ? t(getMemberOccupancyStatusLabelKey(stay))
+                  : t(getMemberStatusLabelKey(row.status))
+              }
+              tone={
+                useStay
+                  ? memberOccupancyStatusTone(stay)
+                  : memberStatusTone(row.status)
+              }
+            />
+            {stayKind ? <StayTypeBadge stayKind={stayKind} /> : null}
+          </Box>
+        );
+      },
     },
     {
       id: 'actions',
@@ -809,19 +845,21 @@ export function MembersWorkspacePage() {
             setPage(0);
             setFilters((prev) => ({
               ...prev,
-              statuses: e.target.value as MemberStatus[],
+              statuses: e.target.value as MemberListStatusOption[],
             }));
           }}
           renderValue={(selected) =>
             selected.length === 0
               ? t('membership.workspace.allStatuses')
-              : selected.map((status) => t(getMemberStatusLabelKey(status))).join(', ')
+              : selected
+                  .map((status) => t(memberListStatusLabelKey(status, spaceType)))
+                  .join(', ')
           }
         >
-          {MEMBER_STATUSES.map((status) => (
+          {statusesForSpace(spaceType).map((status) => (
             <MenuItem key={status} value={status}>
               <Checkbox checked={filters.statuses.includes(status)} size="small" />
-              <ListItemText primary={t(getMemberStatusLabelKey(status))} />
+              <ListItemText primary={t(memberListStatusLabelKey(status, spaceType))} />
             </MenuItem>
           ))}
         </Select>

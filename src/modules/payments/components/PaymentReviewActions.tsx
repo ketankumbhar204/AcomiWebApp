@@ -41,7 +41,7 @@ export function PaymentReviewActions({
 
   return (
     <>
-      <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+      <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap' }}>
         <Button size="small" variant="contained" disabled={reviewing} onClick={onApprove}>
           {t('paymentCollection.approval.approve')}
         </Button>

@@ -72,8 +72,17 @@ const mobileTabs = readFileSync(
   'utf8',
 );
 assert.match(mobileTabs, /headerLeft: \(\) => <SpaceTabHeaderLeading \/>/);
-assert.match(mobileBack, /goBackInStack/);
+assert.match(mobileBack, /function goBackAboveSpaceTabs/);
+assert.match(mobileBack, /spaceTabHeaderBackAncestorIndex/);
+assert.match(mobileBack, /navigators\[index\]\?\.goBack\(\)/);
+assert.doesNotMatch(mobileBack, /goBackInStack/);
 assert.match(mobileBack, /spaceDashboardHeaderDestination\('back'/);
+const mobileBackRules = readFileSync(
+  new URL('../../AcomiMobile/src/navigation/spaceHeaderNav.ts', import.meta.url),
+  'utf8',
+);
+assert.match(mobileBackRules, /ancestor\.type === 'tab'/);
+assert.match(mobileBackRules, /continue/);
 assert.match(mobileHome, /resetToMySpaces/);
 
 console.log('space dashboard home checks passed');

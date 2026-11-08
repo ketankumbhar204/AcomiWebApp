@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { mealsApi } from '../api/mealsApi';
 import type {
   CreateFoodCategoryRequest,
+  UpdateFoodCategoryRequest,
   CreateFoodItemRequest,
   CreateMealComboRequest,
   CreateMealParticipationRequest,
@@ -256,6 +257,11 @@ export function useMealMutations(spaceId: string | undefined) {
     createFoodCategory: useMutation({
       mutationFn: (body: CreateFoodCategoryRequest) =>
         mealsApi.createFoodCategory(spaceId!, body),
+      onSuccess: invalidateLibrary,
+    }),
+    updateFoodCategory: useMutation({
+      mutationFn: ({ categoryId, name }: { categoryId: string; name: string }) =>
+        mealsApi.updateFoodCategory(spaceId!, categoryId, { name } satisfies UpdateFoodCategoryRequest),
       onSuccess: invalidateLibrary,
     }),
     deactivateFoodCategory: useMutation({

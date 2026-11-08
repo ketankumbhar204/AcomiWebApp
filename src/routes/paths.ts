@@ -53,6 +53,7 @@ export const ROUTES = {
   adminInquiryCredits: '/admin/inquiry-credits',
   adminInquiryPayments: '/admin/inquiry-credits/payments',
   adminNotificationTesting: '/admin/notification-testing',
+  adminMonthlyBilling: '/admin/monthly-billing',
   myEnquiries: '/my-enquiries',
   favorites: '/favorites',
 } as const;
@@ -92,7 +93,11 @@ export function spaceOccupancyListPath(
 export function spaceBedInventoryPath(
   spaceId: string,
   status = 'AVAILABLE',
-  options?: { intent?: 'allocate'; focus?: 'moveIns' },
+  options?: {
+    intent?: 'allocate' | 'reserve';
+    focus?: 'moveIns';
+    memberId?: string;
+  },
 ): string {
   const search = new URLSearchParams();
   if (status) {
@@ -103,6 +108,9 @@ export function spaceBedInventoryPath(
   }
   if (options?.intent) {
     search.set('intent', options.intent);
+  }
+  if (options?.memberId) {
+    search.set('memberId', options.memberId);
   }
   const qs = search.toString();
   return qs

@@ -17,9 +17,12 @@ import { usePaymentMutations } from '@/modules/payments/hooks/usePayments';
 import {
   canOwnerMarkPaymentReceived,
   canOwnerSendPaymentReminder,
-  paymentStatusLabelKey,
   paymentStatusTone,
 } from '@/modules/payments/utils/paymentHelpers';
+import {
+  paymentListDisplayStatus,
+  paymentListStatusLabelKey,
+} from '@/modules/payments/utils/paymentRefundDisplay';
 import { DataTable, type DataTableColumn } from '@/shared/components/DataTable';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { PageSection } from '@/shared/components/PageSection';
@@ -29,8 +32,9 @@ import { dashContainedButtonSx } from '@/shared/theme/dashButtonSx';
 import { colors } from '@/shared/theme/colors';
 import { canManagePayments, formatCurrency } from '@/shared/utils/dashboardFinancial';
 import { usePaymentsMembers } from '@/modules/payments/hooks/usePayments';
-import { formatDuesAmount, memberDuesCue } from '../../utils/memberDues';
-import { useMemberPayments } from '../../hooks/useMemberDetailData';
+import { formatDuesAmount, isOpenEndedRentUnbilled, memberDuesCue } from '../../utils/memberDues';
+import { readStayRecord } from '../../utils/memberStayDisplay';
+import { useMemberOccupancies, useMemberPayments } from '../../hooks/useMemberDetailData';
 import { useMemberDetails } from '../../hooks/useMembers';
 
 type MemberPaymentsPanelProps = {
@@ -55,6 +59,10 @@ export function MemberPaymentsPanel({ spaceId, memberId }: MemberPaymentsPanelPr
   );
   const ledger = ledgerQuery.members.find((row) => row.memberId === memberId) ?? null;
   const cue = memberDuesCue(ledger);
+  const occupancy = useMemberOccupancies(spaceId, memberId);
+  const notYetBilled =
+    !loading &&
+    isOpenEndedRentUnbilled(readStayRecord(occupancy.data?.currentOccupancy ?? null), payments);
   const currency = ledger?.currencyCode || 'INR';
   const overdue = payments.reduce((sum, payment) => {
     if (!payment.isOverdue || payment.outstandingAmount == null || payment.outstandingAmount <= 0) {
@@ -62,6 +70,8 @@ export function MemberPaymentsPanel({ spaceId, memberId }: MemberPaymentsPanelPr
     }
     if (
       payment.paymentStatus === 'PAID' ||
+      payment.paymentStatus === 'REFUNDED' ||
+      payment.paymentStatus === 'CANCELLED' ||
       payment.paymentStatus === 'UNDER_REVIEW' ||
       payment.paymentStatus === 'PROOF_UPLOADED'
     ) {
@@ -109,17 +119,31 @@ export function MemberPaymentsPanel({ spaceId, memberId }: MemberPaymentsPanelPr
       id: 'status',
       header: t('dashboard.drilldown.columns.status'),
       accessor: (row) => {
-        const status = row.paymentStatus ?? row.status ?? 'PENDING';
-        const awaitingReview = status === 'UNDER_REVIEW' || status === 'PROOF_UPLOADED';
-        const overdue = Boolean(row.isOverdue) && !awaitingReview && status !== 'PAID';
+        const listStatus = paymentListDisplayStatus(row);
+        const overdue = listStatus === 'OVERDUE' || Boolean(row.isOverdue);
+        const closed =
+          listStatus === 'PAID' ||
+          listStatus === 'REFUNDED' ||
+          listStatus === 'CANCELLED' ||
+          listStatus === 'PARTIALLY_REFUNDED';
+        const showOverdue = overdue && !closed && listStatus !== 'UNDER_REVIEW' && listStatus !== 'PROOF_UPLOADED';
         return (
           <StatusChip
             label={
-              overdue
+              showOverdue
                 ? t('paymentCollection.dayMeals.status.overdue', { defaultValue: 'Overdue' })
-                : t(paymentStatusLabelKey(status))
+                : t(paymentListStatusLabelKey(listStatus), {
+                    defaultValue:
+                      listStatus === 'PARTIALLY_REFUNDED' ? 'Partially refunded' : undefined,
+                  })
             }
-            tone={overdue ? 'error' : paymentStatusTone(status)}
+            tone={
+              showOverdue
+                ? 'error'
+                : listStatus === 'PARTIALLY_REFUNDED'
+                  ? 'info'
+                  : paymentStatusTone(listStatus)
+            }
           />
         );
       },
@@ -225,9 +249,14 @@ export function MemberPaymentsPanel({ spaceId, memberId }: MemberPaymentsPanelPr
             amount: formatDuesAmount(cue.amount, currency),
             defaultValue: 'Under review: {{amount}}',
           })
-        : cue?.kind === 'clear'
+        : cue?.kind === 'clear' && !notYetBilled
           ? t('membership.dues.clear', { defaultValue: 'No pending dues' })
           : null;
+  const notBilledText = notYetBilled
+    ? t('membership.dues.notYetBilled', {
+        defaultValue: 'Not yet billed. Daily rent is billed when the period closes or on vacate.',
+      })
+    : null;
 
   return (
     <Stack spacing={1.5}>
@@ -235,17 +264,24 @@ export function MemberPaymentsPanel({ spaceId, memberId }: MemberPaymentsPanelPr
         <Typography variant="body2" color="text.secondary">
           {t('membership.dues.loadFailed', { defaultValue: 'Payment totals could not be loaded.' })}
         </Typography>
-      ) : duesText ? (
+      ) : duesText || notBilledText ? (
         <Stack spacing={0.25}>
-          <Typography
-            variant="body2"
-            sx={{
-              fontWeight: 700,
-              color: cue?.kind === 'due' ? '#D97706' : cue?.kind === 'review' ? '#2563EB' : colors.primaryDark,
-            }}
-          >
-            {duesText}
-          </Typography>
+          {duesText ? (
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 700,
+                color: cue?.kind === 'due' ? '#D97706' : cue?.kind === 'review' ? '#2563EB' : colors.primaryDark,
+              }}
+            >
+              {duesText}
+            </Typography>
+          ) : null}
+          {notBilledText ? (
+            <Typography variant="body2" color="text.secondary">
+              {notBilledText}
+            </Typography>
+          ) : null}
           {overdue > 0 ? (
             <Typography variant="body2" sx={{ fontWeight: 700, color: '#DC2626' }}>
               {t('membership.dues.overdue', {
@@ -285,8 +321,19 @@ export function MemberPaymentsPanel({ spaceId, memberId }: MemberPaymentsPanelPr
         columns={columns}
         rows={rows}
         loading={loading}
-        emptyTitle={t('membership.workspace.noPayments')}
-        emptyDescription={t('membership.workspace.noPaymentsBody')}
+        emptyTitle={
+          notYetBilled
+            ? t('membership.dues.notYetBilledTitle', { defaultValue: 'Not yet billed' })
+            : t('membership.workspace.noPayments')
+        }
+        emptyDescription={
+          notYetBilled
+            ? t('membership.dues.notYetBilled', {
+                defaultValue:
+                  'Not yet billed. Daily rent is billed when the period closes or on vacate.',
+              })
+            : t('membership.workspace.noPaymentsBody')
+        }
         onRowClick={canCreate ? undefined : (row) => setSelectedPaymentId(row.paymentId)}
       />
       {canCreate ? (
