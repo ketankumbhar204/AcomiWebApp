@@ -1,10 +1,12 @@
 import { Stack, Typography, useTheme } from '@mui/material';
+import { useSnackbar } from 'notistack';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ExtendStayDialog } from '@/modules/accommodation/components/ExtendStayDialog';
 import { ReviseOpenEndedRentDialog } from '@/modules/accommodation/components/ReviseOpenEndedRentDialog';
 import { OccupancyActionButtons } from '@/modules/accommodation/components/OccupancyActionButtons';
+import { useReservationCancellationDialog } from '@/modules/accommodation/hooks/useReservationCancellationDialog';
 import { defaultMonthlyRenewalEndDate } from '@/modules/accommodation/utils/extendStay';
 import { resolveOccupancyStayKind, type StayKind } from '@/modules/accommodation/utils/stayFinancialDisplay';
 import {
@@ -44,6 +46,7 @@ export function MemberOccupancyPanel({
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const navigate = useNavigate();
+  const { enqueueSnackbar } = useSnackbar();
   const permissions = useSpacePermissions(spaceId);
   const [extendSession, setExtendSession] = useState<{
     occupancyId: string;
@@ -56,6 +59,10 @@ export function MemberOccupancyPanel({
     currentDailyRent?: number | null;
   } | null>(null);
   const { data, loading, error, reload } = useMemberOccupancies(spaceId, memberId);
+  const { openCancelReservation, cancellationDialog } = useReservationCancellationDialog(
+    spaceId,
+    () => void reload(),
+  );
 
   if (loading && !data) {
     return <LoadingState />;
@@ -72,12 +79,23 @@ export function MemberOccupancyPanel({
   }
 
   if (mode === 'current') {
-    const currentSummary = (data?.currentOccupancy ?? null) as CurrentOccupancySummary | null;
+    const activeSummary = (data?.currentOccupancy ?? null) as CurrentOccupancySummary | null;
+    const reservedSummary = (data?.reservedOccupancy ?? null) as CurrentOccupancySummary | null;
     const currentStay = readStayRecord(data?.currentOccupancy ?? null);
     const reservedStay = hasStayContent(currentStay)
       ? null
       : readStayRecord(data?.reservedOccupancy ?? null);
-    const stay = hasStayContent(currentStay) ? currentStay : hasStayContent(reservedStay) ? reservedStay : null;
+    const stay = hasStayContent(currentStay)
+      ? currentStay
+      : hasStayContent(reservedStay)
+        ? reservedStay
+        : null;
+    const isReservedStay =
+      stay?.status === 'RESERVED' || stay?.occupancyStatus === 'RESERVED';
+    // Prefer ACTIVE occupancy; otherwise the reserved row (backend keeps them separate).
+    const actionOccupancy = isReservedStay
+      ? reservedSummary ?? activeSummary
+      : activeSummary ?? reservedSummary;
 
     if (!stay) {
       return (
@@ -127,68 +145,97 @@ export function MemberOccupancyPanel({
       );
     }
 
-    const current = currentSummary;
-
     return (
       <>
       <Stack spacing={1.5}>
         <MemberCurrentStayCard
           stay={stay}
-          reserved={stay?.status === 'RESERVED' || stay?.occupancyStatus === 'RESERVED'}
+          reserved={isReservedStay}
           amenities={amenities}
           onViewHistory={onViewHistory}
         />
-        {permissions.canManageOccupancy && current?.occupancyId ? (
+        {permissions.canManageOccupancy &&
+        (actionOccupancy?.occupancyId || isReservedStay) ? (
           <OccupancyActionButtons
-            status={current.occupancyStatus === 'RESERVED' ? 'RESERVED' : 'OCCUPIED'}
-            occupancyId={current.occupancyId}
+            status={isReservedStay ? 'RESERVED' : 'OCCUPIED'}
+            occupancyId={actionOccupancy?.occupancyId}
             memberId={memberId}
             stayKind={resolveOccupancyStayKind(stay)}
-            onTransfer={() =>
-              navigate(
-                spaceOccupancyWizardPath(spaceId, 'TRANSFER', {
-                  occupancyId: current.occupancyId ?? undefined,
-                  memberId,
-                  bedId: current.bedId ?? undefined,
-                  roomId: current.roomId ?? undefined,
-                  unitId: current.unitId ?? undefined,
-                  buildingId: current.buildingId,
-                }),
-              )
+            onMoveIn={
+              isReservedStay
+                ? () => {
+                    if (!actionOccupancy?.occupancyId) {
+                      enqueueSnackbar(t('occupancy.errors.noReserved'), {
+                        variant: 'error',
+                      });
+                      return;
+                    }
+                    navigate(
+                      spaceOccupancyWizardPath(spaceId, 'MOVE_IN', {
+                        occupancyId: actionOccupancy.occupancyId,
+                        memberId,
+                        bedId: actionOccupancy.bedId ?? undefined,
+                        roomId: actionOccupancy.roomId ?? undefined,
+                        unitId: actionOccupancy.unitId ?? undefined,
+                        buildingId: actionOccupancy.buildingId,
+                      }),
+                    );
+                  }
+                : undefined
             }
-            onExtend={
-              current.occupancyStatus === 'RESERVED'
+            onCancel={
+              isReservedStay && actionOccupancy?.occupancyId
+                ? () => openCancelReservation(actionOccupancy.occupancyId)
+                : undefined
+            }
+            onTransfer={
+              isReservedStay
                 ? undefined
                 : () =>
-                    current.occupancyId
+                    navigate(
+                      spaceOccupancyWizardPath(spaceId, 'TRANSFER', {
+                        occupancyId: actionOccupancy?.occupancyId ?? undefined,
+                        memberId,
+                        bedId: actionOccupancy?.bedId ?? undefined,
+                        roomId: actionOccupancy?.roomId ?? undefined,
+                        unitId: actionOccupancy?.unitId ?? undefined,
+                        buildingId: actionOccupancy?.buildingId,
+                      }),
+                    )
+            }
+            onExtend={
+              isReservedStay
+                ? undefined
+                : () =>
+                    actionOccupancy?.occupancyId
                       ? setExtendSession({
-                          occupancyId: current.occupancyId,
+                          occupancyId: actionOccupancy.occupancyId,
                           variant: 'extend',
                           stayKind: resolveOccupancyStayKind(stay),
                         })
                       : undefined
             }
             onReviseOpenEnded={
-              current.occupancyStatus === 'RESERVED'
+              isReservedStay
                 ? undefined
                 : () =>
-                    current.occupancyId
+                    actionOccupancy?.occupancyId
                       ? setReviseSession({
-                          occupancyId: current.occupancyId,
+                          occupancyId: actionOccupancy.occupancyId,
                           currentDailyRent:
                             typeof stay?.rentSnapshot === 'number' ? stay.rentSnapshot : null,
                         })
                       : undefined
             }
             onRenewMonthly={
-              current.occupancyStatus === 'RESERVED' ||
+              isReservedStay ||
               stay?.stayKind === 'SHORT' ||
               resolveOccupancyStayKind(stay) === 'OPEN_ENDED'
                 ? undefined
                 : () =>
-                    current.occupancyId
+                    actionOccupancy?.occupancyId
                       ? setExtendSession({
-                          occupancyId: current.occupancyId,
+                          occupancyId: actionOccupancy.occupancyId,
                           variant: 'renewal',
                           stayKind: resolveOccupancyStayKind(stay),
                           initialExpectedExitDate: defaultMonthlyRenewalEndDate(
@@ -197,17 +244,20 @@ export function MemberOccupancyPanel({
                         })
                       : undefined
             }
-            onVacate={() =>
-              navigate(
-                spaceOccupancyWizardPath(spaceId, 'VACATE', {
-                  occupancyId: current.occupancyId ?? undefined,
-                  memberId,
-                  bedId: current.bedId ?? undefined,
-                  roomId: current.roomId ?? undefined,
-                  unitId: current.unitId ?? undefined,
-                  buildingId: current.buildingId,
-                }),
-              )
+            onVacate={
+              isReservedStay
+                ? undefined
+                : () =>
+                    navigate(
+                      spaceOccupancyWizardPath(spaceId, 'VACATE', {
+                        occupancyId: actionOccupancy?.occupancyId ?? undefined,
+                        memberId,
+                        bedId: actionOccupancy?.bedId ?? undefined,
+                        roomId: actionOccupancy?.roomId ?? undefined,
+                        unitId: actionOccupancy?.unitId ?? undefined,
+                        buildingId: actionOccupancy?.buildingId,
+                      }),
+                    )
             }
             onViewHistory={onViewHistory}
           />
@@ -229,6 +279,7 @@ export function MemberOccupancyPanel({
         currentDailyRent={reviseSession?.currentDailyRent}
         onClose={() => setReviseSession(null)}
       />
+      {cancellationDialog}
       </>
     );
   }
