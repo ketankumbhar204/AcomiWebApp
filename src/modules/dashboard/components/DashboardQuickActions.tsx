@@ -330,14 +330,16 @@ export function DashboardQuickActions({
                 <ListItemText
                   primary={action.label}
                   secondary={action.hint}
-                  primaryTypographyProps={{
-                    sx: {
-                      ...DASHBOARD_UX.bodyStrong,
-                      color: action.destructive ? theme.palette.error.main : s.textPrimary,
+                  slotProps={{
+                    primary: {
+                      sx: {
+                        ...DASHBOARD_UX.bodyStrong,
+                        color: action.destructive ? theme.palette.error.main : s.textPrimary,
+                      },
                     },
-                  }}
-                  secondaryTypographyProps={{
-                    sx: { ...DASHBOARD_UX.metricCaption, color: s.textSecondary },
+                    secondary: {
+                      sx: { ...DASHBOARD_UX.metricCaption, color: s.textSecondary },
+                    },
                   }}
                 />
               </ListItemButton>

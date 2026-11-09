@@ -1671,9 +1671,8 @@ export function OccupancyWizardPage() {
           <Stack
             key={`${label}-${value}`}
             direction="row"
-            justifyContent="space-between"
             spacing={2}
-            sx={{ py: 0.5 }}
+            sx={{ justifyContent: 'space-between', py: 0.5 }}
           >
             <Typography
               sx={{

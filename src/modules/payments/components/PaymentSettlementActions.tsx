@@ -165,7 +165,7 @@ export function PaymentSettlementActions({ spaceId, payment, canManage }: Props)
 
   return (
     <>
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
         {showCancel ? (
           <Button
             sx={dashOutlinedButtonSx}
@@ -329,7 +329,7 @@ export function PaymentSettlementActions({ spaceId, payment, canManage }: Props)
                 <TextField
                   size="small"
                   type="date"
-                  InputLabelProps={{ shrink: true }}
+                  slotProps={{ inputLabel: { shrink: true } }}
                   label={t('payments.settle.refundDate', { defaultValue: 'Refund date' })}
                   value={refundDate}
                   onChange={e => setRefundDate(e.target.value)}

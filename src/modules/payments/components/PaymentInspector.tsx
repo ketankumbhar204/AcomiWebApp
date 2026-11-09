@@ -195,6 +195,10 @@ function PaymentDetailsHeader({
     payment.baseAmount != null
       ? formatCurrency(payment.baseAmount, payment.currencyCode)
       : null;
+  const period =
+    payment.billingPeriodStart && payment.billingPeriodEnd
+      ? `${payment.billingPeriodStart} → ${payment.billingPeriodEnd}`
+      : null;
 
   return (
     <Box
@@ -239,7 +243,12 @@ function PaymentDetailsHeader({
         <Typography sx={{ fontWeight: 700, fontSize: 18, color: s.textPrimary, flex: 1 }}>
           {heading}
         </Typography>
-        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ justifyContent: 'flex-end' }}>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          useFlexGap
+          sx={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}
+        >
           <StatusChip
             label={
               listStatus === 'OVERDUE' || payment.isOverdue

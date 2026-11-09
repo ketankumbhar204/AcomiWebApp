@@ -8,7 +8,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import { CircleCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
@@ -122,7 +122,7 @@ export function OccupancySuccessDialog({
               placeItems: 'center',
             }}
           >
-            <CheckCircleOutlineIcon sx={{ fontSize: 40 }} />
+            <CircleCheck size={40} strokeWidth={1.75} aria-hidden />
           </Box>
           <Typography sx={{ ...DASHBOARD_UX.cardTitle, color: s.textPrimary }}>
             {t('occupancy.success.title', { defaultValue: 'Success' })}

@@ -236,7 +236,7 @@ export function ReservationCancellationDialog({
                   spacing={1}
                   sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.5 }}
                 >
-                  <Typography fontWeight={600}>{item.title}</Typography>
+                  <Typography sx={{ fontWeight: 600 }}>{item.title}</Typography>
                   <Typography variant="body2" color="text.secondary">
                     ₹{Number(item.amount).toLocaleString('en-IN')} · {item.paymentStatus}
                     {item.collected

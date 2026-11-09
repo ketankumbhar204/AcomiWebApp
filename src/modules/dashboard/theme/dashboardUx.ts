@@ -130,6 +130,8 @@ export const DASHBOARD_UX = {
   compactTitle: { fontSize: '0.875rem', fontWeight: 600, lineHeight: '1.25rem' },
   /** Body / descriptions — 14/400 */
   body: { fontSize: '0.875rem', fontWeight: 400, lineHeight: '1.25rem' },
+  /** Emphasized body — 14/600 */
+  bodyStrong: { fontSize: '0.875rem', fontWeight: 600, lineHeight: '1.25rem' },
   cardSubtitle: { fontSize: '0.8125rem', fontWeight: 400, lineHeight: '1.125rem' },
   /** Metric / form labels — 12/500 */
   metricLabel: { fontSize: '0.75rem', fontWeight: 500, lineHeight: '1.125rem' },

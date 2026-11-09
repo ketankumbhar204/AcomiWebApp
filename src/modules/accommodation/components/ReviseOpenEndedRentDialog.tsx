@@ -147,7 +147,7 @@ export function ReviseOpenEndedRentDialog({
                 label={t('occupancy.reviseRent.currentDaily', { defaultValue: 'Current Daily Rent' })}
                 value={formatDailyRentDisplay(currentDailyRent)}
                 fullWidth
-                InputProps={{ readOnly: true }}
+                slotProps={{ input: { readOnly: true } }}
               />
               <TextField
                 label={t('occupancy.reviseRent.newDaily', { defaultValue: 'New Daily Rent' })}
@@ -155,7 +155,7 @@ export function ReviseOpenEndedRentDialog({
                 onChange={e => setNewDailyRent(e.target.value)}
                 fullWidth
                 type="number"
-                inputProps={{ min: 0, step: '0.01' }}
+                slotProps={{ htmlInput: { min: 0, step: '0.01' } }}
                 disabled={pending}
               />
               <TextField
@@ -164,7 +164,7 @@ export function ReviseOpenEndedRentDialog({
                 value={effectiveFrom}
                 onChange={e => setEffectiveFrom(e.target.value)}
                 fullWidth
-                InputLabelProps={{ shrink: true }}
+                slotProps={{ inputLabel: { shrink: true } }}
                 disabled={pending}
               />
               <TextField
@@ -226,7 +226,7 @@ export function ReviseOpenEndedRentDialog({
                       date: previewThrough,
                     })}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
                     {t('occupancy.reviseRent.previewNote', {
                       defaultValue:
                         'Already generated or paid bills are not changed. Future days are not charged in advance.',
