@@ -116,7 +116,7 @@ export function ContactMethodChooser({
                 {t('spaces.findPlace.enquire.recommended', { defaultValue: 'Recommended' })}
               </Typography>
               <Typography sx={{ mt: 0.5, fontSize: 12, fontWeight: 700 }}>
-                {t('spaces.findPlace.enquire.sendOnApp', { defaultValue: 'Send on ACOMI App' })}
+                {t('spaces.findPlace.enquire.sendOnApp', { defaultValue: 'Send on Acomi App' })}
               </Typography>
               <Typography sx={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2 }}>
                 {t('spaces.findPlace.enquire.unlimitedTitle', { defaultValue: 'Unlimited enquiries' })}

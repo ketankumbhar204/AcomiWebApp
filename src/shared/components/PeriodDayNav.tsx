@@ -79,6 +79,13 @@ export function PeriodDayNav({
     borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
     bgcolor: s.surface,
   } as const;
+  const selectedDateSx = {
+    height: btn,
+    minHeight: btn,
+    border: `1px solid ${colors.primary}`,
+    borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
+    bgcolor: colors.lightGreen ?? '#E8F8EF',
+  } as const;
 
   return (
     <Box
@@ -125,21 +132,20 @@ export function PeriodDayNav({
           flex: 1,
           minWidth: 0,
           maxWidth: '100%',
-          ...controlSx,
-          border: `1px solid ${s.border}`,
+          ...selectedDateSx,
           cursor: pickerEnabled ? 'pointer' : 'default',
           fontFamily: 'inherit',
-          color: s.textPrimary,
+          color: colors.primaryDark,
           '&:hover': pickerEnabled
-            ? { borderColor: `${colors.primaryDark}66`, bgcolor: s.hover }
+            ? { borderColor: colors.primaryDark, bgcolor: colors.mintSubtle }
             : undefined,
         }}
       >
         <Typography
           sx={{
-            fontSize: size === 'compact' ? 13 : 14,
-            fontWeight: 600,
-            color: s.textPrimary,
+            fontSize: size === 'compact' ? 14 : 16,
+            fontWeight: 800,
+            color: colors.primaryDark,
             lineHeight: 1.2,
             overflow: 'hidden',
             textOverflow: 'ellipsis',

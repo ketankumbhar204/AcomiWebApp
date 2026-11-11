@@ -26,6 +26,8 @@ type GuidedStepPanelProps = {
    * Hides the eyebrow, title, and description block.
    */
   compact?: boolean;
+  /** Place the secondary action before the primary one. Meal planning uses this so Save sits on the left. */
+  secondaryFirst?: boolean;
 };
 
 const g = colors.guidance;
@@ -83,6 +85,7 @@ export function GuidedStepPanel({
   secondary,
   extra,
   compact = false,
+  secondaryFirst = false,
 }: GuidedStepPanelProps) {
   const showDots =
     stepCurrent != null && stepTotal != null && stepTotal > 1 && stepCurrent >= 1;
@@ -187,6 +190,32 @@ export function GuidedStepPanel({
             flexWrap: compact ? 'wrap' : 'nowrap',
           }}
         >
+          {secondaryFirst && secondary ? (
+            <Button
+              variant="outlined"
+              fullWidth={!compact}
+              disabled={secondary.disabled}
+              onClick={secondary.onClick}
+              startIcon={secondary.startIcon}
+              sx={{
+                ...DASHBOARD_UX.button,
+                minHeight: compact ? 44 : 48,
+                height: compact ? 'auto' : 48,
+                py: compact ? 1 : undefined,
+                flex: compact ? '1 1 120px' : undefined,
+                textTransform: 'none',
+                whiteSpace: 'normal',
+                lineHeight: 1.2,
+                bgcolor: 'transparent',
+                color: g.text,
+                borderColor: g.outline,
+                boxShadow: 'none',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.06)', borderColor: g.outline },
+              }}
+            >
+              {secondary.label}
+            </Button>
+          ) : null}
           {primary ? (
             <Button
               variant="contained"
@@ -199,7 +228,7 @@ export function GuidedStepPanel({
                 minHeight: compact ? 44 : 48,
                 height: compact ? 'auto' : 48,
                 py: compact ? 1 : undefined,
-                flex: compact ? '1.6 1 160px' : undefined,
+                flex: compact ? (secondaryFirst ? '1 1 120px' : '1.6 1 160px') : undefined,
                 textTransform: 'none',
                 whiteSpace: 'normal',
                 lineHeight: 1.2,
@@ -213,7 +242,7 @@ export function GuidedStepPanel({
               {primary.label}
             </Button>
           ) : null}
-          {secondary ? (
+          {!secondaryFirst && secondary ? (
             <Button
               variant="outlined"
               fullWidth={!compact}

@@ -29,7 +29,14 @@ import { useSpacePermissions } from '@/shared/hooks/useSpacePermissions';
 import { colors } from '@/shared/theme/colors';
 import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import { formatCurrency } from '@/shared/utils/dashboardFinancial';
-import { ROUTES, spaceMealsLibraryPath, spaceMealsPath, spaceMealsSharePath } from '@/routes/paths';
+import { PeriodDayNav } from '@/shared/components/PeriodDayNav';
+import {
+  ROUTES,
+  spaceMealsEditPath,
+  spaceMealsLibraryPath,
+  spaceMealsPath,
+  spaceMealsSharePath,
+} from '@/routes/paths';
 import type {
   FoodCategoryResponse,
   FoodItemResponse,
@@ -72,7 +79,7 @@ import {
   toUpsertOptions,
   type MenuDraftOption,
 } from '../utils/dailyMenuDraft';
-import { formatMenuDateLabel, isPastMenuDate, MEAL_TYPES } from '../utils/mealDates';
+import { addDaysIso, formatMenuDateLabel, isPastMenuDate, MEAL_TYPES } from '../utils/mealDates';
 import {
   mealPricingContextFromSpaceType,
   requiresMealPrices,
@@ -288,6 +295,9 @@ export function MealMenuEditorPage() {
   const [notes, setNotes] = useState('');
   const [options, setOptions] = useState<MenuDraftOption[]>([]);
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [priceFieldErrors, setPriceFieldErrors] = useState<
+    Record<string, 'required' | 'invalid' | 'nonPositive'>
+  >({});
   const [hydrated, setHydrated] = useState(false);
   const [extrasReviewed, setExtrasReviewed] = useState(false);
   const [extrasHighlighted, setExtrasHighlighted] = useState(false);
@@ -295,6 +305,7 @@ export function MealMenuEditorPage() {
   const [copyOpen, setCopyOpen] = useState(false);
   const [createComboOpen, setCreateComboOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [pendingMenuDate, setPendingMenuDate] = useState<string | null>(null);
   const baselineRef = useRef('');
   const allowLeaveRef = useRef(false);
   const firstInvalidPriceRef = useRef<Map<string, HTMLInputElement | null>>(new Map());
@@ -439,16 +450,44 @@ export function MealMenuEditorPage() {
     navigate(spaceMealsPath(spaceId, menuDate || undefined));
   }, [menuDate, navigate, spaceId]);
 
+  const goToMenuDate = useCallback(
+    (nextDate: string) => {
+      if (!mealType || !nextDate) return;
+      allowLeaveRef.current = true;
+      navigate(spaceMealsEditPath(spaceId, { date: nextDate, mealType }), { replace: true });
+    },
+    [mealType, navigate, spaceId],
+  );
+
+  const requestMenuDateChange = useCallback(
+    (nextDate: string) => {
+      if (!nextDate || nextDate === menuDate) return;
+      if (readOnly || !isDirty) {
+        goToMenuDate(nextDate);
+        return;
+      }
+      setPendingMenuDate(nextDate);
+    },
+    [goToMenuDate, isDirty, menuDate, readOnly],
+  );
+
   const requestLeave = () => {
     if (readOnly || !isDirty) {
       goBack();
       return;
     }
+    setPendingMenuDate(null);
     setLeaveOpen(true);
   };
 
   const discardAndLeave = () => {
     setLeaveOpen(false);
+    const nextDate = pendingMenuDate;
+    setPendingMenuDate(null);
+    if (nextDate) {
+      goToMenuDate(nextDate);
+      return;
+    }
     goBack();
   };
 
@@ -797,28 +836,49 @@ export function MealMenuEditorPage() {
     }
   };
 
+  const priceFieldMessage = (kind: 'required' | 'invalid' | 'nonPositive') => {
+    if (kind === 'required') return t('meals.pricing.priceRequiredInline');
+    if (kind === 'nonPositive') return t('meals.pricing.priceMustBePositive');
+    return t('meals.pricing.priceInvalid');
+  };
+
   const validatePrices = (): boolean => {
-    if (!needPrices) return true;
+    if (!needPrices) {
+      setPriceFieldErrors({});
+      return true;
+    }
+    const next: Record<string, 'required' | 'invalid' | 'nonPositive'> = {};
+    let firstKey: string | null = null;
     for (const option of options) {
       const key = optionKey(option);
+      const field = document.getElementById(`meal-price-${key}`) as HTMLInputElement | null;
       const text =
         priceDrafts[key] ??
+        field?.value ??
         (option.price != null
           ? String(option.price)
           : option.entryType === 'COMBO' && option.comboId
             ? String(comboById.get(option.comboId)?.price ?? '')
             : '');
+      const validation = validatePriceInput(text);
       const invalid =
-        !text.trim() || Boolean(validatePriceInput(text)) || !hasComboPrice(parsePriceInput(text));
+        !text.trim() || Boolean(validation) || !hasComboPrice(parsePriceInput(text));
       if (invalid) {
-        enqueueSnackbar(t('meals.pricing.fixFieldsBeforeSave'), { variant: 'warning' });
-        const el = firstInvalidPriceRef.current.get(key);
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el?.focus();
-        return false;
+        next[key] = !text.trim() ? 'required' : validation === 'nonPositive' ? 'nonPositive' : 'invalid';
+        firstKey ??= key;
       }
     }
-    return true;
+    setPriceFieldErrors(next);
+    if (!firstKey) return true;
+    enqueueSnackbar(t('meals.pricing.fixFieldsBeforeSave'), { variant: 'warning' });
+    window.setTimeout(() => {
+      const el =
+        document.getElementById(`meal-price-${firstKey}`) ??
+        firstInvalidPriceRef.current.get(firstKey);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (el instanceof HTMLElement) el.focus();
+    }, 80);
+    return false;
   };
 
   const buildOptionsForSave = (): MenuDraftOption[] => {
@@ -912,11 +972,24 @@ export function MealMenuEditorPage() {
     draftKey: string;
     onBlur: () => void;
     inputRef?: (el: HTMLInputElement | null) => void;
-  }) => (
+  }) => {
+    const priceError = priceFieldErrors[args.draftKey];
+    return (
     <TextField
       size="small"
       value={priceDrafts[args.draftKey] ?? ''}
-      onChange={(e) => setPriceDrafts((d) => ({ ...d, [args.draftKey]: e.target.value }))}
+      error={Boolean(priceError)}
+      helperText={priceError ? priceFieldMessage(priceError) : undefined}
+      onChange={(e) => {
+        const value = e.target.value;
+        setPriceDrafts((d) => ({ ...d, [args.draftKey]: value }));
+        setPriceFieldErrors((current) => {
+          if (!current[args.draftKey]) return current;
+          const next = { ...current };
+          delete next[args.draftKey];
+          return next;
+        });
+      }}
       onBlur={args.onBlur}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
@@ -924,12 +997,14 @@ export function MealMenuEditorPage() {
       sx={{ width: 118, flexShrink: 0 }}
       inputRef={args.inputRef}
       slotProps={{
+        htmlInput: { id: `meal-price-${args.draftKey}` },
         input: {
           startAdornment: <InputAdornment position="start">₹</InputAdornment>,
         },
       }}
     />
-  );
+    );
+  };
 
   const renderCatalogPriceLabel = (price?: number | null, currencyCode?: string | null) => {
     if (price == null || !(price > 0)) return null;
@@ -1052,17 +1127,15 @@ export function MealMenuEditorPage() {
                 >
                   {t('meals.planning.editSlot', { meal: t(`meals.mealType.${mealType}`) })}
                 </Typography>
-                <Typography sx={{ color: s.textMuted, flexShrink: 0 }}>·</Typography>
-                <Typography
-                  sx={{
-                    ...DASHBOARD_UX.caption,
-                    color: s.textSecondary,
-                    flexShrink: 0,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {dateBadge}
-                </Typography>
+                <PeriodDayNav
+                  size="compact"
+                  date={menuDate}
+                  label={dateBadge}
+                  onPrevious={() => requestMenuDateChange(addDaysIso(menuDate, -1))}
+                  onNext={() => requestMenuDateChange(addDaysIso(menuDate, 1))}
+                  onDateSelect={requestMenuDateChange}
+                  sx={{ flexShrink: 0 }}
+                />
                 {hydrated ? (
                   <StatusChip
                     label={t(`meals.status.${menu?.status ?? 'DRAFT'}`)}
@@ -1491,6 +1564,16 @@ export function MealMenuEditorPage() {
                           enabledExtraIds={selectedExtraIds}
                           canManage={canManage}
                           highlighted={extrasHighlighted}
+                          priceErrors={priceFieldErrors}
+                          onPriceEdited={(itemId) =>
+                            setPriceFieldErrors((current) => {
+                              const key = `EXTRA:${itemId}`;
+                              if (!current[key]) return current;
+                              const next = { ...current };
+                              delete next[key];
+                              return next;
+                            })
+                          }
                           onToggleExtra={handleToggleExtra}
                           onCatalogChanged={refreshCatalog}
                           onInteract={() => setExtrasReviewed(true)}
@@ -1597,7 +1680,15 @@ export function MealMenuEditorPage() {
         onSave={handleComboCreated}
       />
 
-      <Dialog open={leaveOpen} onClose={() => setLeaveOpen(false)} fullWidth maxWidth="xs">
+      <Dialog
+        open={leaveOpen || pendingMenuDate != null}
+        onClose={() => {
+          setLeaveOpen(false);
+          setPendingMenuDate(null);
+        }}
+        fullWidth
+        maxWidth="xs"
+      >
         <DialogTitle>{t('meals.menu.unsavedTitle')}</DialogTitle>
         <DialogContent>
           <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary, whiteSpace: 'pre-line' }}>
@@ -1605,21 +1696,29 @@ export function MealMenuEditorPage() {
           </Typography>
         </DialogContent>
         <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
-          <Button onClick={() => setLeaveOpen(false)} sx={dashOutlinedButtonSx}>
+          <Button
+            onClick={() => {
+              setLeaveOpen(false);
+              setPendingMenuDate(null);
+            }}
+            sx={dashOutlinedButtonSx}
+          >
             {t('common.cancel')}
           </Button>
           <Button color="error" onClick={discardAndLeave} sx={dashOutlinedButtonSx}>
             {t('meals.menu.discardChanges', { defaultValue: 'Discard' })}
           </Button>
-          <Button
-            onClick={() => {
-              setLeaveOpen(false);
-              void persist();
-            }}
-            sx={dashOutlinedButtonSx}
-          >
-            {t('meals.actions.saveDraft')}
-          </Button>
+          {pendingMenuDate == null ? (
+            <Button
+              onClick={() => {
+                setLeaveOpen(false);
+                void persist();
+              }}
+              sx={dashOutlinedButtonSx}
+            >
+              {t('meals.actions.saveDraft')}
+            </Button>
+          ) : null}
         </DialogActions>
       </Dialog>
     </Box>

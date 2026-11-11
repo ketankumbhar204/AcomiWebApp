@@ -59,7 +59,7 @@ function BrandMark({ collapsed }: { collapsed: boolean }) {
           objectFit: 'contain',
           flexShrink: 0,
           display: 'block',
-          backgroundColor: '#000000',
+          backgroundColor: 'transparent',
         }}
       />
       {!collapsed ? (

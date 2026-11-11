@@ -19,7 +19,7 @@ export function AuthBrandMark({ size = AUTH_UX.markSize }: AuthBrandMarkProps) {
         borderRadius: `${Math.round(size * 0.22)}px`,
         objectFit: 'contain',
         display: 'block',
-        backgroundColor: '#000000',
+        backgroundColor: 'transparent',
       }}
     />
   );

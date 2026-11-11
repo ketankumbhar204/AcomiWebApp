@@ -41,6 +41,8 @@ type MealExtrasEnablePanelProps = {
   enabledExtraIds: Set<string>;
   canManage: boolean;
   highlighted?: boolean;
+  priceErrors?: Record<string, 'required' | 'invalid' | 'nonPositive'>;
+  onPriceEdited?: (itemId: string) => void;
   onToggleExtra: (item: FoodItemResponse, enabled: boolean, price?: number | null) => void;
   onCatalogChanged: () => void;
   onInteract: () => void;
@@ -55,6 +57,8 @@ export function MealExtrasEnablePanel({
   enabledExtraIds,
   canManage,
   highlighted = false,
+  priceErrors,
+  onPriceEdited,
   onToggleExtra,
   onCatalogChanged,
   onInteract,
@@ -69,6 +73,13 @@ export function MealExtrasEnablePanel({
   const [browseOpen, setBrowseOpen] = useState(false);
   const [browseSearch, setBrowseSearch] = useState('');
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!priceErrors) return;
+    if (Object.keys(priceErrors).some((key) => key.startsWith('EXTRA:'))) {
+      setBrowseOpen(true);
+    }
+  }, [priceErrors]);
   const [addingAll, setAddingAll] = useState(false);
   const optedOutRef = useRef<Set<string>>(new Set());
 
@@ -249,6 +260,15 @@ export function MealExtrasEnablePanel({
       (item.defaultPrice != null ? String(item.defaultPrice) : '');
     const parsedLive = priceText.trim() ? parsePriceInput(priceText) : item.defaultPrice ?? null;
     const eachLabel = formatUnitEach(parsedLive, item.currencyCode, t);
+    const errorKind = priceErrors?.[`EXTRA:${item.itemId}`];
+    const errorText =
+      errorKind === 'required'
+        ? t('meals.pricing.priceRequiredInline')
+        : errorKind === 'nonPositive'
+          ? t('meals.pricing.priceMustBePositive')
+          : errorKind === 'invalid'
+            ? t('meals.pricing.priceInvalid')
+            : undefined;
 
     return (
       <MealPlanSelectableCard
@@ -274,9 +294,12 @@ export function MealExtrasEnablePanel({
               <TextField
                 size="small"
                 value={priceText}
-                onChange={(e) =>
-                  setPriceDrafts((d) => ({ ...d, [item.itemId]: e.target.value }))
-                }
+                error={Boolean(errorText)}
+                helperText={errorText}
+                onChange={(e) => {
+                  setPriceDrafts((d) => ({ ...d, [item.itemId]: e.target.value }));
+                  onPriceEdited?.(item.itemId);
+                }}
                 onBlur={() => void persistPrice(item, priceText)}
                 placeholder="₹"
                 sx={{
@@ -289,6 +312,7 @@ export function MealExtrasEnablePanel({
                   },
                 }}
                 slotProps={{
+                  htmlInput: { id: `meal-price-EXTRA:${item.itemId}` },
                   input: {
                     startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                   },

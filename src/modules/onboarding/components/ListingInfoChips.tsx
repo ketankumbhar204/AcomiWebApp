@@ -3,6 +3,7 @@ import { IndianRupee, Info, Map, MapPin, Phone, Sparkles, UtensilsCrossed, type 
 import { useTranslation } from 'react-i18next';
 import {
   INFO_GRID_KEYS,
+  isContactGatedSection,
   listingInfoFlags,
   type ListingInfoFlags,
   type ListingInfoSource,
@@ -13,6 +14,11 @@ type ListingInfoChipsProps = {
   listing: ListingInfoSource;
   variant: 'card' | 'detail';
   surface?: 'places' | 'meals';
+  /**
+   * Same gate as Get Contact Details. When set, Contact/Map chips open this
+   * instead of scrolling to an empty contact section.
+   */
+  onEnquire?: () => void;
   /** Opens the matching section on the listing detail. */
   onSelect?: (section: ListingSection) => void;
   /** Opens the existing listing detail. Used by the card layout only. */
@@ -41,6 +47,7 @@ export function ListingInfoChips({
   listing,
   variant,
   surface = 'places',
+  onEnquire,
   onSelect,
   onViewAll,
 }: ListingInfoChipsProps) {
@@ -49,6 +56,17 @@ export function ListingInfoChips({
   const flags = listingInfoFlags(listing);
   const meals = surface === 'meals';
   const isDark = theme.palette.mode === 'dark';
+
+  function handleSelect(section: ListingSection) {
+    if (isContactGatedSection(section) && onEnquire) {
+      onEnquire();
+      return;
+    }
+    onSelect?.(section);
+  }
+
+  const canSelect = (key: ListingSection) =>
+    Boolean(onSelect || (isContactGatedSection(key) && onEnquire));
 
   if (variant === 'card') {
     return (
@@ -121,9 +139,9 @@ export function ListingInfoChips({
                 }}
               >
                 <Box
-                  component={onSelect ? 'button' : 'div'}
-                  type={onSelect ? 'button' : undefined}
-                  onClick={() => onSelect?.(key)}
+                  component={canSelect(key) ? 'button' : 'div'}
+                  type={canSelect(key) ? 'button' : undefined}
+                  onClick={() => handleSelect(key)}
                   aria-label={state}
                   sx={{
                     display: 'flex',
@@ -136,7 +154,7 @@ export function ListingInfoChips({
                     p: 0,
                     color: 'inherit',
                     font: 'inherit',
-                    cursor: onSelect ? 'pointer' : 'default',
+                    cursor: canSelect(key) ? 'pointer' : 'default',
                   }}
                 >
                 <Box
@@ -204,9 +222,9 @@ export function ListingInfoChips({
             sx={{ minWidth: 0 }}
           >
             <Box
-              component={onSelect ? 'button' : 'div'}
-              type={onSelect ? 'button' : undefined}
-              onClick={() => onSelect?.(key)}
+              component={canSelect(key) ? 'button' : 'div'}
+              type={canSelect(key) ? 'button' : undefined}
+              onClick={() => handleSelect(key)}
               aria-label={state}
               sx={{
                 display: 'flex',
@@ -220,7 +238,7 @@ export function ListingInfoChips({
                 borderColor: available ? '#C6EBD7' : '#E6E8EC',
                 bgcolor: available ? '#F3FBF7' : '#F4F5F7',
                 color: available ? '#0F172A' : '#8B95A1',
-                cursor: onSelect ? 'pointer' : 'default',
+                cursor: canSelect(key) ? 'pointer' : 'default',
                 textAlign: 'left',
               }}
             >

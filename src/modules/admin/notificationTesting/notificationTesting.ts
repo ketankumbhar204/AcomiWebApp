@@ -177,7 +177,7 @@ export function resultMessage(attempt: AdminNotificationTestAttempt): string {
 
 function pushHintFallback(attempt: AdminNotificationTestAttempt): string {
   if (attempt.errorCode === 'NO_REGISTRATION') {
-    return 'No active registration belongs to this admin account. Sign in on the ACOMI Android app and allow notifications.';
+    return 'No active registration belongs to this admin account. Sign in on the Acomi Android app and allow notifications.';
   }
   return attempt.errorCode || 'The test was blocked. No FCM request was sent.';
 }

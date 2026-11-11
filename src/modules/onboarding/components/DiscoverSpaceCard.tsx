@@ -61,9 +61,9 @@ export function DiscoverSpaceCard({ space, onViewDetails }: DiscoverSpaceCardPro
   const sendingEnquiry = useIsEnquirySending(space.spaceId);
   const sentVia = useInquirySentVia(space.spaceId);
   const sentWhere = sentVia === 'APP'
-    ? t('spaces.findPlace.inquirySentInApp', { defaultValue: 'Sent in the ACOMI app' })
+    ? t('spaces.findPlace.inquirySentInApp', { defaultValue: 'Sent in the Acomi app' })
     : sentVia === 'BOTH'
-      ? t('spaces.findPlace.inquirySentEmailAndApp', { defaultValue: 'Sent to your email and the ACOMI app' })
+      ? t('spaces.findPlace.inquirySentEmailAndApp', { defaultValue: 'Sent to your email and the Acomi app' })
       : sentVia === 'EMAIL'
         ? t('spaces.findPlace.inquirySentByEmail', { defaultValue: 'Sent to your email' })
         : null;
@@ -337,6 +337,11 @@ export function DiscoverSpaceCard({ space, onViewDetails }: DiscoverSpaceCardPro
             surface={isMess ? 'meals' : 'places'}
             onViewAll={() => onViewDetails(space.spaceId)}
             onSelect={(section) => onViewDetails(space.spaceId, section)}
+            onEnquire={
+              contactViewed || alreadyInquired
+                ? undefined
+                : () => onViewDetails(space.spaceId, 'contact')
+            }
           />
         </Box>
 

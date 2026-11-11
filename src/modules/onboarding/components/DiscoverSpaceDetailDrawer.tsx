@@ -717,6 +717,7 @@ export function DiscoverSpaceDetailDrawer({
                       variant="detail"
                       surface={detail.type === 'MESS' ? 'meals' : 'places'}
                       onSelect={scrollToSection}
+                      onEnquire={unlocked ? undefined : () => setEnquireOpen(true)}
                     />
                   </Box>
                 </Box>

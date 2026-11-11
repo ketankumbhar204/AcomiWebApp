@@ -31,7 +31,7 @@ export function InquirySentDetails({ listingId }: { listingId: string }) {
   const alreadySent = t('spaces.findPlace.inquiryAlreadySent', { defaultValue: 'Inquiry already sent' });
   const statusLine = [
     alreadySent,
-    email || (appOnly ? t('spaces.findPlace.inquirySentInApp', { defaultValue: 'Sent in the ACOMI app' }) : null),
+    email || (appOnly ? t('spaces.findPlace.inquirySentInApp', { defaultValue: 'Sent in the Acomi app' }) : null),
     when,
   ]
     .filter(Boolean)

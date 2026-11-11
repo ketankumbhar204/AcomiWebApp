@@ -7,6 +7,8 @@ import { Link as RouterLink, useParams, useSearchParams } from 'react-router-dom
 import { mealsApi } from '@/modules/meals/api/mealsApi';
 import {
   buildMealResponseLists,
+  buildMealResponseOptionChips,
+  matchesMealResponseOption,
   matchesMealResponseSearch,
   mealResponseCardStatus,
   type MealResponseFilter,
@@ -74,6 +76,7 @@ export function MealResponsesPage() {
   const mealTypeParam = searchParams.get('mealType');
   const mealType = isMealType(mealTypeParam) ? mealTypeParam : null;
   const [filter, setFilter] = useState<MealResponseFilter>('responded');
+  const [optionFilter, setOptionFilter] = useState<string>('all');
   const [query, setQuery] = useState('');
 
   const detailQuery = useQuery({
@@ -83,6 +86,10 @@ export function MealResponsesPage() {
   });
 
   const lists = useMemo(() => buildMealResponseLists(detailQuery.data), [detailQuery.data]);
+  const optionChips = useMemo(
+    () => buildMealResponseOptionChips(detailQuery.data),
+    [detailQuery.data],
+  );
   const rows =
     filter === 'eligible'
       ? lists.eligible
@@ -90,8 +97,12 @@ export function MealResponsesPage() {
         ? lists.notResponded
         : lists.responded;
   const visibleRows = useMemo(
-    () => rows.filter((row) => matchesMealResponseSearch(row, query)),
-    [query, rows],
+    () =>
+      rows.filter(
+        (row) =>
+          matchesMealResponseSearch(row, query) && matchesMealResponseOption(row, optionFilter),
+      ),
+    [optionFilter, query, rows],
   );
   const mealLabel = mealType
     ? t(`meals.mealType.${mealType}`)
@@ -175,7 +186,12 @@ export function MealResponsesPage() {
               component="button"
               type="button"
               aria-pressed={selected}
-              onClick={() => setFilter(id)}
+              onClick={() => {
+                setFilter(id);
+                if (id !== 'responded') {
+                  setOptionFilter('all');
+                }
+              }}
               sx={chipStyle(id, selected)}
             >
               {label}
@@ -201,6 +217,71 @@ export function MealResponsesPage() {
           );
         })}
       </Box>
+
+      {filter === 'responded' && optionChips.length > 0 ? (
+        <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 0.5 }}>
+          <Box
+            component="button"
+            type="button"
+            aria-pressed={optionFilter === 'all'}
+            onClick={() => setOptionFilter('all')}
+            sx={chipStyle('responded', optionFilter === 'all')}
+          >
+            {t('meals.responses.filterAllMenus', { defaultValue: 'All menus' })}
+            <Box
+              component="span"
+              sx={{
+                minWidth: 18,
+                height: 18,
+                px: 0.5,
+                borderRadius: 9,
+                bgcolor: STATUS_TONE.responded.fg,
+                color: '#fff',
+                fontSize: 10,
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {lists.responded.length}
+            </Box>
+          </Box>
+          {optionChips.map((chip) => {
+            const selected = optionFilter === chip.optionId;
+            return (
+              <Box
+                key={chip.optionId}
+                component="button"
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setOptionFilter(chip.optionId)}
+                sx={chipStyle('responded', selected)}
+              >
+                {chip.label}
+                <Box
+                  component="span"
+                  sx={{
+                    minWidth: 18,
+                    height: 18,
+                    px: 0.5,
+                    borderRadius: 9,
+                    bgcolor: STATUS_TONE.responded.fg,
+                    color: '#fff',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {chip.count}
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+      ) : null}
 
       {mealType && menuDate && !detailQuery.isLoading && !detailQuery.isError ? (
         <TextField

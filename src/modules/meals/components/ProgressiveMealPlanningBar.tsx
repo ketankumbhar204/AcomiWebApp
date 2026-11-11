@@ -100,6 +100,7 @@ export function ProgressiveMealPlanningBar({
         disabled: saving || saveDisabled,
       }}
       compact
+      secondaryFirst
     />
   );
 }

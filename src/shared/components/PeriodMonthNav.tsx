@@ -111,23 +111,22 @@ export function PeriodMonthNav({
           alignItems: 'center',
           justifyContent: 'center',
           px: 0.75,
-          border: 'none',
-          background: 'transparent',
+          border: `1px solid ${colors.primary}`,
+          background: colors.lightGreen,
           cursor: pickerEnabled ? 'pointer' : 'default',
           fontFamily: 'inherit',
           borderRadius: `${DASHBOARD_UX.buttonRadius}px`,
-          '&:hover': pickerEnabled ? { bgcolor: s.hover } : undefined,
+          '&:hover': pickerEnabled ? { bgcolor: colors.mintSubtle } : undefined,
         }}
       >
         <Typography
           sx={{
-            fontSize: size === 'compact' ? 13 : 14,
-            fontWeight: 600,
-            color: s.textPrimary,
+            fontSize: size === 'compact' ? 14 : 16,
+            fontWeight: 800,
+            color: colors.primaryDark,
             textAlign: 'center',
             lineHeight: 1.2,
-            textDecoration: pickerEnabled ? 'underline' : 'none',
-            textUnderlineOffset: 3,
+            textDecoration: 'none',
           }}
         >
           {formatMonthLabel(month, i18n.language)}

@@ -20,7 +20,7 @@ export function enquiryErrorMessage(error: unknown, fallback: string, listingUna
   }
   if (error instanceof ApiError) {
     if (error.errorCode === 'WEB_FREE_LIMIT_REACHED' || error.errorCode === 'INQUIRY_CREDITS_REQUIRED') {
-      return error.message?.trim() || 'Your free enquiries are used. Purchase credits or use the ACOMI app.';
+      return error.message?.trim() || 'Your free enquiries are used. Purchase credits or use the Acomi app.';
     }
     if (error.errorCode === 'INQUIRY_PAYMENT_DISABLED') {
       return error.message?.trim() || 'Credit purchases are temporarily unavailable.';

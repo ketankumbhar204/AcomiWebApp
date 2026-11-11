@@ -799,7 +799,7 @@ export function InquiryLimitDialog({
               : mobileBrowser
                 ? t('spaces.findPlace.enquire.limitMobileBody', {
                     defaultValue:
-                      'Get unlimited enquiries with the ACOMI Android app, or choose paid email enquiries.',
+                      'Get unlimited enquiries with the Acomi Android app, or choose paid email enquiries.',
                   })
                 : (
                   <>
@@ -822,7 +822,7 @@ export function InquiryLimitDialog({
                 defaultValue: 'Unlimited enquiries',
               })}
               body={t('spaces.findPlace.enquire.limitUnlimitedBody', {
-                defaultValue: 'Use the ACOMI Android app for free and enjoy unlimited enquiries.',
+                defaultValue: 'Use the Acomi Android app for free and enjoy unlimited enquiries.',
               })}
               badge={t('spaces.findPlace.enquire.recommended', { defaultValue: 'Recommended' })}
             />
@@ -887,7 +887,7 @@ export function InquiryLimitDialog({
           sx={{ ...dashContainedButtonSx, borderRadius: '999px' }}
         >
           {mobileBrowser && choice === 'app'
-            ? t('spaces.findPlace.enquire.limitGetAppCta', { defaultValue: 'Get the ACOMI app' })
+            ? t('spaces.findPlace.enquire.limitGetAppCta', { defaultValue: 'Get the Acomi app' })
             : primaryPkg
               ? t('spaces.findPlace.enquire.limitGetCreditsCta', {
                   count: primaryPkg.credits,

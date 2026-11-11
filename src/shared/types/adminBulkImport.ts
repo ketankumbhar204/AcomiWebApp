@@ -56,7 +56,7 @@ export function isExactExcelHeaderMatch(
   return field === 'MAP_URL' && MAP_URL_HEADER_ALIASES.has(normalized);
 }
 
-/** Fills unmapped fields when an Excel header matches the Acomi field label or MAP_URL aliases. */
+/** Fills unmapped fields when an Excel header matches the ACOMI field label or MAP_URL aliases. */
 export function applyExcelHeaderFallbacks(
   mapping: PropertyBulkImportMapping,
   headers: string[],
