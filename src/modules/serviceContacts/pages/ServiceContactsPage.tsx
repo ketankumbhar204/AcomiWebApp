@@ -23,7 +23,7 @@ import {
   UserRound,
   Wrench,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -57,7 +57,6 @@ export function ServiceContactsPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState('');
-  const [spaceId, setSpaceId] = useState('');
   const [sort, setSort] = useState<ServiceContactSort>('updated');
   const [page, setPage] = useState(0);
   const [editor, setEditor] = useState<ServiceContact | null | undefined>(undefined);
@@ -75,12 +74,11 @@ export function ServiceContactsPage() {
     queryFn: () => serviceContactsApi.categories(),
   });
   const listQuery = useQuery({
-    queryKey: ['service-contacts', userId, debouncedSearch, category, spaceId, sort, page],
+    queryKey: ['service-contacts', userId, debouncedSearch, category, sort, page],
     queryFn: () =>
       serviceContactsApi.list({
         q: debouncedSearch || undefined,
         category: category || undefined,
-        spaceId: spaceId || undefined,
         sort,
         page,
         size: PAGE_SIZE,
@@ -89,14 +87,7 @@ export function ServiceContactsPage() {
 
   const contacts = listQuery.data?.content ?? [];
   const total = listQuery.data?.totalElements ?? 0;
-  const filtering = Boolean(debouncedSearch || category || spaceId);
-  const operatorSpaces = useMemo(
-    () =>
-      spaces.filter((space) =>
-        ['OWNER', 'MANAGER', 'STAFF'].includes(space.membershipRole),
-      ),
-    [spaces],
-  );
+  const filtering = Boolean(debouncedSearch || category);
 
   function refresh() {
     void queryClient.invalidateQueries({ queryKey: ['service-contacts'] });
@@ -177,23 +168,6 @@ export function ServiceContactsPage() {
               {(categoriesQuery.data ?? []).map((item) => (
                 <MenuItem key={item.code} value={item.code}>
                   {item.label}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
-              label={t('serviceContacts.spacesLabel')}
-              value={spaceId}
-              onChange={(event) => {
-                setSpaceId(event.target.value);
-                setPage(0);
-              }}
-              sx={{ minWidth: { md: 200 } }}
-            >
-              <MenuItem value="">{t('serviceContacts.spaceAll')}</MenuItem>
-              {operatorSpaces.map((space) => (
-                <MenuItem key={space.spaceId} value={space.spaceId}>
-                  {space.spaceName}
                 </MenuItem>
               ))}
             </TextField>
@@ -292,7 +266,6 @@ export function ServiceContactsPage() {
         open={editor !== undefined}
         contact={editor ?? null}
         categories={categoriesQuery.data ?? []}
-        spaces={spaces}
         onClose={() => setEditor(undefined)}
         onSaved={() => {
           setEditor(undefined);
@@ -412,11 +385,6 @@ function ContactCard({
         <Row icon={<UserRound size={15} />} text={contact.contactPersonName} />
       ) : null}
       {phone ? <Row icon={<Phone size={15} />} text={phone} /> : null}
-      {contact.spaces.length > 0 ? (
-        <Typography sx={{ ...DASHBOARD_UX.body, color: s.textSecondary }}>
-          {contact.spaces.map((space) => space.name).join(', ')}
-        </Typography>
-      ) : null}
       <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
         {call ? (
           <Button component="a" href={call} size="small" variant="outlined" sx={dashOutlinedButtonSx}>
@@ -471,11 +439,6 @@ function Detail({ contact }: { contact: ServiceContact }) {
       ))}
       {contact.description ? <Typography>{contact.description}</Typography> : null}
       {contact.notes ? <Typography>{contact.notes}</Typography> : null}
-      <Typography>
-        {contact.spaces.length > 0
-          ? contact.spaces.map((space) => space.name).join(', ')
-          : t('serviceContacts.noSpaces')}
-      </Typography>
     </Stack>
   );
 }

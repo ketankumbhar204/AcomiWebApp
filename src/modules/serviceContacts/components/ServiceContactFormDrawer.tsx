@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
@@ -10,7 +9,6 @@ import {
   FormHelperText,
   InputAdornment,
   InputLabel,
-  ListItemText,
   MenuItem,
   Select,
   Stack,
@@ -18,7 +16,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from 'notistack';
 import { AppDrawer } from '@/shared/components/AppDrawer';
@@ -27,10 +25,8 @@ import { dashContainedButtonSx, dashOutlinedButtonSx } from '@/shared/theme/dash
 import { colors } from '@/shared/theme/colors';
 import { getErrorMessage } from '@/shared/api/errors';
 import { normalizeIndianMobileDigits } from '@/shared/utils/indianMobile';
-import type { MySpaceResponse } from '@/shared/types/space';
 import { serviceContactsApi } from '../api/serviceContactsApi';
 import type { ServiceContact, ServiceContactCategoryOption, ServiceContactDraft } from '../types';
-import { associableSpaces } from '../utils/serviceContactAccess';
 import { readDuplicate } from '../utils/serviceContactErrors';
 import {
   draftFromContact,
@@ -43,7 +39,6 @@ type ServiceContactFormDrawerProps = {
   open: boolean;
   contact: ServiceContact | null;
   categories: ServiceContactCategoryOption[];
-  spaces: MySpaceResponse[];
   onClose: () => void;
   onSaved: () => void;
 };
@@ -61,7 +56,6 @@ export function ServiceContactFormDrawer({
   open,
   contact,
   categories,
-  spaces,
   onClose,
   onSaved,
 }: ServiceContactFormDrawerProps) {
@@ -73,7 +67,6 @@ export function ServiceContactFormDrawer({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [duplicate, setDuplicate] = useState<{ strong: boolean; names: string[] } | null>(null);
-  const choices = useMemo(() => associableSpaces(spaces), [spaces]);
 
   useEffect(() => {
     if (!open) {
@@ -237,33 +230,6 @@ export function ServiceContactFormDrawer({
                 minRows={3}
                 onChange={(event) => setField('notes', event.target.value)}
               />
-              <FormControl>
-                <InputLabel id="service-contact-spaces">{t('serviceContacts.spacesLabel')}</InputLabel>
-                <Select
-                  labelId="service-contact-spaces"
-                  label={t('serviceContacts.spacesLabel')}
-                  multiple
-                  value={draft.spaceIds}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setField('spaceIds', typeof value === 'string' ? value.split(',') : value);
-                  }}
-                  renderValue={(selected) =>
-                    choices
-                      .filter((space) => selected.includes(space.spaceId))
-                      .map((space) => space.spaceName)
-                      .join(', ') || t('serviceContacts.noSpaces')
-                  }
-                >
-                  {choices.map((space) => (
-                    <MenuItem key={space.spaceId} value={space.spaceId}>
-                      <Checkbox checked={draft.spaceIds.includes(space.spaceId)} />
-                      <ListItemText primary={space.spaceName} />
-                    </MenuItem>
-                  ))}
-                </Select>
-                <FormHelperText>{t('serviceContacts.reuseHint')}</FormHelperText>
-              </FormControl>
             </Stack>
           </Box>
           <Stack direction="row" spacing={1} sx={{ p: 2, borderTop: `1px solid ${s.border}` }}>

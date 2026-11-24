@@ -41,12 +41,30 @@ export function photoRequestActionLabel(hasPhotos: boolean): string {
   return hasPhotos ? 'Request more photos on WhatsApp' : 'Request photos on WhatsApp';
 }
 
+export function photoRequestActionLabelKey(hasPhotos: boolean): string {
+  return hasPhotos ? 'spaces.findPlace.photoRequestActionMore' : 'spaces.findPlace.photoRequestAction';
+}
+
 export function photoRequestTitle(kind: PhotoRequestKind, hasPhotos: boolean): string {
   if (kind === 'mess') {
     return hasPhotos ? 'Request more mess photos' : 'Request mess photos';
   }
   return hasPhotos ? 'Request more property photos' : 'Request property photos';
 }
+
+export function photoRequestTitleKey(kind: PhotoRequestKind, hasPhotos: boolean): string {
+  if (kind === 'mess') {
+    return hasPhotos ? 'spaces.findPlace.photoRequestTitleMessMore' : 'spaces.findPlace.photoRequestTitleMess';
+  }
+  return hasPhotos
+    ? 'spaces.findPlace.photoRequestTitlePropertyMore'
+    : 'spaces.findPlace.photoRequestTitleProperty';
+}
+
+export type PhotoRequestTranslate = (
+  key: string,
+  options: { defaultValue: string; subject?: string },
+) => string;
 
 export function friendlySpaceType(type: string | null | undefined): string | null {
   const key = (type ?? '').trim().toUpperCase().replace(/[\s-]+/g, '_');
@@ -71,18 +89,30 @@ export function buildPhotoRequestMessage(input: {
   name?: string | null;
   spaceType?: string | null;
   location?: string | null;
+  translate?: PhotoRequestTranslate;
 }): string {
+  const translate: PhotoRequestTranslate =
+    input.translate ?? ((_key, options) => options.defaultValue);
   const name = cleanPhrase(input.name);
   const more = input.hasPhotos ? 'more ' : '';
+  const moreSuffix = input.hasPhotos ? 'More' : '';
   if (input.kind === 'mess') {
-    const subject = name || 'your mess';
+    const subject =
+      name || translate('spaces.findPlace.photoRequestSubjectMess', { defaultValue: 'your mess' });
     return withAcomiAppLink(
-      `Hi, I'm interested in ${subject}. Could you please share some ${more}recent photos of the menu, food, and service? Thank you.`,
+      translate(`spaces.findPlace.photoRequestMessageMess${moreSuffix}`, {
+        subject,
+        defaultValue: `Hi, I'm interested in ${subject}. Could you please share some ${more}recent photos of the menu, food, and service? Thank you.`,
+      }),
     );
   }
-  const subject = name || 'this property';
+  const subject =
+    name || translate('spaces.findPlace.photoRequestSubjectProperty', { defaultValue: 'this property' });
   return withAcomiAppLink(
-    `Hi, I'm interested in ${subject}. Could you please share some ${more}recent photos of the property and available rooms? Thank you.`,
+    translate(`spaces.findPlace.photoRequestMessageProperty${moreSuffix}`, {
+      subject,
+      defaultValue: `Hi, I'm interested in ${subject}. Could you please share some ${more}recent photos of the property and available rooms? Thank you.`,
+    }),
   );
 }
 

@@ -11,7 +11,6 @@ import type {
 export interface ServiceContactListParams {
   q?: string;
   category?: string;
-  spaceId?: string;
   sort?: ServiceContactSort;
   page?: number;
   size?: number;
@@ -46,16 +45,4 @@ export const serviceContactsApi = {
 
   archive: (contactId: string) =>
     unwrapVoidResponse(apiClient.post(`/service-contacts/${contactId}/archive`)),
-
-  addSpace: (contactId: string, spaceId: string) =>
-    unwrapApiResponse(
-      apiClient.post<ApiResponse<ServiceContact>>(`/service-contacts/${contactId}/spaces/${spaceId}`),
-    ),
-
-  removeSpace: (contactId: string, spaceId: string) =>
-    unwrapApiResponse(
-      apiClient.delete<ApiResponse<ServiceContact>>(
-        `/service-contacts/${contactId}/spaces/${spaceId}`,
-      ),
-    ),
 };

@@ -127,29 +127,61 @@ function MetaLine({ text }: { text: string }) {
   );
 }
 
-function occupancyRentLine(
+const pricingChipSx = {
+  display: 'flex',
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 0.5,
+  px: 1,
+  py: 0.5,
+  borderRadius: 1,
+  bgcolor: 'rgba(255,255,255,0.72)',
+  border: '1px solid rgba(148,163,184,0.35)',
+} as const;
+
+function PricingChip({ label, value }: { label: string; value: string }) {
+  return (
+    <Box sx={pricingChipSx}>
+      <Typography sx={{ fontSize: 10, fontWeight: 600, color: 'text.secondary' }} noWrap>
+        {label}
+      </Typography>
+      <Typography
+        sx={{ fontSize: 11, fontWeight: 700, color: 'text.primary', fontVariantNumeric: 'tabular-nums' }}
+        noWrap
+      >
+        {value}
+      </Typography>
+    </Box>
+  );
+}
+
+function occupancyRentChip(
   occupancy: OccupancyResponse,
   t: (key: string, options?: { defaultValue?: string }) => string,
-): string | null {
+): { label: string; value: string } | null {
   const notRecorded = t('accommodation.pricingConfirm.notSet', { defaultValue: 'Not set' });
   const rate = formatOccupancyRentRate(occupancy, notRecorded);
   if (!rate.value || rate.value === notRecorded) {
     return null;
   }
-  const label = t(rate.labelKey, { defaultValue: rate.labelDefault });
-  return `${label}: ${rate.value}`;
+  return {
+    label: t(rate.labelKey, { defaultValue: rate.labelDefault }),
+    value: rate.value,
+  };
 }
 
-function occupancyDepositLine(
+function occupancyDepositChip(
   occupancy: OccupancyResponse,
   t: (key: string, options?: { defaultValue?: string }) => string,
-): string | null {
+): { label: string; value: string } | null {
   if (occupancy.depositSnapshot == null) {
     return null;
   }
-  return `${t('accommodation.fields.deposit', { defaultValue: 'Deposit' })}: ${money(
-    occupancy.depositSnapshot,
-  )}`;
+  return {
+    label: t('accommodation.fields.deposit', { defaultValue: 'Deposit' }),
+    value: money(occupancy.depositSnapshot),
+  };
 }
 
 function BedBalanceSummary({
@@ -164,14 +196,20 @@ function BedBalanceSummary({
   const { t } = useTranslation();
   const face = bedCardBalanceFace(summary);
   const rentUnbilled = notYetBilled && summary.rent == null;
-  const rentLine = occupancyRentLine(occupancy, t);
-  const depositLine = occupancyDepositLine(occupancy, t);
+  const rentChip = occupancyRentChip(occupancy, t);
+  const depositChip = occupancyDepositChip(occupancy, t);
+  const pricingChips = (
+    <>
+      {rentChip ? <PricingChip label={rentChip.label} value={rentChip.value} /> : null}
+      {depositChip ? <PricingChip label={depositChip.label} value={depositChip.value} /> : null}
+    </>
+  );
 
   if (rentUnbilled) {
     const title = t('accommodation.stayPayment.notYetBilled', { defaultValue: 'Not Yet Billed' });
     return (
       <Stack
-        spacing={0.25}
+        spacing={0.5}
         sx={{ minWidth: 0, width: '100%' }}
         aria-label={`Balance Due: ${title}`}
       >
@@ -179,6 +217,7 @@ function BedBalanceSummary({
           label={t('accommodation.stayPayment.balanceDue', { defaultValue: 'Balance Due' })}
           value={title}
         />
+        {pricingChips}
       </Stack>
     );
   }
@@ -190,7 +229,12 @@ function BedBalanceSummary({
         : face.status === 'UNDER_REVIEW'
           ? t('accommodation.stayPayment.underReview', { defaultValue: 'Under review' })
           : t('accommodation.stayPayment.unavailable', { defaultValue: 'Payment status unavailable' });
-    return <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{title}</Typography>;
+    return (
+      <Stack spacing={0.5} sx={{ minWidth: 0, width: '100%' }}>
+        <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{title}</Typography>
+        {pricingChips}
+      </Stack>
+    );
   }
 
   if (face.kind === 'paid') {
@@ -204,12 +248,13 @@ function BedBalanceSummary({
         : null;
     return (
       <Stack
-        spacing={0.25}
+        spacing={0.5}
         sx={{ minWidth: 0, width: '100%' }}
         aria-label={[paidLabel, paidDetail].filter(Boolean).join(', ')}
       >
         <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'success.main' }}>{paidLabel}</Typography>
         {paidDetail ? <MetaLine text={paidDetail} /> : null}
+        {pricingChips}
       </Stack>
     );
   }
@@ -218,13 +263,19 @@ function BedBalanceSummary({
   const amount = money(face.outstanding);
   return (
     <Stack
-      spacing={0.25}
+      spacing={0.5}
       sx={{ minWidth: 0, width: '100%' }}
-      aria-label={[balanceLabel, amount, rentLine, depositLine].filter(Boolean).join(', ')}
+      aria-label={[
+        balanceLabel,
+        amount,
+        rentChip ? `${rentChip.label} ${rentChip.value}` : null,
+        depositChip ? `${depositChip.label} ${depositChip.value}` : null,
+      ]
+        .filter(Boolean)
+        .join(', ')}
     >
       <BalanceDueLine label={balanceLabel} value={amount} />
-      {rentLine ? <MetaLine text={rentLine} /> : null}
-      {depositLine ? <MetaLine text={depositLine} /> : null}
+      {pricingChips}
     </Stack>
   );
 }

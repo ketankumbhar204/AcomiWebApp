@@ -46,7 +46,6 @@ export interface SaveServiceContactBody {
   description?: string | null;
   address?: string | null;
   notes?: string | null;
-  spaceIds?: string[] | null;
   acknowledgeDuplicate?: boolean;
   version?: number | null;
 }
@@ -73,6 +72,5 @@ export interface ServiceContactDraft {
   description: string;
   address: string;
   notes: string;
-  spaceIds: string[];
   version: number | null;
 }

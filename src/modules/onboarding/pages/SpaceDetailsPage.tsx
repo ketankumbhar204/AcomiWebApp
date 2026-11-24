@@ -497,6 +497,20 @@ export function SpaceDetailsPage() {
                   value={details.amenities.map((a) => a.label || a.code).join(', ')}
                 />
               ) : null}
+              {details.rules?.length ? (
+                <Box sx={{ gridColumn: { md: '1 / -1' } }}>
+                  <Typography sx={{ ...DASHBOARD_UX.metricLabel, color: s.textMuted, mb: 1 }}>
+                    {t('spaces.rules.title', { defaultValue: 'Rules & Guidelines' })}
+                  </Typography>
+                  <Stack spacing={0.75}>
+                    {details.rules.map((rule, index) => (
+                      <Typography key={`${rule.code}-${index}`} sx={{ color: s.textPrimary, lineHeight: 1.45 }}>
+                        ✓ {rule.label}
+                      </Typography>
+                    ))}
+                  </Stack>
+                </Box>
+              ) : null}
             </Box>
 
             <Box

@@ -1,6 +1,6 @@
 import apiClient from '@/shared/api/client';
 import { unwrapApiResponse, unwrapVoidResponse } from '@/shared/api/apiRequest';
-import type { ApiResponse } from '@/shared/types/api';
+import type { ApiResponse, PagedResponse } from '@/shared/types/api';
 import type {
   CreateInvitationRequest,
   CreateMemberDocumentRequest,
@@ -9,6 +9,8 @@ import type {
   ImportMemberRequest,
   InvitationResponse,
   MemberDetailsResponse,
+  MemberDirectoryPersonResponse,
+  MemberDirectorySearchParams,
   MemberDocumentResponse,
   MemberHistoryResponse,
   MemberImportCandidateResponse,
@@ -41,6 +43,26 @@ function buildMemberListQuery(params?: MemberSearchParams): string {
 }
 
 export const memberApi = {
+  /** Owner-level unique people across spaces. GET /members/directory */
+  getDirectory: async (
+    params: MemberDirectorySearchParams = {},
+  ): Promise<PagedResponse<MemberDirectoryPersonResponse>> => {
+    const query: Record<string, string | number> = {
+      page: params.page ?? 0,
+      size: params.size ?? 20,
+    };
+    if (params.search?.trim()) query.search = params.search.trim();
+    if (params.spaceId) query.spaceId = params.spaceId;
+    if (params.spaceType) query.spaceType = params.spaceType;
+    if (params.status) query.status = params.status;
+    return unwrapApiResponse(
+      apiClient.get<ApiResponse<PagedResponse<MemberDirectoryPersonResponse>>>(
+        '/members/directory',
+        { params: query },
+      ),
+    );
+  },
+
   getMembers: async (spaceId: string, params?: MemberSearchParams): Promise<MemberResponse[]> => {
     const query = buildMemberListQuery(params);
     return unwrapApiResponse(

@@ -320,10 +320,10 @@ export function PaymentSettlementActions({ spaceId, payment, canManage }: Props)
                   >
                     <MenuItem value="">{t('common.none', { defaultValue: 'None' })}</MenuItem>
                     <MenuItem value="UPI">UPI</MenuItem>
-                    <MenuItem value="BANK_TRANSFER">Bank transfer</MenuItem>
-                    <MenuItem value="CASH">Cash</MenuItem>
-                    <MenuItem value="CHEQUE">Cheque</MenuItem>
-                    <MenuItem value="OTHER">Other</MenuItem>
+                    <MenuItem value="BANK_TRANSFER">{t('paymentCollection.method.BANK_TRANSFER')}</MenuItem>
+                    <MenuItem value="CASH">{t('paymentCollection.method.CASH')}</MenuItem>
+                    <MenuItem value="CHEQUE">{t('paymentCollection.method.CHEQUE')}</MenuItem>
+                    <MenuItem value="OTHER">{t('paymentCollection.method.OTHER')}</MenuItem>
                   </Select>
                 </FormControl>
                 <TextField

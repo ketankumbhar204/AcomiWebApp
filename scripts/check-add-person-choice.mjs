@@ -22,16 +22,24 @@ const en = source('src/i18n/locales/en.json');
 assert.match(choice, /spaceType === 'MESS' \? 'customer' : 'member'/);
 assert.match(choice, /pickerMode: 'new'/);
 assert.match(choice, /pickerMode: 'search'/);
-assert.match(choice, /type: 'import-page'/);
+assert.doesNotMatch(choice, /import-page/);
+assert.match(choice, /addPersonOffersReuse/);
 assert.match(choice, /alreadyInTargetSpace !== true/);
 assert.doesNotMatch(choice, /availableForMoveIn !== false && candidate\.alreadyInTargetSpace/);
 
 const importPage = source('src/modules/members/pages/ImportExistingPeoplePage.tsx');
 const importHook = source('src/modules/members/hooks/useResidentImportSearch.ts');
-assert.match(importPage, /mealsApplicableForSpace/);
-assert.match(importPage, /alreadyInTargetSpace/);
-assert.match(importPage, /useResidentImportSearch\(spaceId, query, true, true\)/);
+assert.match(importPage, /<Navigate to=\{spaceMembersPath\(spaceId\)\} replace \/>/);
+assert.doesNotMatch(importPage, /memberApi/);
 assert.match(importHook, /includeUnavailable/);
+
+const wizard = source('src/modules/accommodation/pages/OccupancyWizardPage.tsx');
+assert.match(wizard, /useResidentImportSearch\(spaceId, memberSearch, usesReusePicker, false\)/);
+assert.match(wizard, /memberApi\.importMember/);
+assert.match(wizard, /availableForMoveIn/);
+
+assert.doesNotMatch(choice, /destinationForAddPersonChoice[\s\S]*import-page/);
+assert.doesNotMatch(members, /Import Existing/);
 assert.match(members, /includeUnavailable: true/);
 
 assert.match(dialog, /membership\.add\.choice\.titleCustomer/);
@@ -57,7 +65,8 @@ assert.match(members, /onClick=\{openAddChoice\}/);
 assert.match(members, /searchParams\.get\('addChoice'\) === '1'/);
 assert.match(members, /searchParams\.get\('create'\) === '1'/);
 assert.match(members, /initialPickerMode=\{createPickerMode\}/);
-assert.match(members, /spaceImportPeoplePath\(spaceId\)/);
+assert.doesNotMatch(members, /spaceImportPeoplePath/);
+assert.match(members, /ROUTES\.globalMembers/);
 assert.doesNotMatch(members, /spaceAddCustomersHubPath/);
 
 assert.match(drawer, /initialPickerMode/);
@@ -88,7 +97,7 @@ assert.match(health, /spaceMembersAddChoicePath\(spaceId\)/);
 assert.doesNotMatch(health, /spaceAddCustomersHubPath/);
 
 assert.match(en, /"titleCustomer": "Add a customer"/);
-assert.match(en, /"import": "Import from another space"/);
+assert.match(en, /"import": "Use existing customer"/);
 assert.match(en, /"importAvailable_other": "\{\{count\}\} members available"/);
 assert.match(en, /"addNewDescription": "Enter their details and add them to this space."/);
 

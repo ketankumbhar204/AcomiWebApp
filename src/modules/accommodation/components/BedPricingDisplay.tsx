@@ -36,17 +36,39 @@ export function BedPricingDisplay({
   const depositValue = formatPricingMoney(deposit, notSet);
 
   if (layout === 'inline') {
+    const chipSx = {
+      display: 'flex',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 0.5,
+      px: 1,
+      py: 0.5,
+      borderRadius: 1,
+      bgcolor: theme.palette.mode === 'dark' ? 'rgba(15,23,42,0.35)' : 'rgba(255,255,255,0.72)',
+      border: `1px solid ${theme.palette.mode === 'dark' ? s.border : 'rgba(148,163,184,0.35)'}`,
+    } as const;
     return (
       <Stack
-        spacing={0.25}
+        spacing={0.5}
         aria-label={`${rentLabel} ${rentValue}, ${depositLabel} ${depositValue}`}
       >
-        <Typography sx={{ fontSize: 12, fontWeight: 600, color: s.textPrimary }} noWrap>
-          {`${rentLabel}: ${rentValue}`}
-        </Typography>
-        <Typography sx={{ fontSize: 12, fontWeight: 600, color: s.textPrimary }} noWrap>
-          {`${depositLabel}: ${depositValue}`}
-        </Typography>
+        <Box sx={chipSx}>
+          <Typography sx={{ fontSize: 10, fontWeight: 600, color: s.textSecondary }} noWrap>
+            {rentLabel}
+          </Typography>
+          <Typography sx={{ fontSize: 11, fontWeight: 700, color: s.textPrimary, fontVariantNumeric: 'tabular-nums' }} noWrap>
+            {rentValue}
+          </Typography>
+        </Box>
+        <Box sx={chipSx}>
+          <Typography sx={{ fontSize: 10, fontWeight: 600, color: s.textSecondary }} noWrap>
+            {depositLabel}
+          </Typography>
+          <Typography sx={{ fontSize: 11, fontWeight: 700, color: s.textPrimary, fontVariantNumeric: 'tabular-nums' }} noWrap>
+            {depositValue}
+          </Typography>
+        </Box>
       </Stack>
     );
   }

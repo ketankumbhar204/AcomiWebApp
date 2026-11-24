@@ -45,6 +45,11 @@ import {
   resolvePresetAmenityLabel,
   supportsSpaceAmenities,
 } from '@/modules/onboarding/utils/amenities';
+import { SpaceRulesField } from '@/modules/onboarding/components/SpaceRulesField';
+import {
+  normalizeRuleAssignments,
+  supportsSpaceRules,
+} from '@/modules/onboarding/utils/spaceRules';
 import { isSpaceOwner } from '@/modules/onboarding/utils/spaceOwnership';
 import {
   addressCaptureIssue,
@@ -77,6 +82,7 @@ import type {
   MealBillingSettings,
   MealPollClosingSettings,
   PollCloseDayOffset,
+  RuleAssignment,
   SpaceDetailsResponse,
   SpaceType,
 } from '@/shared/types/space';
@@ -87,7 +93,7 @@ import { isDuplicateSpaceName } from '@/shared/utils/suggestBuildingDefaults';
 import { EntityPhoto } from '@/shared/components/files/EntityPhoto';
 import { canEditEntityPhoto } from '@/shared/files/entityPhoto';
 
-type EditTab = 'general' | 'billing' | 'meals' | 'polls';
+type EditTab = 'general' | 'rules' | 'billing' | 'meals' | 'polls';
 
 function typeLabelKey(type: SpaceType): string {
   if (type === 'CO_LIVING') return 'spaces.types.coLiving.label';
@@ -174,6 +180,7 @@ function EditSpaceForm({
   const deactivating = useSpaceStore((state) => state.loading);
 
   const showAmenities = supportsSpaceAmenities(details.type);
+  const showRules = supportsSpaceRules(details.type);
   const showCategory = supportsSpacePropertyCategory(details.type);
 
   const [tab, setTab] = useState<EditTab>('general');
@@ -196,6 +203,9 @@ function EditSpaceForm({
   );
   const [selectedAmenities, setSelectedAmenities] = useState(
     () => new Set((details.amenities ?? []).map((a) => a.code).filter(Boolean)),
+  );
+  const [rules, setRules] = useState<RuleAssignment[]>(() =>
+    normalizeRuleAssignments(details.rules ?? []),
   );
   const [nameError, setNameError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -240,7 +250,9 @@ function EditSpaceForm({
   const [dinnerTime, setDinnerTime] = useState(poll?.dinnerTime ?? '16:00');
 
   const visibleTab: EditTab =
-    (tab === 'meals' && !showMealsTab) || (tab === 'polls' && !showPollsTab)
+    (tab === 'rules' && !showRules) ||
+    (tab === 'meals' && !showMealsTab) ||
+    (tab === 'polls' && !showPollsTab)
       ? 'general'
       : tab;
 
@@ -322,6 +334,7 @@ function EditSpaceForm({
         contactNumber: contactNumber.trim() || undefined,
         genderPolicy: showCategory ? genderPolicy || null : undefined,
         amenities: amenitiesPayload,
+        rules: showRules ? normalizeRuleAssignments(rules) : undefined,
       });
 
       if (showMealsTab) {
@@ -414,6 +427,14 @@ function EditSpaceForm({
           }}
         >
           <Tab value="general" label={t('progressiveWorkflow.editSpace.tabGeneral')} />
+          {showRules ? (
+            <Tab
+              value="rules"
+              label={t('progressiveWorkflow.editSpace.tabRules', {
+                defaultValue: 'Rules & Guidelines',
+              })}
+            />
+          ) : null}
           <Tab value="billing" label={t('progressiveWorkflow.editSpace.tabBilling')} />
           {showMealsTab ? (
             <Tab value="meals" label={t('progressiveWorkflow.editSpace.tabMeals')} />
@@ -422,6 +443,17 @@ function EditSpaceForm({
             <Tab value="polls" label={t('progressiveWorkflow.editSpace.tabPolls')} />
           ) : null}
         </Tabs>
+
+        {visibleTab === 'rules' && showRules ? (
+          <ContentCard>
+            <SpaceRulesField
+              spaceType={details.type}
+              value={rules}
+              onChange={setRules}
+              disabled={saving}
+            />
+          </ContentCard>
+        ) : null}
 
         {visibleTab === 'billing' ? (
           <ContentCard>

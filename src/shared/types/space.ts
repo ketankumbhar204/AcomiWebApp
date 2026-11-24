@@ -11,6 +11,12 @@ export type AmenityAssignment = {
   label: string;
 };
 
+/** Space-specific house rule. `label` is the saved/edited text for this space only. */
+export type RuleAssignment = {
+  code: string;
+  label: string;
+};
+
 /** Public discovery card — GET /spaces/discover */
 export interface DiscoverSpaceCardResponse {
   spaceId: string;
@@ -44,6 +50,7 @@ export type ListingPriceBasis = 'PER_BED' | 'PER_ROOM' | 'PER_UNIT';
 /** Public discovery detail — GET /spaces/discover/{spaceId} */
 export interface DiscoverSpaceDetailResponse extends DiscoverSpaceCardResponse {
   amenities?: AmenityAssignment[];
+  rules?: RuleAssignment[];
   ownedByCurrentUser?: boolean;
   addressLine?: string | null;
   city?: string | null;
@@ -141,6 +148,7 @@ export interface SpaceDetailsResponse {
   prepaidFallbackToPayPerMeal?: boolean;
   genderPolicy?: GenderPolicy | null;
   amenities?: AmenityAssignment[];
+  rules?: RuleAssignment[];
   shortStayEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -157,6 +165,7 @@ export interface CreateSpaceRequest {
   ownerId: string;
   genderPolicy?: GenderPolicy | null;
   amenities?: AmenityAssignment[];
+  rules?: RuleAssignment[];
 }
 
 export interface UpdateSpaceRequest {
@@ -167,6 +176,8 @@ export interface UpdateSpaceRequest {
   contactNumber?: string;
   genderPolicy?: GenderPolicy | null;
   amenities?: AmenityAssignment[];
+  /** When provided, replaces saved space rules. Omit to leave rules unchanged. */
+  rules?: RuleAssignment[];
   shortStayEnabled?: boolean;
 }
 

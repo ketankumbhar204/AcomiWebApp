@@ -1,4 +1,4 @@
-import type { MembershipRole } from './space';
+import type { MembershipRole, SpaceType } from './space';
 import type { MemberGender, UserResponse } from './auth';
 import type { MealBillingType, PrepaidBalanceUnit } from './dashboard';
 
@@ -23,6 +23,37 @@ export type MemberHistoryAction =
 export type MemberSearchParams = {
   search?: string;
   occupancyStatus?: MemberOccupancyStatus;
+};
+
+/** One space membership for a person in the owner-level member directory. */
+export type MemberDirectoryAssociationResponse = {
+  memberId: string;
+  spaceId: string;
+  spaceName: string;
+  spaceType: SpaceType;
+  role: MembershipRole;
+  membershipStatus: MemberStatus;
+  occupancyStatus?: MemberOccupancyStatus | null;
+};
+
+/** Unique person across every space the owner manages. */
+export type MemberDirectoryPersonResponse = {
+  /** `u:{userId}` or `m:{mobile}` */
+  directoryId: string;
+  userId?: string | null;
+  displayName: string;
+  mobileNumber: string;
+  profilePhotoUrl?: string | null;
+  associations: MemberDirectoryAssociationResponse[];
+};
+
+export type MemberDirectorySearchParams = {
+  search?: string;
+  page?: number;
+  size?: number;
+  spaceId?: string;
+  spaceType?: SpaceType;
+  status?: MemberStatus;
 };
 
 export type CreateMemberRequest = {

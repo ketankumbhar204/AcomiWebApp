@@ -40,6 +40,11 @@ import {
   supportsSpaceAmenities,
   type AmenityCode,
 } from '@/modules/onboarding/utils/amenities';
+import { SpaceRulesField } from '@/modules/onboarding/components/SpaceRulesField';
+import {
+  normalizeRuleAssignments,
+  supportsSpaceRules,
+} from '@/modules/onboarding/utils/spaceRules';
 import {
   PROPERTY_CATEGORY_VALUES,
   propertyCategoryLabelKey,
@@ -47,7 +52,7 @@ import {
 } from '@/modules/onboarding/utils/spacePropertyCategory';
 import { resolveDefaultSpaceContact } from '@/modules/onboarding/utils/defaultSpaceContact';
 import { ROUTES, spaceAccommodationPath, spaceDashboardPath } from '@/routes/paths';
-import type { AmenityAssignment, GenderPolicy, SpaceType } from '@/shared/types/space';
+import type { AmenityAssignment, GenderPolicy, RuleAssignment, SpaceType } from '@/shared/types/space';
 import { isAccommodationApplicable } from '@/shared/utils/spacePermissions';
 import { useAuthStore } from '@/store/authStore';
 import { useSpaceStore } from '@/store/spaceStore';
@@ -79,6 +84,7 @@ export function CreateSpacePage() {
   );
   const [genderPolicy, setGenderPolicy] = useState<GenderPolicy | ''>('');
   const [amenities, setAmenities] = useState<AmenityAssignment[]>([]);
+  const [rules, setRules] = useState<RuleAssignment[]>([]);
   const [nameError, setNameError] = useState<string | null>(null);
   const [typeError, setTypeError] = useState<string | null>(null);
 
@@ -114,6 +120,7 @@ export function CreateSpacePage() {
   function handleTypeChange(nextType: SpaceType) {
     setType(nextType);
     setTypeError(null);
+    setRules([]);
     if (!supportsSpacePropertyCategory(nextType)) {
       setGenderPolicy('');
     }
@@ -186,6 +193,7 @@ export function CreateSpacePage() {
         : {}),
       contactNumber: contactNumber.trim() || undefined,
       amenities: includeAmenities ? normalizeAmenityAssignments(amenities) : undefined,
+      rules: supportsSpaceRules(type) ? normalizeRuleAssignments(rules) : undefined,
       genderPolicy: includeCategory && genderPolicy ? genderPolicy : undefined,
     });
 
@@ -465,6 +473,17 @@ export function CreateSpacePage() {
                     </Box>
                   </Box>
                 ) : null}
+
+                {!includeAmenities && supportsSpaceRules(type || null) ? (
+                  <Box sx={{ mt: 3 }}>
+                    <SpaceRulesField
+                      spaceType={type || null}
+                      value={rules}
+                      onChange={setRules}
+                      disabled={isSubmitting}
+                    />
+                  </Box>
+                ) : null}
               </Box>
             ) : null}
 
@@ -472,6 +491,16 @@ export function CreateSpacePage() {
               <Box>
                 <StepHeading title={t('spaces.amenities.title')} subtitle={t('spaces.amenities.hint')} />
                 <CreateSpaceAmenityGrid value={amenities} onChange={setAmenities} disabled={isSubmitting} />
+                {supportsSpaceRules(type || null) ? (
+                  <Box sx={{ mt: 3 }}>
+                    <SpaceRulesField
+                      spaceType={type || null}
+                      value={rules}
+                      onChange={setRules}
+                      disabled={isSubmitting}
+                    />
+                  </Box>
+                ) : null}
               </Box>
             ) : null}
 

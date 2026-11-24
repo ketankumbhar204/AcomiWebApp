@@ -14,6 +14,42 @@ function toPickerItem(candidate: MemberImportCandidateResponse): ResidentPickerI
   };
 }
 
+/** Same order as Android `moveInPickerRank`. Eligibility is `availableForMoveIn` only. */
+export function moveInPickerRank(item: {
+  availableForMoveIn?: boolean;
+  alreadyInTargetSpace?: boolean;
+  occupancyStatus?: string | null;
+}): number {
+  const available = item.availableForMoveIn === true;
+  const inTarget = item.alreadyInTargetSpace === true;
+  const stayElsewhere =
+    !inTarget &&
+    (item.occupancyStatus === 'ALLOCATED' || item.occupancyStatus === 'RESERVED');
+  if (available && !inTarget && !stayElsewhere) {
+    return 0;
+  }
+  if (available && inTarget) {
+    return 1;
+  }
+  if (available && stayElsewhere) {
+    return 2;
+  }
+  if (!available && inTarget) {
+    return 3;
+  }
+  return 4;
+}
+
+function compareMoveInPickerItems(left: ResidentPickerItem, right: ResidentPickerItem): number {
+  const rank = moveInPickerRank(left) - moveInPickerRank(right);
+  if (rank !== 0) {
+    return rank;
+  }
+  return (left.fullName ?? '').localeCompare(right.fullName ?? '', undefined, {
+    sensitivity: 'base',
+  });
+}
+
 export function importCandidatesQueryKey(spaceId: string, search = '') {
   return ['import-candidates', spaceId, search.trim()] as const;
 }
@@ -28,7 +64,8 @@ export async function loadImportPickerItems(
   const includeUnavailable = options?.includeUnavailable === true;
   return data
     .filter((item) => includeUnavailable || item.availableForMoveIn)
-    .map(toPickerItem);
+    .map(toPickerItem)
+    .sort(compareMoveInPickerItems);
 }
 
 /**

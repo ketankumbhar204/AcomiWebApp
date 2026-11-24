@@ -19,7 +19,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { DASHBOARD_UX, dashSurfaces } from '@/modules/dashboard/theme/dashboardUx';
 import { ContentCard } from '@/shared/components/ContentCard';
@@ -44,7 +44,12 @@ import {
   allocationTargetFromKnownBed,
   wizardNeedsTargetSearch,
 } from '@/modules/accommodation/utils/knownAllocationTarget';
+import { memberApi } from '@/modules/members/api/memberApi';
 import { useMembers } from '@/modules/members/hooks/useMembers';
+import {
+  useResidentImportSearch,
+  type ResidentPickerItem,
+} from '@/modules/members/hooks/useResidentImportSearch';
 import { accommodationApi } from '../api/accommodationApi';
 import { occupancyApi } from '../api/occupancyApi';
 import { OccupancySuccessDialog } from '../components/OccupancySuccessDialog';
@@ -214,7 +219,45 @@ export function OccupancyWizardPage() {
     ],
   );
 
-  const membersQuery = useMembers(spaceId, steps.includes('member'));
+  // ALLOCATE / RESERVE reuse people across the owner's spaces (import-candidates).
+  // TRANSFER / VACATE stay on space-local members.
+  const usesReusePicker =
+    (mode === 'ALLOCATE' || mode === 'RESERVE') && steps.includes('member');
+  const membersQuery = useMembers(spaceId, steps.includes('member') && !usesReusePicker);
+  const residentSearch = useResidentImportSearch(spaceId, memberSearch, usesReusePicker, true);
+  const queryClient = useQueryClient();
+  const [pickedCandidate, setPickedCandidate] = useState<ResidentPickerItem | null>(null);
+  const [importingMember, setImportingMember] = useState(false);
+
+  const handlePickResident = async (candidate: ResidentPickerItem) => {
+    if (importingMember) {
+      return;
+    }
+    // Never bypass move-in eligibility (search already hides unavailable people).
+    if (!candidate.availableForMoveIn) {
+      return;
+    }
+    if (!candidate.needsImport) {
+      setPickedCandidate(candidate);
+      setMemberId(candidate.memberId);
+      return;
+    }
+    setImportingMember(true);
+    try {
+      const imported = await memberApi.importMember(spaceId, {
+        sourceMemberId: candidate.memberId,
+      });
+      setPickedCandidate(candidate);
+      setMemberId(imported.memberId);
+      void queryClient.invalidateQueries({ queryKey: ['members', spaceId] });
+      void queryClient.invalidateQueries({ queryKey: ['import-candidates', spaceId] });
+    } catch (error) {
+      const fallback = t('occupancyWizard.errors.importMember');
+      enqueueSnackbar(getErrorMessage(error, fallback) || fallback, { variant: 'error' });
+    } finally {
+      setImportingMember(false);
+    }
+  };
   const allowedTargets = getAllowedTargetTypes(spaceType);
   const primaryTargetType = allowedTargets[0];
   const [selectedTargetType, setSelectedTargetType] = useState<AllocationTargetType | null>(null);
@@ -423,7 +466,11 @@ export function OccupancyWizardPage() {
     );
   }, [memberSearch, membersQuery.members]);
 
-  const selectedMember = membersQuery.members.find((m) => m.memberId === effectiveMemberId);
+  const selectedMember: { fullName: string; mobileNumber: string } | undefined =
+    membersQuery.members.find((m) => m.memberId === effectiveMemberId) ??
+    (pickedCandidate && memberId
+      ? { fullName: pickedCandidate.fullName, mobileNumber: pickedCandidate.mobileNumber }
+      : undefined);
 
   const goBack = () => {
     if (stepIndex === 0) {
@@ -1025,7 +1072,112 @@ export function OccupancyWizardPage() {
               onChange={(e) => setMemberSearch(e.target.value)}
               fullWidth
             />
-            {membersQuery.loading ? (
+            {usesReusePicker ? (
+              residentSearch.loading && residentSearch.members.length === 0 ? (
+                <LoadingState />
+              ) : (
+                <List dense sx={{ maxHeight: 360, overflow: 'auto' }}>
+                  {residentSearch.members.map((candidate) => {
+                    const picked =
+                      pickedCandidate != null &&
+                      pickedCandidate.memberId === candidate.memberId &&
+                      pickedCandidate.sourceSpaceId === candidate.sourceSpaceId &&
+                      Boolean(memberId);
+                    const messCustomer =
+                      candidate.role === 'CUSTOMER' && !candidate.alreadyInTargetSpace;
+                    const stayElsewhere =
+                      !candidate.alreadyInTargetSpace &&
+                      (candidate.occupancyStatus === 'ALLOCATED' ||
+                        candidate.occupancyStatus === 'RESERVED');
+                    const availabilityLabel = messCustomer
+                      ? t('occupancyWizard.residentCard.messCustomerAt', {
+                          space: candidate.sourceSpaceName ?? '',
+                          defaultValue: 'Mess customer at {{space}}',
+                        })
+                      : candidate.alreadyInTargetSpace
+                      ? candidate.availableForMoveIn
+                        ? t('occupancyWizard.residentCard.inThisSpace')
+                        : candidate.occupancyStatus === 'RESERVED'
+                          ? t('occupancyWizard.residentCard.alreadyReservedHere', {
+                              space: candidate.sourceSpaceName ?? '',
+                              defaultValue: 'Already has a reservation in {{space}}.',
+                            })
+                          : t('occupancyWizard.residentCard.alreadyActiveHere', {
+                              space: candidate.sourceSpaceName ?? '',
+                              defaultValue: 'Already has an active stay in {{space}}.',
+                            })
+                      : candidate.occupancyStatus === 'RESERVED' && candidate.sourceSpaceName
+                        ? t('occupancyWizard.residentCard.reservedIn', {
+                            space: candidate.sourceSpaceName,
+                            defaultValue: 'Reserved in {{space}}',
+                          })
+                        : candidate.occupancyStatus === 'ALLOCATED' && candidate.sourceSpaceName
+                          ? t('occupancyWizard.residentCard.currentlyIn', {
+                              space: candidate.sourceSpaceName,
+                              defaultValue: 'Currently staying in {{space}}',
+                            })
+                          : candidate.sourceSpaceName
+                            ? t('occupancyWizard.residentCard.previouslyIn', {
+                                space: candidate.sourceSpaceName,
+                              })
+                            : null;
+                    const eligibilityLabel =
+                      candidate.availableForMoveIn && stayElsewhere
+                        ? t('occupancyWizard.residentCard.availableToAdd', {
+                            defaultValue: 'Available to add to another space.',
+                          })
+                        : candidate.availableForMoveIn
+                          ? t('occupancyWizard.residentCard.available')
+                          : null;
+                    return (
+                      <ListItemButton
+                        key={`${candidate.sourceSpaceId}:${candidate.memberId}`}
+                        selected={picked}
+                        disabled={importingMember || !candidate.availableForMoveIn}
+                        onClick={() => void handlePickResident(candidate)}
+                      >
+                        <ListItemText
+                          primary={candidate.fullName}
+                          secondary={
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              component="span"
+                              sx={{ alignItems: 'center', flexWrap: 'wrap' }}
+                            >
+                              <Typography
+                                component="span"
+                                sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}
+                              >
+                                {t('occupancyWizard.residentCard.mobile', {
+                                  mobile: candidate.mobileNumber,
+                                })}
+                              </Typography>
+                              {availabilityLabel ? (
+                                <Typography
+                                  component="span"
+                                  sx={{ ...DASHBOARD_UX.smallCaption, color: s.textMuted }}
+                                >
+                                  {availabilityLabel}
+                                </Typography>
+                              ) : null}
+                              {eligibilityLabel ? (
+                                <StatusChip label={eligibilityLabel} />
+                              ) : null}
+                            </Stack>
+                          }
+                        />
+                      </ListItemButton>
+                    );
+                  })}
+                  {residentSearch.members.length === 0 ? (
+                    <Typography color="text.secondary" sx={{ p: 2 }}>
+                      {t('occupancyWizard.noReusableResidents')}
+                    </Typography>
+                  ) : null}
+                </List>
+              )
+            ) : membersQuery.loading ? (
               <LoadingState />
             ) : (
               <List dense sx={{ maxHeight: 360, overflow: 'auto' }}>
@@ -1513,6 +1665,27 @@ export function OccupancyWizardPage() {
                 }
                 label={t('occupancy.contract.agreementSigned')}
               />
+            ) : null}
+            {spaceType !== 'MESS' && (spaceDetailsQuery.data?.rules?.length ?? 0) > 0 ? (
+              <Box
+                sx={{
+                  border: `1px solid ${s.border}`,
+                  borderRadius: 2,
+                  p: 2,
+                  bgcolor: '#fff',
+                }}
+              >
+                <Typography sx={{ ...DASHBOARD_UX.sectionHeading, mb: 1 }}>
+                  {t('spaces.rules.title', { defaultValue: 'Rules & Guidelines' })}
+                </Typography>
+                <Stack spacing={0.75}>
+                  {(spaceDetailsQuery.data?.rules ?? []).map((rule, index) => (
+                    <Typography key={`${rule.code}-${index}`} sx={{ lineHeight: 1.45 }}>
+                      ✓ {rule.label}
+                    </Typography>
+                  ))}
+                </Stack>
+              </Box>
             ) : null}
             <TextField
               label={t('occupancy.contract.remarks')}

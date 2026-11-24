@@ -155,7 +155,7 @@ export function DiscoverFiltersPanel({
   const amenities = useMemo(() => {
     const fixed: Array<{ code: string; label: string }> = DEFAULT_DISCOVER_AMENITIES.map((item) => ({
       code: item.code,
-      label: item.label,
+      label: t(item.labelKey, { defaultValue: item.label }),
     }));
     const known = new Set(fixed.map((item) => item.code));
     for (const extra of amenityOptions) {
@@ -164,7 +164,7 @@ export function DiscoverFiltersPanel({
       }
     }
     return fixed;
-  }, [amenityOptions]);
+  }, [amenityOptions, t]);
 
   const checkSx = {
     py: 0,
@@ -315,7 +315,7 @@ export function DiscoverFiltersPanel({
                   }
                 />
               }
-              label={option.label}
+              label={t(option.labelKey, { defaultValue: option.label })}
             />
           ))}
         </Stack>
@@ -336,7 +336,7 @@ export function DiscoverFiltersPanel({
                   }
                 />
               }
-              label={option.label}
+              label={t(option.labelKey, { defaultValue: option.label })}
             />
           ))}
         </Stack>
@@ -369,7 +369,7 @@ export function DiscoverFiltersPanel({
                   }
                 />
               }
-              label={option.label}
+              label={t(option.labelKey, { defaultValue: option.label })}
             />
           ))}
         </Stack>
@@ -416,7 +416,7 @@ export function DiscoverFiltersPanel({
                   }
                 />
               }
-              label={option.label}
+              label={t(option.labelKey, { defaultValue: option.label })}
             />
           ))}
         </Stack>
@@ -527,10 +527,15 @@ export function ActiveDiscoverFilterChips({
     );
   }
 
+  const optionLabel = (option: { label: string; labelKey: string } | undefined, fallback: string) =>
+    option ? t(option.labelKey, { defaultValue: option.label }) : fallback;
+
   const amenityLabel = (code: string) =>
     amenityOptions.find((item) => item.code === code)?.label ??
-    DEFAULT_DISCOVER_AMENITIES.find((item) => item.code === code)?.label ??
-    code;
+    optionLabel(
+      DEFAULT_DISCOVER_AMENITIES.find((item) => item.code === code),
+      code,
+    );
 
   const chips: Array<{ key: string; label: string; onDelete: () => void }> = [];
 
@@ -559,28 +564,28 @@ export function ActiveDiscoverFilterChips({
   for (const gender of value.genders) {
     chips.push({
       key: `gender-${gender}`,
-      label: DISCOVER_GENDERS.find((item) => item.id === gender)?.label ?? gender,
+      label: optionLabel(DISCOVER_GENDERS.find((item) => item.id === gender), gender),
       onDelete: () => onChange({ ...value, genders: value.genders.filter((item) => item !== gender) }),
     });
   }
   for (const sharing of value.sharings) {
     chips.push({
       key: `sharing-${sharing}`,
-      label: DISCOVER_SHARINGS.find((item) => item.id === sharing)?.label ?? sharing,
+      label: optionLabel(DISCOVER_SHARINGS.find((item) => item.id === sharing), sharing),
       onDelete: () => onChange({ ...value, sharings: value.sharings.filter((item) => item !== sharing) }),
     });
   }
   for (const food of value.foods) {
     chips.push({
       key: `food-${food}`,
-      label: DISCOVER_FOODS.find((item) => item.id === food)?.label ?? food,
+      label: optionLabel(DISCOVER_FOODS.find((item) => item.id === food), food),
       onDelete: () => onChange({ ...value, foods: value.foods.filter((item) => item !== food) }),
     });
   }
   for (const furnishing of value.furnishings) {
     chips.push({
       key: `furnishing-${furnishing}`,
-      label: DISCOVER_FURNISHINGS.find((item) => item.id === furnishing)?.label ?? furnishing,
+      label: optionLabel(DISCOVER_FURNISHINGS.find((item) => item.id === furnishing), furnishing),
       onDelete: () =>
         onChange({ ...value, furnishings: value.furnishings.filter((item) => item !== furnishing) }),
     });

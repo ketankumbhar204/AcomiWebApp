@@ -1,4 +1,4 @@
-import type { MealHeadcountDetailResponse } from '@/shared/types/meals';
+import type { MealHeadcountDetailResponse, MealHeadcountOption } from '@/shared/types/meals';
 
 export type MealResponseFilter = 'eligible' | 'responded' | 'not_responded';
 
@@ -28,14 +28,39 @@ function byName(a: MealResponseMemberRow, b: MealResponseMemberRow): number {
   return a.memberName.localeCompare(b.memberName);
 }
 
+/**
+ * Stable filter id for a headcount option.
+ * Prefers API optionId; falls back to label so chips still appear if id is missing.
+ */
+export function resolveMealResponseOptionFilterId(
+  option: Pick<MealHeadcountOption, 'optionId' | 'label' | 'sortOrder'> & {
+    id?: string | null;
+  },
+  index = 0,
+): string {
+  const fromOptionId = option.optionId?.trim();
+  if (fromOptionId) {
+    return fromOptionId;
+  }
+  const fromId = option.id?.trim();
+  if (fromId) {
+    return fromId;
+  }
+  const label = option.label?.trim();
+  if (label) {
+    return `label:${label}`;
+  }
+  return `idx:${option.sortOrder ?? index}`;
+}
+
 /** Eligible, responded, and not-responded members for one shared meal. */
 export function buildMealResponseLists(
   detail: MealHeadcountDetailResponse | null | undefined,
 ): MealResponseLists {
   const respondedById = new Map<string, MealResponseMemberRow>();
-  for (const option of detail?.options ?? []) {
+  (detail?.options ?? []).forEach((option, index) => {
     const choice = option.label?.trim() || null;
-    const optionId = option.optionId?.trim() || '';
+    const optionId = resolveMealResponseOptionFilterId(option, index);
     for (const member of option.members ?? []) {
       const existing = respondedById.get(member.memberId);
       if (!existing) {
@@ -58,7 +83,7 @@ export function buildMealResponseLists(
         existing.choice = choice;
       }
     }
-  }
+  });
 
   const responded = [...respondedById.values()].sort(byName);
   const respondedIds = new Set(responded.map((row) => row.memberId));
@@ -88,18 +113,24 @@ export function buildMealResponseLists(
   };
 }
 
-/** Menu/combo chips for packaging filters. */
+/**
+ * Menu/combo chips for packaging filters.
+ * Includes planned options even when response count is 0 so owners can see every menu.
+ */
 export function buildMealResponseOptionChips(
   detail: MealHeadcountDetailResponse | null | undefined,
 ): MealResponseOptionChip[] {
   return (detail?.options ?? [])
-    .filter((option) => (option.members?.length ?? 0) > 0 || (option.count ?? 0) > 0)
-    .map((option) => ({
-      optionId: option.optionId,
-      label: option.label?.trim() || 'Option',
-      count: option.members?.length ?? option.count ?? 0,
-    }))
-    .filter((chip) => chip.optionId && chip.count > 0);
+    .map((option, index) => {
+      const memberCount = option.members?.length ?? 0;
+      const count = memberCount > 0 ? memberCount : Math.max(0, option.count ?? 0);
+      return {
+        optionId: resolveMealResponseOptionFilterId(option, index),
+        label: option.label?.trim() || 'Option',
+        count,
+      };
+    })
+    .filter((chip) => chip.optionId.length > 0);
 }
 
 export function matchesMealResponseOption(
@@ -137,10 +168,6 @@ export function matchesMealResponseSearch(row: MealResponseMemberRow, query: str
   return withoutCountry.length > 0 && stored.includes(withoutCountry);
 }
 
-/**
- * Badge for the card. Responded comes from the row, not from the meal name.
- * Eligible vs not-responded follows the list the member is being viewed in.
- */
 export function mealResponseCardStatus(
   row: MealResponseMemberRow,
   filter: MealResponseFilter,

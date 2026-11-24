@@ -16,6 +16,8 @@ import {
   Stack,
   Tab,
   Tabs,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
   useTheme,
@@ -60,7 +62,7 @@ import { occupancyApi } from '@/modules/accommodation/api/occupancyApi';
 import { stayLabelForMember } from '@/modules/members/utils/memberListStay';
 import type { StayLayoutMode } from '@/shared/utils/stayTrail';
 import {
-  spaceImportPeoplePath,
+  ROUTES,
   spaceMemberPath,
   spaceMembersPath,
 } from '@/routes/paths';
@@ -69,6 +71,7 @@ import { canManagePayments, currentMonthKey } from '@/shared/utils/dashboardFina
 import { dashContainedButtonSx, dashFilterControlSx, dashOutlinedButtonSx } from '@/shared/theme/dashButtonSx';
 import {
   addPersonNoun,
+  addPersonOffersReuse,
   countImportableCandidates,
   destinationForAddPersonChoice,
   shouldOfferImportChoice,
@@ -323,17 +326,19 @@ export function MembersWorkspacePage() {
   const { spaceId = '', memberId } = useParams<{ spaceId: string; memberId?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const importPreview = useQuery({
-    queryKey: importCandidatesQueryKey(spaceId),
-    queryFn: () => loadImportPickerItems(spaceId, undefined, { includeUnavailable: true }),
-    enabled: Boolean(spaceId),
-    staleTime: 15_000,
-  });
   const theme = useTheme();
   const s = dashSurfaces(theme.palette.mode);
   const { enqueueSnackbar } = useSnackbar();
   const permissions = useSpacePermissions(spaceId);
   const spaceType = permissions.space?.spaceType;
+  const offersReuse = addPersonOffersReuse(spaceType);
+  // Only Mess previews reusable customers; lodging reuse happens in the Move-in wizard.
+  const importPreview = useQuery({
+    queryKey: importCandidatesQueryKey(spaceId),
+    queryFn: () => loadImportPickerItems(spaceId, undefined, { includeUnavailable: true }),
+    enabled: Boolean(spaceId) && offersReuse,
+    staleTime: 15_000,
+  });
   const showStayTrail = spaceType != null && isAccommodationApplicable(spaceType);
   const staySources = useQuery({
     queryKey: ['member-stay-trails', spaceId],
@@ -474,11 +479,6 @@ export function MembersWorkspacePage() {
 
   const chooseImport = () => {
     const destination = destinationForAddPersonChoice(spaceType, 'import');
-    if (destination.type === 'import-page') {
-      closeChoice();
-      navigate(spaceImportPeoplePath(spaceId));
-      return;
-    }
     startCreate(destination.pickerMode);
   };
 
@@ -505,6 +505,10 @@ export function MembersWorkspacePage() {
     if (resolvingClick) {
       return;
     }
+    if (!offersReuse) {
+      startCreate('new');
+      return;
+    }
     if (importPreview.data) {
       const count = countImportableCandidates(importPreview.data);
       setImportableCount(count);
@@ -527,17 +531,21 @@ export function MembersWorkspacePage() {
   };
 
   const importablePreviewCount = countImportableCandidates(importPreview.data ?? []);
-  const deepLinkSettled = choiceFromQuery && importPreview.isFetched;
+  const deepLinkSettled = choiceFromQuery && (!offersReuse || importPreview.isFetched);
   const deepLinkChoice =
+    offersReuse &&
     deepLinkSettled &&
     importPreview.isSuccess &&
     shouldOfferImportChoice(importablePreviewCount);
   const deepLinkForm =
     deepLinkSettled &&
-    (!importPreview.isSuccess || !shouldOfferImportChoice(importablePreviewCount));
+    (!offersReuse ||
+      !importPreview.isSuccess ||
+      !shouldOfferImportChoice(importablePreviewCount));
 
   const resolvingEntry =
-    resolvingClick || (choiceFromQuery && !importPreview.isFetched && formMode == null);
+    offersReuse &&
+    (resolvingClick || (choiceFromQuery && !importPreview.isFetched && formMode == null));
 
   const duesByMemberId = useMemo(() => {
     const map = new Map<string, MemberDuesSnapshot>();
@@ -995,15 +1003,6 @@ export function MembersWorkspacePage() {
                 >
                   {t('membership.addCustomersHub.navTitle')}
                 </Button>
-              ) : countImportableCandidates(importPreview.data ?? []) > 0 ? (
-                <Button
-                  variant="outlined"
-                  startIcon={<Users size={14} />}
-                  onClick={() => navigate(spaceImportPeoplePath(spaceId))}
-                  sx={dashOutlinedButtonSx}
-                >
-                  {t('membership.importPeople.title')}
-                </Button>
               ) : null}
               <Button
                 variant="outlined"
@@ -1036,6 +1035,37 @@ export function MembersWorkspacePage() {
             </Stack>
           }
         />
+
+        <ToggleButtonGroup
+          exclusive
+          size="small"
+          value="thisSpace"
+          aria-label={t('membership.workspace.scopeLabel')}
+          onChange={(_, value: 'thisSpace' | 'allSpaces' | null) => {
+            if (value === 'allSpaces') {
+              navigate(ROUTES.globalMembers);
+            }
+          }}
+          sx={{
+            alignSelf: 'flex-start',
+            '& .MuiToggleButton-root': {
+              ...DASHBOARD_UX.button,
+              textTransform: 'none',
+              px: 2,
+              minHeight: DASHBOARD_UX.buttonHeight,
+              height: DASHBOARD_UX.buttonHeight,
+              borderColor: s.border,
+              color: s.textMuted,
+              '&.Mui-selected': {
+                bgcolor: `${colors.primaryDark}14`,
+                color: colors.primaryDark,
+              },
+            },
+          }}
+        >
+          <ToggleButton value="thisSpace">{t('membership.workspace.scopeThisSpace')}</ToggleButton>
+          <ToggleButton value="allSpaces">{t('membership.workspace.scopeAllSpaces')}</ToggleButton>
+        </ToggleButtonGroup>
 
         {membersQuery.error ? (
           <ErrorState

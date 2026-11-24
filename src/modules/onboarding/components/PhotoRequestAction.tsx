@@ -7,7 +7,9 @@ import {
   confirmPhotoRequest,
   hasActualListingPhotos,
   photoRequestActionLabel,
+  photoRequestActionLabelKey,
   photoRequestTitle,
+  photoRequestTitleKey,
   type PhotoRequestKind,
 } from '@/shared/utils/photoRequest';
 
@@ -41,12 +43,12 @@ export function PhotoRequestAction({
   const [notice, setNotice] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
-  const label = photoRequestActionLabel(hasPhotos);
-  const title = photoRequestTitle(kind, hasPhotos);
+  const label = t(photoRequestActionLabelKey(hasPhotos), { defaultValue: photoRequestActionLabel(hasPhotos) });
+  const title = t(photoRequestTitleKey(kind, hasPhotos), { defaultValue: photoRequestTitle(kind, hasPhotos) });
 
   function openRequest() {
     if (onBeforeOpen && !onBeforeOpen()) return;
-    setMessage(buildPhotoRequestMessage({ kind, hasPhotos, name, spaceType, location }));
+    setMessage(buildPhotoRequestMessage({ kind, hasPhotos, name, spaceType, location, translate: t }));
     setNotice('');
     setOpen(true);
   }
@@ -55,10 +57,10 @@ export function PhotoRequestAction({
   useEffect(() => {
     if (!openToken || openToken === seenOpenToken.current) return;
     seenOpenToken.current = openToken;
-    setMessage(buildPhotoRequestMessage({ kind, hasPhotos, name, spaceType, location }));
+    setMessage(buildPhotoRequestMessage({ kind, hasPhotos, name, spaceType, location, translate: t }));
     setNotice('');
     setOpen(true);
-  }, [hasPhotos, kind, location, name, openToken, spaceType]);
+  }, [hasPhotos, kind, location, name, openToken, spaceType, t]);
 
   function closeRequest() {
     if (submittingRef.current) return;

@@ -218,68 +218,76 @@ export function MealResponsesPage() {
         })}
       </Box>
 
-      {filter === 'responded' && optionChips.length > 0 ? (
-        <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 0.5 }}>
-          <Box
-            component="button"
-            type="button"
-            aria-pressed={optionFilter === 'all'}
-            onClick={() => setOptionFilter('all')}
-            sx={chipStyle('responded', optionFilter === 'all')}
-          >
-            {t('meals.responses.filterAllMenus', { defaultValue: 'All menus' })}
+      {optionChips.length > 0 ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+          <Typography sx={{ ...DASHBOARD_UX.caption, color: s.textSecondary, fontWeight: 600 }}>
+            {t('meals.responses.filterByMenu', { defaultValue: 'Filter by menu' })}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 0.5 }}>
             <Box
-              component="span"
-              sx={{
-                minWidth: 18,
-                height: 18,
-                px: 0.5,
-                borderRadius: 9,
-                bgcolor: STATUS_TONE.responded.fg,
-                color: '#fff',
-                fontSize: 10,
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+              component="button"
+              type="button"
+              aria-pressed={optionFilter === 'all'}
+              onClick={() => setOptionFilter('all')}
+              sx={chipStyle('responded', optionFilter === 'all')}
             >
-              {lists.responded.length}
-            </Box>
-          </Box>
-          {optionChips.map((chip) => {
-            const selected = optionFilter === chip.optionId;
-            return (
+              {t('meals.responses.filterAllMenus', { defaultValue: 'All menus' })}
               <Box
-                key={chip.optionId}
-                component="button"
-                type="button"
-                aria-pressed={selected}
-                onClick={() => setOptionFilter(chip.optionId)}
-                sx={chipStyle('responded', selected)}
+                component="span"
+                sx={{
+                  minWidth: 18,
+                  height: 18,
+                  px: 0.5,
+                  borderRadius: 9,
+                  bgcolor: STATUS_TONE.responded.fg,
+                  color: '#fff',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
-                {chip.label}
-                <Box
-                  component="span"
-                  sx={{
-                    minWidth: 18,
-                    height: 18,
-                    px: 0.5,
-                    borderRadius: 9,
-                    bgcolor: STATUS_TONE.responded.fg,
-                    color: '#fff',
-                    fontSize: 10,
-                    fontWeight: 700,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {chip.count}
-                </Box>
+                {lists.responded.length}
               </Box>
-            );
-          })}
+            </Box>
+            {optionChips.map((chip) => {
+              const selected = optionFilter === chip.optionId;
+              return (
+                <Box
+                  key={chip.optionId}
+                  component="button"
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => {
+                    setOptionFilter(chip.optionId);
+                    setFilter('responded');
+                  }}
+                  sx={chipStyle('responded', selected)}
+                >
+                  {chip.label}
+                  <Box
+                    component="span"
+                    sx={{
+                      minWidth: 18,
+                      height: 18,
+                      px: 0.5,
+                      borderRadius: 9,
+                      bgcolor: STATUS_TONE.responded.fg,
+                      color: '#fff',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {chip.count}
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
         </Box>
       ) : null}
 

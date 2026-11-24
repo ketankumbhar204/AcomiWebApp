@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { associableSpaces, canManageServiceContacts, canOpenServiceContacts } from '../src/modules/serviceContacts/utils/serviceContactAccess.ts';
+import { canManageServiceContacts, canOpenServiceContacts } from '../src/modules/serviceContacts/utils/serviceContactAccess.ts';
 import { mailtoHref, telHref, whatsappHref } from '../src/modules/serviceContacts/utils/serviceContactLinks.ts';
 import { emptyDraft, validateServiceContactDraft } from '../src/modules/serviceContacts/utils/serviceContactForm.ts';
 
@@ -9,7 +9,6 @@ assert.equal(canOpenServiceContacts([{ membershipRole: 'STAFF' }]), true);
 assert.equal(canOpenServiceContacts([], true), true);
 assert.equal(canManageServiceContacts([{ membershipRole: 'STAFF' }]), false);
 assert.equal(canManageServiceContacts([{ membershipRole: 'MANAGER' }]), true);
-assert.equal(associableSpaces([{ membershipRole: 'STAFF' }, { membershipRole: 'OWNER' }]).length, 1);
 
 assert.equal(telHref('9876543210'), 'tel:+919876543210');
 assert.equal(whatsappHref('+91 98765 43210'), 'https://wa.me/919876543210');
@@ -35,6 +34,7 @@ const mySpaces = readFileSync(new URL('../src/modules/onboarding/pages/MySpacesP
 assert.match(page, /serviceContactsApi\.list/);
 assert.match(page, /whatsappHref/);
 assert.match(page, /canArchive/);
+assert.doesNotMatch(page, /spacesLabel|contact\.spaces/);
 assert.match(mySpaces, /ROUTES\.serviceContacts/);
 
 console.log('service contact checks passed');

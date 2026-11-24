@@ -53,7 +53,10 @@ export function AddPersonChoiceDialog({
       onClick: onAddNew,
     },
     {
-      label: t('membership.add.choice.import'),
+      label:
+        noun === 'customer'
+          ? t('membership.add.choice.import')
+          : t('membership.add.choice.importMember'),
       description:
         importableCount > 0
           ? t(
