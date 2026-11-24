@@ -8,10 +8,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { RuleAssignment, SpaceType } from '@/shared/types/space';
 import { colors } from '@/shared/theme/colors';
@@ -98,7 +95,7 @@ export function SpaceRulesField({
 
   return (
     <Stack spacing={2}>
-      <Stack direction="row" spacing={1.25} alignItems="flex-start">
+      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'flex-start' }}>
         <Box
           sx={{
             width: 32,
@@ -110,10 +107,10 @@ export function SpaceRulesField({
             placeItems: 'center',
           }}
         >
-          <DescriptionOutlinedIcon fontSize="small" />
+          <FileText size={18} />
         </Box>
         <Box>
-          <Typography fontWeight={700}>
+          <Typography sx={{ fontWeight: 700 }}>
             {t('spaces.rules.title', { defaultValue: 'Rules & Guidelines' })}
           </Typography>
           <Typography variant="body2" color="text.secondary">
@@ -168,9 +165,9 @@ export function SpaceRulesField({
                       minRows={2}
                       fullWidth
                       disabled={disabled}
-                      inputProps={{ maxLength: MAX_RULE_TEXT_LENGTH }}
+                      slotProps={{ htmlInput: { maxLength: MAX_RULE_TEXT_LENGTH } }}
                     />
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                    <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
                       <Button
                         size="small"
                         onClick={() => {
@@ -213,7 +210,7 @@ export function SpaceRulesField({
                     }}
                     aria-label={t('spaces.rules.editA11y', { defaultValue: 'Edit rule' })}
                   >
-                    <EditOutlinedIcon fontSize="small" />
+                    <Pencil size={16} />
                   </IconButton>
                   {row.isCustom ? (
                     <IconButton
@@ -224,7 +221,7 @@ export function SpaceRulesField({
                         defaultValue: 'Delete custom rule',
                       })}
                     >
-                      <DeleteOutlineIcon fontSize="small" color="error" />
+                      <Trash2 size={16} color="#c62828" />
                     </IconButton>
                   ) : null}
                 </Stack>
@@ -247,9 +244,9 @@ export function SpaceRulesField({
             placeholder={t('spaces.rules.customPlaceholder', {
               defaultValue: 'Enter a custom rule',
             })}
-            inputProps={{ maxLength: MAX_RULE_TEXT_LENGTH }}
+            slotProps={{ htmlInput: { maxLength: MAX_RULE_TEXT_LENGTH } }}
           />
-          <Stack direction="row" spacing={1} justifyContent="flex-end">
+          <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
             <Button
               size="small"
               onClick={() => {
@@ -272,7 +269,7 @@ export function SpaceRulesField({
       ) : (
         <Button
           variant="outlined"
-          startIcon={<AddIcon />}
+          startIcon={<Plus size={16} />}
           disabled={disabled}
           onClick={() => setAddingCustom(true)}
           sx={{
@@ -304,9 +301,9 @@ export function SpaceRulesReadOnlyList({ rules }: { rules: RuleAssignment[] }) {
         p: 2,
       }}
     >
-      <Stack direction="row" spacing={1} alignItems="center" mb={1.5}>
-        <DescriptionOutlinedIcon sx={{ color: colors.primary }} fontSize="small" />
-        <Typography fontWeight={700}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1.5 }}>
+        <FileText size={18} color={colors.primary} />
+        <Typography sx={{ fontWeight: 700 }}>
           {t('spaces.rules.title', { defaultValue: 'Rules & Guidelines' })}
         </Typography>
       </Stack>

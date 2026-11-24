@@ -175,15 +175,17 @@ export function buildEditableRuleRows(
   // Keep saved preset codes that are not in the current type catalog (type change).
   const knownCodes = new Set(presets.map(row => row.code));
   for (const [code, rule] of byCode) {
-    if (!knownCodes.has(code)) {
-      presets.push({
-        code,
-        label: rule.label,
-        selected: true,
-        isCustom: false,
-        defaultLabel: rule.label,
-      });
+    if (code === 'CUSTOM' || knownCodes.has(code as Exclude<RuleCode, 'CUSTOM'>)) {
+      continue;
     }
+    const presetCode = code as Exclude<RuleCode, 'CUSTOM'>;
+    presets.push({
+      code: presetCode,
+      label: rule.label,
+      selected: true,
+      isCustom: false,
+      defaultLabel: rule.label,
+    });
   }
 
   const customRows = customs.map(rule => ({
