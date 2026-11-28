@@ -48,11 +48,16 @@ import {
   summaryStatForCard,
   summaryStatParams,
 } from '@/modules/admin/utils/adminListFilters';
+import {
+  activeSpaceRegistrationDetailPath,
+  isActiveSpaceShareActionVisible,
+} from '@/modules/admin/utils/adminActiveSpaceRow';
 import { discoverDefaultImageUrl } from '@/modules/onboarding/utils/discoverDefaultImages';
 import { adminAddMessPath, adminMessDetailPath } from '@/routes/paths';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import type { ListingMarketingStatus, WhatsAppAvailability } from '@/shared/types/admin';
 import { ReferenceCode } from '@/shared/components/ReferenceCode';
+import { colors } from '@/shared/theme/colors';
 import type {
   AdminActiveSpace,
   AdminMessRegistrationsSummary,
@@ -878,7 +883,26 @@ export function AdminMessListPage() {
                                     flexShrink: 0,
                                   }}
                                 />
-                                <Typography sx={{ fontWeight: 700, fontSize: 14 }} noWrap>
+                                <Typography
+                                  component={RouterLink}
+                                  to={adminMessDetailPath(item.id)}
+                                  aria-label={t('admin.mess.openDetail', { name: item.messName })}
+                                  noWrap
+                                  sx={{
+                                    fontWeight: 700,
+                                    fontSize: 14,
+                                    color: 'text.primary',
+                                    textDecoration: 'none',
+                                    borderRadius: '4px',
+                                    '&:hover': {
+                                      color: colors.teal,
+                                      textDecoration: 'underline',
+                                    },
+                                    '&:focus-visible': {
+                                      outline: `2px solid ${colors.teal}`,
+                                      outlineOffset: 2,
+                                    },
+                                  }}>
                                   {item.messName}
                                 </Typography>
                               </Stack>
@@ -957,22 +981,6 @@ export function AdminMessListPage() {
                         <TableCell>
                           <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                             <Button
-                    component={RouterLink}
-                    to={adminMessDetailPath(item.id)}
-                              size="small"
-                              sx={{
-                                textTransform: 'none',
-                                fontWeight: 700,
-                                color: '#15803D',
-                                bgcolor: '#DCFCE7',
-                                borderRadius: '8px',
-                                px: 1.5,
-                                minWidth: 0,
-                                '&:hover': { bgcolor: '#BBF7D0' },
-                              }}>
-                              {t('admin.mess.view')}
-                            </Button>
-                            <Button
                               size="small"
                               onClick={() => setDeleteTarget({ kind: 'lead', item })}
                     sx={{
@@ -1008,9 +1016,11 @@ export function AdminMessListPage() {
                 activeVisible.map((space) => {
                   const created = formatCreated(space.createdAt);
                   const chipSx = sourceChipSx(space.source);
-                  const detailPath = space.registrationId
-                    ? adminMessDetailPath(space.registrationId)
-                    : undefined;
+                  const detailPath = activeSpaceRegistrationDetailPath(
+                    space.registrationId,
+                    'mess',
+                  );
+                  const showShare = isActiveSpaceShareActionVisible(space);
                   return (
                     <TableRow key={space.id} hover>
                       <TableCell padding="checkbox">
@@ -1044,9 +1054,65 @@ export function AdminMessListPage() {
                                   flexShrink: 0,
                                 }}
                               />
-                              <Typography sx={{ fontWeight: 700, fontSize: 14 }} noWrap>
-                                {space.name}
-                              </Typography>
+                              {detailPath ? (
+                                <Typography
+                                  component={RouterLink}
+                                  to={detailPath}
+                                  aria-label={t('admin.mess.openDetail', { name: space.name })}
+                                  noWrap
+                                  sx={{
+                                    fontWeight: 700,
+                                    fontSize: 14,
+                                    color: 'text.primary',
+                                    textDecoration: 'none',
+                                    borderRadius: '4px',
+                                    '&:hover': {
+                                      color: colors.teal,
+                                      textDecoration: 'underline',
+                                    },
+                                    '&:focus-visible': {
+                                      outline: `2px solid ${colors.teal}`,
+                                      outlineOffset: 2,
+                                    },
+                                  }}>
+                                  {space.name}
+                                </Typography>
+                              ) : (
+                                <Typography
+                                  component="button"
+                                  type="button"
+                                  onClick={() =>
+                                    enqueueSnackbar(t('admin.mess.noRegistrationDetail'), {
+                                      variant: 'info',
+                                    })
+                                  }
+                                  aria-label={t('admin.mess.openDetail', { name: space.name })}
+                                  noWrap
+                                  sx={{
+                                    fontWeight: 700,
+                                    fontSize: 14,
+                                    color: 'text.primary',
+                                    textDecoration: 'none',
+                                    background: 'none',
+                                    border: 0,
+                                    padding: 0,
+                                    cursor: 'pointer',
+                                    font: 'inherit',
+                                    textAlign: 'left',
+                                    maxWidth: '100%',
+                                    borderRadius: '4px',
+                                    '&:hover': {
+                                      color: colors.teal,
+                                      textDecoration: 'underline',
+                                    },
+                                    '&:focus-visible': {
+                                      outline: `2px solid ${colors.teal}`,
+                                      outlineOffset: 2,
+                                    },
+                                  }}>
+                                  {space.name}
+                                </Typography>
+                              )}
                             </Stack>
                             <ReferenceCode value={space.referenceCode} />
                             <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.35 }}>
@@ -1126,24 +1192,7 @@ export function AdminMessListPage() {
                       </TableCell>
                       <TableCell>
                         <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                          {detailPath ? (
-                            <Button
-                              component={RouterLink}
-                              to={detailPath}
-                              size="small"
-                              sx={{
-                                textTransform: 'none',
-                                fontWeight: 700,
-                                color: '#15803D',
-                                bgcolor: '#DCFCE7',
-                                borderRadius: '8px',
-                                px: 1.5,
-                                minWidth: 0,
-                                '&:hover': { bgcolor: '#BBF7D0' },
-                              }}>
-                              {t('admin.mess.view')}
-                            </Button>
-                          ) : (
+                          {showShare ? (
                             <Button
                               size="small"
                               onClick={() => setSpaceShareId(space.id)}
@@ -1159,9 +1208,9 @@ export function AdminMessListPage() {
                               }}>
                               {t('admin.marketing.share')}
                             </Button>
-                          )}
-                    <Button
-                      size="small"
+                          ) : null}
+                          <Button
+                            size="small"
                             onClick={() => setDeleteTarget({ kind: 'space', item: space })}
                             sx={{
                               textTransform: 'none',
@@ -1174,11 +1223,11 @@ export function AdminMessListPage() {
                               '&:hover': { bgcolor: '#FECACA' },
                             }}>
                             {t('admin.common.delete')}
-                    </Button>
+                          </Button>
                           <IconButton size="small" sx={{ color: 'text.secondary' }}>
                             <MoreVertical size={16} />
                           </IconButton>
-                  </Stack>
+                        </Stack>
                       </TableCell>
                     </TableRow>
                   );

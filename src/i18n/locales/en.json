@@ -6327,6 +6327,8 @@
       "title": "Properties",
       "subtitle": "Manage property registrations, leads, and active properties.",
       "view": "View",
+      "openDetail": "Open property details for {{name}}",
+      "noRegistrationDetail": "This active listing has no linked registration record, so there is no detail page to open. You can still use Share for marketing.",
       "searchPlaceholder": "Search by property name, owner or location...",
       "showing": "Showing {{from}}–{{to}} of {{total}} properties",
       "stats": {
@@ -6695,6 +6697,8 @@
       "title": "Mess",
       "subtitle": "Manage mess registrations, leads, and active messes.",
       "view": "View",
+      "openDetail": "Open mess details for {{name}}",
+      "noRegistrationDetail": "This active listing has no linked registration record, so there is no detail page to open. You can still use Share for marketing.",
       "searchPlaceholder": "Search by mess name, vendor or location...",
       "showing": "Showing {{from}}–{{to}} of {{total}} mess records",
       "stats": {

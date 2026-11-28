@@ -51,6 +51,10 @@ import {
   summaryStatForCard,
   summaryStatParams,
 } from '@/modules/admin/utils/adminListFilters';
+import {
+  activeSpaceRegistrationDetailPath,
+  isActiveSpaceShareActionVisible,
+} from '@/modules/admin/utils/adminActiveSpaceRow';
 import { discoverDefaultImageUrl } from '@/modules/onboarding/utils/discoverDefaultImages';
 import type { ListingMarketingStatus, WhatsAppAvailability } from '@/shared/types/admin';
 import {
@@ -60,6 +64,7 @@ import {
 } from '@/routes/paths';
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog';
 import { ReferenceCode } from '@/shared/components/ReferenceCode';
+import { colors } from '@/shared/theme/colors';
 import type {
   AdminActiveSpace,
   AdminPropertyRegistrationsSummary,
@@ -908,7 +913,28 @@ export function AdminPropertyListPage() {
                                     flexShrink: 0,
                                   }}
                                 />
-                                <Typography sx={{ fontWeight: 700, fontSize: 14 }} noWrap>
+                                <Typography
+                                  component={RouterLink}
+                                  to={adminPropertyDetailPath(item.id)}
+                                  aria-label={t('admin.property.openDetail', {
+                                    name: item.propertyName,
+                                  })}
+                                  noWrap
+                                  sx={{
+                                    fontWeight: 700,
+                                    fontSize: 14,
+                                    color: 'text.primary',
+                                    textDecoration: 'none',
+                                    borderRadius: '4px',
+                                    '&:hover': {
+                                      color: colors.teal,
+                                      textDecoration: 'underline',
+                                    },
+                                    '&:focus-visible': {
+                                      outline: `2px solid ${colors.teal}`,
+                                      outlineOffset: 2,
+                                    },
+                                  }}>
                                   {item.propertyName}
                                 </Typography>
                               </Stack>
@@ -987,22 +1013,6 @@ export function AdminPropertyListPage() {
                         <TableCell>
                           <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                             <Button
-                              component={RouterLink}
-                              to={adminPropertyDetailPath(item.id)}
-                              size="small"
-                              sx={{
-                                textTransform: 'none',
-                                fontWeight: 700,
-                                color: '#15803D',
-                                bgcolor: '#DCFCE7',
-                                borderRadius: '8px',
-                                px: 1.5,
-                                minWidth: 0,
-                                '&:hover': { bgcolor: '#BBF7D0' },
-                              }}>
-                              {t('admin.property.view')}
-                            </Button>
-                            <Button
                               size="small"
                               onClick={() => setDeleteTarget({ kind: 'lead', item })}
                               sx={{
@@ -1038,9 +1048,11 @@ export function AdminPropertyListPage() {
                 activeVisible.map((space) => {
                   const created = formatCreated(space.createdAt);
                   const chipSx = sourceChipSx(space.source);
-                  const detailPath = space.registrationId
-                    ? adminPropertyDetailPath(space.registrationId)
-                    : undefined;
+                  const detailPath = activeSpaceRegistrationDetailPath(
+                    space.registrationId,
+                    'property',
+                  );
+                  const showShare = isActiveSpaceShareActionVisible(space);
                   return (
                     <TableRow key={space.id} hover>
                       <TableCell padding="checkbox">
@@ -1074,9 +1086,65 @@ export function AdminPropertyListPage() {
                                   flexShrink: 0,
                                 }}
                               />
-                              <Typography sx={{ fontWeight: 700, fontSize: 14 }} noWrap>
-                                {space.name}
-                              </Typography>
+                              {detailPath ? (
+                                <Typography
+                                  component={RouterLink}
+                                  to={detailPath}
+                                  aria-label={t('admin.property.openDetail', { name: space.name })}
+                                  noWrap
+                                  sx={{
+                                    fontWeight: 700,
+                                    fontSize: 14,
+                                    color: 'text.primary',
+                                    textDecoration: 'none',
+                                    borderRadius: '4px',
+                                    '&:hover': {
+                                      color: colors.teal,
+                                      textDecoration: 'underline',
+                                    },
+                                    '&:focus-visible': {
+                                      outline: `2px solid ${colors.teal}`,
+                                      outlineOffset: 2,
+                                    },
+                                  }}>
+                                  {space.name}
+                                </Typography>
+                              ) : (
+                                <Typography
+                                  component="button"
+                                  type="button"
+                                  onClick={() =>
+                                    enqueueSnackbar(t('admin.property.noRegistrationDetail'), {
+                                      variant: 'info',
+                                    })
+                                  }
+                                  aria-label={t('admin.property.openDetail', { name: space.name })}
+                                  noWrap
+                                  sx={{
+                                    fontWeight: 700,
+                                    fontSize: 14,
+                                    color: 'text.primary',
+                                    textDecoration: 'none',
+                                    background: 'none',
+                                    border: 0,
+                                    padding: 0,
+                                    cursor: 'pointer',
+                                    font: 'inherit',
+                                    textAlign: 'left',
+                                    maxWidth: '100%',
+                                    borderRadius: '4px',
+                                    '&:hover': {
+                                      color: colors.teal,
+                                      textDecoration: 'underline',
+                                    },
+                                    '&:focus-visible': {
+                                      outline: `2px solid ${colors.teal}`,
+                                      outlineOffset: 2,
+                                    },
+                                  }}>
+                                  {space.name}
+                                </Typography>
+                              )}
                             </Stack>
                             <ReferenceCode value={space.referenceCode} />
                             <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.35 }}>
@@ -1156,24 +1224,7 @@ export function AdminPropertyListPage() {
                       </TableCell>
                       <TableCell>
                         <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                          {detailPath ? (
-                            <Button
-                              component={RouterLink}
-                              to={detailPath}
-                              size="small"
-                              sx={{
-                                textTransform: 'none',
-                                fontWeight: 700,
-                                color: '#15803D',
-                                bgcolor: '#DCFCE7',
-                                borderRadius: '8px',
-                                px: 1.5,
-                                minWidth: 0,
-                                '&:hover': { bgcolor: '#BBF7D0' },
-                              }}>
-                              {t('admin.property.view')}
-                            </Button>
-                          ) : (
+                          {showShare ? (
                             <Button
                               size="small"
                               onClick={() => setSpaceShareId(space.id)}
@@ -1189,7 +1240,7 @@ export function AdminPropertyListPage() {
                               }}>
                               {t('admin.marketing.share')}
                             </Button>
-                          )}
+                          ) : null}
                           <Button
                             size="small"
                             onClick={() => setDeleteTarget({ kind: 'space', item: space })}
