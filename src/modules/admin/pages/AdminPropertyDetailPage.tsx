@@ -20,6 +20,7 @@ import {
   MapPin,
   Pencil,
   Phone,
+  Share2,
   Trash2,
   User,
   X,
@@ -30,6 +31,9 @@ import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import { AdminLeadDetailField } from '@/modules/admin/components/AdminLeadDetailField';
+import { AdminListingMarketingChips } from '@/modules/admin/components/AdminListingMarketingChips';
+import { AdminListingMarketingHistory } from '@/modules/admin/components/AdminListingMarketingHistory';
+import { AdminListingMarketingShareDialog } from '@/modules/admin/components/AdminListingMarketingShareDialog';
 import { AdminTestLeadToggle } from '@/modules/admin/components/AdminTestLeadToggle';
 import { AdminConversionInfoCallouts } from '@/modules/admin/components/AdminConversionInfoCallouts';
 import { AdminRegistrationContactEditor } from '@/modules/admin/components/AdminRegistrationContactEditor';
@@ -106,6 +110,7 @@ export function AdminPropertyDetailPage() {
   const [editingContact, setEditingContact] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
   const [savingTestLead, setSavingTestLead] = useState(false);
+  const [marketingMode, setMarketingMode] = useState<'share' | 'call' | null>(null);
 
   const reload = useCallback(async () => {
     const data = await adminApi.getPropertyRegistration(id);
@@ -228,6 +233,22 @@ export function AdminPropertyDetailPage() {
             >
               {t('admin.common.backToList')}
             </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Share2 size={16} />}
+              onClick={() => setMarketingMode('share')}
+              sx={dashOutlinedButtonSx}
+            >
+              {t('admin.marketing.share')}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Phone size={16} />}
+              onClick={() => setMarketingMode('call')}
+              sx={dashOutlinedButtonSx}
+            >
+              {t('admin.marketing.callOwner')}
+            </Button>
             {detail.status !== 'CONVERTED' ? (
               <Button
                 color="error"
@@ -272,6 +293,10 @@ export function AdminPropertyDetailPage() {
                       sx={{ bgcolor: typeTint, color: typeAccent, fontWeight: 700 }}
                     />
                     <Chip size="small" label={detail.status} sx={statusChipSx(detail.status)} />
+                    <AdminListingMarketingChips
+                      marketingStatus={detail.marketingStatus}
+                      whatsappAvailability={detail.whatsappAvailability}
+                    />
                   </Stack>
                   <Typography variant="body2" sx={{ color: colors.textSecondary, mb: 0.5 }}>
                     {detail.reference}
@@ -457,9 +482,50 @@ export function AdminPropertyDetailPage() {
               onDiscoveryEnabled={() => undefined}
             />
             <AdminConversionInfoCallouts />
+            <ContentCard>
+              <AdminListingMarketingHistory activities={detail.marketingActivities} />
+            </ContentCard>
           </Stack>
         </Grid>
       </Grid>
+
+      <AdminListingMarketingShareDialog
+        open={marketingMode != null}
+        mode={marketingMode ?? 'share'}
+        onClose={() => setMarketingMode(null)}
+        onUpdated={() => void reload()}
+        target={{ kind: 'property-registration', id }}
+        listingKind="PROPERTY"
+        spaceType={detail.propertyType}
+        name={detail.propertyName}
+        ownerName={detail.ownerName}
+        location={formatLocationShort(detail)}
+        address={formatAddressLine(detail)}
+        rentOrPrice={
+          detail.startingPrice != null
+            ? (() => {
+                const basis = isPriceBasis(detail.priceBasis)
+                  ? detail.priceBasis
+                  : defaultPriceBasis(detail.propertyType);
+                const suffix = basis ? PRICE_BASIS_LABEL[basis] : '';
+                return suffix
+                  ? `₹${detail.startingPrice} / ${suffix}`
+                  : `₹${detail.startingPrice}`;
+              })()
+            : null
+        }
+        phones={[
+          detail.mobileNumber,
+          detail.alternateMobileNumber,
+          detail.additionalMobileNumber,
+          detail.linkedOwnerMobile,
+        ]}
+        sharing={detail.sharingNotes}
+        amenities={amenities}
+        foodIncluded={foodIncluded}
+        genderPolicy={detail.genderPolicy}
+        description={detail.description}
+      />
 
       <Dialog
         open={editingContact}

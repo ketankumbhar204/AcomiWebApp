@@ -98,6 +98,117 @@ export interface AdminUserRegistrationBreakdown {
   slices: AdminUserRegistrationBreakdownSlice[];
 }
 
+export type ListingMarketingStatus = 'NOT_SHARED' | 'SHARED';
+export type WhatsAppAvailability = 'UNKNOWN' | 'AVAILABLE' | 'UNAVAILABLE';
+export type ListingMarketingChannel = 'WHATSAPP' | 'CALL';
+export type ListingMarketingOutcome =
+  | 'WHATSAPP_OPENED'
+  | 'SHARED_CONFIRMED'
+  | 'WHATSAPP_UNAVAILABLE'
+  | 'CALL_ATTEMPTED'
+  | 'CONTACTED_BY_PHONE'
+  | 'SKIPPED'
+  | 'WHATSAPP_API_SUBMITTED'
+  | 'WHATSAPP_API_FAILED'
+  | 'WHATSAPP_API_BLOCKED';
+
+export type ListingMarketingDeliveryMode = 'MANUAL' | 'AUTOMATIC';
+
+export interface AdminListingMarketingActivity {
+  id: string;
+  listingKind: 'PROPERTY' | 'MESS';
+  propertyRegistrationId?: string | null;
+  messRegistrationId?: string | null;
+  spaceId?: string | null;
+  channel: ListingMarketingChannel;
+  outcome: ListingMarketingOutcome;
+  templateKey?: string | null;
+  note?: string | null;
+  deliveryMode?: ListingMarketingDeliveryMode | null;
+  providerMessageId?: string | null;
+  recipientPhoneMasked?: string | null;
+  actorUserId: string;
+  createdAt: string;
+}
+
+export interface AdminListingMarketingWhatsAppCapability {
+  available: boolean;
+  mode: string;
+  enabled: boolean;
+  senderReady: boolean;
+  businessNumberHint?: string | null;
+  reasons: string[];
+  explanation: string;
+}
+
+export interface AdminSendListingMarketingWhatsAppRequest {
+  recipientPhone: string;
+  templateKey?: string | null;
+  messageSnapshot?: string | null;
+  mediaFileNames?: string[];
+  clientRequestId?: string | null;
+}
+
+export interface AdminSendListingMarketingWhatsAppResponse {
+  accepted: boolean;
+  outcome: ListingMarketingOutcome;
+  activityId?: string | null;
+  providerMessageId?: string | null;
+  explanation?: string | null;
+  marketing?: AdminListingMarketingResponse | null;
+}
+
+export interface AdminListingMarketingResponse {
+  marketingStatus: ListingMarketingStatus;
+  whatsappAvailability: WhatsAppAvailability;
+  lastSharedAt?: string | null;
+  lastSharedBy?: string | null;
+  marketingNotes?: string | null;
+  propertyRegistrationId?: string | null;
+  messRegistrationId?: string | null;
+  spaceId?: string | null;
+  activities: AdminListingMarketingActivity[];
+}
+
+export interface AdminUpdateListingMarketingRequest {
+  marketingStatus?: ListingMarketingStatus;
+  whatsappAvailability?: WhatsAppAvailability;
+  marketingNotes?: string | null;
+  activity?: {
+    channel?: ListingMarketingChannel;
+    outcome: ListingMarketingOutcome;
+    templateKey?: string | null;
+    note?: string | null;
+    messageSnapshot?: string | null;
+  };
+}
+
+export type ListingMarketingTemplateApplicability = 'PROPERTY' | 'MESS' | 'BOTH';
+
+export interface AdminListingMarketingTemplate {
+  id: string;
+  name: string;
+  description?: string | null;
+  body: string;
+  applicability: ListingMarketingTemplateApplicability;
+  active: boolean;
+  displayOrder: number;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  builtin: boolean;
+}
+
+export interface AdminUpsertListingMarketingTemplateRequest {
+  name: string;
+  description?: string | null;
+  body: string;
+  applicability: ListingMarketingTemplateApplicability;
+  active?: boolean;
+  displayOrder?: number;
+}
+
 export interface AdminActiveSpace {
   id: string;
   referenceCode?: string | null;
@@ -112,6 +223,8 @@ export interface AdminActiveSpace {
   source?: RegistrationSource | null;
   testLead?: boolean;
   registrationId?: string | null;
+  marketingStatus?: ListingMarketingStatus | null;
+  whatsappAvailability?: WhatsAppAvailability | null;
 }
 
 export interface PropertyRegistrationListItem {
@@ -130,6 +243,8 @@ export interface PropertyRegistrationListItem {
   claimedAt?: string | null;
   createdAt: string;
   testLead: boolean;
+  marketingStatus?: ListingMarketingStatus | null;
+  whatsappAvailability?: WhatsAppAvailability | null;
 }
 
 export interface PropertyRegistrationDetail extends PropertyRegistrationListItem {
@@ -157,6 +272,10 @@ export interface PropertyRegistrationDetail extends PropertyRegistrationListItem
   reviewNotes?: string | null;
   claimedVia?: string | null;
   updatedAt: string;
+  lastSharedAt?: string | null;
+  lastSharedBy?: string | null;
+  marketingNotes?: string | null;
+  marketingActivities?: AdminListingMarketingActivity[] | null;
   amenities: Array<{ code: string; customLabel?: string | null; displayOrder: number }>;
 }
 
@@ -175,6 +294,8 @@ export interface MessRegistrationListItem {
   claimedAt?: string | null;
   createdAt: string;
   testLead: boolean;
+  marketingStatus?: ListingMarketingStatus | null;
+  whatsappAvailability?: WhatsAppAvailability | null;
 }
 
 export interface MessRegistrationDetail extends MessRegistrationListItem {
@@ -203,6 +324,10 @@ export interface MessRegistrationDetail extends MessRegistrationListItem {
   reviewNotes?: string | null;
   claimedVia?: string | null;
   updatedAt: string;
+  lastSharedAt?: string | null;
+  lastSharedBy?: string | null;
+  marketingNotes?: string | null;
+  marketingActivities?: AdminListingMarketingActivity[] | null;
 }
 
 export interface AdminLinkOwnerRequest {

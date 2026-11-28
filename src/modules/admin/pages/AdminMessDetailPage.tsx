@@ -20,6 +20,7 @@ import {
   MapPin,
   Pencil,
   Phone,
+  Share2,
   Trash2,
   User,
   X,
@@ -31,6 +32,9 @@ import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
 import { AdminConversionInfoCallouts } from '@/modules/admin/components/AdminConversionInfoCallouts';
 import { AdminLeadDetailField } from '@/modules/admin/components/AdminLeadDetailField';
+import { AdminListingMarketingChips } from '@/modules/admin/components/AdminListingMarketingChips';
+import { AdminListingMarketingHistory } from '@/modules/admin/components/AdminListingMarketingHistory';
+import { AdminListingMarketingShareDialog } from '@/modules/admin/components/AdminListingMarketingShareDialog';
 import { AdminTestLeadToggle } from '@/modules/admin/components/AdminTestLeadToggle';
 import { AdminRegistrationContactEditor } from '@/modules/admin/components/AdminRegistrationContactEditor';
 import { AdminRegistrationConversionPanel } from '@/modules/admin/components/AdminRegistrationConversionPanel';
@@ -106,6 +110,7 @@ export function AdminMessDetailPage() {
   const [editingContact, setEditingContact] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
   const [savingTestLead, setSavingTestLead] = useState(false);
+  const [marketingMode, setMarketingMode] = useState<'share' | 'call' | null>(null);
 
   const reload = useCallback(async () => {
     const data = await adminApi.getMessRegistration(id);
@@ -218,6 +223,22 @@ export function AdminMessDetailPage() {
             >
               {t('admin.common.backToList')}
             </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Share2 size={16} />}
+              onClick={() => setMarketingMode('share')}
+              sx={dashOutlinedButtonSx}
+            >
+              {t('admin.marketing.share')}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Phone size={16} />}
+              onClick={() => setMarketingMode('call')}
+              sx={dashOutlinedButtonSx}
+            >
+              {t('admin.marketing.callOwner')}
+            </Button>
             {detail.status !== 'CONVERTED' ? (
               <Button
                 color="error"
@@ -263,6 +284,10 @@ export function AdminMessDetailPage() {
                       sx={{ bgcolor: typeTint, color: typeAccent, fontWeight: 700 }}
                     />
                     <Chip size="small" label={detail.status} sx={statusChipSx(detail.status)} />
+                    <AdminListingMarketingChips
+                      marketingStatus={detail.marketingStatus}
+                      whatsappAvailability={detail.whatsappAvailability}
+                    />
                   </Stack>
                   <Typography variant="body2" sx={{ color: colors.textSecondary, mb: 0.5 }}>
                     {detail.reference}
@@ -430,9 +455,53 @@ export function AdminMessDetailPage() {
               onDiscoveryEnabled={() => undefined}
             />
             <AdminConversionInfoCallouts />
+            <ContentCard>
+              <AdminListingMarketingHistory activities={detail.marketingActivities} />
+            </ContentCard>
           </Stack>
         </Grid>
       </Grid>
+
+      <AdminListingMarketingShareDialog
+        open={marketingMode != null}
+        mode={marketingMode ?? 'share'}
+        onClose={() => setMarketingMode(null)}
+        onUpdated={() => void reload()}
+        target={{ kind: 'mess-registration', id }}
+        listingKind="MESS"
+        spaceType="MESS"
+        name={detail.messName}
+        ownerName={detail.ownerName}
+        location={formatLocationShort(detail)}
+        address={formatAddressLine(detail)}
+        rentOrPrice={
+          detail.monthlyPrice != null
+            ? `₹${detail.monthlyPrice}${
+                detail.monthlyPriceBasis && isPriceBasis(detail.monthlyPriceBasis)
+                  ? ` / ${PRICE_BASIS_LABEL[detail.monthlyPriceBasis]}`
+                  : ''
+              }`
+            : detail.mealPrice != null
+              ? `₹${detail.mealPrice} / meal`
+              : null
+        }
+        phones={[
+          detail.mobileNumber,
+          detail.alternateMobileNumber,
+          detail.additionalMobileNumber,
+          detail.linkedOwnerMobile,
+        ]}
+        sharing={detail.sharingNotes}
+        foodIncluded={
+          detail.foodIncludedListing == null
+            ? null
+            : detail.foodIncludedListing
+              ? t('common.yes', { defaultValue: 'Yes' })
+              : t('common.no', { defaultValue: 'No' })
+        }
+        genderPolicy={detail.genderPolicy}
+        description={detail.description || detail.reviewNotes}
+      />
 
       <Dialog open={editingContact} onClose={() => setEditingContact(false)} fullWidth maxWidth="sm">
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

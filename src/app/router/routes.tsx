@@ -385,6 +385,11 @@ const AdminInquiryPaymentConfigPage = lazyPage(() =>
     default: m.AdminInquiryPaymentConfigPage,
   })),
 );
+const AdminListingMarketingTemplatesPage = lazyPage(() =>
+  import('@/modules/admin/pages/AdminListingMarketingTemplatesPage').then((m) => ({
+    default: m.AdminListingMarketingTemplatesPage,
+  })),
+);
 const AdminInquiryPurchaseListPage = lazyPage(() =>
   import('@/modules/admin/pages/AdminInquiryPurchaseListPage').then((m) => ({
     default: m.AdminInquiryPurchaseListPage,
@@ -625,6 +630,14 @@ export const appRoutes = [
                 element: (
                   <L>
                     <AdminInquiryPaymentConfigPage />
+                  </L>
+                ),
+              },
+              {
+                path: ROUTES.adminListingMarketingTemplates,
+                element: (
+                  <L>
+                    <AdminListingMarketingTemplatesPage />
                   </L>
                 ),
               },

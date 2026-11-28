@@ -8,6 +8,7 @@ import {
   LogOut,
   MapPin,
   MessageCircle,
+  Megaphone,
   Receipt,
   Users,
 } from 'lucide-react';
@@ -47,6 +48,9 @@ function adminPageTitle(pathname: string, t: (key: string) => string): string {
   }
   if (pathname.startsWith(ROUTES.adminInquiryCredits)) {
     return t('admin.nav.creditsConfig');
+  }
+  if (pathname.startsWith(ROUTES.adminListingMarketingTemplates)) {
+    return t('admin.nav.marketingTemplates');
   }
   return t('admin.nav.dashboard');
 }
@@ -138,6 +142,13 @@ export function AdminLayout() {
             label: t('admin.nav.creditsConfig'),
             to: ROUTES.adminInquiryCredits,
             icon: <CreditCard size={16} />,
+            end: true,
+          },
+          {
+            id: 'marketingTemplates',
+            label: t('admin.nav.marketingTemplates'),
+            to: ROUTES.adminListingMarketingTemplates,
+            icon: <Megaphone size={16} />,
             end: true,
           },
           {

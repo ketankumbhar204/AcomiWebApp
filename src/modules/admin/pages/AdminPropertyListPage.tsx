@@ -39,6 +39,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { adminApi } from '@/modules/admin/api/adminApi';
+import { AdminListingMarketingChips } from '@/modules/admin/components/AdminListingMarketingChips';
+import { AdminListingMarketingShareDialog } from '@/modules/admin/components/AdminListingMarketingShareDialog';
 import {
   formatPropertyRegistrationSource,
 } from '@/modules/admin/utils/adminLabels';
@@ -50,6 +52,7 @@ import {
   summaryStatParams,
 } from '@/modules/admin/utils/adminListFilters';
 import { discoverDefaultImageUrl } from '@/modules/onboarding/utils/discoverDefaultImages';
+import type { ListingMarketingStatus, WhatsAppAvailability } from '@/shared/types/admin';
 import {
   adminAddPropertyPath,
   adminBulkPropertyPath,
@@ -134,9 +137,14 @@ export function AdminPropertyListPage() {
   const [searchInput, setSearchInput] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<RegistrationStatus | ''>('');
+  const [marketingStatusFilter, setMarketingStatusFilter] = useState<ListingMarketingStatus | ''>('');
+  const [whatsappAvailabilityFilter, setWhatsappAvailabilityFilter] =
+    useState<WhatsAppAvailability | ''>('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [spaceShareId, setSpaceShareId] = useState<string | null>(null);
+  const [listRefreshKey, setListRefreshKey] = useState(0);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQ(searchInput.trim()), 300);
@@ -144,7 +152,7 @@ export function AdminPropertyListPage() {
   }, [searchInput]);
 
   const selectedStat = selectedSummaryStat(searchParams, tab, leadScope, sourceFilter, statusFilter);
-  const filterKey = `${tab}|${leadScope}|${debouncedQ}|${sourceFilter}|${statusFilter}|${selectedStat ?? ''}`;
+  const filterKey = `${tab}|${leadScope}|${debouncedQ}|${sourceFilter}|${statusFilter}|${marketingStatusFilter}|${whatsappAvailabilityFilter}|${selectedStat ?? ''}`;
   const [activeFilterKey, setActiveFilterKey] = useState(filterKey);
   if (activeFilterKey !== filterKey) {
     setActiveFilterKey(filterKey);
@@ -166,10 +174,14 @@ export function AdminPropertyListPage() {
       status?: RegistrationStatus;
       leadsOnly?: boolean;
       claimed?: boolean;
+      marketingStatus?: ListingMarketingStatus;
+      whatsappAvailability?: WhatsAppAvailability;
     } = {
       q: debouncedQ || undefined,
       status: statusFilter || undefined,
       leadsOnly: true,
+      marketingStatus: marketingStatusFilter || undefined,
+      whatsappAvailability: whatsappAvailabilityFilter || undefined,
     };
     switch (leadScope) {
       case 'my':
@@ -194,7 +206,7 @@ export function AdminPropertyListPage() {
         break;
     }
     return params;
-  }, [debouncedQ, leadScope, sourceFilter, statusFilter]);
+  }, [debouncedQ, leadScope, sourceFilter, statusFilter, marketingStatusFilter, whatsappAvailabilityFilter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -232,7 +244,17 @@ export function AdminPropertyListPage() {
                   s.ownerMobile.includes(q)
                 );
               })
-              .filter((s) => !sourceFilter || s.source === sourceFilter);
+              .filter((s) => !sourceFilter || s.source === sourceFilter)
+              .filter(
+                (s) =>
+                  !marketingStatusFilter ||
+                  (s.marketingStatus ?? 'NOT_SHARED') === marketingStatusFilter,
+              )
+              .filter(
+                (s) =>
+                  !whatsappAvailabilityFilter ||
+                  (s.whatsappAvailability ?? 'UNKNOWN') === whatsappAvailabilityFilter,
+              );
             setActiveAll(filtered);
             setTotalElements(filtered.length);
           }
@@ -248,7 +270,7 @@ export function AdminPropertyListPage() {
     return () => {
       cancelled = true;
     };
-  }, [debouncedQ, listParams, leadPage, sourceFilter, tab, selectedStat]);
+  }, [debouncedQ, listParams, leadPage, sourceFilter, tab, selectedStat, listRefreshKey]);
 
   const activeVisible = useMemo(
     () => activeAll.slice(0, visibleCount),
@@ -733,6 +755,31 @@ export function AdminPropertyListPage() {
                 </Select>
               </FormControl>
             ) : null}
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <Select
+                displayEmpty
+                value={marketingStatusFilter}
+                onChange={(e) => setMarketingStatusFilter(e.target.value as ListingMarketingStatus | '')}
+                sx={{ borderRadius: '10px' }}>
+                <MenuItem value="">{t('admin.marketing.filters.allMarketing')}</MenuItem>
+                <MenuItem value="NOT_SHARED">{t('admin.marketing.status.notShared')}</MenuItem>
+                <MenuItem value="SHARED">{t('admin.marketing.status.shared')}</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 170 }}>
+              <Select
+                displayEmpty
+                value={whatsappAvailabilityFilter}
+                onChange={(e) =>
+                  setWhatsappAvailabilityFilter(e.target.value as WhatsAppAvailability | '')
+                }
+                sx={{ borderRadius: '10px' }}>
+                <MenuItem value="">{t('admin.marketing.filters.allWhatsapp')}</MenuItem>
+                <MenuItem value="UNKNOWN">{t('admin.marketing.whatsapp.unknown')}</MenuItem>
+                <MenuItem value="AVAILABLE">{t('admin.marketing.whatsapp.available')}</MenuItem>
+                <MenuItem value="UNAVAILABLE">{t('admin.marketing.whatsapp.unavailable')}</MenuItem>
+              </Select>
+            </FormControl>
           </Stack>
         </CardContent>
       </Card>
@@ -877,6 +924,13 @@ export function AdminPropertyListPage() {
                                   {item.city}, {item.state}
                                 </Typography>
                               </Stack>
+                              <Box sx={{ mt: 0.5 }}>
+                                <AdminListingMarketingChips
+                                  dense
+                                  marketingStatus={item.marketingStatus}
+                                  whatsappAvailability={item.whatsappAvailability}
+                                />
+                              </Box>
                             </Box>
                           </Stack>
                         </TableCell>
@@ -1031,6 +1085,13 @@ export function AdminPropertyListPage() {
                                 {space.ownerName}
                               </Typography>
                             </Stack>
+                            <Box sx={{ mt: 0.5 }}>
+                              <AdminListingMarketingChips
+                                dense
+                                marketingStatus={space.marketingStatus}
+                                whatsappAvailability={space.whatsappAvailability}
+                              />
+                            </Box>
                             {space.address ? (
                               <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
                                 <MapPin size={12} color="#94A3B8" />
@@ -1112,7 +1173,23 @@ export function AdminPropertyListPage() {
                               }}>
                               {t('admin.property.view')}
                             </Button>
-                          ) : null}
+                          ) : (
+                            <Button
+                              size="small"
+                              onClick={() => setSpaceShareId(space.id)}
+                              sx={{
+                                textTransform: 'none',
+                                fontWeight: 700,
+                                color: '#15803D',
+                                bgcolor: '#DCFCE7',
+                                borderRadius: '8px',
+                                px: 1.5,
+                                minWidth: 0,
+                                '&:hover': { bgcolor: '#BBF7D0' },
+                              }}>
+                              {t('admin.marketing.share')}
+                            </Button>
+                          )}
                           <Button
                             size="small"
                             onClick={() => setDeleteTarget({ kind: 'space', item: space })}
@@ -1195,6 +1272,32 @@ export function AdminPropertyListPage() {
         onConfirm={() => void handleDeleteConfirm()}
         onClose={() => setDeleteTarget(null)}
       />
+
+      {(() => {
+        const space = activeAll.find((s) => s.id === spaceShareId);
+        if (!space) return null;
+        return (
+          <AdminListingMarketingShareDialog
+            open
+            mode="share"
+            onClose={() => setSpaceShareId(null)}
+            onUpdated={() => {
+              setSpaceShareId(null);
+              setLeadPage(0);
+              setLoading(true);
+              setListRefreshKey((key) => key + 1);
+            }}
+            target={{ kind: 'space', id: space.id }}
+            listingKind="PROPERTY"
+            spaceType={space.type}
+            name={space.name}
+            ownerName={space.ownerName}
+            location={space.address}
+            address={space.address}
+            phones={[space.contactNumber, space.ownerMobile]}
+          />
+        );
+      })()}
     </Box>
   );
 }

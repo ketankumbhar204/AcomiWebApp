@@ -52,6 +52,7 @@ export const ROUTES = {
   adminEnquiries: '/admin/enquiries',
   adminInquiryCredits: '/admin/inquiry-credits',
   adminInquiryPayments: '/admin/inquiry-credits/payments',
+  adminListingMarketingTemplates: '/admin/listing-marketing-templates',
   adminNotificationTesting: '/admin/notification-testing',
   adminMonthlyBilling: '/admin/monthly-billing',
   myEnquiries: '/my-enquiries',

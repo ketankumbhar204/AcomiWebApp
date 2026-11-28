@@ -7,6 +7,13 @@ import type {
   AdminActivityType,
   AdminCreateMessRegistrationRequest,
   AdminCreatePropertyRegistrationRequest,
+  AdminListingMarketingResponse,
+  AdminListingMarketingTemplate,
+  AdminListingMarketingWhatsAppCapability,
+  AdminSendListingMarketingWhatsAppRequest,
+  AdminSendListingMarketingWhatsAppResponse,
+  AdminUpsertListingMarketingTemplateRequest,
+  AdminUpdateListingMarketingRequest,
   AdminUpdateRegistrationContactRequest,
   AdminDashboardSummary,
   AdminEnquiriesTrend,
@@ -17,6 +24,7 @@ import type {
   AdminMessRegistrationsSummary,
   AdminSavedAddressesSummary,
   AdminUserRegistrationBreakdown,
+  ListingMarketingStatus,
   SavedAddress,
   SavedAddressRequest,
   MessRegistrationDetail,
@@ -25,6 +33,7 @@ import type {
   PropertyRegistrationDetail,
   PropertyRegistrationListItem,
   PropertyRegistrationResponse,
+  WhatsAppAvailability,
 } from '@/shared/types/admin';
 import type {
   PropertyBulkImportAnalyzeResponse,
@@ -132,6 +141,8 @@ export const adminApi = {
     status?: string;
     leadsOnly?: boolean;
     claimed?: boolean;
+    marketingStatus?: ListingMarketingStatus;
+    whatsappAvailability?: WhatsAppAvailability;
     page?: number;
     size?: number;
   }): Promise<PagedResponse<PropertyRegistrationListItem>> =>
@@ -251,6 +262,8 @@ export const adminApi = {
     status?: string;
     leadsOnly?: boolean;
     claimed?: boolean;
+    marketingStatus?: ListingMarketingStatus;
+    whatsappAvailability?: WhatsAppAvailability;
     page?: number;
     size?: number;
   }): Promise<PagedResponse<MessRegistrationListItem>> =>
@@ -446,6 +459,123 @@ export const adminApi = {
 
   deleteActiveSpace: async (spaceId: string): Promise<void> =>
     unwrapVoidResponse(apiClient.delete(`/admin/spaces/${spaceId}`)),
+
+  getPropertyRegistrationMarketing: async (id: string): Promise<AdminListingMarketingResponse> =>
+    unwrapApiResponse(
+      apiClient.get<ApiResponse<AdminListingMarketingResponse>>(
+        `/admin/property-registrations/${id}/marketing`,
+      ),
+    ),
+
+  updatePropertyRegistrationMarketing: async (
+    id: string,
+    payload: AdminUpdateListingMarketingRequest,
+  ): Promise<AdminListingMarketingResponse> =>
+    unwrapApiResponse(
+      apiClient.patch<ApiResponse<AdminListingMarketingResponse>>(
+        `/admin/property-registrations/${id}/marketing`,
+        payload,
+      ),
+    ),
+
+  getMessRegistrationMarketing: async (id: string): Promise<AdminListingMarketingResponse> =>
+    unwrapApiResponse(
+      apiClient.get<ApiResponse<AdminListingMarketingResponse>>(
+        `/admin/mess-registrations/${id}/marketing`,
+      ),
+    ),
+
+  updateMessRegistrationMarketing: async (
+    id: string,
+    payload: AdminUpdateListingMarketingRequest,
+  ): Promise<AdminListingMarketingResponse> =>
+    unwrapApiResponse(
+      apiClient.patch<ApiResponse<AdminListingMarketingResponse>>(
+        `/admin/mess-registrations/${id}/marketing`,
+        payload,
+      ),
+    ),
+
+  getSpaceMarketing: async (spaceId: string): Promise<AdminListingMarketingResponse> =>
+    unwrapApiResponse(
+      apiClient.get<ApiResponse<AdminListingMarketingResponse>>(
+        `/admin/spaces/${spaceId}/marketing`,
+      ),
+    ),
+
+  updateSpaceMarketing: async (
+    spaceId: string,
+    payload: AdminUpdateListingMarketingRequest,
+  ): Promise<AdminListingMarketingResponse> =>
+    unwrapApiResponse(
+      apiClient.patch<ApiResponse<AdminListingMarketingResponse>>(
+        `/admin/spaces/${spaceId}/marketing`,
+        payload,
+      ),
+    ),
+
+  getListingMarketingWhatsAppCapability: async (): Promise<AdminListingMarketingWhatsAppCapability> =>
+    unwrapApiResponse(
+      apiClient.get<ApiResponse<AdminListingMarketingWhatsAppCapability>>(
+        '/admin/listing-marketing/whatsapp-capability',
+      ),
+    ),
+
+  sendListingMarketingWhatsApp: async (
+    target: { kind: 'property-registration' | 'mess-registration' | 'space'; id: string },
+    payload: AdminSendListingMarketingWhatsAppRequest,
+  ): Promise<AdminSendListingMarketingWhatsAppResponse> => {
+    const path =
+      target.kind === 'property-registration'
+        ? `/admin/property-registrations/${target.id}/marketing/send-whatsapp`
+        : target.kind === 'mess-registration'
+          ? `/admin/mess-registrations/${target.id}/marketing/send-whatsapp`
+          : `/admin/spaces/${target.id}/marketing/send-whatsapp`;
+    return unwrapApiResponse(
+      apiClient.post<ApiResponse<AdminSendListingMarketingWhatsAppResponse>>(path, payload),
+    );
+  },
+
+  listListingMarketingTemplates: async (params?: {
+    activeOnly?: boolean;
+  }): Promise<AdminListingMarketingTemplate[]> =>
+    unwrapApiResponse(
+      apiClient.get<ApiResponse<AdminListingMarketingTemplate[]>>(
+        '/admin/listing-marketing-templates',
+        { params },
+      ),
+    ),
+
+  createListingMarketingTemplate: async (
+    payload: AdminUpsertListingMarketingTemplateRequest,
+  ): Promise<AdminListingMarketingTemplate> =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<AdminListingMarketingTemplate>>(
+        '/admin/listing-marketing-templates',
+        payload,
+      ),
+    ),
+
+  updateListingMarketingTemplate: async (
+    id: string,
+    payload: AdminUpsertListingMarketingTemplateRequest,
+  ): Promise<AdminListingMarketingTemplate> =>
+    unwrapApiResponse(
+      apiClient.put<ApiResponse<AdminListingMarketingTemplate>>(
+        `/admin/listing-marketing-templates/${id}`,
+        payload,
+      ),
+    ),
+
+  duplicateListingMarketingTemplate: async (id: string): Promise<AdminListingMarketingTemplate> =>
+    unwrapApiResponse(
+      apiClient.post<ApiResponse<AdminListingMarketingTemplate>>(
+        `/admin/listing-marketing-templates/${id}/duplicate`,
+      ),
+    ),
+
+  deleteListingMarketingTemplate: async (id: string): Promise<void> =>
+    unwrapVoidResponse(apiClient.delete(`/admin/listing-marketing-templates/${id}`)),
 
   listSavedAddresses: async (params?: {
     search?: string;
