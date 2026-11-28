@@ -561,7 +561,7 @@ export function AdminListingMarketingShareDialog({
                   value={customPhone}
                   onChange={(e) => setCustomPhone(e.target.value)}
                   placeholder="9876543210"
-                  inputProps={{ inputMode: 'tel', maxLength: 15 }}
+                  slotProps={{ htmlInput: { inputMode: 'tel', maxLength: 15 } }}
                   helperText={t('admin.marketing.customNumberHint')}
                   error={Boolean(customPhone.trim()) && !hasUsablePhone}
                   fullWidth

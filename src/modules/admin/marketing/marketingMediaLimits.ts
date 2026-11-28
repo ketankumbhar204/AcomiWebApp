@@ -132,7 +132,8 @@ export function canShareMarketingFiles(files: File[]): boolean {
     if (navigator.canShare({ files })) {
       return true;
     }
-    return navigator.canShare({ files: [files[0]] });
+    const first = files[0];
+    return Boolean(first && navigator.canShare({ files: [first] }));
   } catch {
     return false;
   }
@@ -420,11 +421,14 @@ export async function shareMarketingFilesViaWebShare(
 
   // Multi-file canShare often returns false on desktop while single-file still works.
   if (capability.hasCanShare && capability.canShareFiles === false) {
+    const first = normalized[0];
     let singleFileAllowed = false;
-    try {
-      singleFileAllowed = navigator.canShare({ files: [normalized[0]] });
-    } catch {
-      singleFileAllowed = false;
+    if (first) {
+      try {
+        singleFileAllowed = navigator.canShare({ files: [first] });
+      } catch {
+        singleFileAllowed = false;
+      }
     }
     if (!singleFileAllowed) {
       capability.fallbackReason = 'can_share_files_false';
@@ -435,7 +439,11 @@ export async function shareMarketingFilesViaWebShare(
 
   let sharedCount = 0;
   for (let index = 0; index < normalized.length; index += 1) {
-    const batch = [normalized[index]];
+    const file = normalized[index];
+    if (!file) {
+      continue;
+    }
+    const batch = [file];
     if (typeof navigator.canShare === 'function') {
       try {
         if (!navigator.canShare({ files: batch })) {
